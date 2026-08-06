@@ -7,8 +7,8 @@ import { configureCors } from './configure-cors';
 import { configureHttp } from './configure-http';
 import { configureSecurity } from './configure-security';
 import { configureServer } from './configure-server';
+import { configureShutdown } from './configure-shutdown';
 import { configureSwagger } from './configure-swagger';
-import { configureValidation } from './configure-validation';
 
 /**
  * Bootstraps the application by composing each independent configuration
@@ -29,7 +29,7 @@ export async function bootstrap(): Promise<void> {
   await configureSecurity(app);
   configureCors(app);
   configureHttp(app);
-  configureValidation(app);
   configureSwagger(app);
+  configureShutdown(app);
   await configureServer(app, logger);
 }

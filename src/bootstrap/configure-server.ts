@@ -10,6 +10,6 @@ export async function configureServer(app: NestFastifyApplication, logger: Logge
   await app.listen({ port, host });
 
   const url = await app.getUrl();
-  logger.log(`Mukut ERP API listening on ${url}/api`);
+  logger.log(`Mukut ERP API listening on ${url}`);
   logger.log(`Swagger: ${url}/docs`);
 }
