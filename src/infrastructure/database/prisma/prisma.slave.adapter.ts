@@ -8,7 +8,7 @@ export class PrismaSlaveAdapter extends PrismaClient implements OnModuleInit, On
   private readonly logger = new Logger(PrismaSlaveAdapter.name);
 
   constructor(configService: ConfigService) {
-    const dbUrl = configService.getOrThrow<string>('database.slaveUrl', '');
+    const dbUrl = configService.getOrThrow<string>('database.postgres.slaveUrl', '');
     const adapter = new PrismaPg({ connectionString: dbUrl });
     super({ adapter });
   }

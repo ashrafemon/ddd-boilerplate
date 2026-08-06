@@ -8,7 +8,7 @@ export class PrismaMasterAdapter extends PrismaClient implements OnModuleInit, O
   private readonly logger = new Logger(PrismaMasterAdapter.name);
 
   constructor(configService: ConfigService) {
-    const dbUrl = configService.getOrThrow<string>('database.url', '');
+    const dbUrl = configService.getOrThrow<string>('database.postgres.url', '');
     const adapter = new PrismaPg({ connectionString: dbUrl });
     super({ adapter });
   }

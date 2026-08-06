@@ -11,5 +11,7 @@ import { RabbitMQConfigAdapter } from './rabbitmq.adapter';
       useFactory: (config: RabbitMQConfigAdapter) => config.createRabbitMQOptions(),
     }),
   ],
+  providers: [RabbitMQConfigAdapter],
+  exports: [RabbitMQConfigAdapter],
 })
 export class RabbitMQModule {}
