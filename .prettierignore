@@ -1,12 +1,24 @@
+# Build artifacts
 dist
+build
 node_modules
 coverage
+*.tsbuildinfo
+
+# Prisma
 prisma/generated
+prisma/*.db
+
+# Environment
 .env
-.env.*
-*.md
-Dockerfile
-docker-compose*.yml
+.env.local
+
+# IDE/Editor
+.idea
+.vscode
+*.sublime-workspace
+
+# CI/Config
 package-lock.json
 nest-cli.json
 tsconfig*.json

@@ -1,0 +1,49 @@
+# Build contexts
+.git
+.gitignore
+.github
+
+# Dependencies
+node_modules
+package-lock.json
+
+# Build artifacts
+dist
+build
+*.tsbuildinfo
+
+# IDE
+.idea
+.vscode
+.vscode/*
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs
+
+# Tests
+coverage
+.nyc_output
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Prisma
+prisma/*.db
+prisma/migrations
+
+# CI
+.nyc_output
+
+# Editor
+*.sublime-workspace
