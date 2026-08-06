@@ -1,9 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import {
-  FastifyAdapter,
-  NestFastifyApplication,
-} from '@nestjs/platform-fastify';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import 'reflect-metadata';
 import { AppModule } from '../app.module';
 import { configureCors } from './configure-cors';
@@ -19,17 +16,13 @@ import { configureValidation } from './configure-validation';
  * finally the HTTP listener.
  */
 export async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    new FastifyAdapter(),
-    {
-      logger: ['error', 'warn', 'verbose', 'debug'],
-      bufferLogs: true,
-    },
-  );
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
+    logger: ['error', 'warn', 'verbose', 'debug'],
+    bufferLogs: true,
+  });
   const logger = new Logger('Bootstrap');
 
-  configureSecurity(app);
+  await configureSecurity(app);
   configureCors(app);
   configureHttp(app);
   configureValidation(app);

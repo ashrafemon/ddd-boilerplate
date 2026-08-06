@@ -1,16 +1,36 @@
-import { compress } from '@fastify/compress';
+import compress from '@fastify/compress';
 import helmet from '@fastify/helmet';
-import { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 
-/**
- * Configures base HTTP hardening: helmet security headers and
- * gzip/deflate compression.
- */
-export function configureSecurity(app: NestFastifyApplication): void {
-  app.register(helmet);
-  app.register(compress, {
-    global: true,
+export async function configureSecurity(app: NestFastifyApplication): Promise<void> {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  const helmetOptions: Record<string, unknown> = {
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+    referrerPolicy: { policy: 'no-referrer' },
+  };
+
+  if (isProduction) {
+    helmetOptions.contentSecurityPolicy = {
+      directives: {
+        defaultSrc: [`'self'`],
+        styleSrc: [`'self'`, `'unsafe-inline'`],
+        imgSrc: [`'self'`, `data:`, `https:`],
+        fontSrc: [`'self'`, `https:`, `data:`],
+        scriptSrc: [`'self'`],
+        objectSrc: [`'none'`],
+        baseUri: [`'self'`],
+        frameSrc: [`'self'`],
+      },
+    };
+  }
+
+  await app.register(helmet, helmetOptions);
+
+  await app.register(compress, {
     encodings: ['gzip', 'deflate', 'br'],
-    threshold: 1024, // Only compress responses larger than 1 KB
+    threshold: 1024,
   });
 }

@@ -1,18 +1,15 @@
-import type { INestApplication, Logger } from '@nestjs/common';
+import type { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 
-/**
- * Binds the HTTP server to the configured port and logs the entry points.
- */
-export async function configureServer(
-  app: INestApplication,
-  logger: Logger,
-): Promise<void> {
+export async function configureServer(app: NestFastifyApplication, logger: Logger): Promise<void> {
   const config = app.get(ConfigService);
 
   const port = config.get<number>('app.port', 4000);
-  await app.listen(port);
+  const host = config.get<string>('app.host', '0.0.0.0');
+  await app.listen({ port, host });
 
-  logger.log(`Mukut ERP API listening on ${app.getUrl()}/api`);
-  logger.log(`Swagger: ${app.getUrl()}/docs`);
+  const url = await app.getUrl();
+  logger.log(`Mukut ERP API listening on ${url}/api`);
+  logger.log(`Swagger: ${url}/docs`);
 }

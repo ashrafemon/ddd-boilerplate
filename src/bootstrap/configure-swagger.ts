@@ -2,19 +2,22 @@ import type { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
-/**
- * Configures Swagger docs at `/docs`. Disabled in production.
- */
 export function configureSwagger(app: INestApplication): void {
   const config = app.get(ConfigService);
-  if (config.get<string>('app.env', 'development') === 'production') return;
+  const env = config.get<string>('app.env', 'development');
+  if (env === 'production') return;
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Mukut ERP API')
-    .setDescription('ERP platform API — hexagonal architecture, event-driven')
-    .setVersion('1.0')
+    .setTitle(config.get<string>('app.swaggerTitle', 'Mukut ERP API'))
+    .setDescription(
+      config.get<string>(
+        'app.swaggerDescription',
+        'ERP platform API — hexagonal architecture, event-driven',
+      ),
+    )
+    .setVersion(config.get<string>('app.swaggerVersion', '1.0'))
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup(config.get<string>('app.swaggerPath', 'docs'), app, document);
 }
