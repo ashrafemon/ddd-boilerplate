@@ -1,11 +1,6 @@
-import type { INestApplication } from '@nestjs/common';
 import { VersioningType } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 
-export function configureHttp(app: INestApplication): void {
-  const config = app.get(ConfigService);
-  const apiPrefix = config.get<string>('app.apiPrefix', 'api');
-
-  app.setGlobalPrefix(apiPrefix);
+export function configureHttp(app: NestFastifyApplication): void {
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 }

@@ -1,8 +1,8 @@
-import type { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
-export function configureSwagger(app: INestApplication): void {
+export function configureSwagger(app: NestFastifyApplication): void {
   const config = app.get(ConfigService);
   const env = config.get<string>('app.env', 'development');
   if (env === 'production') return;

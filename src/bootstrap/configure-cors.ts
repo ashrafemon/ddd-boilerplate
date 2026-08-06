@@ -1,7 +1,7 @@
-import type { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 
-export function configureCors(app: INestApplication): void {
+export function configureCors(app: NestFastifyApplication): void {
   const config = app.get(ConfigService);
 
   const origin =

@@ -17,9 +17,13 @@ import { configureValidation } from './configure-validation';
  */
 export async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
-    logger: ['error', 'warn', 'verbose', 'debug'],
+    logger:
+      process.env.NODE_ENV === 'production'
+        ? ['error', 'warn', 'log']
+        : ['error', 'warn', 'log', 'debug', 'verbose'],
     bufferLogs: true,
   });
+  app.useLogger(new Logger());
   const logger = new Logger('Bootstrap');
 
   await configureSecurity(app);
