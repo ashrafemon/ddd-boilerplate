@@ -1,0 +1,12 @@
+dist
+node_modules
+coverage
+prisma/generated
+.env
+.env.*
+*.md
+Dockerfile
+docker-compose*.yml
+package-lock.json
+nest-cli.json
+tsconfig*.json
