@@ -1,0 +1,27 @@
+// Transactional Outbox persistence model. Written inside the same DB
+// transaction as the aggregate change and published by the outbox publisher.
+model OutboxMessage {
+  id            String              @id @default(uuid()) @db.Uuid
+  eventType     String
+  aggregateType String
+  aggregateId   String              @db.Uuid
+  payload       Json
+  headers       Json?
+  occurredAt    DateTime
+  publishedAt   DateTime?
+  attempts      Int                 @default(0)
+  lastError     String?
+  status        OutboxMessageStatus @default(PENDING)
+  createdAt     DateTime            @default(now())
+
+  @@index([status, publishedAt])
+  @@index([createdAt])
+  @@map("outbox_messages")
+}
+
+enum OutboxMessageStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}

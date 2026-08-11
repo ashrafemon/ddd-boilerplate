@@ -5,7 +5,6 @@
 
 # Dependencies
 node_modules
-package-lock.json
 
 # Build artifacts
 dist
@@ -40,6 +39,7 @@ coverage
 
 # Prisma
 prisma/*.db
+prisma/generated
 prisma/migrations
 
 # CI

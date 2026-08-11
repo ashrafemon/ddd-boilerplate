@@ -1,7 +1,0 @@
-model PurchaseOrder {
-    id   String    @id @default(uuid())
-    date DateTime?
-
-    @@index([id])
-    @@map("purchase_orders")
-}

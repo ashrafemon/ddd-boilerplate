@@ -1,12 +1,25 @@
 import { Global, Module } from '@nestjs/common';
-import { RedisModule } from './cache/redis/redis.module';
-import { NestjsClsModule } from './context/nestcls/nestcls.module';
+import { CacheModule } from './cache/cache.module';
 import { PrismaModule } from './database/prisma/prisma.module';
-import { RabbitMQModule } from './message/rabbitmq/rabbitmq.module';
+import { MessagingModule } from './messaging/messaging.module';
 
+/**
+ * Infrastructure layer — only client adapters and their wiring modules.
+ *
+ * Each client implements a port defined by the shared-kernel/platform layer
+ * (request context, observability, event bus, cache, messaging, notification,
+ * storage, database). There is no business or platform service logic here.
+ */
 @Global()
 @Module({
-  imports: [PrismaModule, NestjsClsModule, RabbitMQModule, RedisModule],
-  exports: [PrismaModule, NestjsClsModule, RabbitMQModule, RedisModule],
+  imports: [
+    PrismaModule,
+    CacheModule,
+    MessagingModule,
+    // NotificationModule,
+    // StorageModule,
+    // ContextModule,
+    // ObservabilityModule,
+  ],
 })
 export class InfrastructureModule {}

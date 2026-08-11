@@ -1,7 +1,17 @@
 import { DomainEvent } from './event.base';
+import { Entity } from './entity.base';
 
-export abstract class AggregateRoot {
+export abstract class AggregateRoot<ID> extends Entity<ID> {
   private readonly domainEvents: DomainEvent[] = [];
+  protected version = 1;
+
+  protected constructor(id: ID) {
+    super(id);
+  }
+
+  getVersion(): number {
+    return this.version;
+  }
 
   protected addEvent(event: DomainEvent): void {
     this.domainEvents.push(event);

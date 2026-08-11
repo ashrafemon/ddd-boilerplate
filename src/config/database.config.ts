@@ -1,17 +1,17 @@
 import { registerAs } from '@nestjs/config';
 
+export type IDatabaseDriver = 'postgres' | 'mysql';
+export type IDatabaseConfig = { url: string; readUrl?: string };
+
 /**
  * PostgreSQL connection config (critical infrastructure — lives in .env).
+ * `readUrl` is the read/replica connection used by PrismaReadService; it
+ * falls back to the write URL when no replica is configured.
  */
 export default registerAs('database', () => ({
+  driver: process.env.DATABASE_DRIVER ?? 'postgres',
   postgres: {
-    host: process.env.DATABASE_HOST ?? 'localhost',
-    port: Number(process.env.DATABASE_PORT ?? 5432),
-    user: process.env.DATABASE_USER ?? 'deyalpost',
-    password: process.env.DATABASE_PASSWORD ?? '',
-    name: process.env.DATABASE_NAME ?? '',
-
     url: process.env.DATABASE_URL ?? '',
-    slaveUrl: process.env.DATABASE_SLAVE_URL ?? '',
+    readUrl: process.env.DATABASE_SLAVE_URL ?? process.env.DATABASE_URL ?? '',
   },
 }));

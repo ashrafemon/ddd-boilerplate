@@ -1,0 +1,43 @@
+// PurchaseOrder aggregate persistence model. Owns its lines; references
+// products and vendors only by id (aggregate boundary).
+model PurchaseOrder {
+  id          String                @id @default(uuid()) @db.Uuid
+  orderNumber String                @unique
+  vendorId    String                @db.Uuid
+  status      PurchaseOrderStatus   @default(DRAFT)
+  currency    String                @default("USD") @db.VarChar(3)
+  subtotal    Decimal               @default(0) @db.Decimal(18, 2)
+  total       Decimal               @default(0) @db.Decimal(18, 2)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  version     Int                   @default(1)
+  lines       PurchaseOrderLine[]
+
+  @@index([vendorId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id            String        @id @default(uuid()) @db.Uuid
+  purchaseOrderId String      @db.Uuid
+  productId     String        @db.Uuid
+  quantity      Int
+  unitPrice     Decimal       @db.Decimal(18, 2)
+  total         Decimal       @db.Decimal(18, 2)
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@unique([purchaseOrderId, productId])
+  @@index([productId])
+  @@map("purchase_order_lines")
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}

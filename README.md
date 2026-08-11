@@ -1,98 +1,89 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# ERP Boilerplate — NestJS Modular Monolith
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A production-oriented ERP backend foundation using **NestJS + TypeScript + PostgreSQL
+(Prisma)**, structured as a **DDD / Hexagonal (Ports & Adapters) modular monolith** with a
+**transactional outbox**, **domain events**, an **example saga**, **schedulers**, and a strict
+**business ↔ infrastructure boundary** enforced by ESLint.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Full design document: [ARCHITECTURE.md](./ARCHITECTURE.md)
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Quick Start
 
 ```bash
-$ npm install
+cp .env.example .env
+docker compose up -d          # PostgreSQL, Redis, RabbitMQ, Kafka
+npm install                   # also runs prisma generate (postinstall)
+npx prisma migrate dev        # create + apply the initial migration
+npm run db:seed               # sample products & vendors
+npm run start:dev             # API + Swagger
 ```
 
-## Compile and run the project
+Then:
+
+- REST API: <http://localhost:4000/api/v1>
+- Swagger: <http://localhost:4000/api/docs>
+
+---
+
+## Example API Flow
 
 ```bash
-# development
-$ npm run start
+# Create a product
+curl -X POST http://localhost:4000/api/v1/products \
+  -H "Content-Type: application/json" \
+  -d '{"sku":"SKU-100","name":"Wireless Mouse","unitPrice":19.99,"currency":"USD"}'
 
-# watch mode
-$ npm run start:dev
+# Create a vendor
+curl -X POST http://localhost:4000/api/v1/vendors \
+  -H "Content-Type: application/json" \
+  -d '{"code":"VEN-100","name":"Acme Supplies","email":"billing@acme.com"}'
 
-# production mode
-$ npm run start:prod
+# Create a purchase order (vendorId + productId from the responses above)
+curl -X POST http://localhost:4000/api/v1/purchase-orders \
+  -H "Content-Type: application/json" -d '{"vendorId":"<vendor-id>"}'
+
+# Add a line
+curl -X POST http://localhost:4000/api/v1/purchase-orders/<po-id>/lines \
+  -H "Content-Type: application/json" \
+  -d '{"productId":"<product-id>","quantity":3,"unitPrice":19.99}'
+
+# Submit — the PurchaseOrderSaga validates the vendor & products and auto-approves
+curl -X POST http://localhost:4000/api/v1/purchase-orders/<po-id>/submit
 ```
 
-## Run tests
+Every state change writes the resulting domain events into the **transactional outbox**
+(in the same DB transaction) and the scheduler publishes them to **RabbitMQ** (and optionally
+**Kafka** via `MessageRoutingPolicy`).
 
-```bash
-# unit tests
-$ npm run test
+---
 
-# e2e tests
-$ npm run test:e2e
+## Project Layout
 
-# test coverage
-$ npm run test:cov
+```text
+src/
+├── config/            # .env-driven typed configuration
+├── shared-kernal/     # NestJS technical concerns (filters, interceptors, pipes, pagination)
+├── bootstrap/         # app bootstrap (security, cors, http, swagger, shutdown)
+├── infrastructure/    # adapters: Prisma, Redis, RabbitMQ, Kafka, repositories, mappers
+├── platform/          # outbox, event bus, saga, scheduler, message routing
+└── business/
+    ├── shared-business/   # domain/application/port primitives
+    ├── product/           # Product aggregate
+    ├── vendor/            # Vendor aggregate
+    └── purchase-order/    # PurchaseOrder aggregate (uses vendor/product inbound ports)
 ```
 
-## Deployment
+## Scripts
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Command | Purpose |
+|---|---|
+| `npm run start:dev` | watch mode dev server |
+| `npm run build` | compile to `dist/` |
+| `npm run lint` | ESLint + architecture import restrictions |
+| `npm test` | unit tests (aggregates, use cases with fakes) |
+| `npm run test:e2e` | e2e smoke (requires `docker compose up -d`) |
+| `npx prisma migrate dev` | create/apply migration + regenerate client |
+| `npm run db:seed` | seed products/vendors |
+| `prisma studio` | Prisma Studio UI |

@@ -1,7 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Prisma schema root — PostgreSQL + Prisma Client (v7, driver adapter via prisma.config.ts)
+// This file aggregates the domain models. Each aggregate lives in its own *.prisma file
+// within the same directory so the schema stays navigable as the ERP grows.
 
 generator client {
   provider     = "prisma-client"

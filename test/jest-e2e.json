@@ -4,6 +4,21 @@
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "tsconfig.jest.json"
+      }
+    ]
+  },
+  "moduleNameMapper": {
+    "^@config/(.*)$": "<rootDir>/../src/config/$1",
+    "^@shared-kernal/(.*)$": "<rootDir>/../src/shared-kernal/$1",
+    "^@bootstrap/(.*)$": "<rootDir>/../src/bootstrap/$1",
+    "^@infrastructure/(.*)$": "<rootDir>/../src/infrastructure/$1",
+    "^@platform/(.*)$": "<rootDir>/../src/platform/$1",
+    "^@business/(.*)$": "<rootDir>/../src/business/$1",
+    "^prisma/generated/prisma/(.*)$": "<rootDir>/../prisma/generated/prisma/$1",
+    "^(\\.{1,2}/.*)\\.js$": "$1"
   }
 }

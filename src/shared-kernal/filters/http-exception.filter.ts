@@ -6,6 +6,16 @@ import {
   HttpException,
 } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
+import {
+  BusinessRuleViolationError,
+  ConflictError,
+  DomainError,
+  InvalidStateTransitionError,
+  NotFoundError,
+  ValidationError,
+} from '@business/shared-business/domain/domain.error';
+import { InvariantException } from '@business/shared-business/errors/invariant-violate.error';
+import { PolicyViolateException } from '@business/shared-business/errors/policy-violate.error';
 
 interface ValidationErrorResponse {
   status: 'VALIDATE_ERROR';
@@ -26,6 +36,15 @@ interface ServerErrorResponse {
   statusCode: number;
   data: null;
   message: string;
+}
+
+function toStatusCode(error: DomainError): number {
+  if (error instanceof NotFoundError) return 404;
+  if (error instanceof InvalidStateTransitionError) return 409;
+  if (error instanceof ConflictError) return 409;
+  if (error instanceof ValidationError) return 422;
+  if (error instanceof BusinessRuleViolationError) return 422;
+  return 500;
 }
 
 @Catch()
@@ -70,6 +89,27 @@ export class HttpExceptionsFilter implements ExceptionFilter {
         message: typeof message === 'string' ? message : 'Bad request',
       };
       return response.status(exception.getStatus()).send(body);
+    }
+
+    if (exception instanceof InvariantException || exception instanceof PolicyViolateException) {
+      const body: ErrorResponse = {
+        status: 'ERROR',
+        statusCode: 422,
+        data: null,
+        message: exception.message,
+      };
+      return response.status(422).send(body);
+    }
+
+    if (exception instanceof DomainError) {
+      const statusCode = toStatusCode(exception);
+      const body: ErrorResponse = {
+        status: 'ERROR',
+        statusCode,
+        data: null,
+        message: exception.message,
+      };
+      return response.status(statusCode).send(body);
     }
 
     if (exception instanceof HttpException) {
