@@ -5,7 +5,7 @@ import {
   VendorRepositoryPort,
 } from '../../ports/outbound/vendor-repository.port';
 import { VendorId } from '../../domain/value-objects/vendor-id.vo';
-import { PageQuery, PageResult, buildPageResult } from '@shared-kernal/types/pagination';
+import { PageQuery, PageResult, buildPageResult } from '@shared-kernel/types/pagination';
 import { Vendor } from '../../domain/entities/vendor.aggregate';
 
 function toSummary(vendor: Vendor): VendorSummary {

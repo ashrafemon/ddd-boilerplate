@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import { numericEnv } from './env.util';
 
 /**
  * Core application config: runtime environment, HTTP port, global API
@@ -7,7 +8,7 @@ import { registerAs } from '@nestjs/config';
 export default registerAs('app', () => ({
   env: process.env.NODE_ENV ?? 'development',
   name: process.env.APP_NAME ?? 'erp-api',
-  port: Number(process.env.PORT ?? 4000),
+  port: numericEnv('PORT', 4000),
   host: process.env.APP_HOST ?? '0.0.0.0',
   logLevel: process.env.LOG_LEVEL ?? 'info',
 

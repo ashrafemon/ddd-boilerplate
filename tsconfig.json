@@ -22,7 +22,6 @@
     "noFallthroughCasesInSwitch": false,
     "paths": {
       "@config/*": ["src/config/*"],
-      "@shared-kernal/*": ["src/shared-kernal/*"],
       "@shared-kernel/*": ["src/shared-kernel/*"],
       "@bootstrap/*": ["src/bootstrap/*"],
       "@infrastructure/*": ["src/infrastructure/*"],
@@ -31,5 +30,5 @@
       "@prisma/*": ["prisma/generated/prisma/*"]
     }
   },
-  "include": ["src/**/*", "test/**/*", "prisma/generated/prisma/**/*"]
+  "include": ["src/**/*", "test/**/*"]
 }

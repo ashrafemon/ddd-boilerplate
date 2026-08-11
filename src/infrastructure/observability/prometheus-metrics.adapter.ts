@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
-import { CounterOptions, GaugeOptions, HistogramOptions, MetricsPort } from '../../shared-kernel/ports/observability/metrics.port';
+import {
+  CounterOptions,
+  GaugeOptions,
+  HistogramOptions,
+  MetricsPort,
+} from '../../shared-kernel/ports/observability/metrics.port';
 
 /**
  * Prometheus-backed metrics adapter. Metrics are exposed by the platform
@@ -23,7 +28,7 @@ export class PrometheusMetricsAdapter implements MetricsPort {
   }
 
   public async getMetricsContentType(): Promise<string> {
-    return this.registry.contentType;
+    return Promise.resolve(this.registry.contentType);
   }
 
   public async getMetrics(): Promise<string> {

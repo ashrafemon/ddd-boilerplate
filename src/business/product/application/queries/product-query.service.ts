@@ -5,7 +5,7 @@ import {
   ProductRepositoryPort,
 } from '../../ports/outbound/product-repository.port';
 import { ProductId } from '../../domain/value-objects/product-id.vo';
-import { PageQuery, PageResult, buildPageResult } from '@shared-kernal/types/pagination';
+import { PageQuery, PageResult, buildPageResult } from '@shared-kernel/types/pagination';
 import { Product } from '../../domain/entities/product.aggregate';
 
 function toSummary(product: Product): ProductSummary {
@@ -39,6 +39,16 @@ export class ProductQueryService implements ProductQueryPort {
       return null;
     }
     return toSummary(product);
+  }
+
+  async getPurchasableProducts(ids: string[]): Promise<ProductSummary[]> {
+    const uniqueIds = [...new Set(ids)];
+    const products = await Promise.all(
+      uniqueIds.map(id => this.productRepository.findById(ProductId.fromString(id))),
+    );
+    return products
+      .filter((product): product is Product => product !== null && product.isPurchasable())
+      .map(toSummary);
   }
 
   async listProducts(query: PageQuery): Promise<PageResult<ProductSummary>> {

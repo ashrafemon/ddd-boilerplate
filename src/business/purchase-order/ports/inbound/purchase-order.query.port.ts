@@ -1,4 +1,4 @@
-import { PageQuery, PageResult } from '@shared-kernal/types/pagination';
+import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 
 export interface PurchaseOrderLineSummary {

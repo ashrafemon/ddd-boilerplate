@@ -6,8 +6,8 @@ import { LoggerPort } from '@shared-kernel/ports/observability/logger.port';
 import { Pool } from 'pg';
 
 /**
- * Read/replica database client. Reads through this connection are optimized
- * for projections and queries; writes always go through PrismaWriteService.
+ * Write database client. All writes go through this connection; reads through
+ * PrismaReadService (replica when configured).
  */
 @Injectable()
 export class PrismaWriteService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -18,7 +18,7 @@ export class PrismaWriteService extends PrismaClient implements OnModuleInit, On
     private readonly logger: LoggerPort,
   ) {
     const dbConfig = configService.getPostgres();
-    const pool = new Pool({ connectionString: dbConfig.readUrl });
+    const pool = new Pool({ connectionString: dbConfig.url });
     const adapter = new PrismaPg(pool);
     super({ adapter });
     this.pool = pool;
@@ -32,6 +32,6 @@ export class PrismaWriteService extends PrismaClient implements OnModuleInit, On
   public async onModuleDestroy(): Promise<void> {
     await this.$disconnect();
     await this.pool.end();
-    this.logger.info('prisma-write-connected');
+    this.logger.info('prisma-write-disconnected');
   }
 }

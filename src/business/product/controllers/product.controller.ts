@@ -20,7 +20,7 @@ import {
   ProductQueryDto,
   UpdateProductDto,
 } from '../dto/product.dto';
-import { PageQuery, normalizePageQuery } from '@shared-kernal/types/pagination';
+import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
 
 @ApiTags('products')
 @ApiBearerAuth()

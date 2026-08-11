@@ -26,7 +26,7 @@ import {
   PurchaseOrderQueryDto,
   RejectPurchaseOrderDto,
 } from '../dto/purchase-order.dto';
-import { PageQuery, normalizePageQuery } from '@shared-kernal/types/pagination';
+import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
 
 @ApiTags('purchase-orders')
 @ApiBearerAuth()

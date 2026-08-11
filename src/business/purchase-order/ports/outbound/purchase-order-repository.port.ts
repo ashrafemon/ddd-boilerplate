@@ -1,4 +1,4 @@
-import { PageQuery } from '@shared-kernal/types/pagination';
+import { PageQuery } from '@shared-kernel/types/pagination';
 import { PurchaseOrder } from '../../domain/entities/purchase-order.aggregate';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 

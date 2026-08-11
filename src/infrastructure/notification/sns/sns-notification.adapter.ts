@@ -1,12 +1,11 @@
-import { PublishCommand, PublishCommandInput, SNSClient } from '@aws-sdk/client-sns';
-import { ISnsConfig } from '@config/notification.config';
+import { PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   NotificationMessage,
   NotificationPort,
-} from '../../../shared-kernel/ports/notification/notification.port';
-import { LoggerPort } from '../../../shared-kernel/ports/observability/logger.port';
+} from '@shared-kernel/ports/notification/notification.port';
+import { LoggerPort } from '@shared-kernel/ports/observability/logger.port';
+import { SnsService } from './sns.service';
 
 /**
  * AWS SNS notification adapter. Self-disables when SNS is not configured so
@@ -14,33 +13,21 @@ import { LoggerPort } from '../../../shared-kernel/ports/observability/logger.po
  */
 @Injectable()
 export class SnsNotificationAdapter implements NotificationPort {
-  private readonly sns?: SNSClient;
-  private readonly topicArn?: string;
-
   constructor(
-    config: ConfigService,
+    private readonly snsService: SnsService,
     private readonly logger: LoggerPort,
-  ) {
-    const snsConfig = config.get<ISnsConfig>('notification.sns');
-    if (!snsConfig?.accessKey || !snsConfig.secretKey || !snsConfig.topicArn) {
-      return;
-    }
-
-    this.sns = new SNSClient({
-      region: snsConfig.region,
-      credentials: { accessKeyId: snsConfig.accessKey, secretAccessKey: snsConfig.secretKey },
-    });
-    this.topicArn = snsConfig.topicArn;
-  }
+  ) {}
 
   public async send(message: NotificationMessage): Promise<void> {
-    if (!this.sns || !this.topicArn) {
+    const client = this.snsService.client;
+    const topicArn = this.snsService.topic;
+    if (!client || !topicArn) {
       this.logger.debug('sns-notification-skipped-disabled', { subject: message.subject });
       return;
     }
 
     const input: PublishCommandInput = {
-      TopicArn: this.topicArn,
+      TopicArn: topicArn,
       Subject: message.subject.slice(0, 100),
       Message: JSON.stringify({
         body: message.body,
@@ -54,7 +41,7 @@ export class SnsNotificationAdapter implements NotificationPort {
       },
     };
 
-    await this.sns.send(new PublishCommand(input));
+    await client.send(new PublishCommand(input));
     this.logger.info('sns-notification-published', {
       subject: message.subject,
       correlationId: message.correlationId,

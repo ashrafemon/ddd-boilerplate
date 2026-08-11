@@ -7,7 +7,7 @@ import { OUTBOX_REPOSITORY, OutboxRepositoryPort } from '../ports/outbox-reposit
 import {
   REQUEST_ID_KEY,
   CORRELATION_ID_KEY,
-} from '@shared-kernal/interceptors/request-id.interceptor';
+} from '@shared-kernel/interceptors/request-id.interceptor';
 
 /**
  * Writes domain events into the transactional outbox as integration messages.

@@ -63,9 +63,12 @@ export class PurchaseOrderSaga {
       }
 
       // Validate each line's product through the Product module's inbound port.
+      const purchasableProducts = await this.productQuery.getPurchasableProducts(
+        order.lines.map(line => line.productId),
+      );
+      const purchasableIds = new Set(purchasableProducts.map(product => product.id));
       for (const line of order.lines) {
-        const product = await this.productQuery.getPurchasableProduct(line.productId);
-        if (!product) {
+        if (!purchasableIds.has(line.productId)) {
           await this.purchaseOrderCommands.reject({
             id,
             reason: `Product ${line.productId} is not purchasable`,
@@ -79,12 +82,16 @@ export class PurchaseOrderSaga {
         totalAmount: order.total,
       });
 
-      if (decision.ok) {
-        await this.purchaseOrderCommands.approve({ id });
-        this.logger.log(`Purchase order ${order.orderNumber} approved by saga`);
-      } else {
+      if (!decision.ok) {
         await this.purchaseOrderCommands.reject({ id, reason: decision.error });
         this.logger.log(`Purchase order ${order.orderNumber} rejected by saga: ${decision.error}`);
+      } else if (decision.value.requiresManualApproval) {
+        this.logger.log(
+          `Purchase order ${order.orderNumber} requires manual approval (amount ${order.total})`,
+        );
+      } else {
+        await this.purchaseOrderCommands.approve({ id });
+        this.logger.log(`Purchase order ${order.orderNumber} approved by saga`);
       }
     } catch (err) {
       this.logger.error(

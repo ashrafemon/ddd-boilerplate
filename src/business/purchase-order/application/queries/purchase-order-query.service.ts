@@ -9,7 +9,7 @@ import {
   PurchaseOrderRepositoryPort,
 } from '../../ports/outbound/purchase-order-repository.port';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
-import { PageQuery, PageResult, buildPageResult } from '@shared-kernal/types/pagination';
+import { PageQuery, PageResult, buildPageResult } from '@shared-kernel/types/pagination';
 import { PurchaseOrder, PurchaseOrderLine } from '../../domain/entities/purchase-order.aggregate';
 
 function toLineSummary(line: PurchaseOrderLine): PurchaseOrderLineSummary {

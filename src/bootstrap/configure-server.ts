@@ -11,5 +11,7 @@ export async function configureServer(app: NestFastifyApplication, logger: Logge
 
   const url = await app.getUrl();
   logger.log(`ERP API listening on ${url}`);
-  logger.log(`Swagger: ${url}/api/docs`);
+  if (config.get<string>('app.env', 'development') !== 'production') {
+    logger.log(`Swagger: ${url}/api/docs`);
+  }
 }

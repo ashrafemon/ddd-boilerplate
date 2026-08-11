@@ -5,7 +5,7 @@ import { Injectable } from '@nestjs/common';
 export class MemcachedService {
   constructor(private readonly configService: ConfigService) {}
 
-  createMemcacheOptions() {
+  createMemcachedOptions() {
     const config = this.configService.getMemcached();
 
     return {

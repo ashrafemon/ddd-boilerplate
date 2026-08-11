@@ -1,23 +1,27 @@
 import { FileStorageModule } from '@amirrivand/nestjs-file-storage';
-import { ConfigService } from '@config/config.service';
 import { Global, Module } from '@nestjs/common';
-import { S3Service } from './s3/s3.service';
+import { FileStoragePort } from '@shared-kernel/ports/storage/file-storage.port';
+import { S3FileStorageAdapter } from './s3-file-storage.adapter';
+import { StorageConfigFactory } from './storage-config.factory';
 
 /**
- * File storage infrastructure (S3).
+ * File storage infrastructure (S3). Registers the disk configuration through
+ * a dedicated factory service and exposes the platform `FileStoragePort`
+ * through the S3 adapter.
  */
 @Global()
 @Module({
   imports: [
     FileStorageModule.forRootAsync({
-      imports: [],
-      inject: [S3Service],
-      useFactory: (service: S3Service) => {
-        return service.createS3Options();
-      },
+      inject: [StorageConfigFactory],
+      useFactory: (factory: StorageConfigFactory) => factory.createStorageConfig(),
     }),
   ],
-  providers: [S3Service],
-  exports: [],
+  providers: [
+    StorageConfigFactory,
+    S3FileStorageAdapter,
+    { provide: FileStoragePort, useClass: S3FileStorageAdapter },
+  ],
+  exports: [FileStoragePort, StorageConfigFactory],
 })
 export class StorageModule {}

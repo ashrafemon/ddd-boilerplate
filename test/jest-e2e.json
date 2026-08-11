@@ -13,7 +13,7 @@
   },
   "moduleNameMapper": {
     "^@config/(.*)$": "<rootDir>/../src/config/$1",
-    "^@shared-kernal/(.*)$": "<rootDir>/../src/shared-kernal/$1",
+    "^@shared-kernel/(.*)$": "<rootDir>/../src/shared-kernel/$1",
     "^@bootstrap/(.*)$": "<rootDir>/../src/bootstrap/$1",
     "^@infrastructure/(.*)$": "<rootDir>/../src/infrastructure/$1",
     "^@platform/(.*)$": "<rootDir>/../src/platform/$1",

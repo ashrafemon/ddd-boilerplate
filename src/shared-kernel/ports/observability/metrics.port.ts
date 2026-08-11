@@ -22,8 +22,16 @@ export interface GaugeOptions {
  * not depend on prom-client directly.
  */
 export abstract class MetricsPort {
-  public abstract incrementCounter(name: string, labels?: Record<string, string>, value?: number): void;
-  public abstract observeHistogram(name: string, value: number, labels?: Record<string, string>): void;
+  public abstract incrementCounter(
+    name: string,
+    labels?: Record<string, string>,
+    value?: number,
+  ): void;
+  public abstract observeHistogram(
+    name: string,
+    value: number,
+    labels?: Record<string, string>,
+  ): void;
   public abstract setGauge(name: string, value: number, labels?: Record<string, string>): void;
   public abstract registerCounter(options: CounterOptions): void;
   public abstract registerHistogram(options: HistogramOptions): void;

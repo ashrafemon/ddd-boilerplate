@@ -3,7 +3,9 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# postinstall would run `prisma generate` before the schema exists in the
+# image, so skip scripts here and generate explicitly after copying sources.
+RUN npm ci --ignore-scripts
 
 COPY . .
 RUN npx prisma generate
@@ -15,8 +17,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-RUN npx prisma generate
+# prisma is a devDependency and the client is copied from the build stage,
+# so skip the postinstall script here too.
+RUN npm ci --omit=dev --ignore-scripts
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma

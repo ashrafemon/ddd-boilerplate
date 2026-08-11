@@ -1,4 +1,4 @@
-import { PageQuery } from '@shared-kernal/types/pagination';
+import { PageQuery } from '@shared-kernel/types/pagination';
 
 export class GetProductQuery {
   constructor(public readonly id: string) {}

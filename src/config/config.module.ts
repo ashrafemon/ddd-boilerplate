@@ -17,7 +17,11 @@ import storageConfig from './storage.config';
   imports: [
     NestConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env', '../../.env'],
+      envFilePath: [
+        `.env.${process.env.NODE_ENV ?? 'development'}.local`,
+        `.env.${process.env.NODE_ENV ?? 'development'}`,
+        '.env',
+      ],
     }),
     NestConfigModule.forFeature(appConfig),
     NestConfigModule.forFeature(authConfig),

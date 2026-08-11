@@ -5,7 +5,6 @@ export type IKafkaConfig = {
   brokers: string[];
   clientId: string;
   groupId: string;
-  enabled: boolean;
 };
 export type ISqsConfig = {
   accessKey: string;
@@ -30,7 +29,6 @@ export default registerAs('messaging', () => ({
       .filter(Boolean),
     clientId: process.env.KAFKA_CLIENT_ID ?? 'erp-boilerplate',
     groupId: process.env.KAFKA_GROUP_ID ?? 'erp-boilerplate-group',
-    enabled: (process.env.KAFKA_ENABLED ?? 'false') === 'true',
   },
   sqs: {
     accessKey: process.env.SQS_ACCESS_KEY ?? '',

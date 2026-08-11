@@ -1,10 +1,10 @@
+import { PrismaWriteService } from '@infrastructure/database/prisma/prisma-write.service';
+import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { ClsPluginTransactional } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Global, Module } from '@nestjs/common';
+import { RequestContextPort } from '@shared-kernel/ports/context/request-context.port';
 import { ClsModule } from 'nestjs-cls';
-import { RequestContextPort } from '../../shared-kernel/ports/context/request-context.port';
-import { PrismaWriteService } from '../database/prisma/prisma-write.service';
-import { PrismaModule } from '../database/prisma/prisma.module';
 import { ClsRequestContextService } from './cls-request-context.service';
 
 /**

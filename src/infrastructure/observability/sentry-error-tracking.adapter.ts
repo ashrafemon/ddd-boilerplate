@@ -1,31 +1,23 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
-import { ConfigurationService } from '../../config/config.service';
+import { ConfigService } from '../../config/config.service';
 import {
   ErrorTrackingContext,
   ErrorTrackingPort,
 } from '../../shared-kernel/ports/observability/error-tracking.port';
 
 /**
- * Sentry-backed error tracking. Initializes lazily only when SENTRY_DSN is
- * configured so local development works without Sentry.
+ * Sentry-backed error tracking. Self-disables when SENTRY_DSN is not
+ * configured so local development works without Sentry. Sentry.init is called
+ * once by the bootstrap layer (configureSentry); this adapter only reports.
  */
 @Injectable()
-export class SentryErrorTrackingAdapter implements ErrorTrackingPort, OnModuleInit {
-  private enabled = false;
+export class SentryErrorTrackingAdapter implements ErrorTrackingPort {
+  private readonly enabled: boolean;
 
-  constructor(private readonly configuration: ConfigurationService) {}
-
-  public onModuleInit(): void {
-    const sentry = this.configuration.getSentry();
-    if (sentry.enabled && sentry.dsn) {
-      Sentry.init({
-        dsn: sentry.dsn,
-        environment: this.configuration.env,
-        tracesSampleRate: this.configuration.isProduction ? 0.1 : 1.0,
-      });
-      this.enabled = true;
-    }
+  constructor(configuration: ConfigService) {
+    const sentry = configuration.getSentry();
+    this.enabled = Boolean(sentry.dsn);
   }
 
   public captureException(error: unknown, context?: ErrorTrackingContext): void {

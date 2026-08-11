@@ -1,4 +1,4 @@
-import { PageQuery } from '@shared-kernal/types/pagination';
+import { PageQuery } from '@shared-kernel/types/pagination';
 import { Product } from '../../domain/entities/product.aggregate';
 import { ProductId } from '../../domain/value-objects/product-id.vo';
 import { Sku } from '../../domain/value-objects/sku.vo';

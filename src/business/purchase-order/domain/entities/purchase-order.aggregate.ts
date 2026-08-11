@@ -148,7 +148,7 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
       const newTotal = unitPrice.multiply(newQty);
       this.props.lines = this.props.lines.map(line =>
         line.productId.toString() === productId
-          ? new PurchaseOrderLine(line.productId, newQty, line.unitPrice, newTotal)
+          ? new PurchaseOrderLine(line.productId, newQty, unitPrice, newTotal)
           : line,
       );
     } else {

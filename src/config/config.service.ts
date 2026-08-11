@@ -6,7 +6,7 @@ import { IKafkaConfig, IRabbitMQConfig, ISqsConfig } from './messaging.config';
 import { ISesConfig, ISnsConfig } from './notification.config';
 import { ILokiConfig, ISentryConfig } from './observability.config';
 import { IOutboxConfig } from './outbox.config';
-import { IThrottlerConfig } from './security.config';
+import { ISecurityConfig, IThrottlerConfig } from './security.config';
 import { IS3Config, IStorageDriver } from './storage.config';
 
 /**
@@ -81,7 +81,6 @@ export class ConfigService {
       brokers: [],
       clientId: 'erp-boilerplate',
       groupId: 'erp-boilerplate-group',
-      enabled: false,
     });
   }
   public getSqs(): ISqsConfig {
@@ -96,7 +95,6 @@ export class ConfigService {
   /** Notification Environment Variables */
   public getSns(): ISnsConfig {
     return this.config.get('notification.sns', {
-      enabled: false,
       accessKey: '',
       secretKey: '',
       topicArn: '',
@@ -105,7 +103,6 @@ export class ConfigService {
   }
   public getSes(): ISesConfig {
     return this.config.get<ISesConfig>('notification.ses', {
-      enabled: false,
       accessKey: '',
       secretKey: '',
       address: '',
@@ -119,7 +116,6 @@ export class ConfigService {
   }
   public getS3(): IS3Config {
     return this.config.get<IS3Config>('storage.s3', {
-      enabled: false,
       accessKey: '',
       secretKey: '',
       bucket: '',
@@ -133,7 +129,7 @@ export class ConfigService {
 
   /** Observability Environment Variables */
   public getLoki(): ILokiConfig {
-    return this.config.get<ILokiConfig>('observability.loki', { enabled: false, url: '' });
+    return this.config.get<ILokiConfig>('observability.loki', { url: '' });
   }
   public getSentry(): ISentryConfig {
     return this.config.get<ISentryConfig>('observability.sentry', {
@@ -156,5 +152,14 @@ export class ConfigService {
   /** Security Environment Variables */
   public getThrottler(): IThrottlerConfig {
     return this.config.get<IThrottlerConfig>('security.throttler', { ttlMs: 60_000, limit: 120 });
+  }
+
+  public getSecurity(): ISecurityConfig {
+    return this.config.get<ISecurityConfig>('security', {
+      throttler: { ttlMs: 60_000, limit: 120 },
+      settingsEncryptionKey: '',
+      tenantHeader: 'x-tenant-id',
+      organizationHeader: 'x-organization-id',
+    });
   }
 }

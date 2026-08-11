@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import { numericEnv } from './env.util';
 
 export type ICacheDriver = 'redis' | 'memcache';
 export type IRedisConfig = { url: string };
@@ -20,9 +21,9 @@ export default registerAs('cache', () => ({
   },
   memcached: {
     host: process.env.MEMCACHED_HOST ?? '',
-    port: Number(process.env.MEMCACHED_PORT ?? 11211),
+    port: numericEnv('MEMCACHED_PORT', 11211),
     username: process.env.MEMCACHED_USER ?? '',
     password: process.env.MEMCACHED_PASSWORD ?? '',
-    ttl: Number(process.env.MEMCACHED_TTL_SECONDS ?? 300),
+    ttl: numericEnv('MEMCACHED_TTL_SECONDS', 300),
   },
 }));

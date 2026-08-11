@@ -1,4 +1,4 @@
-import { PageQuery } from '@shared-kernal/types/pagination';
+import { PageQuery } from '@shared-kernel/types/pagination';
 import { Vendor } from '../../domain/entities/vendor.aggregate';
 import { VendorCode } from '../../domain/value-objects/vendor.vos';
 import { VendorId } from '../../domain/value-objects/vendor-id.vo';

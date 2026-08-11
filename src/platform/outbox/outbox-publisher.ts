@@ -4,12 +4,18 @@ import {
   IntegrationMessage,
   MessagePublisher,
 } from '@business/shared-business/ports/message-publisher.port';
-import { OUTBOX_REPOSITORY, OutboxRepositoryPort } from '../ports/outbox-repository.port';
+import {
+  OUTBOX_REPOSITORY,
+  OutboxMessageRecord,
+  OutboxRepositoryPort,
+} from '../ports/outbox-repository.port';
 import { MessageRoutingPolicy, MESSAGE_ROUTING_POLICY } from '../events/message-routing.policy';
 import {
   KAFKA_PUBLISHER,
   RABBITMQ_PUBLISHER,
-} from 'src/infrastructure/message/message-publisher.tokens';
+} from '@infrastructure/messaging/message-publisher.tokens';
+
+const PARALLEL_PUBLISH_LIMIT = 10;
 
 /**
  * Publishes pending outbox messages to RabbitMQ/Kafka. If publishing fails,
@@ -20,6 +26,7 @@ import {
 export class OutboxPublisher {
   private readonly logger = new Logger(OutboxPublisher.name);
   private readonly configService: ConfigService;
+  private publishing = false;
 
   constructor(
     @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: OutboxRepositoryPort,
@@ -32,42 +39,52 @@ export class OutboxPublisher {
   }
 
   async publishPendingBatch(): Promise<number> {
-    const batchSize = this.config.batchSize;
-    const messages = await this.outboxRepository.claimBatch(batchSize);
-
-    let published = 0;
-    for (const record of messages) {
-      try {
-        const message: IntegrationMessage = {
-          eventType: record.eventType,
-          aggregateType: record.aggregateType,
-          aggregateId: record.aggregateId,
-          payload: record.payload,
-          headers: record.headers ?? undefined,
-          occurredAt: record.occurredAt,
-          correlationId: record.headers?.['correlation-id'],
-          causationId: record.headers?.['causation-id'],
-        };
-
-        const target = this.routingPolicy.resolve(record.eventType);
-        if (target === 'rabbitmq' || target === 'both') {
-          await this.rabbitmqPublisher.publish(message);
-        }
-        if (target === 'kafka' || target === 'both') {
-          await this.kafkaPublisher.publish(message);
-        }
-
-        await this.outboxRepository.markPublished(record.id);
-        published += 1;
-      } catch (err) {
-        this.logger.error(
-          `Failed to publish outbox message ${record.id} (${record.eventType}): ${(err as Error).message}`,
-        );
-        await this.outboxRepository.markFailed(record.id, (err as Error).message);
-      }
+    if (this.publishing) {
+      return 0;
     }
+    this.publishing = true;
+    try {
+      const batchSize = this.config.batchSize;
+      const messages = await this.outboxRepository.claimBatch(batchSize);
 
-    return published;
+      for (const chunk of chunkArray(messages, PARALLEL_PUBLISH_LIMIT)) {
+        await Promise.all(chunk.map(record => this.publishOne(record)));
+      }
+
+      return messages.length;
+    } finally {
+      this.publishing = false;
+    }
+  }
+
+  private async publishOne(record: OutboxMessageRecord): Promise<void> {
+    try {
+      const message: IntegrationMessage = {
+        eventType: record.eventType,
+        aggregateType: record.aggregateType,
+        aggregateId: record.aggregateId,
+        payload: record.payload,
+        headers: record.headers ?? undefined,
+        occurredAt: record.occurredAt,
+        correlationId: record.headers?.['correlation-id'],
+        causationId: record.headers?.['causation-id'],
+      };
+
+      const target = this.routingPolicy.resolve(record.eventType);
+      if (target === 'rabbitmq' || target === 'both') {
+        await this.rabbitmqPublisher.publish(message);
+      }
+      if (target === 'kafka' || target === 'both') {
+        await this.kafkaPublisher.publish(message);
+      }
+
+      await this.outboxRepository.markPublished(record.id);
+    } catch (err) {
+      this.logger.error(
+        `Failed to publish outbox message ${record.id} (${record.eventType}): ${(err as Error).message}`,
+      );
+      await this.outboxRepository.markFailed(record.id, (err as Error).message);
+    }
   }
 
   async retryFailed(): Promise<number> {
@@ -95,4 +112,12 @@ export class OutboxPublisher {
       cleanupOlderThanHours: number;
     }>('outbox', { batchSize: 50, maxAttempts: 10, cleanupOlderThanHours: 24 });
   }
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
 }

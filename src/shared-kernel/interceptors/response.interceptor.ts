@@ -35,8 +35,6 @@ export class ResponseInterceptor<T = unknown> implements NestInterceptor<T, Succ
     const http = context.switchToHttp();
     const request = http.getRequest<FastifyRequest>();
     const response = http.getResponse<FastifyReply>();
-    const statusCode = response.statusCode;
-    const contentType = response.getHeader('content-type');
 
     if (isNestLensRequest(request)) {
       return next.handle() as Observable<SuccessResponse<T>>;
@@ -44,6 +42,9 @@ export class ResponseInterceptor<T = unknown> implements NestInterceptor<T, Succ
 
     return next.handle().pipe(
       map((data: T | WrappedResponse<T>) => {
+        const statusCode = response.statusCode;
+        const contentType = response.getHeader('content-type');
+
         if (isWrappedResponse(data)) {
           return {
             status: 'SUCCESS' as const,

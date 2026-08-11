@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-export type ILokiConfig = { enabled: boolean; url: string };
+export type ILokiConfig = { url: string };
 export type ISentryConfig = { dsn: string; tracesSampleRate: number };
 export type IAwsConfig = {
   region: string;
@@ -14,7 +14,6 @@ export type IAwsConfig = {
  */
 export default registerAs('observability', () => ({
   loki: {
-    enabled: (process.env.LOKI_ENABLED ?? 'false') === 'true',
     url: process.env.LOKI_URL ?? '',
   },
   sentry: {

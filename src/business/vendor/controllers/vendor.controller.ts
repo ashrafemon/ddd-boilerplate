@@ -15,7 +15,7 @@ import { VendorCommandPort, VENDOR_COMMAND_PORT } from '../ports/inbound/vendor.
 import { VendorQueryPort, VENDOR_QUERY_PORT } from '../ports/inbound/vendor.query.port';
 import { VendorId } from '../domain/value-objects/vendor-id.vo';
 import { CreateVendorDto, UpdateVendorDto, VendorQueryDto } from '../dto/vendor.dto';
-import { PageQuery, normalizePageQuery } from '@shared-kernal/types/pagination';
+import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
 
 @ApiTags('vendors')
 @ApiBearerAuth()
