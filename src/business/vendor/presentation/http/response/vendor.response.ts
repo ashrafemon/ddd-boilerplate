@@ -1,0 +1,23 @@
+export interface VendorAddressResponse {
+  id: string;
+  type: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string | null;
+  postalCode: string | null;
+  country: string;
+}
+
+export interface VendorResponse {
+  id: string;
+  tenantId: string;
+  organizationId: string;
+  code: string;
+  name: string;
+  status: string;
+  email: string | null;
+  phone: string | null;
+  taxIdentifier: string | null;
+  addresses: VendorAddressResponse[];
+}
