@@ -1,5 +1,6 @@
 import { Injectable, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+// import { ZodValidationPipe } from 'nestjs-zod';
 
 @Injectable()
 export class AppValidationPipe extends ValidationPipe {
@@ -18,3 +19,6 @@ export class AppValidationPipe extends ValidationPipe {
     });
   }
 }
+
+// @Injectable()
+// export class AppValidationPipe extends ZodValidationPipe {}

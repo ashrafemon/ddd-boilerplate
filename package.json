@@ -77,6 +77,7 @@
     "kafkajs": "^2.2.4",
     "nestjs-cls": "^6.2.1",
     "nestjs-i18n": "^10.8.5",
+    "nestjs-zod": "^5.5.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
