@@ -1,10 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
-import {
-  IN_PROCESS_EVENT_BUS,
-  InProcessEventBus,
-} from '@business/shared-business/ports/event-bus.port';
 import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import {
   COMPANY_CONFIG,
@@ -29,7 +25,6 @@ export class ProductStatusUseCase implements CommandUseCase<ProductStatusInput, 
   constructor(
     @Inject(PRODUCT_COMMAND_REPOSITORY)
     private readonly productRepository: ProductCommandRepositoryPort,
-    @Inject(IN_PROCESS_EVENT_BUS) private readonly eventBus: InProcessEventBus,
     @Inject(OUTBOX_WRITER) private readonly outboxWriter: OutboxWriterPort,
     @Inject(COMPANY_CONFIG) private readonly companyConfig: CompanyConfigPort,
   ) {}
@@ -60,7 +55,6 @@ export class ProductStatusUseCase implements CommandUseCase<ProductStatusInput, 
 
     for (const event of product.pullEvents()) {
       await this.outboxWriter.append(event, 'Product', product.id.toString());
-      this.eventBus.publish(event);
     }
 
     return product.id;

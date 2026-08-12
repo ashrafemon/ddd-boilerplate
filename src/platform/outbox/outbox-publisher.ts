@@ -5,6 +5,11 @@ import {
   MessagePublisher,
 } from '@business/shared-business/ports/message-publisher.port';
 import {
+  IN_PROCESS_EVENT_BUS,
+  InProcessEventBus,
+} from '@business/shared-business/ports/event-bus.port';
+import { domainEventRegistry } from '@business/shared-business/domain/events/domain-event.registry';
+import {
   OUTBOX_REPOSITORY,
   OutboxMessageRecord,
   OutboxRepositoryPort,
@@ -19,9 +24,10 @@ import {
 const PARALLEL_PUBLISH_LIMIT = 10;
 
 /**
- * Publishes pending outbox messages to the configured brokers. If publishing
- * fails, the message is marked FAILED and retried by the scheduler — events
- * are never lost by committing first and publishing later.
+ * Publishes pending outbox messages to the configured brokers and re-dispatches
+ * the domain event in-process (local reactions). If publishing fails, the
+ * message is marked FAILED and retried by the scheduler — events are never
+ * lost by committing first and publishing later.
  */
 @Injectable()
 export class OutboxPublisher {
@@ -32,6 +38,7 @@ export class OutboxPublisher {
   constructor(
     @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: OutboxRepositoryPort,
     @Inject(MESSAGE_ROUTING_POLICY) private readonly routingPolicy: MessageRoutingPolicy,
+    @Inject(IN_PROCESS_EVENT_BUS) private readonly eventBus: InProcessEventBus,
     @Inject(RABBITMQ_PUBLISHER) private readonly rabbitmqPublisher: MessagePublisher,
     @Inject(KAFKA_PUBLISHER) private readonly kafkaPublisher: MessagePublisher,
     @Inject(SQS_PUBLISHER) private readonly sqsPublisher: MessagePublisher,
@@ -81,6 +88,13 @@ export class OutboxPublisher {
       }
       if (targets.includes('sqs')) {
         await this.sqsPublisher.publish(message);
+      }
+
+      // Re-dispatch the domain event in-process for local reactions (the use
+      // cases only append to the outbox; the scheduler owns publishing).
+      const event = domainEventRegistry.rehydrate(record.eventType, record.payload);
+      if (event) {
+        this.eventBus.publish(event);
       }
 
       await this.outboxRepository.markPublished(record.id);

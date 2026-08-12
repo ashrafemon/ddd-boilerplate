@@ -2,10 +2,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
 import {
-  IN_PROCESS_EVENT_BUS,
-  InProcessEventBus,
-} from '@business/shared-business/ports/event-bus.port';
-import {
   MODULE_PORT_RESOLVER,
   ModulePortResolver,
 } from '@business/shared-business/ports/module-port-resolver.port';
@@ -40,7 +36,6 @@ export class CreatePurchaseOrderUseCase implements CommandUseCase<
     @Inject(PURCHASE_ORDER_COMMAND_REPOSITORY)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
     @Inject(MODULE_PORT_RESOLVER) private readonly portResolver: ModulePortResolver,
-    @Inject(IN_PROCESS_EVENT_BUS) private readonly eventBus: InProcessEventBus,
     @Inject(OUTBOX_WRITER) private readonly outboxWriter: OutboxWriterPort,
     @Inject(COMPANY_CONFIG) private readonly companyConfig: CompanyConfigPort,
   ) {}
@@ -74,7 +69,6 @@ export class CreatePurchaseOrderUseCase implements CommandUseCase<
     await this.purchaseOrderRepository.save(purchaseOrder);
     for (const event of purchaseOrder.pullEvents()) {
       await this.outboxWriter.append(event, 'PurchaseOrder', purchaseOrder.id.toString());
-      this.eventBus.publish(event);
     }
 
     return purchaseOrder.id;

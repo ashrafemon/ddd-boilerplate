@@ -1,5 +1,4 @@
 import { ProductCommandRepositoryPort } from '../../domain/ports/product-command-repository.port';
-import { InProcessEventBus } from '@business/shared-business/ports/event-bus.port';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import {
   CompanyConfigPort,
@@ -35,16 +34,6 @@ class FakeProductCommandRepository implements ProductCommandRepositoryPort {
   }
 }
 
-class FakeEventBus implements InProcessEventBus {
-  published: DomainEvent[] = [];
-  publish(event: DomainEvent): void {
-    this.published.push(event);
-  }
-  publishAll(events: readonly DomainEvent[]): void {
-    this.published.push(...events);
-  }
-}
-
 class FakeOutboxWriter implements OutboxWriterPort {
   written: { event: DomainEvent; aggregate: string }[] = [];
 
@@ -68,7 +57,6 @@ const fakeCompanyConfig: CompanyConfigPort = {
 
 describe('CreateProductUseCase', () => {
   let repository: FakeProductCommandRepository;
-  let eventBus: FakeEventBus;
   let outbox: FakeOutboxWriter;
   let useCase: CreateProductUseCase;
 
@@ -78,9 +66,8 @@ describe('CreateProductUseCase', () => {
 
   beforeEach(() => {
     repository = new FakeProductCommandRepository();
-    eventBus = new FakeEventBus();
     outbox = new FakeOutboxWriter();
-    useCase = new CreateProductUseCase(repository, eventBus, outbox, fakeCompanyConfig);
+    useCase = new CreateProductUseCase(repository, outbox, fakeCompanyConfig);
   });
 
   it('creates a product, persists it and writes an outbox record', async () => {
@@ -96,7 +83,6 @@ describe('CreateProductUseCase', () => {
     expect(repository.items[0].status).toBe(ProductStatus.ACTIVE);
     expect(outbox.written).toHaveLength(1);
     expect(outbox.written[0].aggregate).toBe('Product');
-    expect(eventBus.published).toHaveLength(1);
   });
 
   it('rejects a duplicate sku', async () => {
