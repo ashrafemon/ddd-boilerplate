@@ -1,6 +1,13 @@
 import { DomainEvent } from './event.base';
 import { Entity } from './entity.base';
 
+/**
+ * Aggregate root base. Holds the version for optimistic concurrency and a
+ * snapshot of raised domain events (`pullEvents` drains them). Entities,
+ * aggregates and value objects are kept separate — invariants and policies are
+ * enforced through the shared registries, never by cross-importing domain
+ * classes.
+ */
 export abstract class AggregateRoot<ID> extends Entity<ID> {
   private readonly domainEvents: DomainEvent[] = [];
   protected version = 1;
@@ -13,7 +20,12 @@ export abstract class AggregateRoot<ID> extends Entity<ID> {
     return this.version;
   }
 
-  protected addEvent(event: DomainEvent): void {
+  /**
+   * Record a domain event. Factories use this to raise creation events;
+   * aggregate methods use it for state transitions. The use case drains the
+   * snapshot with `pullEvents()` and persists each event to the outbox.
+   */
+  public addEvent(event: DomainEvent): void {
     this.domainEvents.push(event);
   }
 

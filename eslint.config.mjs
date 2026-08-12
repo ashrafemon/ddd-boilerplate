@@ -49,6 +49,7 @@ export default tseslint.config(
       'src/config/**',
       'src/bootstrap/**',
       'src/platform/**',
+      'src/business/**/application/consumers/**',
     ],
     rules: {
       'no-restricted-imports': [
@@ -63,6 +64,26 @@ export default tseslint.config(
             { name: 'ioredis', message: 'Redis libraries are infrastructure-only' },
             { name: 'redis', message: 'Redis libraries are infrastructure-only' },
             { name: '@golevelup/nestjs-rabbitmq', message: 'RabbitMQ is infrastructure-only' },
+            { name: '@nestjs/schedule', message: 'Scheduler belongs to platform, not business' },
+          ],
+        },
+      ],
+    },
+  },
+
+  // Broker subscribe decorators are allowed inside business aggregate consumer
+  // classes (RabbitSubscribe, SqsMessageHandler, custom KafkaEvent).
+  {
+    files: ['src/business/**/application/consumers/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'amqplib', message: 'Use the @RabbitSubscribe decorator only' },
+            { name: 'kafkajs', message: 'Use the custom @KafkaEvent decorator only' },
+            { name: 'ioredis', message: 'Redis libraries are infrastructure-only' },
+            { name: 'redis', message: 'Redis libraries are infrastructure-only' },
             { name: '@nestjs/schedule', message: 'Scheduler belongs to platform, not business' },
           ],
         },

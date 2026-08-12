@@ -2,6 +2,7 @@ import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
 import { Global, Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { SqsModule } from '@ssut/nestjs-sqs';
+import { KafkaConsumerHost } from './kafka/kafka-consumer.host';
 import { KafkaPublisherAdapter } from './kafka/kafka-publisher.adapter';
 import { KafkaService } from './kafka/kafka.service';
 import { KAFKA_PUBLISHER, RABBITMQ_PUBLISHER, SQS_PUBLISHER } from './message-publisher.tokens';
@@ -29,6 +30,7 @@ import { SqsPublisherAdapter } from './sqs/sqs-publisher.adapter';
     RabbitMQConfigFactory,
     SqsConfigFactory,
     KafkaService,
+    KafkaConsumerHost,
     KafkaPublisherAdapter,
     RabbitMQPublisherAdapter,
     SqsPublisherAdapter,

@@ -1,4 +1,20 @@
-// Platform persistence models — numbering sequences and audit trail.
+// Platform persistence models — company configuration, numbering sequences and audit trail.
+
+model CompanyConfig {
+  id                    String   @id @default(uuid()) @db.Uuid
+  companyId             String   @unique @db.Uuid
+  companyCode           String   @unique
+  companyName           String
+  defaultCurrency       String   @default("USD") @db.VarChar(3)
+  autoApproveThreshold  Decimal  @default(10000) @db.Decimal(18, 2)
+  isActive              Boolean  @default(true)
+  createdBy             String?
+  updatedBy             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("company_configs")
+}
 
 model NumberSequence {
   id           String  @id @default(uuid()) @db.Uuid

@@ -1,12 +1,13 @@
 import { ConfigService } from '@config/config.service';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { LoggerPort } from '@shared-kernel/ports/observability/logger.port';
-import { Kafka, Producer } from 'kafkajs';
+import { Consumer, Kafka, Producer } from 'kafkajs';
 
 @Injectable()
 export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private readonly kafka: Kafka;
   private readonly producer: Producer;
+  private readonly consumerGroupId: string;
 
   constructor(
     configService: ConfigService,
@@ -15,6 +16,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     const config = configService.getKafka();
     this.kafka = new Kafka({ clientId: config.clientId, brokers: config.brokers });
     this.producer = this.kafka.producer();
+    this.consumerGroupId = config.groupId;
   }
 
   public async onModuleInit(): Promise<void> {
@@ -42,6 +44,11 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
         },
       ],
     });
+  }
+
+  /** Create a consumer bound to this service's client + group. */
+  public createConsumer(): Consumer {
+    return this.kafka.consumer({ groupId: this.consumerGroupId });
   }
 
   public async onModuleDestroy(): Promise<void> {

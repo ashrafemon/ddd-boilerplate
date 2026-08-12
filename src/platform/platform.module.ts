@@ -3,6 +3,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { IN_PROCESS_EVENT_BUS } from '@business/shared-business/ports/event-bus.port';
 import { AuditModule } from './audit/audit.module';
 import { AUDIT } from './audit/ports/audit.port';
+import { ConfigurationModule } from './configuration/configuration.module';
+import { COMPANY_CONFIG } from './configuration/ports/company-config.port';
 import { EventsModule } from './events/events.module';
 import { MESSAGE_ROUTING_POLICY } from './events/message-routing.policy';
 import { NotificationModule } from './notification/notification.module';
@@ -30,6 +32,7 @@ import { OUTBOX_WRITER } from './outbox/ports/outbox-writer.port';
     ScheduleModule.forRoot(),
     OutboxModule,
     EventsModule,
+    ConfigurationModule,
     AuditModule,
     NumberingModule,
     NotificationModule,
@@ -42,6 +45,7 @@ import { OUTBOX_WRITER } from './outbox/ports/outbox-writer.port';
     NUMBERING,
     AUDIT,
     NOTIFICATION_DISPATCH,
+    COMPANY_CONFIG,
   ],
 })
 export class PlatformModule {}

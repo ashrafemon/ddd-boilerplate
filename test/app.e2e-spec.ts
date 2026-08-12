@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './../src/app.module';
-import { PRODUCT_COMMAND_PORT } from './../src/business/product/ports/inbound/product.command.port';
-import { VENDOR_QUERY_PORT } from './../src/business/vendor/ports/inbound/vendor.query.port';
-import { PURCHASE_ORDER_COMMAND_PORT } from './../src/business/purchase-order/ports/inbound/purchase-order.command.port';
+import { CreateProductUseCase } from './../src/business/catalog/product/application/usecase/create-product.usecase';
+import { GetPurchasableProductUseCase } from './../src/business/catalog/product/application/usecase/get-purchasable-product.usecase';
+import { GetOrderableVendorUseCase } from './../src/business/supplier/vendor/application/usecase/get-orderable-vendor.usecase';
+import { CreatePurchaseOrderUseCase } from './../src/business/procurement/purchase/application/usecase/create-purchase-order.usecase';
 import { OUTBOX_WRITER } from './../src/platform/outbox/ports/outbox-writer.port';
 
 /**
@@ -23,10 +24,11 @@ describe('App (e2e)', () => {
     await app.init();
   }, 30_000);
 
-  it('registers all business inbound ports', () => {
-    expect(app.get(PRODUCT_COMMAND_PORT)).toBeDefined();
-    expect(app.get(VENDOR_QUERY_PORT)).toBeDefined();
-    expect(app.get(PURCHASE_ORDER_COMMAND_PORT)).toBeDefined();
+  it('registers all business use cases and shared ports', () => {
+    expect(app.get(CreateProductUseCase)).toBeDefined();
+    expect(app.get(GetPurchasableProductUseCase)).toBeDefined();
+    expect(app.get(GetOrderableVendorUseCase)).toBeDefined();
+    expect(app.get(CreatePurchaseOrderUseCase)).toBeDefined();
     expect(app.get(OUTBOX_WRITER)).toBeDefined();
   });
 

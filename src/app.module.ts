@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { ProductModule } from '@business/catalog/product/product.module';
+import { VendorModule } from '@business/supplier/vendor/vendor.module';
+import { PurchaseOrderModule } from '@business/procurement/purchase/purchase-order.module';
 import { ConfigModule } from './config/config.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { PlatformModule } from './platform/platform.module';
@@ -14,9 +17,9 @@ import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
     ConfigModule,
     InfrastructureModule,
     PlatformModule,
-    // ProductModule,
-    // VendorModule,
-    // PurchaseOrderModule,
+    ProductModule,
+    VendorModule,
+    PurchaseOrderModule,
   ],
   controllers: [],
   providers: [
