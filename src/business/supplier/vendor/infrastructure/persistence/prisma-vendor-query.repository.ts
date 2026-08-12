@@ -4,7 +4,7 @@ import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import {
   VendorQueryRecord,
   VendorQueryRepositoryPort,
-} from '@business/supplier/vendor/ports/outbound/vendor-query-repository.port';
+} from '@business/supplier/vendor/domain/ports/vendor-query-repository.port';
 
 @Injectable()
 export class PrismaVendorQueryRepository implements VendorQueryRepositoryPort {

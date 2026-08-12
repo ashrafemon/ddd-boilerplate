@@ -5,6 +5,10 @@ import {
   IN_PROCESS_EVENT_BUS,
   InProcessEventBus,
 } from '@business/shared-business/ports/event-bus.port';
+import {
+  MODULE_PORT_RESOLVER,
+  ModulePortResolver,
+} from '@business/shared-business/ports/module-port-resolver.port';
 import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import {
   COMPANY_CONFIG,
@@ -16,11 +20,11 @@ import { PurchaseOrderErrors } from '../../domain/errors/purchase-order.errors';
 import {
   PURCHASE_ORDER_PRODUCT_PORT,
   PurchasableProductQueryPort,
-} from '../../ports/outbound/product-query.port';
+} from '../ports/outbound/product-query.port';
 import {
   PURCHASE_ORDER_COMMAND_REPOSITORY,
   PurchaseOrderCommandRepositoryPort,
-} from '../../ports/outbound/purchase-order-command-repository.port';
+} from '../../domain/ports/purchase-order-command-repository.port';
 
 export interface AddLineInput {
   id: string;
@@ -35,12 +39,15 @@ export class AddPurchaseOrderLineUseCase implements CommandUseCase<AddLineInput,
   constructor(
     @Inject(PURCHASE_ORDER_COMMAND_REPOSITORY)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
-    @Inject(PURCHASE_ORDER_PRODUCT_PORT)
-    private readonly productQueryPort: PurchasableProductQueryPort,
+    @Inject(MODULE_PORT_RESOLVER) private readonly portResolver: ModulePortResolver,
     @Inject(IN_PROCESS_EVENT_BUS) private readonly eventBus: InProcessEventBus,
     @Inject(OUTBOX_WRITER) private readonly outboxWriter: OutboxWriterPort,
     @Inject(COMPANY_CONFIG) private readonly companyConfig: CompanyConfigPort,
   ) {}
+
+  private get productQueryPort(): PurchasableProductQueryPort {
+    return this.portResolver.resolvePort<PurchasableProductQueryPort>(PURCHASE_ORDER_PRODUCT_PORT);
+  }
 
   @Transactional()
   async execute(input: AddLineInput): Promise<PurchaseOrderId> {
@@ -52,7 +59,8 @@ export class AddPurchaseOrderLineUseCase implements CommandUseCase<AddLineInput,
       throw PurchaseOrderErrors.notFound();
     }
 
-    // Cross-aggregate call: product facade through the outbound port.
+    // Cross-aggregate call: the Product module implements the outbound port;
+    // the system finds the adapter.
     const product = await this.productQueryPort.getPurchasableProduct(input.productId);
     if (!product) {
       throw PurchaseOrderErrors.productNotPurchasable();

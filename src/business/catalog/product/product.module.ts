@@ -12,15 +12,18 @@ import { ProductRabbitMQConsumer } from './application/consumers/product.rabbitm
 import { ProductKafkaConsumer } from './application/consumers/product.kafka.consumer';
 import { ProductSqsConsumer } from './application/consumers/product.sqs.consumer';
 import { ProductEventEmitterConsumer } from './application/consumers/product.event-emitter.consumer';
-import { PRODUCT_COMMAND_REPOSITORY } from './ports/outbound/product-command-repository.port';
-import { PRODUCT_QUERY_REPOSITORY } from './ports/outbound/product-query-repository.port';
+import { ProductQueryAdapter } from './application/adapters/product-query.adapter';
+import { PRODUCT_COMMAND_REPOSITORY } from './domain/ports/product-command-repository.port';
+import { PRODUCT_QUERY_REPOSITORY } from './domain/ports/product-query-repository.port';
+import { PURCHASE_ORDER_PRODUCT_PORT } from '@business/procurement/purchase/application/ports/outbound/product-query.port';
 import { PrismaProductCommandRepository } from './infrastructure/persistence/prisma-product-command.repository';
 import { PrismaProductQueryRepository } from './infrastructure/persistence/prisma-product-query.repository';
 
 /**
  * Product aggregate module. Controllers call use cases directly — no inbound
- * ports, no facades. Repository ports are bound to this module's own
- * infrastructure adapters — no global persistence module.
+ * ports, no facades. ProductQueryAdapter implements PurchaseOrder's outbound
+ * port contract in this module; the binding is exported so PurchaseOrder can
+ * resolve it through the ModuleRef without importing this module.
  */
 @Module({
   controllers: [ProductController],
@@ -37,9 +40,15 @@ import { PrismaProductQueryRepository } from './infrastructure/persistence/prism
     ProductKafkaConsumer,
     ProductSqsConsumer,
     ProductEventEmitterConsumer,
+    ProductQueryAdapter,
+    { provide: PURCHASE_ORDER_PRODUCT_PORT, useExisting: ProductQueryAdapter },
     { provide: PRODUCT_COMMAND_REPOSITORY, useClass: PrismaProductCommandRepository },
     { provide: PRODUCT_QUERY_REPOSITORY, useClass: PrismaProductQueryRepository },
   ],
-  exports: [GetPurchasableProductUseCase, GetPurchasableProductsUseCase],
+  exports: [
+    GetPurchasableProductUseCase,
+    GetPurchasableProductsUseCase,
+    PURCHASE_ORDER_PRODUCT_PORT,
+  ],
 })
 export class ProductModule {}

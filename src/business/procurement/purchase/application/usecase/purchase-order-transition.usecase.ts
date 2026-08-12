@@ -15,7 +15,7 @@ import { PurchaseOrderErrors } from '../../domain/errors/purchase-order.errors';
 import {
   PURCHASE_ORDER_COMMAND_REPOSITORY,
   PurchaseOrderCommandRepositoryPort,
-} from '../../ports/outbound/purchase-order-command-repository.port';
+} from '../../domain/ports/purchase-order-command-repository.port';
 
 export type PurchaseOrderTransition = 'submit' | 'approve' | 'reject' | 'cancel' | 'complete';
 

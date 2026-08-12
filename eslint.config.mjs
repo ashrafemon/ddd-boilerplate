@@ -137,17 +137,21 @@ export default tseslint.config(
     },
   },
 
-  // Domain folders must not cross into sibling business modules.
+  // Domain and application-layer ports must not cross into sibling business
+  // modules.
   {
-    files: ['src/business/**/domain/**/*.ts', 'src/business/**/ports/outbound/**/*.ts'],
+    files: [
+      'src/business/**/domain/**/*.ts',
+      'src/business/**/application/ports/**/*.ts',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: [
             {
-              group: ['@business/*/ports/outbound/*'],
-              message: 'Outbound ports are owned by their module; cross-module calls go through inbound ports',
+              group: ['@business/*/ports/outbound/*', '@business/*/application/ports/outbound/*'],
+              message: 'Outbound ports are owned by their module; cross-module calls go through use cases resolved by ModuleRef',
             },
           ],
         },

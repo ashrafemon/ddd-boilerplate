@@ -1,4 +1,4 @@
-import { ProductCommandRepositoryPort } from '../../ports/outbound/product-command-repository.port';
+import { ProductCommandRepositoryPort } from '../../domain/ports/product-command-repository.port';
 import { InProcessEventBus } from '@business/shared-business/ports/event-bus.port';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import {

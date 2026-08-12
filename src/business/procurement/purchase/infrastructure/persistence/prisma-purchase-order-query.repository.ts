@@ -4,7 +4,7 @@ import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import {
   PurchaseOrderQueryRecord,
   PurchaseOrderQueryRepositoryPort,
-} from '@business/procurement/purchase/ports/outbound/purchase-order-query-repository.port';
+} from '@business/procurement/purchase/domain/ports/purchase-order-query-repository.port';
 
 @Injectable()
 export class PrismaPurchaseOrderQueryRepository implements PurchaseOrderQueryRepositoryPort {

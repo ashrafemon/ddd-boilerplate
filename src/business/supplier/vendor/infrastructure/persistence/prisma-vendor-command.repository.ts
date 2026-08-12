@@ -4,7 +4,7 @@ import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-pr
 import { Vendor } from '@business/supplier/vendor/domain/entities/vendor.aggregate';
 import { VendorId } from '@business/supplier/vendor/domain/value-objects/vendor-id.vo';
 import { VendorCode } from '@business/supplier/vendor/domain/value-objects/vendor.vos';
-import { VendorCommandRepositoryPort } from '@business/supplier/vendor/ports/outbound/vendor-command-repository.port';
+import { VendorCommandRepositoryPort } from '@business/supplier/vendor/domain/ports/vendor-command-repository.port';
 import { VendorMapper } from './vendor.mapper';
 
 @Injectable()

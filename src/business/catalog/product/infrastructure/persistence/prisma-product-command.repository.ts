@@ -4,7 +4,7 @@ import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-pr
 import { Product } from '@business/catalog/product/domain/entities/product.aggregate';
 import { ProductId } from '@business/catalog/product/domain/value-objects/product-id.vo';
 import { Sku } from '@business/catalog/product/domain/value-objects/sku.vo';
-import { ProductCommandRepositoryPort } from '@business/catalog/product/ports/outbound/product-command-repository.port';
+import { ProductCommandRepositoryPort } from '@business/catalog/product/domain/ports/product-command-repository.port';
 import { ProductMapper } from './product.mapper';
 
 @Injectable()

@@ -5,6 +5,10 @@ import {
   IN_PROCESS_EVENT_BUS,
   InProcessEventBus,
 } from '@business/shared-business/ports/event-bus.port';
+import {
+  MODULE_PORT_RESOLVER,
+  ModulePortResolver,
+} from '@business/shared-business/ports/module-port-resolver.port';
 import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import {
   COMPANY_CONFIG,
@@ -16,11 +20,11 @@ import { PurchaseOrderErrors } from '../../domain/errors/purchase-order.errors';
 import {
   PURCHASE_ORDER_VENDOR_PORT,
   OrderableVendorQueryPort,
-} from '../../ports/outbound/vendor-query.port';
+} from '../ports/outbound/vendor-query.port';
 import {
   PURCHASE_ORDER_COMMAND_REPOSITORY,
   PurchaseOrderCommandRepositoryPort,
-} from '../../ports/outbound/purchase-order-command-repository.port';
+} from '../../domain/ports/purchase-order-command-repository.port';
 
 export interface CreatePurchaseOrderInput {
   vendorId: string;
@@ -35,12 +39,15 @@ export class CreatePurchaseOrderUseCase implements CommandUseCase<
   constructor(
     @Inject(PURCHASE_ORDER_COMMAND_REPOSITORY)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
-    @Inject(PURCHASE_ORDER_VENDOR_PORT)
-    private readonly vendorQueryPort: OrderableVendorQueryPort,
+    @Inject(MODULE_PORT_RESOLVER) private readonly portResolver: ModulePortResolver,
     @Inject(IN_PROCESS_EVENT_BUS) private readonly eventBus: InProcessEventBus,
     @Inject(OUTBOX_WRITER) private readonly outboxWriter: OutboxWriterPort,
     @Inject(COMPANY_CONFIG) private readonly companyConfig: CompanyConfigPort,
   ) {}
+
+  private get vendorQueryPort(): OrderableVendorQueryPort {
+    return this.portResolver.resolvePort<OrderableVendorQueryPort>(PURCHASE_ORDER_VENDOR_PORT);
+  }
 
   @Transactional()
   async execute(input: CreatePurchaseOrderInput): Promise<PurchaseOrderId> {
@@ -49,7 +56,7 @@ export class CreatePurchaseOrderUseCase implements CommandUseCase<
     const currency = input.currency ?? company.defaultCurrency;
 
     // Orchestration step 2: cross-aggregate call through the outbound port —
-    // resolved to the vendor facade via the ModulePortResolver.
+    // the Vendor module implements it; the system finds the adapter.
     const vendor = await this.vendorQueryPort.getOrderableVendor(input.vendorId);
     if (!vendor) {
       throw PurchaseOrderErrors.vendorNotOrderable();

@@ -15,7 +15,7 @@ import { VendorErrors } from '../../domain/errors/vendor.errors';
 import {
   VENDOR_COMMAND_REPOSITORY,
   VendorCommandRepositoryPort,
-} from '../../ports/outbound/vendor-command-repository.port';
+} from '../../domain/ports/vendor-command-repository.port';
 
 export type VendorStatusAction = 'activate' | 'deactivate' | 'block';
 

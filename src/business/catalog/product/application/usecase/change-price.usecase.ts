@@ -16,7 +16,7 @@ import { ProductErrors } from '../../domain/errors/product.errors';
 import {
   PRODUCT_COMMAND_REPOSITORY,
   ProductCommandRepositoryPort,
-} from '../../ports/outbound/product-command-repository.port';
+} from '../../domain/ports/product-command-repository.port';
 
 export interface ChangePriceInput {
   id: string;
