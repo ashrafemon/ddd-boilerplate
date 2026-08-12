@@ -4,7 +4,7 @@ import {
   IN_PROCESS_EVENT_BUS,
   InProcessEventBus,
 } from '@business/shared-business/ports/event-bus.port';
-import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/ports/outbox-writer.port';
+import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { PurchaseOrderIdInput, RejectInput } from '../../ports/inbound/purchase-order.command.port';
 import {
   PURCHASE_ORDER_REPOSITORY,

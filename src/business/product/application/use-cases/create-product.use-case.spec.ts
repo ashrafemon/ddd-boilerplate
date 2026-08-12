@@ -2,7 +2,7 @@ import { CreateProductUseCase } from './create-product.use-case';
 import { ProductRepositoryPort } from '../../ports/outbound/product-repository.port';
 import { UnitOfWork } from '@business/shared-business/ports/unit-of-work.port';
 import { InProcessEventBus } from '@business/shared-business/ports/event-bus.port';
-import { OutboxWriterPort } from '@platform/ports/outbox-writer.port';
+import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { Product, ProductStatus } from '../../domain/entities/product.aggregate';
 import { ProductId } from '../../domain/value-objects/product-id.vo';
 import { Sku } from '../../domain/value-objects/sku.vo';

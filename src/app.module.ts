@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from './config/config.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
+import { PlatformModule } from './platform/platform.module';
 import { HttpExceptionsFilter } from './shared-kernel/filters/http-exception.filter';
 import { LoggingInterceptor } from './shared-kernel/interceptors/logging.interceptor';
 import { RequestIdInterceptor } from './shared-kernel/interceptors/request-id.interceptor';
@@ -12,7 +13,7 @@ import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
   imports: [
     ConfigModule,
     InfrastructureModule,
-    // PlatformModule,
+    PlatformModule,
     // ProductModule,
     // VendorModule,
     // PurchaseOrderModule,

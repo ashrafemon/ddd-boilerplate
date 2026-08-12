@@ -64,15 +64,23 @@ message/kafka/              KafkaPublisher (implements MessagePublisher)
 
 ### platform/
 
-Application/platform workflows that sit between business and infrastructure:
+Application/platform workflows that sit between business and infrastructure.
+Each sub-system owns its folder, its `@Global` module and its ports:
 
 ```text
-outbox/       OutboxWriter (domain event → outbox row), OutboxPublisher (outbox row → broker)
-events/       NestEventBusAdapter (InProcessEventBus), MessageRoutingPolicy (rabbitmq/kafka/both)
-saga/         PurchaseOrderSaga — example process manager
-scheduler/    PlatformScheduler — cron-driven outbox publishing/retry/cleanup
-ports/        OutboxWriterPort, OutboxRepositoryPort
+outbox/       OutboxModule — OutboxWriter, OutboxPublisher, OutboxScheduler,
+              PrismaOutboxRepository + ports/ (outbox-writer, outbox-repository)
+events/       EventsModule — NestEventBusAdapter (InProcessEventBus),
+              MessageRoutingPolicy (rabbitmq/kafka/sqs)
+audit/        AuditModule — PrismaAuditService + ports/ (audit)
+numbering/    NumberingModule — PrismaNumberingService + ports/ (numbering)
+notification/ NotificationModule — NotificationDispatchService + ports/ (notification)
 ```
+
+`PlatformModule` is `@Global` and is the composition root: it imports the
+sub-modules (all `@Global` as well) and re-exports their port tokens. The
+outbox scheduler lives in the outbox folder because it only drives outbox
+publishing/retry/cleanup.
 
 ### business/
 

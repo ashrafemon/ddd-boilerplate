@@ -1,14 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { OutboxPublisher } from '../outbox/outbox-publisher';
+import { OutboxPublisher } from './outbox-publisher';
 
 /**
- * Scheduler jobs for platform workflows. Business code never depends on
- * @nestjs/schedule directly; this platform service coordinates the outbox.
+ * Scheduler jobs for the outbox sub-system. Business code never depends on
+ * @nestjs/schedule directly; this outbox service coordinates publishing,
+ * retries and cleanup.
  */
 @Injectable()
-export class PlatformScheduler {
-  private readonly logger = new Logger(PlatformScheduler.name);
+export class OutboxScheduler {
+  private readonly logger = new Logger(OutboxScheduler.name);
 
   constructor(private readonly outboxPublisher: OutboxPublisher) {}
 

@@ -1,41 +1,47 @@
 import { Global, Module } from '@nestjs/common';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
-import { OUTBOX_WRITER } from './ports/outbox-writer.port';
-import { OutboxWriter } from './outbox/outbox-writer';
-import { OutboxPublisher } from './outbox/outbox-publisher';
-import { NestEventBusAdapter } from './events/nest-event-bus.adapter';
 import { IN_PROCESS_EVENT_BUS } from '@business/shared-business/ports/event-bus.port';
-import {
-  DefaultMessageRoutingPolicy,
-  MESSAGE_ROUTING_POLICY,
-} from './events/message-routing.policy';
-import { PlatformScheduler } from './scheduler/platform-scheduler';
-import { PurchaseOrderSaga } from './saga/purchase-order.saga';
-import { VendorModule } from '@business/vendor/vendor.module';
-import { ProductModule } from '@business/product/product.module';
-import { PurchaseOrderModule } from '@business/purchase-order/purchase-order.module';
+import { AuditModule } from './audit/audit.module';
+import { AUDIT } from './audit/ports/audit.port';
+import { EventsModule } from './events/events.module';
+import { MESSAGE_ROUTING_POLICY } from './events/message-routing.policy';
+import { NotificationModule } from './notification/notification.module';
+import { NOTIFICATION_DISPATCH } from './notification/ports/notification.port';
+import { NumberingModule } from './numbering/numbering.module';
+import { NUMBERING } from './numbering/ports/numbering.port';
+import { OutboxModule } from './outbox/outbox.module';
+import { OUTBOX_REPOSITORY } from './outbox/ports/outbox-repository.port';
+import { OUTBOX_WRITER } from './outbox/ports/outbox-writer.port';
 
+/**
+ * Platform layer — cross-cutting support services for business modules.
+ *
+ * Each platform sub-system lives in its own folder with its own @Global
+ * module and its ports under the owning folder (outbox, events, audit,
+ * numbering, notification). This module is the global composition root: it
+ * aggregates the sub-modules and re-exports their port tokens so business
+ * modules depend only on ports and never touch infrastructure clients.
+ * Transaction boundaries are handled with the @Transactional decorator +
+ * TransactionHost provided by the infrastructure ContextModule.
+ */
 @Global()
 @Module({
   imports: [
-    EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
-    VendorModule,
-    ProductModule,
-    PurchaseOrderModule,
+    OutboxModule,
+    EventsModule,
+    AuditModule,
+    NumberingModule,
+    NotificationModule,
   ],
-  providers: [
-    OutboxWriter,
-    OutboxPublisher,
-    NestEventBusAdapter,
-    DefaultMessageRoutingPolicy,
-    PlatformScheduler,
-    PurchaseOrderSaga,
-    { provide: OUTBOX_WRITER, useExisting: OutboxWriter },
-    { provide: IN_PROCESS_EVENT_BUS, useExisting: NestEventBusAdapter },
-    { provide: MESSAGE_ROUTING_POLICY, useExisting: DefaultMessageRoutingPolicy },
+  exports: [
+    OUTBOX_WRITER,
+    OUTBOX_REPOSITORY,
+    IN_PROCESS_EVENT_BUS,
+    MESSAGE_ROUTING_POLICY,
+    NUMBERING,
+    AUDIT,
+    NOTIFICATION_DISPATCH,
   ],
-  exports: [OUTBOX_WRITER, IN_PROCESS_EVENT_BUS],
 })
 export class PlatformModule {}

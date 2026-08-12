@@ -1,0 +1,32 @@
+// Platform persistence models — numbering sequences and audit trail.
+
+model NumberSequence {
+  id           String  @id @default(uuid()) @db.Uuid
+  key          String  @unique
+  prefix       String  @default("")
+  currentValue BigInt  @default(0)
+  padding      Int     @default(0)
+  step         Int     @default(1)
+  updatedAt    DateTime @updatedAt
+
+  @@map("number_sequences")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String?
+  organizationId String?
+  actorType     String?
+  actorId       String?
+  action        String
+  entityType    String
+  entityId      String
+  changes       Json?
+  requestId     String?
+  correlationId String?
+  createdAt     DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

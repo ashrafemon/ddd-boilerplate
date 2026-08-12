@@ -2,8 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { IntegrationMessage } from '@business/shared-business/ports/message-publisher.port';
-import { OutboxWriterPort } from '../ports/outbox-writer.port';
-import { OUTBOX_REPOSITORY, OutboxRepositoryPort } from '../ports/outbox-repository.port';
+import { OutboxWriterPort } from './ports/outbox-writer.port';
+import { OUTBOX_REPOSITORY, OutboxRepositoryPort } from './ports/outbox-repository.port';
 import {
   REQUEST_ID_KEY,
   CORRELATION_ID_KEY,

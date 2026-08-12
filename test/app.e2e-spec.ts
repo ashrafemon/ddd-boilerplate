@@ -4,7 +4,7 @@ import { AppModule } from './../src/app.module';
 import { PRODUCT_COMMAND_PORT } from './../src/business/product/ports/inbound/product.command.port';
 import { VENDOR_QUERY_PORT } from './../src/business/vendor/ports/inbound/vendor.query.port';
 import { PURCHASE_ORDER_COMMAND_PORT } from './../src/business/purchase-order/ports/inbound/purchase-order.command.port';
-import { OUTBOX_WRITER } from './../src/platform/ports/outbox-writer.port';
+import { OUTBOX_WRITER } from './../src/platform/outbox/ports/outbox-writer.port';
 
 /**
  * E2E smoke test — verifies the application boots with all business modules

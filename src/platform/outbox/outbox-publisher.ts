@@ -8,19 +8,20 @@ import {
   OUTBOX_REPOSITORY,
   OutboxMessageRecord,
   OutboxRepositoryPort,
-} from '../ports/outbox-repository.port';
+} from './ports/outbox-repository.port';
 import { MessageRoutingPolicy, MESSAGE_ROUTING_POLICY } from '../events/message-routing.policy';
 import {
   KAFKA_PUBLISHER,
   RABBITMQ_PUBLISHER,
+  SQS_PUBLISHER,
 } from '@infrastructure/messaging/message-publisher.tokens';
 
 const PARALLEL_PUBLISH_LIMIT = 10;
 
 /**
- * Publishes pending outbox messages to RabbitMQ/Kafka. If publishing fails,
- * the message is marked FAILED and retried by the scheduler with backoff —
- * events are never lost by committing first and publishing later.
+ * Publishes pending outbox messages to the configured brokers. If publishing
+ * fails, the message is marked FAILED and retried by the scheduler — events
+ * are never lost by committing first and publishing later.
  */
 @Injectable()
 export class OutboxPublisher {
@@ -33,6 +34,7 @@ export class OutboxPublisher {
     @Inject(MESSAGE_ROUTING_POLICY) private readonly routingPolicy: MessageRoutingPolicy,
     @Inject(RABBITMQ_PUBLISHER) private readonly rabbitmqPublisher: MessagePublisher,
     @Inject(KAFKA_PUBLISHER) private readonly kafkaPublisher: MessagePublisher,
+    @Inject(SQS_PUBLISHER) private readonly sqsPublisher: MessagePublisher,
     configService: ConfigService,
   ) {
     this.configService = configService;
@@ -70,12 +72,15 @@ export class OutboxPublisher {
         causationId: record.headers?.['causation-id'],
       };
 
-      const target = this.routingPolicy.resolve(record.eventType);
-      if (target === 'rabbitmq' || target === 'both') {
+      const targets = this.routingPolicy.resolve(record.eventType);
+      if (targets.includes('rabbitmq')) {
         await this.rabbitmqPublisher.publish(message);
       }
-      if (target === 'kafka' || target === 'both') {
+      if (targets.includes('kafka')) {
         await this.kafkaPublisher.publish(message);
+      }
+      if (targets.includes('sqs')) {
+        await this.sqsPublisher.publish(message);
       }
 
       await this.outboxRepository.markPublished(record.id);
