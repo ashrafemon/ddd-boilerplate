@@ -1,6 +1,6 @@
-import { InvariantException } from '@business/shared-business/errors/invariant-violate.error';
-import { invariantRegistry } from '@business/shared-business/domain/invariants/invariant.registry';
-import { ProductStatus } from '../entities/product.aggregate';
+import { InvariantException } from '@business/shared-business/errors';
+import { invariantRegistry } from '@business/shared-business/domain/invariants';
+import { ProductStatus } from './product.aggregate';
 
 /**
  * Product invariants — rules that MUST ALWAYS hold regardless of policy. Each

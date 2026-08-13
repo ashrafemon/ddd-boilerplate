@@ -6,12 +6,12 @@ import {
   COMPANY_CONFIG,
   CompanyConfigPort,
 } from '@platform/configuration/ports/company-config.port';
-import { ProductId } from '../../domain/value-objects/product-id.vo';
-import { ProductErrors } from '../../domain/errors/product.errors';
+import { ProductId } from '../../domain/value-objects';
+import { ProductErrors } from '../../domain/errors';
 import {
   PRODUCT_COMMAND_REPOSITORY,
   ProductCommandRepositoryPort,
-} from '../../domain/ports/product-command-repository.port';
+} from '../../domain/ports';
 
 export type ProductStatusAction = 'activate' | 'deactivate' | 'discontinue';
 

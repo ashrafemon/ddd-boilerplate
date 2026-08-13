@@ -4,7 +4,7 @@ import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import {
   ProductQueryRecord,
   ProductQueryRepositoryPort,
-} from '@business/catalog/product/domain/ports/product-query-repository.port';
+} from '@business/catalog/product/domain/ports';
 
 @Injectable()
 export class PrismaProductQueryRepository implements ProductQueryRepositoryPort {

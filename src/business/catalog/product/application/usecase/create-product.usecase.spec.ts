@@ -1,13 +1,13 @@
-import { ProductCommandRepositoryPort } from '../../domain/ports/product-command-repository.port';
+import { ProductCommandRepositoryPort } from '../../domain/ports';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import {
   CompanyConfigPort,
   CompanyConfig,
 } from '@platform/configuration/ports/company-config.port';
-import { Product, ProductStatus } from '../../domain/entities/product.aggregate';
-import { ProductId } from '../../domain/value-objects/product-id.vo';
-import { Sku } from '../../domain/value-objects/sku.vo';
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { Product, ProductStatus } from '../../domain/entities';
+import { ProductId } from '../../domain/value-objects';
+import { Sku } from '../../domain/value-objects';
+import { DomainEvent } from '@business/shared-business/domain/bases';
 import { ConflictError } from '@business/shared-business/domain/domain.error';
 import { CreateProductUseCase } from './create-product.usecase';
 

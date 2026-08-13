@@ -1,16 +1,16 @@
-import { DomainFactory } from '@business/shared-business/domain/factories/factory.base';
-import { invariantRegistry } from '@business/shared-business/domain/invariants/invariant.registry';
+import { DomainFactory } from '@business/shared-business/domain/factories';
+import { invariantRegistry } from '@business/shared-business/domain/invariants';
 import {
   Product,
   CreateProductInput,
   ProductProps,
   ProductStatus,
-} from '../entities/product.aggregate';
-import { ProductId } from '../value-objects/product-id.vo';
-import { Sku } from '../value-objects/sku.vo';
-import { ProductName } from '../value-objects/product-name.vo';
-import { ProductCreated } from '../events/product.events';
-import './../invariants/product.invariants';
+} from '../entities';
+import { ProductId } from '../value-objects';
+import { Sku } from '../value-objects';
+import { ProductName } from '../value-objects';
+import { ProductCreated } from '../events';
+import '../entities/product.invariants';
 import './../policies/product.policy';
 
 /**

@@ -7,14 +7,14 @@ import {
   CompanyConfigPort,
 } from '@platform/configuration/ports/company-config.port';
 import { Money } from '@business/shared-business/domain/money.value-object';
-import { productFactory } from '../../domain/factories/product.factory';
-import { ProductId } from '../../domain/value-objects/product-id.vo';
-import { Sku } from '../../domain/value-objects/sku.vo';
-import { ProductErrors } from '../../domain/errors/product.errors';
+import { productFactory } from '../../domain/factories';
+import { ProductId } from '../../domain/value-objects';
+import { Sku } from '../../domain/value-objects';
+import { ProductErrors } from '../../domain/errors';
 import {
   PRODUCT_COMMAND_REPOSITORY,
   ProductCommandRepositoryPort,
-} from '../../domain/ports/product-command-repository.port';
+} from '../../domain/ports';
 
 export interface CreateProductInput {
   sku: string;

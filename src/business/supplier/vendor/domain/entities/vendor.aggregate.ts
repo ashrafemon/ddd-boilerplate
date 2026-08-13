@@ -1,13 +1,13 @@
-import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
-import { invariantRegistry } from '@business/shared-business/domain/invariants/invariant.registry';
-import { VendorId } from '../value-objects/vendor-id.vo';
-import { VendorCode, VendorEmail, VendorName } from '../value-objects/vendor.vos';
+import { AggregateRoot } from '@business/shared-business/domain/bases';
+import { invariantRegistry } from '@business/shared-business/domain/invariants';
+import { VendorId } from '../value-objects';
+import { VendorCode, VendorEmail, VendorName } from '../value-objects';
 import {
   VendorActivated,
   VendorBlocked,
   VendorDeactivated,
   VendorUpdated,
-} from '../events/vendor.events';
+} from '../events';
 
 export enum VendorStatus {
   ACTIVE = 'ACTIVE',

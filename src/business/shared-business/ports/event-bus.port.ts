@@ -1,4 +1,4 @@
-import { DomainEvent } from '../domain/bases/event.base';
+import { DomainEvent } from '../domain/bases';
 
 /**
  * In-process domain event bus. Used for local reactions (sagas, listeners)

@@ -6,14 +6,14 @@ import {
   COMPANY_CONFIG,
   CompanyConfigPort,
 } from '@platform/configuration/ports/company-config.port';
-import { vendorFactory } from '../../domain/factories/vendor.factory';
-import { VendorId } from '../../domain/value-objects/vendor-id.vo';
-import { VendorCode } from '../../domain/value-objects/vendor.vos';
-import { VendorErrors } from '../../domain/errors/vendor.errors';
+import { vendorFactory } from '../../domain/factories';
+import { VendorId } from '../../domain/value-objects';
+import { VendorCode } from '../../domain/value-objects';
+import { VendorErrors } from '../../domain/errors';
 import {
   VENDOR_COMMAND_REPOSITORY,
   VendorCommandRepositoryPort,
-} from '../../domain/ports/vendor-command-repository.port';
+} from '../../domain/ports';
 
 export interface CreateVendorInput {
   code: string;

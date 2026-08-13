@@ -1,6 +1,6 @@
-import { Product } from '../../domain/entities/product.aggregate';
-import { ProductId } from '../../domain/value-objects/product-id.vo';
-import { Sku } from '../../domain/value-objects/sku.vo';
+import { Product } from '../../domain/entities';
+import { ProductId } from '../../domain/value-objects';
+import { Sku } from '../../domain/value-objects';
 
 /**
  * Command-side repository port. The adapter injects the transactional host

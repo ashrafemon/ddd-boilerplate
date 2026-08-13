@@ -1,4 +1,4 @@
-import { DomainEvent } from '../bases/event.base';
+import { DomainEvent } from '../bases';
 
 /**
  * Reconstructs a domain event from the payload persisted in the outbox.

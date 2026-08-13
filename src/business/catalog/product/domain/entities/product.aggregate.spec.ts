@@ -1,9 +1,9 @@
 import { ProductStatus } from './product.aggregate';
 import { Money } from '@business/shared-business/domain/money.value-object';
-import { ProductCreated, ProductDiscontinued } from '../events/product.events';
-import { PolicyViolateException } from '@business/shared-business/errors/policy-violate.error';
-import { invariantRegistry } from '@business/shared-business/domain/invariants/invariant.registry';
-import { productFactory } from '../factories/product.factory';
+import { ProductCreated, ProductDiscontinued } from '../events';
+import { PolicyViolateException } from '@business/shared-business/errors';
+import { invariantRegistry } from '@business/shared-business/domain/invariants';
+import { productFactory } from '../factories';
 
 describe('Product aggregate', () => {
   const create = () =>

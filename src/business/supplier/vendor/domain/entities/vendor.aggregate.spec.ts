@@ -1,8 +1,8 @@
 import { VendorStatus } from './vendor.aggregate';
-import { VendorBlocked, VendorCreated } from '../events/vendor.events';
-import { policyRegistry } from '@business/shared-business/domain/policies/policy.registry';
-import { InvariantException } from '@business/shared-business/errors/invariant-violate.error';
-import { vendorFactory } from '../factories/vendor.factory';
+import { VendorBlocked, VendorCreated } from '../events';
+import { policyRegistry } from '@business/shared-business/domain/policies';
+import { InvariantException } from '@business/shared-business/errors';
+import { vendorFactory } from '../factories';
 
 describe('Vendor aggregate', () => {
   const create = () =>

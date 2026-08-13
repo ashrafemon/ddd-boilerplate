@@ -4,23 +4,23 @@ import { CommandUseCase } from '@business/shared-business/application/use-case';
 import {
   MODULE_PORT_RESOLVER,
   ModulePortResolver,
-} from '@business/shared-business/ports/module-port-resolver.port';
+} from '@business/shared-business/ports';
 import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import {
   COMPANY_CONFIG,
   CompanyConfigPort,
 } from '@platform/configuration/ports/company-config.port';
 import { Money } from '@business/shared-business/domain/money.value-object';
-import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
-import { PurchaseOrderErrors } from '../../domain/errors/purchase-order.errors';
+import { PurchaseOrderId } from '../../domain/value-objects';
+import { PurchaseOrderErrors } from '../../domain/errors';
 import {
   PURCHASE_ORDER_PRODUCT_PORT,
   PurchasableProductQueryPort,
-} from '../ports/outbound/product-query.port';
+} from '../ports/outbound';
 import {
   PURCHASE_ORDER_COMMAND_REPOSITORY,
   PurchaseOrderCommandRepositoryPort,
-} from '../../domain/ports/purchase-order-command-repository.port';
+} from '../../domain/ports';
 
 export interface AddLineInput {
   id: string;

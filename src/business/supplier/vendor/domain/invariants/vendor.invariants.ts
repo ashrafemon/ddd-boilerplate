@@ -1,6 +1,6 @@
-import { InvariantException } from '@business/shared-business/errors/invariant-violate.error';
-import { invariantRegistry } from '@business/shared-business/domain/invariants/invariant.registry';
-import { VendorStatus } from '../entities/vendor.aggregate';
+import { InvariantException } from '@business/shared-business/errors';
+import { invariantRegistry } from '@business/shared-business/domain/invariants';
+import { VendorStatus } from '../entities';
 
 invariantRegistry.register<{ code: string }>('vendor.create', {
   name: 'vendor-code-required',

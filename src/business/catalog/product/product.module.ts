@@ -1,23 +1,23 @@
 import { Module } from '@nestjs/common';
-import { ProductController } from './presentation/http/controllers/product.controller';
-import { CreateProductUseCase } from './application/usecase/create-product.usecase';
-import { UpdateProductUseCase } from './application/usecase/update-product.usecase';
-import { ChangePriceUseCase } from './application/usecase/change-price.usecase';
-import { ProductStatusUseCase } from './application/usecase/product-status.usecase';
-import { GetProductUseCase } from './application/usecase/get-product.usecase';
-import { ListProductsUseCase } from './application/usecase/list-products.usecase';
-import { GetPurchasableProductUseCase } from './application/usecase/get-purchasable-product.usecase';
-import { GetPurchasableProductsUseCase } from './application/usecase/get-purchasable-products.usecase';
-import { ProductRabbitMQConsumer } from './application/consumers/product.rabbitmq.consumer';
-import { ProductKafkaConsumer } from './application/consumers/product.kafka.consumer';
-import { ProductSqsConsumer } from './application/consumers/product.sqs.consumer';
-import { ProductEventEmitterConsumer } from './application/consumers/product.event-emitter.consumer';
-import { ProductQueryAdapter } from './application/adapters/product-query.adapter';
-import { PRODUCT_COMMAND_REPOSITORY } from './domain/ports/product-command-repository.port';
-import { PRODUCT_QUERY_REPOSITORY } from './domain/ports/product-query-repository.port';
+import { ProductController } from './presentation/http/controllers';
+import { CreateProductUseCase } from './application/usecase';
+import { UpdateProductUseCase } from './application/usecase';
+import { ChangePriceUseCase } from './application/usecase';
+import { ProductStatusUseCase } from './application/usecase';
+import { GetProductUseCase } from './application/usecase';
+import { ListProductsUseCase } from './application/usecase';
+import { GetPurchasableProductUseCase } from './application/usecase';
+import { GetPurchasableProductsUseCase } from './application/usecase';
+import { ProductRabbitMQConsumer } from './application/consumers';
+import { ProductKafkaConsumer } from './application/consumers';
+import { ProductSqsConsumer } from './application/consumers';
+import { ProductEventEmitterConsumer } from './application/consumers';
+import { ProductQueryAdapter } from './application/adapters';
+import { PRODUCT_COMMAND_REPOSITORY } from './domain/ports';
+import { PRODUCT_QUERY_REPOSITORY } from './domain/ports';
 import { PURCHASE_ORDER_PRODUCT_PORT } from '@business/procurement/purchase/application/ports/outbound/product-query.port';
-import { PrismaProductCommandRepository } from './infrastructure/persistence/prisma-product-command.repository';
-import { PrismaProductQueryRepository } from './infrastructure/persistence/prisma-product-query.repository';
+import { PrismaProductCommandRepository } from './infrastructure/persistence';
+import { PrismaProductQueryRepository } from './infrastructure/persistence';
 
 /**
  * Product aggregate module. Controllers call use cases directly — no inbound

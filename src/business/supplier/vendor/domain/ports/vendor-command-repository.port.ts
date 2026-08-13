@@ -1,6 +1,6 @@
-import { Vendor } from '../../domain/entities/vendor.aggregate';
-import { VendorId } from '../../domain/value-objects/vendor-id.vo';
-import { VendorCode } from '../../domain/value-objects/vendor.vos';
+import { Vendor } from '../../domain/entities';
+import { VendorId } from '../../domain/value-objects';
+import { VendorCode } from '../../domain/value-objects';
 
 /**
  * Command-side repository port. The adapter injects the transactional host

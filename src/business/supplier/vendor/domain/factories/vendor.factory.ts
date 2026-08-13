@@ -1,9 +1,9 @@
-import { DomainFactory } from '@business/shared-business/domain/factories/factory.base';
-import { invariantRegistry } from '@business/shared-business/domain/invariants/invariant.registry';
-import { Vendor, CreateVendorInput, VendorProps, VendorStatus } from '../entities/vendor.aggregate';
-import { VendorId } from '../value-objects/vendor-id.vo';
-import { VendorCode, VendorEmail, VendorName } from '../value-objects/vendor.vos';
-import { VendorCreated } from '../events/vendor.events';
+import { DomainFactory } from '@business/shared-business/domain/factories';
+import { invariantRegistry } from '@business/shared-business/domain/invariants';
+import { Vendor, CreateVendorInput, VendorProps, VendorStatus } from '../entities';
+import { VendorId } from '../value-objects';
+import { VendorCode, VendorEmail, VendorName } from '../value-objects';
+import { VendorCreated } from '../events';
 import './../invariants/vendor.invariants';
 import './../policies/vendor.policy';
 

@@ -1,6 +1,6 @@
 import { fail, ok } from '@business/shared-business/domain/result';
-import { policyRegistry } from '@business/shared-business/domain/policies/policy.registry';
-import { VendorStatus } from '../entities/vendor.aggregate';
+import { policyRegistry } from '@business/shared-business/domain/policies';
+import { VendorStatus } from '../entities';
 
 export interface VendorState {
   status: VendorStatus;

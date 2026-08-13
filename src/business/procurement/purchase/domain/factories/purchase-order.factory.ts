@@ -1,13 +1,13 @@
-import { DomainFactory } from '@business/shared-business/domain/factories/factory.base';
+import { DomainFactory } from '@business/shared-business/domain/factories';
 import {
   PurchaseOrder,
   CreatePurchaseOrderInput,
   PurchaseOrderProps,
   PurchaseOrderStatus,
-} from '../entities/purchase-order.aggregate';
-import { PurchaseOrderId } from '../value-objects/purchase-order-id.vo';
-import { OrderNumber, VendorIdRef } from '../value-objects/purchase-order.vos';
-import { PurchaseOrderCreated } from '../events/purchase-order.events';
+} from '../entities';
+import { PurchaseOrderId } from '../value-objects';
+import { OrderNumber, VendorIdRef } from '../value-objects';
+import { PurchaseOrderCreated } from '../events';
 import './../invariants/purchase-order.invariants';
 import './../policies/purchase-order.policy';
 

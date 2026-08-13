@@ -4,23 +4,23 @@ import { CommandUseCase } from '@business/shared-business/application/use-case';
 import {
   MODULE_PORT_RESOLVER,
   ModulePortResolver,
-} from '@business/shared-business/ports/module-port-resolver.port';
+} from '@business/shared-business/ports';
 import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import {
   COMPANY_CONFIG,
   CompanyConfigPort,
 } from '@platform/configuration/ports/company-config.port';
-import { purchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
-import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
-import { PurchaseOrderErrors } from '../../domain/errors/purchase-order.errors';
+import { purchaseOrderFactory } from '../../domain/factories';
+import { PurchaseOrderId } from '../../domain/value-objects';
+import { PurchaseOrderErrors } from '../../domain/errors';
 import {
   PURCHASE_ORDER_VENDOR_PORT,
   OrderableVendorQueryPort,
-} from '../ports/outbound/vendor-query.port';
+} from '../ports/outbound';
 import {
   PURCHASE_ORDER_COMMAND_REPOSITORY,
   PurchaseOrderCommandRepositoryPort,
-} from '../../domain/ports/purchase-order-command-repository.port';
+} from '../../domain/ports';
 
 export interface CreatePurchaseOrderInput {
   vendorId: string;

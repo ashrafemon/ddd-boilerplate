@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GetOrderableVendorUseCase } from '../usecase/get-orderable-vendor.usecase';
+import { GetOrderableVendorUseCase } from '../usecase';
 import {
   OrderableVendorQueryPort,
   VendorReference,

@@ -11,18 +11,18 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
-import { CreateProductUseCase } from '../../../application/usecase/create-product.usecase';
-import { UpdateProductUseCase } from '../../../application/usecase/update-product.usecase';
-import { ChangePriceUseCase } from '../../../application/usecase/change-price.usecase';
-import { ProductStatusUseCase } from '../../../application/usecase/product-status.usecase';
-import { GetProductUseCase } from '../../../application/usecase/get-product.usecase';
-import { ListProductsUseCase } from '../../../application/usecase/list-products.usecase';
+import { CreateProductUseCase } from '../../application/usecase';
+import { UpdateProductUseCase } from '../../application/usecase';
+import { ChangePriceUseCase } from '../../application/usecase';
+import { ProductStatusUseCase } from '../../application/usecase';
+import { GetProductUseCase } from '../../application/usecase';
+import { ListProductsUseCase } from '../../application/usecase';
 import {
   ChangePriceDto,
   CreateProductDto,
   ProductQueryDto,
   UpdateProductDto,
-} from '../request/product.request';
+} from './request';
 
 @ApiTags('products')
 @ApiBearerAuth()

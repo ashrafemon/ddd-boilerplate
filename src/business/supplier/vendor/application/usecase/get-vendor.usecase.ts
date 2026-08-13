@@ -4,7 +4,7 @@ import {
   VENDOR_QUERY_REPOSITORY,
   VendorQueryRecord,
   VendorQueryRepositoryPort,
-} from '../../domain/ports/vendor-query-repository.port';
+} from '../../domain/ports';
 
 @Injectable()
 export class GetVendorUseCase implements QueryUseCase<string, VendorQueryRecord | null> {

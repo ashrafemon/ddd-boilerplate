@@ -6,12 +6,12 @@ import {
   COMPANY_CONFIG,
   CompanyConfigPort,
 } from '@platform/configuration/ports/company-config.port';
-import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
-import { PurchaseOrderErrors } from '../../domain/errors/purchase-order.errors';
+import { PurchaseOrderId } from '../../domain/value-objects';
+import { PurchaseOrderErrors } from '../../domain/errors';
 import {
   PURCHASE_ORDER_COMMAND_REPOSITORY,
   PurchaseOrderCommandRepositoryPort,
-} from '../../domain/ports/purchase-order-command-repository.port';
+} from '../../domain/ports';
 
 export type PurchaseOrderTransition = 'submit' | 'approve' | 'reject' | 'cancel' | 'complete';
 

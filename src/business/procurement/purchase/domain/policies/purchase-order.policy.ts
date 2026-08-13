@@ -1,6 +1,6 @@
 import { fail, ok } from '@business/shared-business/domain/result';
-import { policyRegistry } from '@business/shared-business/domain/policies/policy.registry';
-import { PurchaseOrderStatus } from '../entities/purchase-order.aggregate';
+import { policyRegistry } from '@business/shared-business/domain/policies';
+import { PurchaseOrderStatus } from '../entities';
 
 export interface PurchaseOrderPolicyState {
   status: PurchaseOrderStatus;

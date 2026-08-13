@@ -6,12 +6,12 @@ import {
   COMPANY_CONFIG,
   CompanyConfigPort,
 } from '@platform/configuration/ports/company-config.port';
-import { VendorId } from '../../domain/value-objects/vendor-id.vo';
-import { VendorErrors } from '../../domain/errors/vendor.errors';
+import { VendorId } from '../../domain/value-objects';
+import { VendorErrors } from '../../domain/errors';
 import {
   VENDOR_COMMAND_REPOSITORY,
   VendorCommandRepositoryPort,
-} from '../../domain/ports/vendor-command-repository.port';
+} from '../../domain/ports';
 
 export type VendorStatusAction = 'activate' | 'deactivate' | 'block';
 

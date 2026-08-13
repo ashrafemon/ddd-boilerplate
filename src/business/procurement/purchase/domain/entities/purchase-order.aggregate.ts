@@ -1,9 +1,9 @@
-import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
+import { AggregateRoot } from '@business/shared-business/domain/bases';
 import { Money } from '@business/shared-business/domain/money.value-object';
-import { invariantRegistry } from '@business/shared-business/domain/invariants/invariant.registry';
-import { policyRegistry } from '@business/shared-business/domain/policies/policy.registry';
-import { PurchaseOrderId } from '../value-objects/purchase-order-id.vo';
-import { OrderNumber, ProductIdRef, VendorIdRef } from '../value-objects/purchase-order.vos';
+import { invariantRegistry } from '@business/shared-business/domain/invariants';
+import { policyRegistry } from '@business/shared-business/domain/policies';
+import { PurchaseOrderId } from '../value-objects';
+import { OrderNumber, ProductIdRef, VendorIdRef } from '../value-objects';
 import { PurchaseOrderLine } from './purchase-order-line.entity';
 import {
   PurchaseOrderApproved,
@@ -13,7 +13,7 @@ import {
   PurchaseOrderLineRemoved,
   PurchaseOrderRejected,
   PurchaseOrderSubmitted,
-} from '../events/purchase-order.events';
+} from '../events';
 
 export enum PurchaseOrderStatus {
   DRAFT = 'DRAFT',

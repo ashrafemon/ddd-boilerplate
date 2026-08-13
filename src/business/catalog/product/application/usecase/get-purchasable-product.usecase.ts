@@ -4,7 +4,7 @@ import {
   PRODUCT_QUERY_REPOSITORY,
   ProductQueryRecord,
   ProductQueryRepositoryPort,
-} from '../../domain/ports/product-query-repository.port';
+} from '../../domain/ports';
 
 /**
  * Cross-aggregate query surface. Other modules (e.g. purchase) depend on the

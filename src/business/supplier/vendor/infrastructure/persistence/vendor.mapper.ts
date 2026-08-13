@@ -2,13 +2,13 @@ import {
   Vendor,
   VendorProps,
   VendorStatus,
-} from '@business/supplier/vendor/domain/entities/vendor.aggregate';
-import { VendorId } from '@business/supplier/vendor/domain/value-objects/vendor-id.vo';
+} from '@business/supplier/vendor/domain/entities';
+import { VendorId } from '@business/supplier/vendor/domain/value-objects';
 import {
   VendorCode,
   VendorEmail,
   VendorName,
-} from '@business/supplier/vendor/domain/value-objects/vendor.vos';
+} from '@business/supplier/vendor/domain/value-objects';
 
 interface VendorRow {
   id: string;

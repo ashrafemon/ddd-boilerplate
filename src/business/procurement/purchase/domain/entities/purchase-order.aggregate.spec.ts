@@ -1,9 +1,9 @@
 import { PurchaseOrder, PurchaseOrderStatus } from './purchase-order.aggregate';
 import { Money } from '@business/shared-business/domain/money.value-object';
-import { PurchaseOrderApproved, PurchaseOrderSubmitted } from '../events/purchase-order.events';
-import { InvariantException } from '@business/shared-business/errors/invariant-violate.error';
-import { policyRegistry } from '@business/shared-business/domain/policies/policy.registry';
-import { purchaseOrderFactory } from '../factories/purchase-order.factory';
+import { PurchaseOrderApproved, PurchaseOrderSubmitted } from '../events';
+import { InvariantException } from '@business/shared-business/errors';
+import { policyRegistry } from '@business/shared-business/domain/policies';
+import { purchaseOrderFactory } from '../factories';
 
 describe('PurchaseOrder aggregate', () => {
   const create = () =>

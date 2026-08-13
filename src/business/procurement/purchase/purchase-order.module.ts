@@ -1,19 +1,19 @@
 import { Module } from '@nestjs/common';
-import { PurchaseOrderController } from './presentation/http/controllers/purchase-order.controller';
-import { CreatePurchaseOrderUseCase } from './application/usecase/create-purchase-order.usecase';
-import { AddPurchaseOrderLineUseCase } from './application/usecase/add-purchase-order-line.usecase';
-import { RemovePurchaseOrderLineUseCase } from './application/usecase/remove-purchase-order-line.usecase';
-import { PurchaseOrderTransitionUseCase } from './application/usecase/purchase-order-transition.usecase';
-import { GetPurchaseOrderUseCase } from './application/usecase/get-purchase-order.usecase';
-import { ListPurchaseOrdersUseCase } from './application/usecase/list-purchase-orders.usecase';
-import { PurchaseOrderRabbitMQConsumer } from './application/consumers/purchase-order.rabbitmq.consumer';
-import { PurchaseOrderKafkaConsumer } from './application/consumers/purchase-order.kafka.consumer';
-import { PurchaseOrderSqsConsumer } from './application/consumers/purchase-order.sqs.consumer';
-import { PurchaseOrderEventEmitterConsumer } from './application/consumers/purchase-order.event-emitter.consumer';
-import { PURCHASE_ORDER_COMMAND_REPOSITORY } from './domain/ports/purchase-order-command-repository.port';
-import { PURCHASE_ORDER_QUERY_REPOSITORY } from './domain/ports/purchase-order-query-repository.port';
-import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence/prisma-purchase-order-command.repository';
-import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence/prisma-purchase-order-query.repository';
+import { PurchaseOrderController } from './presentation/http/controllers';
+import { CreatePurchaseOrderUseCase } from './application/usecase';
+import { AddPurchaseOrderLineUseCase } from './application/usecase';
+import { RemovePurchaseOrderLineUseCase } from './application/usecase';
+import { PurchaseOrderTransitionUseCase } from './application/usecase';
+import { GetPurchaseOrderUseCase } from './application/usecase';
+import { ListPurchaseOrdersUseCase } from './application/usecase';
+import { PurchaseOrderRabbitMQConsumer } from './application/consumers';
+import { PurchaseOrderKafkaConsumer } from './application/consumers';
+import { PurchaseOrderSqsConsumer } from './application/consumers';
+import { PurchaseOrderEventEmitterConsumer } from './application/consumers';
+import { PURCHASE_ORDER_COMMAND_REPOSITORY } from './domain/ports';
+import { PURCHASE_ORDER_QUERY_REPOSITORY } from './domain/ports';
+import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence';
+import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence';
 
 /**
  * PurchaseOrder aggregate module (procurement context). Controllers call use

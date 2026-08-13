@@ -1,6 +1,6 @@
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
-import { domainEventRegistry } from '@business/shared-business/domain/events/domain-event.registry';
-import { VendorId } from '../value-objects/vendor-id.vo';
+import { DomainEvent } from '@business/shared-business/domain/bases';
+import { domainEventRegistry } from '@business/shared-business/domain/events';
+import { VendorId } from '../value-objects';
 
 export class VendorCreated extends DomainEvent {
   constructor(

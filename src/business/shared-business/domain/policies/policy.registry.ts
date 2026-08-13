@@ -1,4 +1,4 @@
-import { PolicyViolateException } from '../../errors/policy-violate.error';
+import { PolicyViolateException } from '../../errors';
 import { ok, Result } from '../result';
 
 /**

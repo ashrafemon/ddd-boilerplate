@@ -2,10 +2,10 @@ import {
   Product,
   ProductProps,
   ProductStatus,
-} from '@business/catalog/product/domain/entities/product.aggregate';
-import { ProductId } from '@business/catalog/product/domain/value-objects/product-id.vo';
-import { ProductName } from '@business/catalog/product/domain/value-objects/product-name.vo';
-import { Sku } from '@business/catalog/product/domain/value-objects/sku.vo';
+} from '@business/catalog/product/domain/entities';
+import { ProductId } from '@business/catalog/product/domain/value-objects';
+import { ProductName } from '@business/catalog/product/domain/value-objects';
+import { Sku } from '@business/catalog/product/domain/value-objects';
 import { Money } from '@business/shared-business/domain/money.value-object';
 
 interface ProductRow {

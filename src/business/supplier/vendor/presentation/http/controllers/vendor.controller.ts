@@ -11,12 +11,12 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
-import { CreateVendorUseCase } from '../../../application/usecase/create-vendor.usecase';
-import { UpdateVendorUseCase } from '../../../application/usecase/update-vendor.usecase';
-import { VendorStatusUseCase } from '../../../application/usecase/vendor-status.usecase';
-import { GetVendorUseCase } from '../../../application/usecase/get-vendor.usecase';
-import { ListVendorsUseCase } from '../../../application/usecase/list-vendors.usecase';
-import { CreateVendorDto, UpdateVendorDto, VendorQueryDto } from '../request/vendor.request';
+import { CreateVendorUseCase } from '../../../application/usecase';
+import { UpdateVendorUseCase } from '../../../application/usecase';
+import { VendorStatusUseCase } from '../../../application/usecase';
+import { GetVendorUseCase } from '../../../application/usecase';
+import { ListVendorsUseCase } from '../../../application/usecase';
+import { CreateVendorDto, UpdateVendorDto, VendorQueryDto } from '../request';
 
 @ApiTags('vendors')
 @ApiBearerAuth()

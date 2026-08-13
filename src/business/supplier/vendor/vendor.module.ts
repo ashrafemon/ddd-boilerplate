@@ -1,21 +1,21 @@
 import { Module } from '@nestjs/common';
-import { VendorController } from './presentation/http/controllers/vendor.controller';
-import { CreateVendorUseCase } from './application/usecase/create-vendor.usecase';
-import { UpdateVendorUseCase } from './application/usecase/update-vendor.usecase';
-import { VendorStatusUseCase } from './application/usecase/vendor-status.usecase';
-import { GetVendorUseCase } from './application/usecase/get-vendor.usecase';
-import { ListVendorsUseCase } from './application/usecase/list-vendors.usecase';
-import { GetOrderableVendorUseCase } from './application/usecase/get-orderable-vendor.usecase';
-import { VendorRabbitMQConsumer } from './application/consumers/vendor.rabbitmq.consumer';
-import { VendorKafkaConsumer } from './application/consumers/vendor.kafka.consumer';
-import { VendorSqsConsumer } from './application/consumers/vendor.sqs.consumer';
-import { VendorEventEmitterConsumer } from './application/consumers/vendor.event-emitter.consumer';
-import { VendorQueryAdapter } from './application/adapters/vendor-query.adapter';
-import { VENDOR_COMMAND_REPOSITORY } from './domain/ports/vendor-command-repository.port';
-import { VENDOR_QUERY_REPOSITORY } from './domain/ports/vendor-query-repository.port';
+import { VendorController } from './presentation/http/controllers';
+import { CreateVendorUseCase } from './application/usecase';
+import { UpdateVendorUseCase } from './application/usecase';
+import { VendorStatusUseCase } from './application/usecase';
+import { GetVendorUseCase } from './application/usecase';
+import { ListVendorsUseCase } from './application/usecase';
+import { GetOrderableVendorUseCase } from './application/usecase';
+import { VendorRabbitMQConsumer } from './application/consumers';
+import { VendorKafkaConsumer } from './application/consumers';
+import { VendorSqsConsumer } from './application/consumers';
+import { VendorEventEmitterConsumer } from './application/consumers';
+import { VendorQueryAdapter } from './application/adapters';
+import { VENDOR_COMMAND_REPOSITORY } from './domain/ports';
+import { VENDOR_QUERY_REPOSITORY } from './domain/ports';
 import { PURCHASE_ORDER_VENDOR_PORT } from '@business/procurement/purchase/application/ports/outbound/vendor-query.port';
-import { PrismaVendorCommandRepository } from './infrastructure/persistence/prisma-vendor-command.repository';
-import { PrismaVendorQueryRepository } from './infrastructure/persistence/prisma-vendor-query.repository';
+import { PrismaVendorCommandRepository } from './infrastructure/persistence';
+import { PrismaVendorQueryRepository } from './infrastructure/persistence';
 
 /**
  * Vendor aggregate module. Controllers call use cases directly — no inbound

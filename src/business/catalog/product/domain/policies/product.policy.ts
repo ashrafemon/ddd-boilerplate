@@ -1,6 +1,6 @@
 import { fail, ok } from '@business/shared-business/domain/result';
-import { policyRegistry } from '@business/shared-business/domain/policies/policy.registry';
-import { ProductStatus } from '../entities/product.aggregate';
+import { policyRegistry } from '@business/shared-business/domain/policies';
+import { ProductStatus } from '../entities';
 
 export interface ProductState {
   status: ProductStatus;

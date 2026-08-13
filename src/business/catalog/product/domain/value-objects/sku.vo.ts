@@ -1,5 +1,5 @@
 import { ValidationError } from '@business/shared-business/domain/domain.error';
-import { ValueObject } from '@business/shared-business/domain/bases/value-object.base';
+import { ValueObject } from '@business/shared-business/domain/bases';
 
 export class Sku extends ValueObject<{ value: string }> {
   private constructor(value: string) {

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GetPurchasableProductUseCase } from '../usecase/get-purchasable-product.usecase';
+import { GetPurchasableProductUseCase } from '../usecase';
 import {
   PurchasableProductQueryPort,
   ProductReference,

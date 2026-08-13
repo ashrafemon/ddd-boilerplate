@@ -4,7 +4,7 @@ import {
   PURCHASE_ORDER_QUERY_REPOSITORY,
   PurchaseOrderQueryRecord,
   PurchaseOrderQueryRepositoryPort,
-} from '../../domain/ports/purchase-order-query-repository.port';
+} from '../../domain/ports';
 
 @Injectable()
 export class GetPurchaseOrderUseCase implements QueryUseCase<

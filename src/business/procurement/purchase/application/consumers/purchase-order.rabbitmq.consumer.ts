@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
-import { IntegrationMessage } from '@business/shared-business/ports/message-publisher.port';
+import { IntegrationMessage } from '@business/shared-business/ports';
 
 const EXCHANGE = 'erp.events';
 const QUEUE = 'purchase-order-created.erp';

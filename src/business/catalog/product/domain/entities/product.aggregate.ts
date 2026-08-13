@@ -1,16 +1,16 @@
-import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
+import { AggregateRoot } from '@business/shared-business/domain/bases';
 import { Money } from '@business/shared-business/domain/money.value-object';
-import { invariantRegistry } from '@business/shared-business/domain/invariants/invariant.registry';
-import { policyRegistry } from '@business/shared-business/domain/policies/policy.registry';
-import { ProductId } from '../value-objects/product-id.vo';
-import { Sku } from '../value-objects/sku.vo';
-import { ProductName } from '../value-objects/product-name.vo';
+import { invariantRegistry } from '@business/shared-business/domain/invariants';
+import { policyRegistry } from '@business/shared-business/domain/policies';
+import { ProductId } from '../value-objects';
+import { Sku } from '../value-objects';
+import { ProductName } from '../value-objects';
 import {
   ProductActivated,
   ProductDeactivated,
   ProductDiscontinued,
   ProductUpdated,
-} from '../events/product.events';
+} from '../events';
 
 export enum ProductStatus {
   ACTIVE = 'ACTIVE',

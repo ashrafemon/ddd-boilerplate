@@ -5,7 +5,7 @@ import {
   VENDOR_QUERY_REPOSITORY,
   VendorQueryRecord,
   VendorQueryRepositoryPort,
-} from '../../domain/ports/vendor-query-repository.port';
+} from '../../domain/ports';
 
 @Injectable()
 export class ListVendorsUseCase implements QueryUseCase<PageQuery, PageResult<VendorQueryRecord>> {

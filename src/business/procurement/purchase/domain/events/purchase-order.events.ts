@@ -1,6 +1,6 @@
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
-import { domainEventRegistry } from '@business/shared-business/domain/events/domain-event.registry';
-import { PurchaseOrderId } from '../value-objects/purchase-order-id.vo';
+import { DomainEvent } from '@business/shared-business/domain/bases';
+import { domainEventRegistry } from '@business/shared-business/domain/events';
+import { PurchaseOrderId } from '../value-objects';
 
 export class PurchaseOrderCreated extends DomainEvent {
   constructor(

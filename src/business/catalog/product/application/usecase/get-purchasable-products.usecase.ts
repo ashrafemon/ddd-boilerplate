@@ -4,7 +4,7 @@ import {
   PRODUCT_QUERY_REPOSITORY,
   ProductQueryRecord,
   ProductQueryRepositoryPort,
-} from '../../domain/ports/product-query-repository.port';
+} from '../../domain/ports';
 
 /**
  * Read-side use case. Skips the domain and returns projections directly.

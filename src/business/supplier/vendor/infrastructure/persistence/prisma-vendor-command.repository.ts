@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { Vendor } from '@business/supplier/vendor/domain/entities/vendor.aggregate';
-import { VendorId } from '@business/supplier/vendor/domain/value-objects/vendor-id.vo';
-import { VendorCode } from '@business/supplier/vendor/domain/value-objects/vendor.vos';
-import { VendorCommandRepositoryPort } from '@business/supplier/vendor/domain/ports/vendor-command-repository.port';
+import { Vendor } from '@business/supplier/vendor/domain/entities';
+import { VendorId } from '@business/supplier/vendor/domain/value-objects';
+import { VendorCode } from '@business/supplier/vendor/domain/value-objects';
+import { VendorCommandRepositoryPort } from '@business/supplier/vendor/domain/ports';
 import { VendorMapper } from './vendor.mapper';
 
 @Injectable()
