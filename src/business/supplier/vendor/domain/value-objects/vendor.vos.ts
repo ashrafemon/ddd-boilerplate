@@ -6,16 +6,7 @@ export class VendorName extends ValueObject<{ value: string }> {
   }
 
   static create(input: string): VendorName {
-    const normalized = input.trim();
-    if (!normalized) {
-      throw Object.assign(new Error('Vendor name cannot be empty'), { statusCode: 422 });
-    }
-    if (normalized.length > 200) {
-      throw Object.assign(new Error('Vendor name cannot exceed 200 characters'), {
-        statusCode: 422,
-      });
-    }
-    return new VendorName(normalized);
+    return new VendorName(input.trim());
   }
 
   get value(): string {
@@ -29,17 +20,7 @@ export class VendorCode extends ValueObject<{ value: string }> {
   }
 
   static create(input: string): VendorCode {
-    const normalized = input.trim().toUpperCase();
-    if (!normalized) {
-      throw Object.assign(new Error('Vendor code cannot be empty'), { statusCode: 422 });
-    }
-    if (!/^[A-Z0-9-]{2,32}$/.test(normalized)) {
-      throw Object.assign(
-        new Error('Vendor code must be 2-32 chars of letters, digits or dashes'),
-        { statusCode: 422 },
-      );
-    }
-    return new VendorCode(normalized);
+    return new VendorCode(input.trim().toUpperCase());
   }
 
   get value(): string {
@@ -53,11 +34,7 @@ export class VendorEmail extends ValueObject<{ value: string }> {
   }
 
   static create(input: string): VendorEmail {
-    const normalized = input.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
-      throw Object.assign(new Error('Invalid vendor email'), { statusCode: 422 });
-    }
-    return new VendorEmail(normalized);
+    return new VendorEmail(input.trim().toLowerCase());
   }
 
   get value(): string {

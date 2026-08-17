@@ -2,19 +2,31 @@ import { invariantRegistry } from '@business/shared-business/domain/registries/i
 import { ProductStatus } from './product.aggregate';
 
 invariantRegistry.register<{ sku: string }>('product.create', {
-  name: 'product-sku-required',
+  name: 'product-sku-format',
   check: ({ sku }) => {
-    if (!sku.trim()) {
+    const normalized = sku.trim().toUpperCase();
+    if (!normalized) {
       throw Object.assign(new Error('SKU cannot be empty'), { statusCode: 422 });
+    }
+    if (!/^[A-Z0-9-]{2,64}$/.test(normalized)) {
+      throw Object.assign(new Error('SKU must be 2-64 chars of letters, digits or dashes'), {
+        statusCode: 422,
+      });
     }
   },
 });
 
 invariantRegistry.register<{ name: string }>('product.create', {
-  name: 'product-name-required',
+  name: 'product-name-length',
   check: ({ name }) => {
-    if (!name.trim()) {
+    const normalized = name.trim();
+    if (!normalized) {
       throw Object.assign(new Error('Product name cannot be empty'), { statusCode: 422 });
+    }
+    if (normalized.length > 200) {
+      throw Object.assign(new Error('Product name cannot exceed 200 characters'), {
+        statusCode: 422,
+      });
     }
   },
 });

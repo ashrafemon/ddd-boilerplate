@@ -3,6 +3,15 @@ import { PurchaseOrderStatus } from '../entities';
 
 export type { PurchaseOrderStatus };
 
+invariantRegistry.register<{ orderNumber: string }>('purchase-order.create', {
+  name: 'purchase-order-number-required',
+  check: ({ orderNumber }) => {
+    if (!orderNumber.trim()) {
+      throw Object.assign(new Error('Order number cannot be empty'), { statusCode: 422 });
+    }
+  },
+});
+
 invariantRegistry.register<{ lineCount: number }>('purchase-order.has-lines', {
   name: 'purchase-order-has-lines',
   check: ({ lineCount }) => {

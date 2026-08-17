@@ -6,11 +6,7 @@ export class OrderNumber extends ValueObject<{ value: string }> {
   }
 
   static create(input: string): OrderNumber {
-    const normalized = input.trim().toUpperCase();
-    if (!normalized) {
-      throw Object.assign(new Error('Order number cannot be empty'), { statusCode: 422 });
-    }
-    return new OrderNumber(normalized);
+    return new OrderNumber(input.trim().toUpperCase());
   }
 
   static generate(sequence: number): OrderNumber {

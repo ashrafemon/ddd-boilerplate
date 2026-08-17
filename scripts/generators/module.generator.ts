@@ -323,13 +323,6 @@ function generateVOs(config: ModuleConfig): string {
   return vos.map(p => {
     const voName = toPascalCase(p.name);
     const voType = p.type === 'money' ? 'Money' : 'string';
-    const validation = p.type === 'money'
-      ? ''
-      : p.maxLength
-        ? `if (normalized.length > ${p.maxLength}) {
-          throw Object.assign(new Error('${p.name} exceeds max length'), { statusCode: 422 });
-        }`
-        : '';
 
     return `export class ${voName} extends ValueObject<{ value: ${voType} }> {
   private constructor(value: ${voType}) {
@@ -338,7 +331,6 @@ function generateVOs(config: ModuleConfig): string {
 
   static create(input: ${voType}): ${voName} {
     const normalized = input as string;
-    ${validation}
     return new ${voName}(normalized);
   }
 

@@ -1,4 +1,5 @@
 import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
+import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import {
   PurchaseOrder,
   CreatePurchaseOrderInput,
@@ -17,6 +18,10 @@ import './../policies/purchase-order.policy';
  */
 export class PurchaseOrderFactory extends DomainFactory<PurchaseOrder, CreatePurchaseOrderInput> {
   create(input: CreatePurchaseOrderInput): PurchaseOrder {
+    invariantRegistry.enforce('purchase-order.create', {
+      orderNumber: input.orderNumber,
+    });
+
     const now = new Date();
     const purchaseOrder = PurchaseOrder.instantiate(
       PurchaseOrderId.generate(),

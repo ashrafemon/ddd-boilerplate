@@ -14,7 +14,11 @@ import './../policies/vendor.policy';
  */
 export class VendorFactory extends DomainFactory<Vendor, CreateVendorInput> {
   create(input: CreateVendorInput): Vendor {
-    invariantRegistry.enforce('vendor.create', { code: input.code, name: input.name });
+    invariantRegistry.enforce('vendor.create', {
+      code: input.code,
+      name: input.name,
+      email: input.email,
+    });
 
     const now = new Date();
     const vendor = Vendor.instantiate(
