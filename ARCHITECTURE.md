@@ -145,8 +145,9 @@ re-exports their port classes (`OutboxWriterPort`, `InProcessEventBus`,
 `shared-business/` holds framework-independent primitives:
 
 ```text
-domain/        AggregateRoot, Entity, DomainEvent, factories, identifiers,
-               InvariantRegistry, PolicyRegistry, DomainEventRegistry, Money, Result
+domain/        AggregateRoot, Entity, DomainEvent, factories,
+               InvariantRegistry, PolicyRegistry, DomainEventRegistry
+domain/common/value-objects/  Money, VendorId (cross-module reusable VOs)
 application/   UseCase / CommandUseCase / QueryUseCase / Handlers
 ports/         UnitOfWork, Clock, IdGenerator, InProcessEventBus, MessagePublisher,
                ModulePortResolver
@@ -379,7 +380,7 @@ Aggregates are rich: they enforce their own invariants and raise events. State t
 
 - `AggregateRoot<ID>` — tracks `version` (optimistic concurrency) and a domain-event
   snapshot drained via `pullEvents()`.
-- `Entity<ID>`, `ValueObject`, `DomainEvent`, `Identifier`, `Money`, `Result`.
+- `Entity<ID>`, `ValueObject`, `DomainEvent`, `Money`.
 - `InvariantRegistry` / `PolicyRegistry` — aggregates register invariants and policies;
   rule classes are kept decoupled from aggregate classes (no cross-imports).
 - `DomainEventRegistry` — maps event type names to **rehydrators** so the outbox publisher can

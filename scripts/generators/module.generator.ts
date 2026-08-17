@@ -170,7 +170,7 @@ function generateAggregate(config: ModuleConfig): string {
   const statusEnum = states?.length ? `\nexport enum ${entityName}Status {\n${states.map(s => `  ${s} = '${s}',`).join('\n')}\n}` : '';
 
   return `import { AggregateRoot } from '@business/shared-business/domain/bases';
-import { invariantRegistry } from '@business/shared-business/domain/invariants';
+import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { ${entityName}Id } from '../value-objects';
 import {
   ${entityName}Activated,
@@ -251,8 +251,8 @@ ${states?.length ? `  activate(): void {
 function generateFactory(config: ModuleConfig): string {
   const { entityName, properties, name } = config;
 
-  return `import { DomainFactory } from '@business/shared-business/domain/factories';
-import { invariantRegistry } from '@business/shared-business/domain/invariants';
+  return `import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
+import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { ${entityName}, Create${entityName}Input, ${entityName}Props } from '../entities';
 import { ${entityName}Id } from '../value-objects';
 import { ${entityName}Created } from '../events';
@@ -292,11 +292,25 @@ export const ${toCamelCase(name)}Factory = new ${entityName}Factory();
 
 function generateIdVO(config: ModuleConfig): string {
   const { entityName } = config;
-  return `import { Identifier } from '@business/shared-business/domain/identifier';
+  return `import { randomUUID } from 'crypto';
 
-export class ${entityName}Id extends Identifier {
-  constructor(value: string) {
-    super(value);
+export class ${entityName}Id {
+  private constructor(public readonly value: string) {}
+
+  static fromString(value: string): ${entityName}Id {
+    return new ${entityName}Id(value);
+  }
+
+  static generate(): ${entityName}Id {
+    return new ${entityName}Id(randomUUID());
+  }
+
+  toString(): string {
+    return this.value;
+  }
+
+  equals(other?: ${entityName}Id): boolean {
+    return !!other && this.value === other.value;
   }
 }
 `;
@@ -367,7 +381,7 @@ function generateRegistryFile(config: ModuleConfig): string {
 });`;
   }).join('\n\n') || '';
 
-  return `import { domainEventRegistry } from '@business/shared-business/domain/events';
+  return `import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
 import { ${entityName}Id } from '../value-objects';
 ${events?.filter(e => e.name !== 'Created').map(e => {
   const eventClassName = `${entityName}${e.name}`;
@@ -410,7 +424,7 @@ ${states.map(s => `      [${entityName}Status.${s}]: [],`).join('\n')}
   },
 });` : '';
 
-  return `import { invariantRegistry } from '@business/shared-business/domain/invariants';
+  return `import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { ${entityName}Status } from '../entities';
 
 ${checks}
@@ -423,8 +437,7 @@ function generatePolicy(config: ModuleConfig): string {
   const { name, entityName, states } = config;
   const kebab = toKebabCase(name);
 
-  return `import { fail, ok } from '@business/shared-business/domain/result';
-import { policyRegistry } from '@business/shared-business/domain/policies';
+  return `import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { ${entityName}Status } from '../entities';
 
 export interface ${entityName}State {
@@ -435,9 +448,9 @@ policyRegistry.register<${entityName}State>('${kebab}.lifecycle', {
   name: '${kebab}-lifecycle',
   evaluate: ({ status }) => {
     if (status === ${entityName}Status.${states?.[0] || 'ACTIVE'}) {
-      return ok(true);
+      return true;
     }
-    return fail('Policy evaluation failed');
+    return false;
   },
 });
 `;

@@ -10,7 +10,7 @@ import {
   ProductIdRef,
   VendorIdRef,
 } from '@business/procurement/purchase/domain/value-objects/purchase-order.vos';
-import { Money } from '@business/shared-business/domain/money.value-object';
+import { Money } from '@business/shared-business/domain/common/value-objects/money';
 
 interface PurchaseOrderLineRow {
   productId: string;

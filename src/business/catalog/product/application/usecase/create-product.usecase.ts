@@ -3,7 +3,7 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
-import { Money } from '@business/shared-business/domain/money.value-object';
+import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { productFactory } from '../../domain/factories';
 import { ProductId } from '../../domain/value-objects';
 import { Sku } from '../../domain/value-objects';

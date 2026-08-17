@@ -1,4 +1,4 @@
-import { DomainFactory } from '@business/shared-business/domain/factories';
+import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import {
   PurchaseOrder,
   CreatePurchaseOrderInput,

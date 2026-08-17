@@ -1,5 +1,4 @@
-import { fail, ok } from '@business/shared-business/domain/result';
-import { policyRegistry } from '@business/shared-business/domain/policies';
+import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { PurchaseOrderStatus } from '../entities';
 
 export interface PurchaseOrderPolicyState {
@@ -8,17 +7,10 @@ export interface PurchaseOrderPolicyState {
   autoApproveThreshold: number;
 }
 
-/**
- * Approval policy — a decision point that evolves independently of invariants:
- * auto-approves orders under the company's threshold, routes larger ones for
- * manual approval.
- */
 policyRegistry.register<PurchaseOrderPolicyState>('purchase-order.approval', {
   name: 'purchase-order-approval-threshold',
   evaluate: ({ status, totalAmount, autoApproveThreshold }) => {
-    if (status !== PurchaseOrderStatus.SUBMITTED) {
-      return fail('Only submitted purchase orders can be evaluated for approval');
-    }
-    return ok(totalAmount > autoApproveThreshold);
+    if (status !== PurchaseOrderStatus.SUBMITTED) return false;
+    return totalAmount > autoApproveThreshold;
   },
 });

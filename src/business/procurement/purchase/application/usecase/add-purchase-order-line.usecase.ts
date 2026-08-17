@@ -4,7 +4,7 @@ import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { ModulePortResolver } from '@shared-kernel/ports';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
-import { Money } from '@business/shared-business/domain/money.value-object';
+import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { PurchaseOrderId } from '../../domain/value-objects';
 import { PurchasableProductQueryPort } from '../ports/outbound';
 import { PurchaseOrderCommandRepositoryPort } from '../../domain/domain-ports';

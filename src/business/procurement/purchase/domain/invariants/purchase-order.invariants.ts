@@ -1,4 +1,4 @@
-import { invariantRegistry } from '@business/shared-business/domain/invariants';
+import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { PurchaseOrderStatus } from '../entities';
 
 export type { PurchaseOrderStatus };

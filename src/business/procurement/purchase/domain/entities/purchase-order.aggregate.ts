@@ -1,7 +1,7 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases';
-import { Money } from '@business/shared-business/domain/money.value-object';
-import { invariantRegistry } from '@business/shared-business/domain/invariants';
-import { policyRegistry } from '@business/shared-business/domain/policies';
+import { Money } from '@business/shared-business/domain/common/value-objects/money';
+import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
+import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { PurchaseOrderId } from '../value-objects';
 import { OrderNumber, ProductIdRef, VendorIdRef } from '../value-objects';
 import { PurchaseOrderLine } from './purchase-order-line.entity';
@@ -187,14 +187,10 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
    * whether manual approval is required for the current aggregate state.
    */
   requiresManualApproval(threshold: number): boolean {
-    const result = policyRegistry.evaluate('purchase-order.approval', {
+    return policyRegistry.evaluate('purchase-order.approval', {
       status: this.props.status,
       totalAmount: this.total.amount,
       autoApproveThreshold: threshold,
     });
-    if (!result.ok) {
-      return false;
-    }
-    return result.value === true;
   }
 }

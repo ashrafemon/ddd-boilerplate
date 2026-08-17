@@ -2,7 +2,7 @@ import { Product, ProductProps, ProductStatus } from '@business/catalog/product/
 import { ProductId } from '@business/catalog/product/domain/value-objects';
 import { ProductName } from '@business/catalog/product/domain/value-objects';
 import { Sku } from '@business/catalog/product/domain/value-objects';
-import { Money } from '@business/shared-business/domain/money.value-object';
+import { Money } from '@business/shared-business/domain/common/value-objects/money';
 
 interface ProductRow {
   id: string;

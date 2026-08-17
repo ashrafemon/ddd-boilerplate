@@ -1,4 +1,4 @@
-import { domainEventRegistry } from '@business/shared-business/domain/events';
+import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
 import { PurchaseOrderCreated } from './purchase-order.created.event';
 import { PurchaseOrderLineAdded } from './purchase-order.line-added.event';
 import { PurchaseOrderLineRemoved } from './purchase-order.line-removed.event';

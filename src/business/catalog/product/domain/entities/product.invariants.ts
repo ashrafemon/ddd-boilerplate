@@ -1,4 +1,4 @@
-import { invariantRegistry } from '@business/shared-business/domain/invariants';
+import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { ProductStatus } from './product.aggregate';
 
 invariantRegistry.register<{ sku: string }>('product.create', {

@@ -1,5 +1,5 @@
-import { DomainFactory } from '@business/shared-business/domain/factories';
-import { invariantRegistry } from '@business/shared-business/domain/invariants';
+import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
+import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { Product, CreateProductInput, ProductProps, ProductStatus } from '../entities';
 import { ProductId } from '../value-objects';
 import { Sku } from '../value-objects';

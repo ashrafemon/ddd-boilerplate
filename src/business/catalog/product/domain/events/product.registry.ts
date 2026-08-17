@@ -1,5 +1,5 @@
-import { Money } from '@business/shared-business/domain/money.value-object';
-import { domainEventRegistry } from '@business/shared-business/domain/events';
+import { Money } from '@business/shared-business/domain/common/value-objects/money';
+import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
 import { ProductId } from '../value-objects';
 import { ProductCreated } from './product.created.event';
 import { ProductUpdated } from './product.updated.event';

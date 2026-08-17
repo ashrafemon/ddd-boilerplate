@@ -1,5 +1,4 @@
 import { ValueObject } from '@business/shared-business/domain/bases';
-import { Identifier } from '@business/shared-business/domain/identifier';
 
 export class OrderNumber extends ValueObject<{ value: string }> {
   private constructor(value: string) {
@@ -23,14 +22,26 @@ export class OrderNumber extends ValueObject<{ value: string }> {
   }
 }
 
-export class VendorIdRef extends Identifier {
-  constructor(value: string) {
-    super(value);
+export class VendorIdRef {
+  constructor(public readonly value: string) {}
+
+  toString(): string {
+    return this.value;
+  }
+
+  equals(other?: VendorIdRef): boolean {
+    return !!other && this.value === other.value;
   }
 }
 
-export class ProductIdRef extends Identifier {
-  constructor(value: string) {
-    super(value);
+export class ProductIdRef {
+  constructor(public readonly value: string) {}
+
+  toString(): string {
+    return this.value;
+  }
+
+  equals(other?: ProductIdRef): boolean {
+    return !!other && this.value === other.value;
   }
 }

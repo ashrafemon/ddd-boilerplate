@@ -1,6 +1,6 @@
 import { VendorStatus } from './vendor.aggregate';
 import { VendorBlocked, VendorCreated } from '../events';
-import { policyRegistry } from '@business/shared-business/domain/policies';
+import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { vendorFactory } from '../factories';
 
 describe('Vendor aggregate', () => {
@@ -54,18 +54,14 @@ describe('Vendor aggregate', () => {
 
   it('evaluates orderability policy', () => {
     const active = create();
-    expect(policyRegistry.evaluate('vendor.orderability', { status: active.status }).ok).toBe(true);
+    expect(policyRegistry.evaluate('vendor.orderability', { status: active.status })).toBe(true);
 
     const blocked = create();
     blocked.block();
-    expect(policyRegistry.evaluate('vendor.orderability', { status: blocked.status }).ok).toBe(
-      false,
-    );
+    expect(policyRegistry.evaluate('vendor.orderability', { status: blocked.status })).toBe(false);
 
     const inactive = create();
     inactive.deactivate();
-    expect(policyRegistry.evaluate('vendor.orderability', { status: inactive.status }).ok).toBe(
-      false,
-    );
+    expect(policyRegistry.evaluate('vendor.orderability', { status: inactive.status })).toBe(false);
   });
 });

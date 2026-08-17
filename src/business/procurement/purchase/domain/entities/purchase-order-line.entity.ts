@@ -1,4 +1,4 @@
-import { Money } from '@business/shared-business/domain/money.value-object';
+import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { ProductIdRef } from '../value-objects';
 
 /**

@@ -1,7 +1,7 @@
 import { PurchaseOrder, PurchaseOrderStatus } from './purchase-order.aggregate';
-import { Money } from '@business/shared-business/domain/money.value-object';
+import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { PurchaseOrderApproved, PurchaseOrderSubmitted } from '../events';
-import { policyRegistry } from '@business/shared-business/domain/policies';
+import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { purchaseOrderFactory } from '../factories';
 
 describe('PurchaseOrder aggregate', () => {
@@ -87,18 +87,17 @@ describe('PurchaseOrder aggregate', () => {
         status: small.status,
         totalAmount: small.total.amount,
         autoApproveThreshold: 10000,
-      }).ok,
-    ).toBe(true);
+      }),
+    ).toBe(false);
 
     const big = create();
     big.addLine('product-1', 2000, Money.fromDecimal('10.00'));
     big.submit();
-    const result = policyRegistry.evaluate('purchase-order.approval', {
+    const passed = policyRegistry.evaluate('purchase-order.approval', {
       status: big.status,
       totalAmount: big.total.amount,
       autoApproveThreshold: 10000,
     });
-    expect(result.ok).toBe(true);
-    expect(result.ok && result.value).toBe(true);
+    expect(passed).toBe(true);
   });
 });

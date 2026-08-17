@@ -1,4 +1,4 @@
-import { domainEventRegistry } from '@business/shared-business/domain/events';
+import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
 import { VendorId } from '../value-objects';
 import { VendorCreated } from './vendor.created.event';
 import { VendorUpdated } from './vendor.updated.event';
