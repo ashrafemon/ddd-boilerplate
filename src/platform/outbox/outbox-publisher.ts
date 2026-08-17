@@ -1,18 +1,14 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IntegrationMessage, MessagePublisher } from '@shared-kernel/ports/message-publisher.port';
-import { IN_PROCESS_EVENT_BUS, InProcessEventBus } from '@shared-kernel/ports/event-bus.port';
+import { InProcessEventBus } from '@shared-kernel/ports/event-bus.port';
 import { domainEventRegistry } from '@business/shared-business/domain/events/domain-event.registry';
+import { OutboxMessageRecord, OutboxRepositoryPort } from './ports/outbox-repository.port';
+import { MessageRoutingPolicy } from '../events/message-routing.policy';
 import {
-  OUTBOX_REPOSITORY,
-  OutboxMessageRecord,
-  OutboxRepositoryPort,
-} from './ports/outbox-repository.port';
-import { MessageRoutingPolicy, MESSAGE_ROUTING_POLICY } from '../events/message-routing.policy';
-import {
-  KAFKA_PUBLISHER,
-  RABBITMQ_PUBLISHER,
-  SQS_PUBLISHER,
+  KafkaPublisher,
+  RabbitMqPublisher,
+  SqsPublisher,
 } from '@infrastructure/messaging/message-publisher.tokens';
 
 const PARALLEL_PUBLISH_LIMIT = 10;
@@ -30,12 +26,12 @@ export class OutboxPublisher {
   private publishing = false;
 
   constructor(
-    @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: OutboxRepositoryPort,
-    @Inject(MESSAGE_ROUTING_POLICY) private readonly routingPolicy: MessageRoutingPolicy,
-    @Inject(IN_PROCESS_EVENT_BUS) private readonly eventBus: InProcessEventBus,
-    @Inject(RABBITMQ_PUBLISHER) private readonly rabbitmqPublisher: MessagePublisher,
-    @Inject(KAFKA_PUBLISHER) private readonly kafkaPublisher: MessagePublisher,
-    @Inject(SQS_PUBLISHER) private readonly sqsPublisher: MessagePublisher,
+    @Inject(OutboxRepositoryPort) private readonly outboxRepository: OutboxRepositoryPort,
+    @Inject(MessageRoutingPolicy) private readonly routingPolicy: MessageRoutingPolicy,
+    @Inject(InProcessEventBus) private readonly eventBus: InProcessEventBus,
+    @Inject(RabbitMqPublisher) private readonly rabbitmqPublisher: MessagePublisher,
+    @Inject(KafkaPublisher) private readonly kafkaPublisher: MessagePublisher,
+    @Inject(SqsPublisher) private readonly sqsPublisher: MessagePublisher,
     configService: ConfigService,
   ) {
     this.configService = configService;

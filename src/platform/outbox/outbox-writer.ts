@@ -3,7 +3,7 @@ import { ClsService } from 'nestjs-cls';
 import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { IntegrationMessage } from '@shared-kernel/ports/message-publisher.port';
 import { OutboxWriterPort } from './ports/outbox-writer.port';
-import { OUTBOX_REPOSITORY, OutboxRepositoryPort } from './ports/outbox-repository.port';
+import { OutboxRepositoryPort } from './ports/outbox-repository.port';
 import {
   REQUEST_ID_KEY,
   CORRELATION_ID_KEY,
@@ -17,7 +17,7 @@ import {
 @Injectable()
 export class OutboxWriter implements OutboxWriterPort {
   constructor(
-    @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: OutboxRepositoryPort,
+    @Inject(OutboxRepositoryPort) private readonly outboxRepository: OutboxRepositoryPort,
     private readonly cls: ClsService,
   ) {}
 

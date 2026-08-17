@@ -4,9 +4,7 @@ import { DomainEvent } from '../domain/bases';
  * In-process domain event bus. Used for local reactions (sagas, listeners)
  * where external delivery guarantees are not required.
  */
-export interface InProcessEventBus {
-  publish(event: DomainEvent): void;
-  publishAll(events: readonly DomainEvent[]): void;
+export abstract class InProcessEventBus {
+  abstract publish(event: DomainEvent): void;
+  abstract publishAll(events: readonly DomainEvent[]): void;
 }
-
-export const IN_PROCESS_EVENT_BUS = Symbol('IN_PROCESS_EVENT_BUS');

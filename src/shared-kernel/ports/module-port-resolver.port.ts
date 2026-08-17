@@ -9,8 +9,8 @@
  * finds the provider. Adapters resolved this way must never call
  * infrastructure services; they delegate to use cases.
  */
-export interface ModulePortResolver {
-  resolvePort<TPort>(token: symbol | string | (abstract new (...args: never[]) => TPort)): TPort;
+export abstract class ModulePortResolver {
+  abstract resolvePort<TPort>(
+    token: symbol | string | (abstract new (...args: never[]) => TPort),
+  ): TPort;
 }
-
-export const MODULE_PORT_RESOLVER = Symbol('MODULE_PORT_RESOLVER');

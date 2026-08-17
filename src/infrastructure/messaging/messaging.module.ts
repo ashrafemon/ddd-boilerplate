@@ -5,7 +5,7 @@ import { SqsModule } from '@ssut/nestjs-sqs';
 import { KafkaConsumerHost } from './kafka/kafka-consumer.host';
 import { KafkaPublisherAdapter } from './kafka/kafka-publisher.adapter';
 import { KafkaService } from './kafka/kafka.service';
-import { KAFKA_PUBLISHER, RABBITMQ_PUBLISHER, SQS_PUBLISHER } from './message-publisher.tokens';
+import { RabbitMqPublisher, KafkaPublisher, SqsPublisher } from './message-publisher.tokens';
 import { RabbitMQConfigFactory } from './rabbitmq/rabbitmq-config.factory';
 import { RabbitMQPublisherAdapter } from './rabbitmq/rabbitmq-publisher.adapter';
 import { SqsConfigFactory } from './sqs/sqs-config.factory';
@@ -34,14 +34,14 @@ import { SqsPublisherAdapter } from './sqs/sqs-publisher.adapter';
     KafkaPublisherAdapter,
     RabbitMQPublisherAdapter,
     SqsPublisherAdapter,
-    { provide: RABBITMQ_PUBLISHER, useExisting: RabbitMQPublisherAdapter },
-    { provide: KAFKA_PUBLISHER, useExisting: KafkaPublisherAdapter },
-    { provide: SQS_PUBLISHER, useExisting: SqsPublisherAdapter },
+    { provide: RabbitMqPublisher, useExisting: RabbitMQPublisherAdapter },
+    { provide: KafkaPublisher, useExisting: KafkaPublisherAdapter },
+    { provide: SqsPublisher, useExisting: SqsPublisherAdapter },
   ],
   exports: [
-    KAFKA_PUBLISHER,
-    RABBITMQ_PUBLISHER,
-    SQS_PUBLISHER,
+    KafkaPublisher,
+    RabbitMqPublisher,
+    SqsPublisher,
     KafkaService,
     RabbitMQConfigFactory,
     SqsConfigFactory,

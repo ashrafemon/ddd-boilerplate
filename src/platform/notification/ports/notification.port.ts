@@ -13,8 +13,6 @@ export interface NotificationMessage {
  * the platform dispatches them over the configured infrastructure channels
  * (SES email / SNS push). Business never talks to the AWS clients directly.
  */
-export interface NotificationDispatchPort {
-  send(message: NotificationMessage): Promise<void>;
+export abstract class NotificationDispatchPort {
+  abstract send(message: NotificationMessage): Promise<void>;
 }
-
-export const NOTIFICATION_DISPATCH = Symbol('NOTIFICATION_DISPATCH');

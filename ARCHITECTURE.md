@@ -137,7 +137,7 @@ Cross-cutting client adapters (see [§10](#10-infrastructure-layer)). Infrastruc
 
 Cross-cutting support services used by business modules (see [§9](#9-platform-layer)).
 The `PlatformModule` (`@Global`) is the composition root: it imports the sub-modules and
-re-exports their port tokens (`OUTBOX_WRITER`, `IN_PROCESS_EVENT_BUS`,
+re-exports their port classes (`OutboxWriterPort`, `InProcessEventBus`,
 `MESSAGE_ROUTING_POLICY`, `NUMBERING`, `AUDIT`, `NOTIFICATION_DISPATCH`, `COMPANY_CONFIG`).
 
 ### business/
@@ -173,7 +173,7 @@ business/<context>/<module>/
 │   ├── policies/          # business policy definitions + registration
 │   ├── errors/            # module-specific domain errors
 │   ├── factories/         # aggregate factory (only sanctioned build path)
-│   └── ports/             # command & query repository ports + tokens
+│   └── ports/             # command & query repository ports (abstract classes)
 ├── application/
 │   ├── usecase/           # CommandUseCase / QueryUseCase classes
 │   ├── adapters/          # implementations of OTHER modules' outbound ports
@@ -297,16 +297,16 @@ private readonly productRepository: ProductCommandRepositoryPort
 
 This is what makes use cases unit-testable with fakes (see [§14](#14-testing-strategy)).
 
-### Cross-cutting port tokens exported globally
+### Cross-cutting port classes exported globally
 
-Business modules inject `@Platform` and `@shared-kernel` tokens directly:
+Business modules inject `@Platform` and `@shared-kernel` port classes directly:
 
-- `OUTBOX_WRITER` — append raised domain events to the outbox (called inside the
+- `OutboxWriterPort` — append raised domain events to the outbox (called inside the
   `@Transactional` boundary; delivery is owned by the outbox publisher).
-- `MODULE_PORT_RESOLVER` — resolve a port/use-case from the Nest container for
+- `ModulePortResolver` — resolve a port/use-case from the Nest container for
   cross-module calls.
-- `COMPANY_CONFIG`, `NUMBERING`, `AUDIT`, `NOTIFICATION_DISPATCH` — platform services.
-- `IN_PROCESS_EVENT_BUS` / `MESSAGE_ROUTING_POLICY` — consumed by the outbox publisher and
+- `CompanyConfigPort`, `NumberingPort`, `AuditPort`, `NotificationDispatchPort` — platform services.
+- `InProcessEventBus` / `MessageRoutingPolicy` — consumed by the outbox publisher and
   platform; business modules react to events via `@OnEvent`/broker consumers instead of
   publishing directly.
 
@@ -325,22 +325,22 @@ Example — PurchaseOrder needs vendor + product data:
 ```text
 business/procurement/purchase/application/ports/outbound/vendor-query.port.ts
 └─ OrderableVendorQueryPort { getOrderableVendor(id): Promise<VendorReference|null> }
-   + token: PURCHASE_ORDER_VENDOR_PORT
+    + port: OrderableVendorQueryPort (abstract class, used as token)
 
 business/supplier/vendor/application/adapters/vendor-query.adapter.ts
 └─ implements OrderableVendorQueryPort
    └─ delegates to GetOrderableVendorUseCase (its own module)
 
 business/supplier/vendor/vendor.module.ts
-└─ { provide: PURCHASE_ORDER_VENDOR_PORT, useExisting: VendorQueryAdapter }
-   + exports PURCHASE_ORDER_VENDOR_PORT
+└─ { provide: OrderableVendorQueryPort, useExisting: VendorQueryAdapter }
+   + exports OrderableVendorQueryPort
 ```
 
 The use case resolves the port lazily and calls it:
 
 ```ts
 private get vendorQueryPort(): OrderableVendorQueryPort {
-  return this.portResolver.resolvePort<OrderableVendorQueryPort>(PURCHASE_ORDER_VENDOR_PORT);
+  return this.portResolver.resolvePort<OrderableVendorQueryPort>(OrderableVendorQueryPort);
 }
 ```
 
@@ -352,7 +352,7 @@ sequenceDiagram
     participant UC as GetOrderableVendorUseCase
     participant VR as VendorQueryRepository
     participant DB as Prisma (read service)
-    PO->>RES: resolvePort(PURCHASE_ORDER_VENDOR_PORT)
+    PO->>RES: resolvePort(OrderableVendorQueryPort)
     RES-->>PO: VendorQueryAdapter
     PO->>VA: getOrderableVendor(id)
     VA->>UC: execute(id)
@@ -365,7 +365,7 @@ Rules for cross-module adapters:
 
 - The adapter lives in the **producing** module (`application/adapters`) and calls **only** its
   own use cases.
-- The consuming module owns the port contract (structural reference shapes) and the token.
+- The consuming module owns the port contract (structural reference shapes).
 - No `import { VendorModule } ...`; no direct access to another module's repository.
 
 ---
@@ -527,11 +527,11 @@ platform/
 ├── numbering/       NumberingModule — PrismaNumberingService + NumberingPort
 ├── notification/    NotificationModule — NotificationDispatchService + NotificationPort
 ├── configuration/   ConfigurationModule — PrismaCompanyConfigAdapter + CompanyConfigPort
-└── platform.module.ts  @Global composition root re-exporting all port tokens
+└── platform.module.ts  @Global composition root re-exporting all port classes
 ```
 
 `PlatformModule` is `@Global` and the single composition root business modules depend on.
-Business code injects the **tokens** (`OUTBOX_WRITER`, `COMPANY_CONFIG`, ...) and never
+Business code injects the **port classes** (`OutboxWriterPort`, `CompanyConfigPort`, ...) and never
 imports the concrete platform services.
 
 ---
@@ -548,7 +548,7 @@ infrastructure/
 │                        NestModulePortResolver (ModuleRef)
 ├── messaging/           RabbitMQ publisher (golevelup), Kafka publisher (kafkajs),
 │                        KafkaConsumerHost, SQS publisher (@ssut/nestjs-sqs),
-│                        tokens: RABBITMQ_PUBLISHER / KAFKA_PUBLISHER / SQS_PUBLISHER
+│                        RabbitMqPublisher, KafkaPublisher, SqsPublisher
 ├── cache/               RedisAdapter, MemcachedAdapter (implements CachePort)
 ├── notification/        SES email adapter, SNS notification adapter
 ├── observability/       SentryErrorTracking (ErrorTrackingPort), PrometheusMetrics
@@ -690,15 +690,15 @@ controllers, no setters on aggregates.
    `domain/events`, `domain/invariants` (+ registration), `domain/policies`
    (+ registration), `domain/errors`, `domain/factories`.
 2. **Ports** — `domain/ports/product-command-repository.port.ts` +
-   `product-query-repository.port.ts` with tokens.
+    `product-query-repository.port.ts` with abstract classes.
 3. **Application** — `application/usecase` command use cases (`@Transactional`, aggregate →
    save → outbox) and query use cases (read-only via query repo). Add event rehydrators to
    the `DomainEventRegistry` if consumers should listen to rebuilt events.
 4. **Consumers** — `application/consumers` only if the module reacts to broker/in-process
    events.
 5. **Presentation** — `presentation/http` controllers + request DTOs (validated at boundary).
-6. **Module** — `<module>.module.ts` binding command/query repository tokens and exporting
-   anything other modules may resolve (cross-module adapters + tokens).
+6. **Module** — `<module>.module.ts` binding command/query repository ports and exporting
+   anything other modules may resolve (cross-module adapters + port classes).
 7. **Persistence** — Prisma model file under `prisma/schema/`, migration, mapper +
    command/query repositories in `infrastructure/persistence/`.
 8. **Wire** — add the module to `AppModule` imports.

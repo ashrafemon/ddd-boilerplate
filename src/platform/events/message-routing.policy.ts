@@ -5,11 +5,9 @@
 export type BrokerTarget = 'rabbitmq' | 'kafka' | 'sqs';
 export type BrokerTargets = BrokerTarget[];
 
-export interface MessageRoutingPolicy {
-  resolve(eventType: string): BrokerTargets;
+export abstract class MessageRoutingPolicy {
+  abstract resolve(eventType: string): BrokerTargets;
 }
-
-export const MESSAGE_ROUTING_POLICY = Symbol('MESSAGE_ROUTING_POLICY');
 
 export class DefaultMessageRoutingPolicy implements MessageRoutingPolicy {
   resolve(eventType: string): BrokerTargets {

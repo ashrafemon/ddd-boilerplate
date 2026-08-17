@@ -13,8 +13,6 @@ export interface AuditEntry {
  * Governance/audit port. Business modules record what happened, when, by whom
  * and what changed. The platform persists the trail through infrastructure.
  */
-export interface AuditPort {
-  record(entry: AuditEntry): Promise<void>;
+export abstract class AuditPort {
+  abstract record(entry: AuditEntry): Promise<void>;
 }
-
-export const AUDIT = Symbol('AUDIT');

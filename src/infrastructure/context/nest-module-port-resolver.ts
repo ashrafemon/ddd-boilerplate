@@ -1,9 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import {
-  MODULE_PORT_RESOLVER,
-  ModulePortResolver,
-} from '@shared-kernel/ports/module-port-resolver.port';
+import { ModulePortResolver } from '@shared-kernel/ports/module-port-resolver.port';
 
 /**
  * NestJS implementation of {@link ModulePortResolver}. Uses `ModuleRef.get` to
@@ -22,4 +19,4 @@ export class NestModulePortResolver implements ModulePortResolver {
   }
 }
 
-export const injectModulePortResolver = Inject(MODULE_PORT_RESOLVER);
+export const injectModulePortResolver = Inject(ModulePortResolver);

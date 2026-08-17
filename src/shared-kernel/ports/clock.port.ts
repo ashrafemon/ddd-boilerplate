@@ -1,8 +1,6 @@
-export interface Clock {
-  now(): Date;
+export abstract class Clock {
+  abstract now(): Date;
 }
-
-export const CLOCK = Symbol('CLOCK');
 
 export const SystemClock: Clock = {
   now: () => new Date(),

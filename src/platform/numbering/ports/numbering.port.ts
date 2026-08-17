@@ -8,8 +8,6 @@ export interface NextNumberOptions {
  * number of a document sequence (purchase order, invoice, journal, ...) so
  * numbering stays consistent and gap-free across the whole ERP.
  */
-export interface NumberingPort {
-  nextNumber(sequenceKey: string, options?: NextNumberOptions): Promise<string>;
+export abstract class NumberingPort {
+  abstract nextNumber(sequenceKey: string, options?: NextNumberOptions): Promise<string>;
 }
-
-export const NUMBERING = Symbol('NUMBERING');

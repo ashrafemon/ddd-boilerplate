@@ -13,8 +13,6 @@ export interface CompanyConfig {
   isActive: boolean;
 }
 
-export interface CompanyConfigPort {
-  getCompanyConfig(companyId?: string): Promise<CompanyConfig>;
+export abstract class CompanyConfigPort {
+  abstract getCompanyConfig(companyId?: string): Promise<CompanyConfig>;
 }
-
-export const COMPANY_CONFIG = Symbol('COMPANY_CONFIG');

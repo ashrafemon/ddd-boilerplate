@@ -5,8 +5,6 @@ import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
  * platform outbox writer; called by application use cases inside a unit of
  * work so the write is atomic with the aggregate change.
  */
-export interface OutboxWriterPort {
-  append(event: DomainEvent, aggregateType: string, aggregateId: string): Promise<void>;
+export abstract class OutboxWriterPort {
+  abstract append(event: DomainEvent, aggregateType: string, aggregateId: string): Promise<void>;
 }
-
-export const OUTBOX_WRITER = Symbol('OUTBOX_WRITER');

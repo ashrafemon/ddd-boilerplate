@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
-import { IN_PROCESS_EVENT_BUS } from '@shared-kernel/ports/event-bus.port';
+import { InProcessEventBus } from '@shared-kernel/ports/event-bus.port';
 import { NestEventBusAdapter } from './nest-event-bus.adapter';
-import { DefaultMessageRoutingPolicy, MESSAGE_ROUTING_POLICY } from './message-routing.policy';
+import { DefaultMessageRoutingPolicy, MessageRoutingPolicy } from './message-routing.policy';
 
 /**
  * Events sub-system — in-process domain event bus and the broker routing
@@ -13,9 +13,9 @@ import { DefaultMessageRoutingPolicy, MESSAGE_ROUTING_POLICY } from './message-r
   providers: [
     NestEventBusAdapter,
     DefaultMessageRoutingPolicy,
-    { provide: IN_PROCESS_EVENT_BUS, useExisting: NestEventBusAdapter },
-    { provide: MESSAGE_ROUTING_POLICY, useExisting: DefaultMessageRoutingPolicy },
+    { provide: InProcessEventBus, useExisting: NestEventBusAdapter },
+    { provide: MessageRoutingPolicy, useExisting: DefaultMessageRoutingPolicy },
   ],
-  exports: [IN_PROCESS_EVENT_BUS, MESSAGE_ROUTING_POLICY],
+  exports: [InProcessEventBus, MessageRoutingPolicy],
 })
 export class EventsModule {}

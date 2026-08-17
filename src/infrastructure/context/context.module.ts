@@ -3,7 +3,7 @@ import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { ClsPluginTransactional } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Global, Module } from '@nestjs/common';
-import { MODULE_PORT_RESOLVER } from '@shared-kernel/ports/module-port-resolver.port';
+import { ModulePortResolver } from '@shared-kernel/ports/module-port-resolver.port';
 import { RequestContextPort } from '@shared-kernel/ports/context/request-context.port';
 import { ClsModule } from 'nestjs-cls';
 import { ClsRequestContextService } from './cls-request-context.service';
@@ -37,8 +37,8 @@ import { NestModulePortResolver } from './nest-module-port-resolver';
   providers: [
     { provide: RequestContextPort, useClass: ClsRequestContextService },
     NestModulePortResolver,
-    { provide: MODULE_PORT_RESOLVER, useExisting: NestModulePortResolver },
+    { provide: ModulePortResolver, useExisting: NestModulePortResolver },
   ],
-  exports: [RequestContextPort, MODULE_PORT_RESOLVER],
+  exports: [RequestContextPort, ModulePortResolver],
 })
 export class ContextModule {}
