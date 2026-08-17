@@ -13,9 +13,9 @@ import { ProductKafkaConsumer } from './application/consumers';
 import { ProductSqsConsumer } from './application/consumers';
 import { ProductEventEmitterConsumer } from './application/consumers';
 import { ProductQueryAdapter } from './application/adapters';
-import { PRODUCT_COMMAND_REPOSITORY } from './domain/ports';
-import { PRODUCT_QUERY_REPOSITORY } from './domain/ports';
-import { PURCHASE_ORDER_PRODUCT_PORT } from '@business/procurement/purchase/application/ports/outbound/product-query.port';
+import { ProductCommandRepositoryPort } from './domain/domain-ports';
+import { ProductQueryRepositoryPort } from './domain/domain-ports';
+import { PurchasableProductQueryPort } from '@business/procurement/purchase';
 import { PrismaProductCommandRepository } from './infrastructure/persistence';
 import { PrismaProductQueryRepository } from './infrastructure/persistence';
 
@@ -41,14 +41,14 @@ import { PrismaProductQueryRepository } from './infrastructure/persistence';
     ProductSqsConsumer,
     ProductEventEmitterConsumer,
     ProductQueryAdapter,
-    { provide: PURCHASE_ORDER_PRODUCT_PORT, useExisting: ProductQueryAdapter },
-    { provide: PRODUCT_COMMAND_REPOSITORY, useClass: PrismaProductCommandRepository },
-    { provide: PRODUCT_QUERY_REPOSITORY, useClass: PrismaProductQueryRepository },
+    { provide: PurchasableProductQueryPort, useExisting: ProductQueryAdapter },
+    { provide: ProductCommandRepositoryPort, useClass: PrismaProductCommandRepository },
+    { provide: ProductQueryRepositoryPort, useClass: PrismaProductQueryRepository },
   ],
   exports: [
     GetPurchasableProductUseCase,
     GetPurchasableProductsUseCase,
-    PURCHASE_ORDER_PRODUCT_PORT,
+    PurchasableProductQueryPort,
   ],
 })
 export class ProductModule {}

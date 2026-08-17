@@ -1,18 +1,11 @@
-import { InvariantException } from '@business/shared-business/errors';
 import { invariantRegistry } from '@business/shared-business/domain/invariants';
 import { ProductStatus } from './product.aggregate';
 
-/**
- * Product invariants — rules that MUST ALWAYS hold regardless of policy. Each
- * invariant is registered in the shared invariant registry and enforced by the
- * aggregate/factory through the registry, keeping the aggregate decoupled from
- * these rule modules.
- */
 invariantRegistry.register<{ sku: string }>('product.create', {
   name: 'product-sku-required',
   check: ({ sku }) => {
     if (!sku.trim()) {
-      throw new InvariantException('SKU cannot be empty');
+      throw Object.assign(new Error('SKU cannot be empty'), { statusCode: 422 });
     }
   },
 });
@@ -21,7 +14,7 @@ invariantRegistry.register<{ name: string }>('product.create', {
   name: 'product-name-required',
   check: ({ name }) => {
     if (!name.trim()) {
-      throw new InvariantException('Product name cannot be empty');
+      throw Object.assign(new Error('Product name cannot be empty'), { statusCode: 422 });
     }
   },
 });
@@ -30,7 +23,7 @@ invariantRegistry.register<{ unitPrice: number }>('product.create', {
   name: 'product-price-non-negative',
   check: ({ unitPrice }) => {
     if (unitPrice < 0) {
-      throw new InvariantException('Product price cannot be negative');
+      throw Object.assign(new Error('Product price cannot be negative'), { statusCode: 422 });
     }
   },
 });
@@ -49,7 +42,9 @@ invariantRegistry.register<{ status: ProductStatus; to: ProductStatus }>(
       };
 
       if (!allowed[status].includes(to)) {
-        throw new InvariantException(`Invalid product status transition: ${status} -> ${to}`);
+        throw Object.assign(new Error(`Invalid product status transition: ${status} -> ${to}`), {
+          statusCode: 422,
+        });
       }
     },
   },

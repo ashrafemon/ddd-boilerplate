@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { IN_PROCESS_EVENT_BUS } from '@business/shared-business/ports/event-bus.port';
+import { IN_PROCESS_EVENT_BUS } from '@shared-kernel/ports/event-bus.port';
 import { NestEventBusAdapter } from './nest-event-bus.adapter';
 import { DefaultMessageRoutingPolicy, MESSAGE_ROUTING_POLICY } from './message-routing.policy';
 

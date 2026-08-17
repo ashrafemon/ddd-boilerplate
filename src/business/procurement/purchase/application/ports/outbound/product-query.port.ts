@@ -14,8 +14,6 @@ export interface ProductReference {
   currency: string;
 }
 
-export interface PurchasableProductQueryPort {
-  getPurchasableProduct(id: string): Promise<ProductReference | null>;
+export abstract class PurchasableProductQueryPort {
+  abstract getPurchasableProduct(id: string): Promise<ProductReference | null>;
 }
-
-export const PURCHASE_ORDER_PRODUCT_PORT = Symbol('PURCHASE_ORDER_PRODUCT_PORT');

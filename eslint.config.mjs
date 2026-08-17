@@ -137,6 +137,110 @@ export default tseslint.config(
     },
   },
 
+  // Cross-module imports must go through the module root index.ts, not
+  // through internal paths like domain/, application/, infrastructure/.
+  // Within-module imports are still allowed.
+  {
+    files: ['src/business/catalog/product/**/*.ts', 'src/business/party/vendor/**/*.ts', 'src/business/supplier/vendor/**/*.ts', 'src/business/procurement/purchase/**/*.ts'],
+    ignores: [
+      'src/business/shared-business/**',
+      'src/business/catalog/product/index.ts',
+      'src/business/party/vendor/index.ts',
+      'src/business/supplier/vendor/index.ts',
+      'src/business/procurement/purchase/index.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@business/party/vendor/domain/**', '@business/party/vendor/application/**', '@business/party/vendor/infrastructure/**'],
+              message: 'Import from @business/party/vendor (root index) instead of internal paths',
+            },
+            {
+              group: ['@business/supplier/vendor/domain/**', '@business/supplier/vendor/application/**', '@business/supplier/vendor/infrastructure/**'],
+              message: 'Import from @business/supplier/vendor (root index) instead of internal paths',
+            },
+            {
+              group: ['@business/procurement/purchase/domain/**', '@business/procurement/purchase/application/**', '@business/procurement/purchase/infrastructure/**'],
+              message: 'Import from @business/procurement/purchase (root index) instead of internal paths',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/business/party/vendor/**/*.ts', 'src/business/supplier/vendor/**/*.ts', 'src/business/procurement/purchase/**/*.ts', 'src/business/catalog/product/**/*.ts'],
+    ignores: [
+      'src/business/shared-business/**',
+      'src/business/catalog/product/index.ts',
+      'src/business/party/vendor/index.ts',
+      'src/business/supplier/vendor/index.ts',
+      'src/business/procurement/purchase/index.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@business/catalog/product/domain/**', '@business/catalog/product/application/**', '@business/catalog/product/infrastructure/**'],
+              message: 'Import from @business/catalog/product (root index) instead of internal paths',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/business/procurement/purchase/**/*.ts', 'src/business/catalog/product/**/*.ts', 'src/business/party/vendor/**/*.ts'],
+    ignores: [
+      'src/business/shared-business/**',
+      'src/business/catalog/product/index.ts',
+      'src/business/party/vendor/index.ts',
+      'src/business/supplier/vendor/index.ts',
+      'src/business/procurement/purchase/index.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@business/supplier/vendor/domain/**', '@business/supplier/vendor/application/**', '@business/supplier/vendor/infrastructure/**'],
+              message: 'Import from @business/supplier/vendor (root index) instead of internal paths',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/business/catalog/product/**/*.ts', 'src/business/party/vendor/**/*.ts', 'src/business/supplier/vendor/**/*.ts'],
+    ignores: [
+      'src/business/shared-business/**',
+      'src/business/catalog/product/index.ts',
+      'src/business/party/vendor/index.ts',
+      'src/business/supplier/vendor/index.ts',
+      'src/business/procurement/purchase/index.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@business/procurement/purchase/domain/**', '@business/procurement/purchase/application/**', '@business/procurement/purchase/infrastructure/**'],
+              message: 'Import from @business/procurement/purchase (root index) instead of internal paths',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // Domain and application-layer ports must not cross into sibling business
   // modules.
   {

@@ -265,17 +265,15 @@ Each aggregate defines two repository ports in `domain/ports/`:
 
 ```ts
 // domain/ports/product-command-repository.port.ts
-export interface ProductCommandRepositoryPort {
-  save(product: Product): Promise<Product>;
+export abstract class ProductCommandRepositoryPort {
+  abstract save(product: Product): Promise<Product>;
 }
-export const PRODUCT_COMMAND_REPOSITORY = Symbol('PRODUCT_COMMAND_REPOSITORY');
 
 // domain/ports/product-query-repository.port.ts
-export interface ProductQueryRepositoryPort {
-  findById(id: string): Promise<ProductQueryRecord | null>;
-  findPurchasableById(id: string): Promise<ProductQueryRecord | null>;
+export abstract class ProductQueryRepositoryPort {
+  abstract findById(id: string): Promise<ProductQueryRecord | null>;
+  abstract findPurchasableById(id: string): Promise<ProductQueryRecord | null>;
 }
-export const PRODUCT_QUERY_REPOSITORY = Symbol('PRODUCT_QUERY_REPOSITORY');
 ```
 
 Bindings happen in the aggregate's module:
@@ -283,17 +281,17 @@ Bindings happen in the aggregate's module:
 ```ts
 @Module({
   providers: [
-    { provide: PRODUCT_COMMAND_REPOSITORY, useClass: PrismaProductCommandRepository },
-    { provide: PRODUCT_QUERY_REPOSITORY, useClass: PrismaProductQueryRepository },
+    { provide: ProductCommandRepositoryPort, useClass: PrismaProductCommandRepository },
+    { provide: ProductQueryRepositoryPort, useClass: PrismaProductQueryRepository },
   ],
 })
 export class ProductModule {}
 ```
 
-Use cases inject the **token**, never the class:
+Use cases inject the **abstract class** directly:
 
 ```ts
-@Inject(PRODUCT_COMMAND_REPOSITORY)
+@Inject(ProductCommandRepositoryPort)
 private readonly productRepository: ProductCommandRepositoryPort
 ```
 

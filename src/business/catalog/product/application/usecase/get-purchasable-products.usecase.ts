@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { QueryUseCase } from '@business/shared-business/application/use-case';
 import {
-  PRODUCT_QUERY_REPOSITORY,
+  ProductQueryRepositoryPort,
   ProductQueryRecord,
   ProductQueryRepositoryPort,
-} from '../../domain/ports';
+} from '../../domain/domain-ports';
 
 /**
  * Read-side use case. Skips the domain and returns projections directly.
@@ -12,7 +12,8 @@ import {
 @Injectable()
 export class GetPurchasableProductsUseCase implements QueryUseCase<string[], ProductQueryRecord[]> {
   constructor(
-    @Inject(PRODUCT_QUERY_REPOSITORY) private readonly productQueryRepo: ProductQueryRepositoryPort,
+    @Inject(ProductQueryRepositoryPort)
+    private readonly productQueryRepo: ProductQueryRepositoryPort,
   ) {}
 
   async execute(ids: string[]): Promise<ProductQueryRecord[]> {

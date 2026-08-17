@@ -1,7 +1,6 @@
 import { ProductStatus } from './product.aggregate';
 import { Money } from '@business/shared-business/domain/money.value-object';
 import { ProductCreated, ProductDiscontinued } from '../events';
-import { PolicyViolateException } from '@business/shared-business/errors';
 import { invariantRegistry } from '@business/shared-business/domain/invariants';
 import { productFactory } from '../factories';
 
@@ -54,7 +53,7 @@ describe('Product aggregate', () => {
     product.discontinue();
     expect(product.status).toBe(ProductStatus.DISCONTINUED);
 
-    expect(() => product.activate()).toThrow(PolicyViolateException);
+    expect(() => product.activate()).toThrow();
     expect(product.pullEvents().some(e => e instanceof ProductDiscontinued)).toBe(true);
   });
 

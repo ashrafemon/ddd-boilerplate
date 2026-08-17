@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { QueryUseCase } from '@business/shared-business/application/use-case';
 import {
-  PRODUCT_QUERY_REPOSITORY,
+  ProductQueryRepositoryPort,
   ProductQueryRecord,
   ProductQueryRepositoryPort,
-} from '../../domain/ports';
+} from '../../domain/domain-ports';
 
 /**
  * Cross-aggregate query surface. Other modules (e.g. purchase) depend on the
@@ -17,7 +17,8 @@ export class GetPurchasableProductUseCase implements QueryUseCase<
   ProductQueryRecord | null
 > {
   constructor(
-    @Inject(PRODUCT_QUERY_REPOSITORY) private readonly productQueryRepo: ProductQueryRepositoryPort,
+    @Inject(ProductQueryRepositoryPort)
+    private readonly productQueryRepo: ProductQueryRepositoryPort,
   ) {}
 
   async execute(id: string): Promise<ProductQueryRecord | null> {

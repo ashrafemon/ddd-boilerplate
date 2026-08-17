@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { KafkaEvent } from '@shared-kernel/decorators/kafka-event.decorator';
-import { IntegrationMessage } from '@business/shared-business/ports';
+import { IntegrationMessage } from '@shared-kernel/ports';
 
 /**
  * Kafka consumer for Product integration events using the custom @KafkaEvent

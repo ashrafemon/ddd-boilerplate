@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
@@ -7,11 +7,10 @@ import {
   CompanyConfigPort,
 } from '@platform/configuration/ports/company-config.port';
 import { PurchaseOrderId } from '../../domain/value-objects';
-import { PurchaseOrderErrors } from '../../domain/errors';
 import {
-  PURCHASE_ORDER_COMMAND_REPOSITORY,
   PurchaseOrderCommandRepositoryPort,
-} from '../../domain/ports';
+  PurchaseOrderCommandRepositoryPort,
+} from '../../domain/domain-ports';
 
 export type PurchaseOrderTransition = 'submit' | 'approve' | 'reject' | 'cancel' | 'complete';
 
@@ -27,7 +26,7 @@ export class PurchaseOrderTransitionUseCase implements CommandUseCase<
   PurchaseOrderId
 > {
   constructor(
-    @Inject(PURCHASE_ORDER_COMMAND_REPOSITORY)
+    @Inject(PurchaseOrderCommandRepositoryPort)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
     @Inject(OUTBOX_WRITER) private readonly outboxWriter: OutboxWriterPort,
     @Inject(COMPANY_CONFIG) private readonly companyConfig: CompanyConfigPort,
@@ -42,7 +41,7 @@ export class PurchaseOrderTransitionUseCase implements CommandUseCase<
     const id = PurchaseOrderId.fromString(input.id);
     const purchaseOrder = await this.purchaseOrderRepository.findById(id);
     if (!purchaseOrder) {
-      throw PurchaseOrderErrors.notFound();
+      throw new NotFoundException('Purchase order not found');
     }
 
     switch (input.transition) {

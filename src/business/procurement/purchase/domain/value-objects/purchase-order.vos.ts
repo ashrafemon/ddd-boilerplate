@@ -1,4 +1,3 @@
-import { ValidationError } from '@business/shared-business/domain/domain.error';
 import { ValueObject } from '@business/shared-business/domain/bases';
 import { Identifier } from '@business/shared-business/domain/identifier';
 
@@ -10,7 +9,7 @@ export class OrderNumber extends ValueObject<{ value: string }> {
   static create(input: string): OrderNumber {
     const normalized = input.trim().toUpperCase();
     if (!normalized) {
-      throw new ValidationError('Order number cannot be empty');
+      throw Object.assign(new Error('Order number cannot be empty'), { statusCode: 422 });
     }
     return new OrderNumber(normalized);
   }

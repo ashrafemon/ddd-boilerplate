@@ -1,5 +1,4 @@
 export * from './domain/bases';
-export * from './domain/domain.error';
 export * from './domain/identifier';
 export * from './domain/money.value-object';
 export * from './domain/result';
@@ -7,6 +6,4 @@ export * from './domain/events';
 export * from './domain/factories';
 export * from './domain/invariants';
 export * from './domain/policies';
-export * from './ports';
 export * from './application/use-case';
-export * from './errors';

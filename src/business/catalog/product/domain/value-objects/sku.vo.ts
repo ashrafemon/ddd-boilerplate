@@ -1,4 +1,3 @@
-import { ValidationError } from '@business/shared-business/domain/domain.error';
 import { ValueObject } from '@business/shared-business/domain/bases';
 
 export class Sku extends ValueObject<{ value: string }> {
@@ -9,10 +8,12 @@ export class Sku extends ValueObject<{ value: string }> {
   static create(input: string): Sku {
     const normalized = input.trim().toUpperCase();
     if (!normalized) {
-      throw new ValidationError('SKU cannot be empty');
+      throw Object.assign(new Error('SKU cannot be empty'), { statusCode: 422 });
     }
     if (!/^[A-Z0-9-]{2,64}$/.test(normalized)) {
-      throw new ValidationError('SKU must be 2-64 chars of letters, digits or dashes');
+      throw Object.assign(new Error('SKU must be 2-64 chars of letters, digits or dashes'), {
+        statusCode: 422,
+      });
     }
     return new Sku(normalized);
   }

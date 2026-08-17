@@ -2,10 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { Injectable } from '@nestjs/common';
 import { SqsService } from '@ssut/nestjs-sqs';
 import { randomUUID } from 'crypto';
-import {
-  IntegrationMessage,
-  MessagePublisher,
-} from '@business/shared-business/ports/message-publisher.port';
+import { IntegrationMessage, MessagePublisher } from '@shared-kernel/ports/message-publisher.port';
 
 /**
  * SQS publisher adapter. Publishes integration messages through the SQS

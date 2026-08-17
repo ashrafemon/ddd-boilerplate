@@ -1,4 +1,4 @@
-import { IntegrationMessage } from '@business/shared-business/ports/message-publisher.port';
+import { IntegrationMessage } from '@shared-kernel/ports/message-publisher.port';
 
 export interface OutboxMessageRecord {
   id: string;

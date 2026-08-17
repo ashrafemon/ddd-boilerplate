@@ -1,8 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  IntegrationMessage,
-  MessagePublisher,
-} from '@business/shared-business/ports/message-publisher.port';
+import { IntegrationMessage, MessagePublisher } from '@shared-kernel/ports/message-publisher.port';
 import { KafkaService } from './kafka.service';
 
 /**

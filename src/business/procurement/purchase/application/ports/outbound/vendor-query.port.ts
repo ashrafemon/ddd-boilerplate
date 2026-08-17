@@ -14,8 +14,6 @@ export interface VendorReference {
   status: string;
 }
 
-export interface OrderableVendorQueryPort {
-  getOrderableVendor(id: string): Promise<VendorReference | null>;
+export abstract class OrderableVendorQueryPort {
+  abstract getOrderableVendor(id: string): Promise<VendorReference | null>;
 }
-
-export const PURCHASE_ORDER_VENDOR_PORT = Symbol('PURCHASE_ORDER_VENDOR_PORT');

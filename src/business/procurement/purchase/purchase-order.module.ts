@@ -10,8 +10,8 @@ import { PurchaseOrderRabbitMQConsumer } from './application/consumers';
 import { PurchaseOrderKafkaConsumer } from './application/consumers';
 import { PurchaseOrderSqsConsumer } from './application/consumers';
 import { PurchaseOrderEventEmitterConsumer } from './application/consumers';
-import { PURCHASE_ORDER_COMMAND_REPOSITORY } from './domain/ports';
-import { PURCHASE_ORDER_QUERY_REPOSITORY } from './domain/ports';
+import { PurchaseOrderCommandRepositoryPort } from './domain/ports';
+import { PurchaseOrderQueryRepositoryPort } from './domain/ports';
 import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence';
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence';
 
@@ -36,8 +36,8 @@ import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence
     PurchaseOrderRabbitMQConsumer,
     PurchaseOrderKafkaConsumer,
     PurchaseOrderSqsConsumer,
-    { provide: PURCHASE_ORDER_COMMAND_REPOSITORY, useClass: PrismaPurchaseOrderCommandRepository },
-    { provide: PURCHASE_ORDER_QUERY_REPOSITORY, useClass: PrismaPurchaseOrderQueryRepository },
+    { provide: PurchaseOrderCommandRepositoryPort, useClass: PrismaPurchaseOrderCommandRepository },
+    { provide: PurchaseOrderQueryRepositoryPort, useClass: PrismaPurchaseOrderQueryRepository },
   ],
 })
 export class PurchaseOrderModule {}

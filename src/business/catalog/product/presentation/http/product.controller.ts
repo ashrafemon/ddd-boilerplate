@@ -17,12 +17,7 @@ import { ChangePriceUseCase } from '../../application/usecase';
 import { ProductStatusUseCase } from '../../application/usecase';
 import { GetProductUseCase } from '../../application/usecase';
 import { ListProductsUseCase } from '../../application/usecase';
-import {
-  ChangePriceDto,
-  CreateProductDto,
-  ProductQueryDto,
-  UpdateProductDto,
-} from './request';
+import { ChangePriceDto, CreateProductDto, ProductQueryDto, UpdateProductDto } from './request';
 
 @ApiTags('products')
 @ApiBearerAuth()

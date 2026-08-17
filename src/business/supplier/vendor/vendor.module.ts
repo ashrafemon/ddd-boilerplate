@@ -11,9 +11,9 @@ import { VendorKafkaConsumer } from './application/consumers';
 import { VendorSqsConsumer } from './application/consumers';
 import { VendorEventEmitterConsumer } from './application/consumers';
 import { VendorQueryAdapter } from './application/adapters';
-import { VENDOR_COMMAND_REPOSITORY } from './domain/ports';
-import { VENDOR_QUERY_REPOSITORY } from './domain/ports';
-import { PURCHASE_ORDER_VENDOR_PORT } from '@business/procurement/purchase/application/ports/outbound/vendor-query.port';
+import { VendorCommandRepositoryPort } from './domain/ports';
+import { VendorQueryRepositoryPort } from './domain/ports';
+import { OrderableVendorQueryPort } from '@business/procurement/purchase';
 import { PrismaVendorCommandRepository } from './infrastructure/persistence';
 import { PrismaVendorQueryRepository } from './infrastructure/persistence';
 
@@ -37,15 +37,15 @@ import { PrismaVendorQueryRepository } from './infrastructure/persistence';
     VendorKafkaConsumer,
     VendorSqsConsumer,
     VendorQueryAdapter,
-    { provide: PURCHASE_ORDER_VENDOR_PORT, useExisting: VendorQueryAdapter },
-    { provide: VENDOR_COMMAND_REPOSITORY, useClass: PrismaVendorCommandRepository },
-    { provide: VENDOR_QUERY_REPOSITORY, useClass: PrismaVendorQueryRepository },
+    { provide: OrderableVendorQueryPort, useExisting: VendorQueryAdapter },
+    { provide: VendorCommandRepositoryPort, useClass: PrismaVendorCommandRepository },
+    { provide: VendorQueryRepositoryPort, useClass: PrismaVendorQueryRepository },
   ],
   exports: [
     GetVendorUseCase,
     GetOrderableVendorUseCase,
     ListVendorsUseCase,
-    PURCHASE_ORDER_VENDOR_PORT,
+    OrderableVendorQueryPort,
   ],
 })
 export class VendorModule {}

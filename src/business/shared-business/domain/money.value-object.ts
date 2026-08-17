@@ -1,9 +1,3 @@
-import { ValidationError } from './domain.error';
-
-/**
- * Money value object backed by integer minor units (cents) to avoid binary
- * floating point drift. Persisted as Decimal via the repository mapper.
- */
 export class Money {
   private constructor(
     public readonly minorUnits: number,
@@ -16,10 +10,10 @@ export class Money {
 
   static fromMinorUnits(minorUnits: number, currency = 'USD'): Money {
     if (!Number.isInteger(minorUnits)) {
-      throw new ValidationError('Money minor units must be an integer');
+      throw Object.assign(new Error('Money minor units must be an integer'), { statusCode: 422 });
     }
     if (minorUnits < 0) {
-      throw new ValidationError('Money cannot be negative');
+      throw Object.assign(new Error('Money cannot be negative'), { statusCode: 422 });
     }
     return new Money(minorUnits, currency);
   }
@@ -27,7 +21,7 @@ export class Money {
   static fromDecimal(decimal: string | number, currency = 'USD'): Money {
     const asNumber = typeof decimal === 'number' ? decimal : parseFloat(decimal);
     if (Number.isNaN(asNumber)) {
-      throw new ValidationError('Invalid money value');
+      throw Object.assign(new Error('Invalid money value'), { statusCode: 422 });
     }
     return Money.fromMinorUnits(Math.round(asNumber * 100), currency);
   }
@@ -68,8 +62,9 @@ export class Money {
 
   private assertSameCurrency(other: Money): void {
     if (this.currency !== other.currency) {
-      throw new ValidationError(
-        `Currency mismatch: cannot combine ${this.currency} with ${other.currency}`,
+      throw Object.assign(
+        new Error(`Currency mismatch: cannot combine ${this.currency} with ${other.currency}`),
+        { statusCode: 422 },
       );
     }
   }

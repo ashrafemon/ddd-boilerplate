@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
@@ -8,11 +8,11 @@ import {
 } from '@platform/configuration/ports/company-config.port';
 import { Money } from '@business/shared-business/domain/money.value-object';
 import { ProductId } from '../../domain/value-objects';
-import { ProductErrors } from '../../domain/errors';
+import { Money } from '@business/shared-business/domain/money.value-object';
 import {
-  PRODUCT_COMMAND_REPOSITORY,
   ProductCommandRepositoryPort,
-} from '../../domain/ports';
+  ProductCommandRepositoryPort,
+} from '../../domain/domain-ports';
 
 export interface ChangePriceInput {
   id: string;
@@ -23,7 +23,7 @@ export interface ChangePriceInput {
 @Injectable()
 export class ChangePriceUseCase implements CommandUseCase<ChangePriceInput, ProductId> {
   constructor(
-    @Inject(PRODUCT_COMMAND_REPOSITORY)
+    @Inject(ProductCommandRepositoryPort)
     private readonly productRepository: ProductCommandRepositoryPort,
     @Inject(OUTBOX_WRITER) private readonly outboxWriter: OutboxWriterPort,
     @Inject(COMPANY_CONFIG) private readonly companyConfig: CompanyConfigPort,
@@ -36,7 +36,7 @@ export class ChangePriceUseCase implements CommandUseCase<ChangePriceInput, Prod
     const id = ProductId.fromString(input.id);
     const product = await this.productRepository.findById(id);
     if (!product) {
-      throw ProductErrors.notFound();
+      throw new NotFoundException('Product not found');
     }
 
     product.changePrice(

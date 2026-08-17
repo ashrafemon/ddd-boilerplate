@@ -1,17 +1,12 @@
 import { DomainFactory } from '@business/shared-business/domain/factories';
 import { invariantRegistry } from '@business/shared-business/domain/invariants';
-import {
-  Product,
-  CreateProductInput,
-  ProductProps,
-  ProductStatus,
-} from '../entities';
+import { Product, CreateProductInput, ProductProps, ProductStatus } from '../entities';
 import { ProductId } from '../value-objects';
 import { Sku } from '../value-objects';
 import { ProductName } from '../value-objects';
 import { ProductCreated } from '../events';
 import '../entities/product.invariants';
-import './../policies/product.policy';
+import '../domain-policies/product.policy';
 
 /**
  * Product domain factory — the single entry point for creating and

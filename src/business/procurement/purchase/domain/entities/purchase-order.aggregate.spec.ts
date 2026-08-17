@@ -1,7 +1,6 @@
 import { PurchaseOrder, PurchaseOrderStatus } from './purchase-order.aggregate';
 import { Money } from '@business/shared-business/domain/money.value-object';
 import { PurchaseOrderApproved, PurchaseOrderSubmitted } from '../events';
-import { InvariantException } from '@business/shared-business/errors';
 import { policyRegistry } from '@business/shared-business/domain/policies';
 import { purchaseOrderFactory } from '../factories';
 
@@ -33,7 +32,7 @@ describe('PurchaseOrder aggregate', () => {
 
   it('cannot submit without lines', () => {
     const po = create();
-    expect(() => po.submit()).toThrow(InvariantException);
+    expect(() => po.submit()).toThrow();
   });
 
   it('submits then approves and raises events', () => {
@@ -58,11 +57,11 @@ describe('PurchaseOrder aggregate', () => {
     // A DRAFT-only order (no lines) cannot jump to APPROVED.
     const empty = create();
     empty.pullEvents();
-    expect(() => empty.approve()).toThrow(InvariantException);
+    expect(() => empty.approve()).toThrow();
 
     po.approve();
     po.pullEvents();
-    expect(() => po.reject('nope')).toThrow(InvariantException);
+    expect(() => po.reject('nope')).toThrow();
   });
 
   it('cannot modify a submitted order', () => {

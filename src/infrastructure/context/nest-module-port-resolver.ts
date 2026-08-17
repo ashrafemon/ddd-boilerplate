@@ -3,7 +3,7 @@ import { ModuleRef } from '@nestjs/core';
 import {
   MODULE_PORT_RESOLVER,
   ModulePortResolver,
-} from '@business/shared-business/ports/module-port-resolver.port';
+} from '@shared-kernel/ports/module-port-resolver.port';
 
 /**
  * NestJS implementation of {@link ModulePortResolver}. Uses `ModuleRef.get` to

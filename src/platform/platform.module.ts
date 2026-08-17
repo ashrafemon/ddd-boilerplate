@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { IN_PROCESS_EVENT_BUS } from '@business/shared-business/ports/event-bus.port';
+import { IN_PROCESS_EVENT_BUS } from '@shared-kernel/ports/event-bus.port';
 import { AuditModule } from './audit/audit.module';
 import { AUDIT } from './audit/ports/audit.port';
 import { ConfigurationModule } from './configuration/configuration.module';

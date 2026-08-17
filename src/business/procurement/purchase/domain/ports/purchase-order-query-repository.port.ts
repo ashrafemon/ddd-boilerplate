@@ -22,10 +22,8 @@ export interface PurchaseOrderQueryRecord {
   updatedAt: Date;
 }
 
-export interface PurchaseOrderQueryRepositoryPort {
-  findById(id: string): Promise<PurchaseOrderQueryRecord | null>;
-  findByOrderNumber(orderNumber: string): Promise<PurchaseOrderQueryRecord | null>;
-  findAll(query: PageQuery): Promise<PageResult<PurchaseOrderQueryRecord>>;
+export abstract class PurchaseOrderQueryRepositoryPort {
+  abstract findById(id: string): Promise<PurchaseOrderQueryRecord | null>;
+  abstract findByOrderNumber(orderNumber: string): Promise<PurchaseOrderQueryRecord | null>;
+  abstract findAll(query: PageQuery): Promise<PageResult<PurchaseOrderQueryRecord>>;
 }
-
-export const PURCHASE_ORDER_QUERY_REPOSITORY = Symbol('PURCHASE_ORDER_QUERY_REPOSITORY');

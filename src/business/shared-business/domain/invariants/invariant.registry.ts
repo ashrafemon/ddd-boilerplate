@@ -1,5 +1,5 @@
 /**
- * A single invariant check. `check` throws an {@link InvariantException} when
+ * A single invariant check. `check` throws an {@link Error} when
  * the rule is violated. Invariants always hold regardless of policy.
  */
 export interface Invariant<TState = unknown> {

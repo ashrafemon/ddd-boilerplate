@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { QueryUseCase } from '@business/shared-business/application/use-case';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import {
-  PURCHASE_ORDER_QUERY_REPOSITORY,
+  PurchaseOrderQueryRepositoryPort,
   PurchaseOrderQueryRecord,
   PurchaseOrderQueryRepositoryPort,
 } from '../../domain/ports';
@@ -13,7 +13,7 @@ export class ListPurchaseOrdersUseCase implements QueryUseCase<
   PageResult<PurchaseOrderQueryRecord>
 > {
   constructor(
-    @Inject(PURCHASE_ORDER_QUERY_REPOSITORY)
+    @Inject(PurchaseOrderQueryRepositoryPort)
     private readonly purchaseOrderQueryRepo: PurchaseOrderQueryRepositoryPort,
   ) {}
 

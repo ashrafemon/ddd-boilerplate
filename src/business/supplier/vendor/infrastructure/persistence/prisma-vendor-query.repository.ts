@@ -7,7 +7,7 @@ import {
 } from '@business/supplier/vendor/domain/ports';
 
 @Injectable()
-export class PrismaVendorQueryRepository implements VendorQueryRepositoryPort {
+export class PrismaVendorQueryRepository extends VendorQueryRepositoryPort {
   constructor(private readonly prismaRead: PrismaReadService) {}
 
   async findById(id: string): Promise<VendorQueryRecord | null> {

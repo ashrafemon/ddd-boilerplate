@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { IntegrationMessage } from '@business/shared-business/ports/message-publisher.port';
+import { IntegrationMessage } from '@shared-kernel/ports/message-publisher.port';
 import { OutboxMessageRecord, OutboxRepositoryPort } from './ports/outbox-repository.port';
 
 /**

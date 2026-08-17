@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
@@ -10,11 +10,10 @@ import { Money } from '@business/shared-business/domain/money.value-object';
 import { productFactory } from '../../domain/factories';
 import { ProductId } from '../../domain/value-objects';
 import { Sku } from '../../domain/value-objects';
-import { ProductErrors } from '../../domain/errors';
 import {
-  PRODUCT_COMMAND_REPOSITORY,
   ProductCommandRepositoryPort,
-} from '../../domain/ports';
+  ProductCommandRepositoryPort,
+} from '../../domain/domain-ports';
 
 export interface CreateProductInput {
   sku: string;
@@ -27,7 +26,7 @@ export interface CreateProductInput {
 @Injectable()
 export class CreateProductUseCase implements CommandUseCase<CreateProductInput, ProductId> {
   constructor(
-    @Inject(PRODUCT_COMMAND_REPOSITORY)
+    @Inject(ProductCommandRepositoryPort)
     private readonly productRepository: ProductCommandRepositoryPort,
     @Inject(OUTBOX_WRITER) private readonly outboxWriter: OutboxWriterPort,
     @Inject(COMPANY_CONFIG) private readonly companyConfig: CompanyConfigPort,
@@ -50,7 +49,7 @@ export class CreateProductUseCase implements CommandUseCase<CreateProductInput, 
 
     const existing = await this.productRepository.findBySku(Sku.create(product.sku));
     if (existing) {
-      throw ProductErrors.skuConflict(product.sku);
+      throw new ConflictException(`Product with SKU "${product.sku}" already exists`);
     }
 
     // Orchestration step 3: persist the aggregate through the command repository.

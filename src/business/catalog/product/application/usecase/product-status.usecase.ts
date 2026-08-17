@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
@@ -7,11 +7,10 @@ import {
   CompanyConfigPort,
 } from '@platform/configuration/ports/company-config.port';
 import { ProductId } from '../../domain/value-objects';
-import { ProductErrors } from '../../domain/errors';
 import {
-  PRODUCT_COMMAND_REPOSITORY,
   ProductCommandRepositoryPort,
-} from '../../domain/ports';
+  ProductCommandRepositoryPort,
+} from '../../domain/domain-ports';
 
 export type ProductStatusAction = 'activate' | 'deactivate' | 'discontinue';
 
@@ -23,7 +22,7 @@ export interface ProductStatusInput {
 @Injectable()
 export class ProductStatusUseCase implements CommandUseCase<ProductStatusInput, ProductId> {
   constructor(
-    @Inject(PRODUCT_COMMAND_REPOSITORY)
+    @Inject(ProductCommandRepositoryPort)
     private readonly productRepository: ProductCommandRepositoryPort,
     @Inject(OUTBOX_WRITER) private readonly outboxWriter: OutboxWriterPort,
     @Inject(COMPANY_CONFIG) private readonly companyConfig: CompanyConfigPort,
@@ -36,7 +35,7 @@ export class ProductStatusUseCase implements CommandUseCase<ProductStatusInput, 
     const id = ProductId.fromString(input.id);
     const product = await this.productRepository.findById(id);
     if (!product) {
-      throw ProductErrors.notFound();
+      throw new NotFoundException('Product not found');
     }
 
     switch (input.action) {

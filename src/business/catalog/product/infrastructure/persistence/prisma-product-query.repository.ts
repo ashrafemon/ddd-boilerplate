@@ -4,10 +4,10 @@ import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import {
   ProductQueryRecord,
   ProductQueryRepositoryPort,
-} from '@business/catalog/product/domain/ports';
+} from '@business/catalog/product/domain/domain-ports';
 
 @Injectable()
-export class PrismaProductQueryRepository implements ProductQueryRepositoryPort {
+export class PrismaProductQueryRepository extends ProductQueryRepositoryPort {
   constructor(private readonly prismaRead: PrismaReadService) {}
 
   async findById(id: string): Promise<ProductQueryRecord | null> {

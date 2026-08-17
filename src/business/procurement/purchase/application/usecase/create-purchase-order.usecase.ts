@@ -1,10 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
-import {
-  MODULE_PORT_RESOLVER,
-  ModulePortResolver,
-} from '@business/shared-business/ports';
+import { MODULE_PORT_RESOLVER, ModulePortResolver } from '@shared-kernel/ports';
 import { OUTBOX_WRITER, OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import {
   COMPANY_CONFIG,
@@ -12,15 +9,8 @@ import {
 } from '@platform/configuration/ports/company-config.port';
 import { purchaseOrderFactory } from '../../domain/factories';
 import { PurchaseOrderId } from '../../domain/value-objects';
-import { PurchaseOrderErrors } from '../../domain/errors';
-import {
-  PURCHASE_ORDER_VENDOR_PORT,
-  OrderableVendorQueryPort,
-} from '../ports/outbound';
-import {
-  PURCHASE_ORDER_COMMAND_REPOSITORY,
-  PurchaseOrderCommandRepositoryPort,
-} from '../../domain/ports';
+import { OrderableVendorQueryPort } from '../ports/outbound';
+import { PurchaseOrderCommandRepositoryPort } from '../../domain/domain-ports';
 
 export interface CreatePurchaseOrderInput {
   vendorId: string;
@@ -33,7 +23,7 @@ export class CreatePurchaseOrderUseCase implements CommandUseCase<
   PurchaseOrderId
 > {
   constructor(
-    @Inject(PURCHASE_ORDER_COMMAND_REPOSITORY)
+    @Inject(PurchaseOrderCommandRepositoryPort)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
     @Inject(MODULE_PORT_RESOLVER) private readonly portResolver: ModulePortResolver,
     @Inject(OUTBOX_WRITER) private readonly outboxWriter: OutboxWriterPort,
@@ -41,7 +31,7 @@ export class CreatePurchaseOrderUseCase implements CommandUseCase<
   ) {}
 
   private get vendorQueryPort(): OrderableVendorQueryPort {
-    return this.portResolver.resolvePort<OrderableVendorQueryPort>(PURCHASE_ORDER_VENDOR_PORT);
+    return this.portResolver.resolvePort<OrderableVendorQueryPort>(OrderableVendorQueryPort);
   }
 
   @Transactional()
@@ -54,7 +44,7 @@ export class CreatePurchaseOrderUseCase implements CommandUseCase<
     // the Vendor module implements it; the system finds the adapter.
     const vendor = await this.vendorQueryPort.getOrderableVendor(input.vendorId);
     if (!vendor) {
-      throw PurchaseOrderErrors.vendorNotOrderable();
+      throw new ConflictException('Vendor is not orderable (blocked or inactive)');
     }
 
     // Orchestration step 3: build the aggregate through the domain factory.

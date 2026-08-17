@@ -1,4 +1,3 @@
-import { ValidationError } from '@business/shared-business/domain/domain.error';
 import { ValueObject } from '@business/shared-business/domain/bases';
 
 export class ProductName extends ValueObject<{ value: string }> {
@@ -9,10 +8,12 @@ export class ProductName extends ValueObject<{ value: string }> {
   static create(input: string): ProductName {
     const normalized = input.trim();
     if (!normalized) {
-      throw new ValidationError('Product name cannot be empty');
+      throw Object.assign(new Error('Product name cannot be empty'), { statusCode: 422 });
     }
     if (normalized.length > 200) {
-      throw new ValidationError('Product name cannot exceed 200 characters');
+      throw Object.assign(new Error('Product name cannot exceed 200 characters'), {
+        statusCode: 422,
+      });
     }
     return new ProductName(normalized);
   }

@@ -1,13 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  IntegrationMessage,
-  MessagePublisher,
-} from '@business/shared-business/ports/message-publisher.port';
-import {
-  IN_PROCESS_EVENT_BUS,
-  InProcessEventBus,
-} from '@business/shared-business/ports/event-bus.port';
+import { IntegrationMessage, MessagePublisher } from '@shared-kernel/ports/message-publisher.port';
+import { IN_PROCESS_EVENT_BUS, InProcessEventBus } from '@shared-kernel/ports/event-bus.port';
 import { domainEventRegistry } from '@business/shared-business/domain/events/domain-event.registry';
 import {
   OUTBOX_REPOSITORY,

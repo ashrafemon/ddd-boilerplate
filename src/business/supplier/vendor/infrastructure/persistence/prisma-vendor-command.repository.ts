@@ -8,7 +8,7 @@ import { VendorCommandRepositoryPort } from '@business/supplier/vendor/domain/po
 import { VendorMapper } from './vendor.mapper';
 
 @Injectable()
-export class PrismaVendorCommandRepository implements VendorCommandRepositoryPort {
+export class PrismaVendorCommandRepository extends VendorCommandRepositoryPort {
   constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
 
   async save(vendor: Vendor): Promise<Vendor> {

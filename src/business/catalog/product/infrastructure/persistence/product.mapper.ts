@@ -1,8 +1,4 @@
-import {
-  Product,
-  ProductProps,
-  ProductStatus,
-} from '@business/catalog/product/domain/entities';
+import { Product, ProductProps, ProductStatus } from '@business/catalog/product/domain/entities';
 import { ProductId } from '@business/catalog/product/domain/value-objects';
 import { ProductName } from '@business/catalog/product/domain/value-objects';
 import { Sku } from '@business/catalog/product/domain/value-objects';

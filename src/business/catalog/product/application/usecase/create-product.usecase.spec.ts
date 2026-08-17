@@ -1,4 +1,4 @@
-import { ProductCommandRepositoryPort } from '../../domain/ports';
+import { ProductCommandRepositoryPort } from '../../domain/domain-ports';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import {
   CompanyConfigPort,
@@ -8,12 +8,11 @@ import { Product, ProductStatus } from '../../domain/entities';
 import { ProductId } from '../../domain/value-objects';
 import { Sku } from '../../domain/value-objects';
 import { DomainEvent } from '@business/shared-business/domain/bases';
-import { ConflictError } from '@business/shared-business/domain/domain.error';
 import { CreateProductUseCase } from './create-product.usecase';
 
 import { initNoopTransactionHost } from '@test/utils/noop-transaction-host';
 
-class FakeProductCommandRepository implements ProductCommandRepositoryPort {
+class FakeProductCommandRepository extends ProductCommandRepositoryPort {
   items: Product[] = [];
 
   save(product: Product): Promise<Product> {
@@ -87,8 +86,8 @@ describe('CreateProductUseCase', () => {
 
   it('rejects a duplicate sku', async () => {
     await useCase.execute({ sku: 'SKU-100', name: 'A', unitPrice: 1 });
-    await expect(
-      useCase.execute({ sku: 'sku-100', name: 'B', unitPrice: 2 }),
-    ).rejects.toBeInstanceOf(ConflictError);
+    await expect(useCase.execute({ sku: 'sku-100', name: 'B', unitPrice: 2 })).rejects.toThrow(
+      'Product with SKU "SKU-100" already exists',
+    );
   });
 });

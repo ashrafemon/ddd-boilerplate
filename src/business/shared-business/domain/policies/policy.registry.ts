@@ -1,4 +1,3 @@
-import { PolicyViolateException } from '../../errors';
 import { ok, Result } from '../result';
 
 /**
@@ -39,7 +38,7 @@ export class PolicyRegistry {
   enforce<TState = unknown>(key: string, state: TState): void {
     const result = this.evaluate(key, state);
     if (!result.ok) {
-      throw new PolicyViolateException(String(result.error));
+      throw Object.assign(new Error(String(result.error)), { statusCode: 422 });
     }
   }
 

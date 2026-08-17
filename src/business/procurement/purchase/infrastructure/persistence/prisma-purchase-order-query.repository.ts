@@ -7,7 +7,7 @@ import {
 } from '@business/procurement/purchase/domain/ports';
 
 @Injectable()
-export class PrismaPurchaseOrderQueryRepository implements PurchaseOrderQueryRepositoryPort {
+export class PrismaPurchaseOrderQueryRepository extends PurchaseOrderQueryRepositoryPort {
   constructor(private readonly prismaRead: PrismaReadService) {}
 
   async findById(id: string): Promise<PurchaseOrderQueryRecord | null> {

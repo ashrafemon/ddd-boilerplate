@@ -2,10 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { QueryUseCase } from '@business/shared-business/application/use-case';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import {
-  PRODUCT_QUERY_REPOSITORY,
+  ProductQueryRepositoryPort,
   ProductQueryRecord,
   ProductQueryRepositoryPort,
-} from '../../domain/ports';
+} from '../../domain/domain-ports';
 
 /**
  * Read-side use case. Skips the domain entirely — goes straight to the query
@@ -17,7 +17,8 @@ export class ListProductsUseCase implements QueryUseCase<
   PageResult<ProductQueryRecord>
 > {
   constructor(
-    @Inject(PRODUCT_QUERY_REPOSITORY) private readonly productQueryRepo: ProductQueryRepositoryPort,
+    @Inject(ProductQueryRepositoryPort)
+    private readonly productQueryRepo: ProductQueryRepositoryPort,
   ) {}
 
   async execute(query: PageQuery): Promise<PageResult<ProductQueryRecord>> {
