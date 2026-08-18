@@ -1,4 +1,4 @@
-import { ProductStatus } from './product.aggregate';
+import { ProductStatus } from '../types/product.types';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { ProductCreated, ProductDiscontinued } from '../events';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';

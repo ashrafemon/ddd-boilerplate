@@ -3,6 +3,11 @@ import { Money } from '@business/shared-business/domain/common/value-objects/mon
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { PurchaseOrderId } from '../value-objects';
+import {
+  CreatePurchaseOrderInput,
+  PurchaseOrderProps,
+  PurchaseOrderStatus,
+} from '../types/purchase-order.types';
 import { OrderNumber, ProductIdRef, VendorIdRef } from '../value-objects';
 import { PurchaseOrderLine } from './purchase-order-line.entity';
 import {
@@ -15,30 +20,8 @@ import {
   PurchaseOrderSubmitted,
 } from '../events';
 
-export enum PurchaseOrderStatus {
-  DRAFT = 'DRAFT',
-  SUBMITTED = 'SUBMITTED',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED',
-  CANCELLED = 'CANCELLED',
-  COMPLETED = 'COMPLETED',
-}
 
-export interface PurchaseOrderProps {
-  orderNumber: OrderNumber;
-  vendorId: VendorIdRef;
-  status: PurchaseOrderStatus;
-  currency: string;
-  lines: PurchaseOrderLine[];
-  createdAt: Date;
-  updatedAt: Date;
-}
 
-export interface CreatePurchaseOrderInput {
-  orderNumber: string;
-  vendorId: string;
-  currency?: string;
-}
 
 export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
   private props: PurchaseOrderProps;

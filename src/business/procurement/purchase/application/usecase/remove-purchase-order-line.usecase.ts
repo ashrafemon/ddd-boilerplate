@@ -3,22 +3,14 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
+import { RemoveLineRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects';
 import {
   PurchaseOrderCommandRepositoryPort,
-  PurchaseOrderCommandRepositoryPort,
 } from '../../domain/domain-ports';
 
-export interface RemoveLineInput {
-  id: string;
-  productId: string;
-}
-
 @Injectable()
-export class RemovePurchaseOrderLineUseCase implements CommandUseCase<
-  RemoveLineInput,
-  PurchaseOrderId
-> {
+export class RemovePurchaseOrderLineUseCase implements CommandUseCase<RemoveLineRequest, PurchaseOrderId> {
   constructor(
     @Inject(PurchaseOrderCommandRepositoryPort)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
@@ -27,7 +19,7 @@ export class RemovePurchaseOrderLineUseCase implements CommandUseCase<
   ) {}
 
   @Transactional()
-  async execute(input: RemoveLineInput): Promise<PurchaseOrderId> {
+  async execute(input: RemoveLineRequest): Promise<PurchaseOrderId> {
     await this.companyConfig.getCompanyConfig();
 
     const id = PurchaseOrderId.fromString(input.id);

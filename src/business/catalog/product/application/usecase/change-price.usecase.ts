@@ -4,21 +4,14 @@ import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
+import { ChangePriceRequest } from '../../domain/types/product.types';
 import { ProductId } from '../../domain/value-objects';
-import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import {
-  ProductCommandRepositoryPort,
   ProductCommandRepositoryPort,
 } from '../../domain/domain-ports';
 
-export interface ChangePriceInput {
-  id: string;
-  unitPrice: number;
-  currency?: string;
-}
-
 @Injectable()
-export class ChangePriceUseCase implements CommandUseCase<ChangePriceInput, ProductId> {
+export class ChangePriceUseCase implements CommandUseCase<ChangePriceRequest, ProductId> {
   constructor(
     @Inject(ProductCommandRepositoryPort)
     private readonly productRepository: ProductCommandRepositoryPort,
@@ -27,7 +20,7 @@ export class ChangePriceUseCase implements CommandUseCase<ChangePriceInput, Prod
   ) {}
 
   @Transactional()
-  async execute(input: ChangePriceInput): Promise<ProductId> {
+  async execute(input: ChangePriceRequest): Promise<ProductId> {
     const company = await this.companyConfig.getCompanyConfig();
 
     const id = ProductId.fromString(input.id);

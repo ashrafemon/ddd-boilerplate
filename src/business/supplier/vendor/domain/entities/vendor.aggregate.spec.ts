@@ -1,4 +1,4 @@
-import { VendorStatus } from './vendor.aggregate';
+import { VendorStatus } from '../types/vendor.types';
 import { VendorBlocked, VendorCreated } from '../events';
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { vendorFactory } from '../factories';

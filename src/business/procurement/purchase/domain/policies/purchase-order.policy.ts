@@ -1,11 +1,5 @@
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
-import { PurchaseOrderStatus } from '../entities';
-
-export interface PurchaseOrderPolicyState {
-  status: PurchaseOrderStatus;
-  totalAmount: number;
-  autoApproveThreshold: number;
-}
+import { PurchaseOrderPolicyState, PurchaseOrderStatus } from '../types/purchase-order.types';
 
 policyRegistry.register<PurchaseOrderPolicyState>('purchase-order.approval', {
   name: 'purchase-order-approval-threshold',

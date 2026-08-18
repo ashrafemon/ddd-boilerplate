@@ -1,9 +1,5 @@
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
-import { ProductStatus } from '../entities';
-
-export interface ProductState {
-  status: ProductStatus;
-}
+import { ProductState, ProductStatus } from '../types/product.types';
 
 policyRegistry.register<ProductState>('product.reactivation', {
   name: 'discontinued-reactivation',

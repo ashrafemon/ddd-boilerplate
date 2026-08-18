@@ -3,18 +3,12 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
+import { VendorStatusRequest } from '../../domain/types/vendor.types';
 import { VendorId } from '../../domain/value-objects';
 import { VendorCommandRepositoryPort } from '../../domain/domain-ports';
 
-export type VendorStatusAction = 'activate' | 'deactivate' | 'block';
-
-export interface VendorStatusInput {
-  id: string;
-  action: VendorStatusAction;
-}
-
 @Injectable()
-export class VendorStatusUseCase implements CommandUseCase<VendorStatusInput, VendorId> {
+export class VendorStatusUseCase implements CommandUseCase<VendorStatusRequest, VendorId> {
   constructor(
     @Inject(VendorCommandRepositoryPort)
     private readonly vendorRepository: VendorCommandRepositoryPort,
@@ -23,7 +17,7 @@ export class VendorStatusUseCase implements CommandUseCase<VendorStatusInput, Ve
   ) {}
 
   @Transactional()
-  async execute(input: VendorStatusInput): Promise<VendorId> {
+  async execute(input: VendorStatusRequest): Promise<VendorId> {
     await this.companyConfig.getCompanyConfig();
 
     const id = VendorId.fromString(input.id);

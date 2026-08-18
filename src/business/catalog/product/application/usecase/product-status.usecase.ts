@@ -3,21 +3,14 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
+import { ProductStatusRequest } from '../../domain/types/product.types';
 import { ProductId } from '../../domain/value-objects';
 import {
   ProductCommandRepositoryPort,
-  ProductCommandRepositoryPort,
 } from '../../domain/domain-ports';
 
-export type ProductStatusAction = 'activate' | 'deactivate' | 'discontinue';
-
-export interface ProductStatusInput {
-  id: string;
-  action: ProductStatusAction;
-}
-
 @Injectable()
-export class ProductStatusUseCase implements CommandUseCase<ProductStatusInput, ProductId> {
+export class ProductStatusUseCase implements CommandUseCase<ProductStatusRequest, ProductId> {
   constructor(
     @Inject(ProductCommandRepositoryPort)
     private readonly productRepository: ProductCommandRepositoryPort,
@@ -26,7 +19,7 @@ export class ProductStatusUseCase implements CommandUseCase<ProductStatusInput, 
   ) {}
 
   @Transactional()
-  async execute(input: ProductStatusInput): Promise<ProductId> {
+  async execute(input: ProductStatusRequest): Promise<ProductId> {
     await this.companyConfig.getCompanyConfig();
 
     const id = ProductId.fromString(input.id);

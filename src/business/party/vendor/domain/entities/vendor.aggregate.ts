@@ -1,34 +1,13 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { VendorId } from '../value-objects';
+import {
+  CreateVendorInput,
+  VendorProps,
+  VendorStatus,
+} from '../types/vendor.types';
 import { VendorCode, VendorEmail, VendorName } from '../value-objects';
 import { VendorActivated, VendorBlocked, VendorDeactivated, VendorUpdated } from '../events';
-
-export enum VendorStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  BLOCKED = 'BLOCKED',
-}
-
-export interface VendorProps {
-  code: VendorCode;
-  name: VendorName;
-  email: VendorEmail | null;
-  phone: string | null;
-  address: string | null;
-  status: VendorStatus;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CreateVendorInput {
-  code: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-}
-
 export class Vendor extends AggregateRoot<VendorId> {
   private props: VendorProps;
 

@@ -1,11 +1,14 @@
 import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { Product, CreateProductInput, ProductProps, ProductStatus } from '../entities';
+import { Product } from '../entities';
+import { CreateProductInput, ProductProps, ProductStatus } from '../types/product.types';
 import { ProductId } from '../value-objects';
 import { Sku } from '../value-objects';
 import { ProductName } from '../value-objects';
 import { ProductCreated } from '../events';
 import '../entities/product.invariants';
+import '../value-objects/sku.invariants';
+import '../value-objects/product-name.invariants';
 import '../domain-policies/product.policy';
 
 /**
@@ -20,6 +23,9 @@ export class ProductFactory extends DomainFactory<Product, CreateProductInput> {
       name: input.name,
       unitPrice: input.unitPrice.amount,
     });
+
+    invariantRegistry.enforce('sku.create', { sku: input.sku });
+    invariantRegistry.enforce('product-name.create', { name: input.name });
 
     const now = new Date();
     const currency = input.currency ?? 'USD';

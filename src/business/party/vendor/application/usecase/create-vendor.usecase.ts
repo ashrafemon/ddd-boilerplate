@@ -3,21 +3,14 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
+import { CreateVendorRequest } from '../../domain/types/vendor.types';
 import { vendorFactory } from '../../domain/factories';
 import { VendorId } from '../../domain/value-objects';
 import { VendorCode } from '../../domain/value-objects';
 import { VendorCommandRepositoryPort } from '../../domain/domain-ports';
 
-export interface CreateVendorInput {
-  code: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-}
-
 @Injectable()
-export class CreateVendorUseCase implements CommandUseCase<CreateVendorInput, VendorId> {
+export class CreateVendorUseCase implements CommandUseCase<CreateVendorRequest, VendorId> {
   constructor(
     @Inject(VendorCommandRepositoryPort)
     private readonly vendorRepository: VendorCommandRepositoryPort,
@@ -26,7 +19,7 @@ export class CreateVendorUseCase implements CommandUseCase<CreateVendorInput, Ve
   ) {}
 
   @Transactional()
-  async execute(input: CreateVendorInput): Promise<VendorId> {
+  async execute(input: CreateVendorRequest): Promise<VendorId> {
     await this.companyConfig.getCompanyConfig();
 
     const vendor = vendorFactory.create(input);

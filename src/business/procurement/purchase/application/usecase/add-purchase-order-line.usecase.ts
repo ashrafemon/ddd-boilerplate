@@ -5,20 +5,13 @@ import { ModulePortResolver } from '@shared-kernel/ports';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
+import { AddLineRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects';
 import { PurchasableProductQueryPort } from '../ports/outbound';
 import { PurchaseOrderCommandRepositoryPort } from '../../domain/domain-ports';
 
-export interface AddLineInput {
-  id: string;
-  productId: string;
-  quantity: number;
-  unitPrice: number;
-  currency?: string;
-}
-
 @Injectable()
-export class AddPurchaseOrderLineUseCase implements CommandUseCase<AddLineInput, PurchaseOrderId> {
+export class AddPurchaseOrderLineUseCase implements CommandUseCase<AddLineRequest, PurchaseOrderId> {
   constructor(
     @Inject(PurchaseOrderCommandRepositoryPort)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
@@ -32,8 +25,14 @@ export class AddPurchaseOrderLineUseCase implements CommandUseCase<AddLineInput,
   }
 
   @Transactional()
-  async execute(input: AddLineInput): Promise<PurchaseOrderId> {
-    await this.companyConfig.getCompanyConfig();
+  async execute(input: AddLineRequest): Promise<PurchaseOrderId> {
+    const company = await this.companyConfig.getCompanyConfig();
+    const currency = input.currency ?? company.defaultCurrency;
+
+    const product = await this.productQueryPort.getPurchasableProduct(input.productId);
+    if (!product) {
+      throw new ConflictException('Product is not purchasable');
+    }
 
     const id = PurchaseOrderId.fromString(input.id);
     const purchaseOrder = await this.purchaseOrderRepository.findById(id);
@@ -41,16 +40,7 @@ export class AddPurchaseOrderLineUseCase implements CommandUseCase<AddLineInput,
       throw new NotFoundException('Purchase order not found');
     }
 
-    const product = await this.productQueryPort.getPurchasableProduct(input.productId);
-    if (!product) {
-      throw new ConflictException('Product is not purchasable (inactive or discontinued)');
-    }
-
-    purchaseOrder.addLine(
-      input.productId,
-      input.quantity,
-      Money.fromDecimal(input.unitPrice, input.currency ?? purchaseOrder.currency),
-    );
+    purchaseOrder.addLine(input.productId, input.quantity, Money.fromDecimal(input.unitPrice, currency));
     await this.purchaseOrderRepository.update(purchaseOrder);
 
     for (const event of purchaseOrder.pullEvents()) {

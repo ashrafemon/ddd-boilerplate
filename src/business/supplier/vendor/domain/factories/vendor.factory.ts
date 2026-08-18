@@ -1,10 +1,15 @@
 import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { Vendor, CreateVendorInput, VendorProps, VendorStatus } from '../entities';
+import { Vendor, VendorProps } from '../entities';
+import { VendorStatus } from '../types/vendor.types';
+import { CreateVendorInput } from '../../types/vendor.types';
 import { VendorId } from '../value-objects';
 import { VendorCode, VendorEmail, VendorName } from '../value-objects';
 import { VendorCreated } from '../events';
 import './../invariants/vendor.invariants';
+import '../value-objects/vendor-code.invariants';
+import '../value-objects/vendor-name.invariants';
+import '../value-objects/vendor-email.invariants';
 import './../policies/vendor.policy';
 
 /**
@@ -19,6 +24,12 @@ export class VendorFactory extends DomainFactory<Vendor, CreateVendorInput> {
       name: input.name,
       email: input.email,
     });
+
+    invariantRegistry.enforce('vendor-code.create', { code: input.code });
+    invariantRegistry.enforce('vendor-name.create', { name: input.name });
+    if (input.email) {
+      invariantRegistry.enforce('vendor-email.create', { email: input.email });
+    }
 
     const now = new Date();
     const vendor = Vendor.instantiate(

@@ -2,6 +2,11 @@ import { AggregateRoot } from '@business/shared-business/domain/bases';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
+import {
+  CreateProductInput,
+  ProductProps,
+  ProductStatus,
+} from '../types/product.types';
 import { ProductId } from '../value-objects';
 import { Sku } from '../value-objects';
 import { ProductName } from '../value-objects';
@@ -11,31 +16,6 @@ import {
   ProductDiscontinued,
   ProductUpdated,
 } from '../events';
-
-export enum ProductStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  DISCONTINUED = 'DISCONTINUED',
-}
-
-export interface ProductProps {
-  sku: Sku;
-  name: ProductName;
-  description: string | null;
-  status: ProductStatus;
-  unitPrice: Money;
-  currency: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface CreateProductInput {
-  sku: string;
-  name: string;
-  description?: string;
-  unitPrice: Money;
-  currency?: string;
-}
 
 export class Product extends AggregateRoot<ProductId> {
   private props: ProductProps;

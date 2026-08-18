@@ -1,15 +1,13 @@
 import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import {
-  PurchaseOrder,
-  CreatePurchaseOrderInput,
-  PurchaseOrderProps,
-  PurchaseOrderStatus,
-} from '../entities';
+import { PurchaseOrder, PurchaseOrderProps } from '../entities';
+import { PurchaseOrderStatus } from '../types/purchase-order.types';
+import { CreatePurchaseOrderInput } from '../types/purchase-order.types';
 import { PurchaseOrderId } from '../value-objects';
 import { OrderNumber, VendorIdRef } from '../value-objects';
 import { PurchaseOrderCreated } from '../events';
 import './../invariants/purchase-order.invariants';
+import '../value-objects/order-number.invariants';
 import './../policies/purchase-order.policy';
 
 /**
@@ -21,6 +19,8 @@ export class PurchaseOrderFactory extends DomainFactory<PurchaseOrder, CreatePur
     invariantRegistry.enforce('purchase-order.create', {
       orderNumber: input.orderNumber,
     });
+
+    invariantRegistry.enforce('order-number.create', { orderNumber: input.orderNumber });
 
     const now = new Date();
     const purchaseOrder = PurchaseOrder.instantiate(

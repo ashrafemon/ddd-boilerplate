@@ -1,4 +1,4 @@
-import { Vendor, VendorProps, VendorStatus } from '@business/supplier/vendor/domain/entities';
+import { Vendor, VendorProps, VendorStatus } from '../../domain/types/vendor.types';
 import { VendorId } from '@business/supplier/vendor/domain/value-objects';
 import {
   VendorCode,

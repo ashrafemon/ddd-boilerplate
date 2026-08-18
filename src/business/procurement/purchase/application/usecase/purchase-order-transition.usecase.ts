@@ -3,25 +3,14 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
+import { PurchaseOrderTransitionRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects';
 import {
   PurchaseOrderCommandRepositoryPort,
-  PurchaseOrderCommandRepositoryPort,
 } from '../../domain/domain-ports';
 
-export type PurchaseOrderTransition = 'submit' | 'approve' | 'reject' | 'cancel' | 'complete';
-
-export interface PurchaseOrderTransitionInput {
-  id: string;
-  transition: PurchaseOrderTransition;
-  reason?: string;
-}
-
 @Injectable()
-export class PurchaseOrderTransitionUseCase implements CommandUseCase<
-  PurchaseOrderTransitionInput,
-  PurchaseOrderId
-> {
+export class PurchaseOrderTransitionUseCase implements CommandUseCase<PurchaseOrderTransitionRequest, PurchaseOrderId> {
   constructor(
     @Inject(PurchaseOrderCommandRepositoryPort)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
@@ -30,10 +19,8 @@ export class PurchaseOrderTransitionUseCase implements CommandUseCase<
   ) {}
 
   @Transactional()
-  async execute(input: PurchaseOrderTransitionInput): Promise<PurchaseOrderId> {
-    // Orchestration step 1: company configuration — the approval threshold
-    // drives the approval policy.
-    const company = await this.companyConfig.getCompanyConfig();
+  async execute(input: PurchaseOrderTransitionRequest): Promise<PurchaseOrderId> {
+    await this.companyConfig.getCompanyConfig();
 
     const id = PurchaseOrderId.fromString(input.id);
     const purchaseOrder = await this.purchaseOrderRepository.findById(id);
@@ -46,8 +33,6 @@ export class PurchaseOrderTransitionUseCase implements CommandUseCase<
         purchaseOrder.submit();
         break;
       case 'approve': {
-        // Policy decision: orders above the company's threshold need manual
-        // approval (the saga routes them), so this command only auto-approves.
         if (!purchaseOrder.requiresManualApproval(company.autoApproveThreshold)) {
           purchaseOrder.approve();
         }

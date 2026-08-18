@@ -1,9 +1,5 @@
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
-import { VendorStatus } from '../entities';
-
-export interface VendorState {
-  status: VendorStatus;
-}
+import { VendorState, VendorStatus } from '../types/vendor.types';
 
 policyRegistry.register<VendorState>('vendor.orderability', {
   name: 'vendor-orderable',
