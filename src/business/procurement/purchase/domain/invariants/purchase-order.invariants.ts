@@ -1,5 +1,5 @@
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { PurchaseOrderStatus } from '../types/purchase-order.types';
+import { PurchaseOrderStatus } from '../types/purchase-order.enum';
 
 export type { PurchaseOrderStatus };
 

@@ -5,7 +5,7 @@ import {
   CompanyConfig,
 } from '@platform/configuration/ports/company-config.port';
 import { Product } from '../../domain/entities';
-import { ProductStatus } from '../../domain/types/product.types';
+import { ProductStatus } from '../../domain/types/product.enum';
 import { ProductId } from '../../domain/value-objects';
 import { Sku } from '../../domain/value-objects';
 import { DomainEvent } from '@business/shared-business/domain/bases';

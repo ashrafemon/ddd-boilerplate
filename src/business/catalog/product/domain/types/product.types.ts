@@ -1,12 +1,7 @@
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { ProductName } from '../value-objects';
 import { Sku } from '../value-objects';
-
-export enum ProductStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  DISCONTINUED = 'DISCONTINUED',
-}
+export { ProductStatus } from './product.enum';
 
 export interface ProductProps {
   sku: Sku;

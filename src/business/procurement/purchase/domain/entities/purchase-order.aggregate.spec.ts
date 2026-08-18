@@ -1,5 +1,5 @@
 import { PurchaseOrder } from './purchase-order.aggregate';
-import { PurchaseOrderStatus } from '../types/purchase-order.types';
+import { PurchaseOrderStatus } from '../types/purchase-order.enum';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { PurchaseOrderApproved, PurchaseOrderSubmitted } from '../events';
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';

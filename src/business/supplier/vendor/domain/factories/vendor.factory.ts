@@ -1,7 +1,7 @@
 import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { Vendor, VendorProps } from '../entities';
-import { VendorStatus } from '../types/vendor.types';
+import { VendorStatus } from '../types/vendor.enum';
 import { CreateVendorInput } from '../../types/vendor.types';
 import { VendorId } from '../value-objects';
 import { VendorCode, VendorEmail, VendorName } from '../value-objects';

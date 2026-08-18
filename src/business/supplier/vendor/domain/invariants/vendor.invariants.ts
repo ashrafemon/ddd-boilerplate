@@ -1,5 +1,5 @@
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { VendorStatus } from '../types/vendor.types';
+import { VendorStatus } from '../types/vendor.enum';
 
 invariantRegistry.register<{ status: VendorStatus; to: VendorStatus }>('vendor.status-transition', {
   name: 'vendor-valid-status-transition',

@@ -1,12 +1,7 @@
 import { VendorEmail } from '../value-objects';
 import { VendorName } from '../value-objects';
 import { VendorCode } from '../value-objects';
-
-export enum VendorStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  BLOCKED = 'BLOCKED',
-}
+export { VendorStatus } from './vendor.enum';
 
 export interface VendorProps {
   code: VendorCode;

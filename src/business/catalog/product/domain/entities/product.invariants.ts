@@ -1,5 +1,5 @@
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { ProductStatus } from '../types/product.types';
+import { ProductStatus } from '../types/product.enum';
 
 invariantRegistry.register<{ unitPrice: number }>('product.create', {
   name: 'product-price-non-negative',

@@ -2,15 +2,7 @@ import { Money } from '@business/shared-business/domain/common/value-objects/mon
 import { OrderNumber } from '../value-objects';
 import { ProductIdRef, VendorIdRef } from '../value-objects';
 import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
-
-export enum PurchaseOrderStatus {
-  DRAFT = 'DRAFT',
-  SUBMITTED = 'SUBMITTED',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED',
-  CANCELLED = 'CANCELLED',
-  COMPLETED = 'COMPLETED',
-}
+export { PurchaseOrderStatus } from './purchase-order.enum';
 
 export interface PurchaseOrderProps {
   orderNumber: OrderNumber;
