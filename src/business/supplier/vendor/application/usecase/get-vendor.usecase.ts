@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { QueryUseCase } from '@business/shared-business/application/use-case';
 import {
   VendorQueryRepositoryPort,
   VendorQueryRecord,
@@ -7,7 +6,7 @@ import {
 } from '../../domain/ports';
 
 @Injectable()
-export class GetVendorUseCase implements QueryUseCase<string, VendorQueryRecord | null> {
+export class GetVendorUseCase  {
   constructor(
     @Inject(VendorQueryRepositoryPort) private readonly vendorQueryRepo: VendorQueryRepositoryPort,
   ) {}

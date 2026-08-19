@@ -5,4 +5,3 @@ export * from './domain/registries/domain-event.registry';
 export * from './domain/bases/factory.base';
 export * from './domain/registries/invariant.registry';
 export * from './domain/registries/policy.registry';
-export * from './application/use-case';

@@ -630,7 +630,6 @@ function generateCreateUseCase(config: ModuleConfig): string {
   const camel = toCamelCase(name);
   return `import { Inject, Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { ${toCamelCase(name)}Factory } from '../../domain/factories';
@@ -644,7 +643,7 @@ export interface Create${entityName}Input {
 }
 
 @Injectable()
-export class Create${entityName}UseCase implements CommandUseCase<Create${entityName}Input, ${entityName}Id> {
+export class Create${entityName}UseCase {
   constructor(
     @Inject(${entityName}CommandRepositoryPort)
     private readonly ${camel}Repository: ${entityName}CommandRepositoryPort,
@@ -675,7 +674,6 @@ function generateUpdateUseCase(config: ModuleConfig): string {
   const camel = toCamelCase(name);
   return `import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { ${entityName}Id } from '../../domain/value-objects';
@@ -689,7 +687,7 @@ export interface Update${entityName}Input {
 }
 
 @Injectable()
-export class Update${entityName}UseCase implements CommandUseCase<Update${entityName}Input, ${entityName}Id> {
+export class Update${entityName}UseCase {
   constructor(
     @Inject(${entityName}CommandRepositoryPort)
     private readonly ${camel}Repository: ${entityName}CommandRepositoryPort,
@@ -724,7 +722,6 @@ function generateGetUseCase(config: ModuleConfig): string {
   const { entityName, name } = config;
   const camel = toCamelCase(name);
   return `import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { ${entityName}Id } from '../../domain/value-objects';
 import {
   ${entityName}QueryRepositoryPort,
@@ -735,7 +732,7 @@ export interface Get${entityName}Input {
 }
 
 @Injectable()
-export class Get${entityName}UseCase implements CommandUseCase<Get${entityName}Input, ${entityName}> {
+export class Get${entityName}UseCase {
   constructor(
     @Inject(${entityName}QueryRepositoryPort)
     private readonly ${camel}Repository: ${entityName}QueryRepositoryPort,
@@ -757,7 +754,6 @@ function generateListUseCase(config: ModuleConfig): string {
   const { entityName, name } = config;
   const camel = toCamelCase(name);
   return `import { Inject, Injectable } from '@nestjs/common';
-import { CommandUseCase } from '@business/shared-business/application/use-case';
 import {
   ${entityName}QueryRepositoryPort,
 } from '../../domain/domain-ports';
@@ -765,7 +761,7 @@ import {
 export interface List${entityName}sInput {}
 
 @Injectable()
-export class List${entityName}sUseCase implements CommandUseCase<List${entityName}sInput, ${entityName}[]> {
+export class List${entityName}sUseCase {
   constructor(
     @Inject(${entityName}QueryRepositoryPort)
     private readonly ${camel}Repository: ${entityName}QueryRepositoryPort,

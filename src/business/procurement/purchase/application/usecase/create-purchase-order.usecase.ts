@@ -1,6 +1,5 @@
 import { Inject, Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { ModulePortResolver } from '@shared-kernel/ports';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
@@ -11,7 +10,7 @@ import { OrderableVendorQueryPort } from '../ports/outbound';
 import { PurchaseOrderCommandRepositoryPort } from '../../domain/domain-ports';
 
 @Injectable()
-export class CreatePurchaseOrderUseCase implements CommandUseCase<CreatePurchaseOrderRequest, PurchaseOrderId> {
+export class CreatePurchaseOrderUseCase  {
   constructor(
     @Inject(PurchaseOrderCommandRepositoryPort)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,

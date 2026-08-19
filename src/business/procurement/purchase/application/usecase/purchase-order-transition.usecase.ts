@@ -1,6 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { PurchaseOrderTransitionRequest } from '../../domain/types/purchase-order.types';
@@ -10,7 +9,7 @@ import {
 } from '../../domain/domain-ports';
 
 @Injectable()
-export class PurchaseOrderTransitionUseCase implements CommandUseCase<PurchaseOrderTransitionRequest, PurchaseOrderId> {
+export class PurchaseOrderTransitionUseCase  {
   constructor(
     @Inject(PurchaseOrderCommandRepositoryPort)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,

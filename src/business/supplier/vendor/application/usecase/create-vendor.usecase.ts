@@ -1,6 +1,5 @@
 import { Inject, Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { CreateVendorRequest } from '../../domain/types/vendor.types';
@@ -10,7 +9,7 @@ import { VendorCode } from '../../domain/value-objects';
 import { VendorCommandRepositoryPort } from '../../domain/domain-ports';
 
 @Injectable()
-export class CreateVendorUseCase implements CommandUseCase<CreateVendorRequest, VendorId> {
+export class CreateVendorUseCase  {
   constructor(
     @Inject(VendorCommandRepositoryPort)
     private readonly vendorRepository: VendorCommandRepositoryPort,

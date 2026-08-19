@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { QueryUseCase } from '@business/shared-business/application/use-case';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import {
   ProductQueryRepositoryPort,
@@ -12,10 +11,7 @@ import {
  * repository which injects the Prisma read service.
  */
 @Injectable()
-export class ListProductsUseCase implements QueryUseCase<
-  PageQuery,
-  PageResult<ProductQueryRecord>
-> {
+export class ListProductsUseCase {
   constructor(
     @Inject(ProductQueryRepositoryPort)
     private readonly productQueryRepo: ProductQueryRepositoryPort,

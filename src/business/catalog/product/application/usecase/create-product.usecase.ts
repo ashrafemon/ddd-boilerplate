@@ -1,6 +1,5 @@
 import { Inject, Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
@@ -13,7 +12,7 @@ import {
 } from '../../domain/domain-ports';
 
 @Injectable()
-export class CreateProductUseCase implements CommandUseCase<CreateProductRequest, ProductId> {
+export class CreateProductUseCase  {
   constructor(
     @Inject(ProductCommandRepositoryPort)
     private readonly productRepository: ProductCommandRepositoryPort,

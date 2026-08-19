@@ -1,6 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { CommandUseCase } from '@business/shared-business/application/use-case';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { UpdateProductRequest } from '../../domain/types/product.types';
@@ -10,7 +9,7 @@ import {
 } from '../../domain/domain-ports';
 
 @Injectable()
-export class UpdateProductUseCase implements CommandUseCase<UpdateProductRequest, ProductId> {
+export class UpdateProductUseCase  {
   constructor(
     @Inject(ProductCommandRepositoryPort)
     private readonly productRepository: ProductCommandRepositoryPort,
