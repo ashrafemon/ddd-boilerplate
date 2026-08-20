@@ -1,698 +1,515 @@
-# Generate Aggregate Module — Instruction Guide
+# Aggregate Module Generator — Input System
 
-This document defines the **complete input schema** for generating a business aggregate
-module. Every field listed here is what the generator tool needs to produce a fully
-working, production-ready NestJS DDD module that follows the project's architecture.
+A **config-driven, regeneratable** code generator for NestJS DDD business modules.
+
+---
+
+## Philosophy
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    YOUR INPUT CONFIG                     │
+│              (the single source of truth)                │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+                       ▼
+              ┌────────────────┐
+              │   GENERATOR    │
+              │  (runs anytime)│
+              └───────┬────────┘
+                      │
+          ┌───────────┴───────────┐
+          ▼                       ▼
+  ┌──────────────┐      ┌──────────────────┐
+  │  @generated  │      │     @custom      │
+  │   files      │      │     files        │
+  │              │      │                  │
+  │  READONLY    │      │  EDITABLE        │
+  │  Overwritten │      │  Preserved       │
+  │  on regen    │      │  across regen    │
+  └──────────────┘      └──────────────────┘
+```
+
+**Three rules:**
+
+1. **Config is the source of truth.** Every generated file comes from the config. If you want to change a generated file, change the config and regenerate — never edit the file directly.
+
+2. **Generated files are readonly.** They carry a `// @generated` header. The generator overwrites them on every run. Manual edits are lost.
+
+3. **Invariant and policy files are the only editable files.** They carry a `// @custom` header. The generator creates them if missing, but **never overwrites** existing ones. These are where you hand-code business rules.
 
 ---
 
 ## Table of Contents
 
-1. [Overview](#1-overview)
-2. [Input Schema Reference](#2-input-schema-reference)
-3. [Field-by-Field Explanation](#3-field-by-field-explanation)
-4. [Complete Example](#4-complete-example)
-5. [What Gets Generated](#5-what-gets-generated)
-6. [Naming Conventions](#6-naming-conventions)
+1. [How Regeneration Works](#1-how-regeneration-works)
+2. [File Markers](#2-file-markers)
+3. [Input Config Schema](#3-input-config-schema)
+4. [Field Reference](#4-field-reference)
+5. [Example Config](#5-example-config)
+6. [Generated File Tree](#6-generated-file-tree)
+7. [Naming Conventions](#7-naming-conventions)
 
 ---
 
-## 1. Overview
+## 1. How Regeneration Works
 
-The generator takes a single configuration object and produces a complete business module
-under `src/business/<context>/<module>/` with all four layers:
+```bash
+# First generation — creates all files
+npx tsx scripts/generators/aggregate.generator.ts --config configs/purchase-order.config.ts
 
+# You hand-code invariants and policies...
+
+# Later — add a property, change a use case, update config
+# Then regenerate — only @generated files are overwritten
+npx tsx scripts/generators/aggregate.generator.ts --config configs/purchase-order.config.ts
+
+# Force overwrite EVERYTHING (destroys hand-coded invariants/policies)
+npx tsx scripts/generators/aggregate.generator.ts --config configs/purchase-order.config.ts --force
 ```
-domain/          → entities, value objects, events, invariants, policies, factories, ports, types, errors
-application/     → use cases, consumers, adapters, outbound ports
-infrastructure/  → Prisma repositories + domain↔model mapper
-presentation/    → HTTP controllers + request DTOs
-```
 
-Plus the NestJS module file, barrel indexes, and optionally a Prisma schema file.
+**What happens on regeneration:**
+
+| File has `@generated` | File has `@custom` | File doesn't exist | Action |
+|---|---|---|---|
+| ✅ | — | — | Overwrite |
+| — | ✅ | — | Skip (preserve) |
+| — | — | ✅ | Create |
+| ✅ | ✅ | — | Skip (shouldn't happen) |
 
 ---
 
-## 2. Input Schema Reference
+## 2. File Markers
+
+Every generated file starts with a marker comment:
+
+```ts
+// @generated — DO NOT EDIT. Update input config and regenerate.
+// Source: scripts/generators/configs/purchase-order.config.ts
+```
+
+Every custom file starts with:
+
+```ts
+// @custom — Edit freely. This file is preserved across regenerations.
+// Source: scripts/generators/configs/purchase-order.config.ts
+```
+
+The generator reads the first line of existing files to decide whether to overwrite.
+
+---
+
+## 3. Input Config Schema
 
 ```ts
 interface AggregateModuleConfig {
-  // ── Identity ──────────────────────────────────────────────────────────
-  name: string;                  // kebab-case module name
-  context: string;               // bounded context (catalog, party, procurement)
-  displayName: string;           // human-readable label
-  entityName: string;            // PascalCase singular (the aggregate root class name)
-  entityNamePlural: string;      // PascalCase plural (for lists, controllers)
+  // ══════════════════════════════════════════════════════════════════════
+  // IDENTITY — where and what to generate
+  // ══════════════════════════════════════════════════════════════════════
+  name: string;                  // kebab-case: 'purchase-order'
+  context: string;               // bounded context: 'procurement'
+  displayName: string;           // human label: 'Purchase Order'
+  entityName: string;            // PascalCase class: 'PurchaseOrder'
+  entityNamePlural: string;      // PascalCase plural: 'PurchaseOrders'
 
-  // ── Domain Properties ─────────────────────────────────────────────────
-  properties: PropertyConfig[];  // aggregate properties (state fields)
-  valueObjects?: ValueObjectConfig[];  // typed value objects with optional invariants
-  childEntities?: ChildEntityConfig[]; // child entities owned by the aggregate
+  // ══════════════════════════════════════════════════════════════════════
+  // DOMAIN SHAPE — what the aggregate looks like
+  // ══════════════════════════════════════════════════════════════════════
+  properties: PropertyConfig[];
+  valueObjects?: ValueObjectConfig[];
+  childEntities?: ChildEntityConfig[];
+  states?: string[];
+  events: EventConfig[];
+  statusTransitions?: StatusTransitionConfig[];
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────
-  states?: string[];             // status enum values (e.g. ['ACTIVE','INACTIVE'])
+  // ══════════════════════════════════════════════════════════════════════
+  // BEHAVIOR — what the aggregate does
+  // ══════════════════════════════════════════════════════════════════════
+  useCases?: UseCaseConfig[];
+  outboundPorts?: OutboundPortConfig[];
+  inboundPorts?: InboundPortConfig[];
 
-  // ── Events ────────────────────────────────────────────────────────────
-  events: EventConfig[];         // domain events raised by the aggregate
+  // ══════════════════════════════════════════════════════════════════════
+  // PERSISTENCE — database shape
+  // ══════════════════════════════════════════════════════════════════════
+  prismaModel?: PrismaModelConfig;
 
-  // ── Invariants ────────────────────────────────────────────────────────
-  invariants?: InvariantConfig[];      // aggregate-level invariants
-  statusTransitions?: StatusTransitionConfig[];  // allowed state machine edges
-
-  // ── Policies ──────────────────────────────────────────────────────────
-  policies?: PolicyConfig[];     // business policies (evaluated, not thrown)
-
-  // ── Use Cases ─────────────────────────────────────────────────────────
-  useCases?: UseCaseConfig[];    // custom use cases beyond standard CRUD
-
-  // ── Cross-Module Ports ────────────────────────────────────────────────
-  outboundPorts?: OutboundPortConfig[];  // ports this module consumes from others
-  inboundPorts?: InboundPortConfig[];    // ports this module exposes to others
-
-  // ── Persistence ───────────────────────────────────────────────────────
-  prismaModel?: PrismaModelConfig;  // Prisma schema definition
-
-  // ── Module Options ────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════
+  // OPTIONS — fine-tune generation
+  // ══════════════════════════════════════════════════════════════════════
   options?: ModuleOptions;
 }
 ```
 
 ---
 
-## 3. Field-by-Field Explanation
+## 4. Field Reference
 
-### 3.1 Identity
+### 4.1 Identity
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `name` | `string` | ✅ | Kebab-case module name. Used for file names, API routes, Prisma models. Examples: `'product'`, `'purchase-order'`, `'vendor'` |
-| `context` | `string` | ✅ | Bounded context this module belongs to. Determines the parent folder. Examples: `'catalog'`, `'party'`, `'procurement'` |
-| `displayName` | `string` | ✅ | Human-readable name for logs, comments, docs. Examples: `'Product'`, `'Purchase Order'` |
-| `entityName` | `string` | ✅ | PascalCase singular — the aggregate root class name. Must match what you'd name the class. Examples: `'Product'`, `'PurchaseOrder'`, `'Vendor'` |
-| `entityNamePlural` | `string` | ✅ | PascalCase plural — used in list use cases, controller tags. Examples: `'Products'`, `'PurchaseOrders'`, `'Vendors'` |
+| `name` | `string` | ✅ | Kebab-case module name. Drives file names, API routes, Prisma tables. |
+| `context` | `string` | ✅ | Bounded context folder: `catalog`, `party`, `procurement`. |
+| `displayName` | `string` | ✅ | Human-readable label for comments and logs. |
+| `entityName` | `string` | ✅ | PascalCase aggregate root class name. |
+| `entityNamePlural` | `string` | ✅ | PascalCase plural for lists and controller routes. |
 
-**Naming relationships:**
+**Derivations from `name`:**
 
 ```
 name = 'purchase-order'
-  → kebab: 'purchase-order'
-  → camel: 'purchaseOrder'
-  → pascal: 'PurchaseOrder'
-  → file prefix: 'purchase-order.'
-  → Prisma model: 'PurchaseOrder' (PascalCase) / table: 'purchase_orders' (snake_case plural)
-  → API route: '/api/v1/purchase-orders'
+  camel      → purchaseOrder
+  pascal     → PurchaseOrder
+  kebab      → purchase-order
+  filePrefix → purchase-order.
+  route      → /api/v1/purchase-orders
+  prismaTable→ purchase_orders
 ```
 
 ---
 
-### 3.2 Properties (State Fields)
+### 4.2 Properties
 
-Each property represents a stateful field on the aggregate root.
+State fields on the aggregate root.
 
 ```ts
 interface PropertyConfig {
-  name: string;              // camelCase field name
-  type: PropertyType;        //see below
+  name: string;              // camelCase: 'orderNumber'
+  type: PropertyType;        // see table
   required?: boolean;        // default: false
-  maxLength?: number;        // for string/text types
-  defaultValue?: unknown;    // default value if not provided during creation
-  description?: string;      // documentation
+  maxLength?: number;        // for string/text
+  defaultValue?: unknown;    // used in factory + Prisma
 }
 
 type PropertyType =
-  | 'string'      // short string (e.g. name, code, sku) — maps to Prisma String
-  | 'text'        // long text (e.g. description, address) — maps to Prisma String
-  | 'money'       // monetary amount — uses Money value object (minorUnits + currency)
-  | 'boolean'     // true/false — maps to Prisma Boolean
-  | 'number'      // integer/float — maps to Prisma Int or Float
-  | 'date'        // date/time — maps to Prisma DateTime
-  | 'enum'        // string enum — requires `values` array
-  | 'json'        // JSON object — maps to Prisma Json
-  | 'id';         // foreign key reference (stored as string UUID)
+  | 'string'    // Prisma String
+  | 'text'      // Prisma String (nullable)
+  | 'money'     // Money value object (minorUnits + currency)
+  | 'boolean'   // Prisma Boolean
+  | 'number'    // Prisma Int/Float
+  | 'date'      // Prisma DateTime
+  | 'enum'      // TypeScript string union
+  | 'json'      // Prisma Json
+  | 'id';       // UUID string (foreign key)
 ```
 
-**What the generator does with each type:**
+**Type mapping:**
 
-| Type | Domain | Persistence | Input DTO |
+| Type | Domain Type | Prisma Column | DTO Input |
 |---|---|---|---|
 | `string` | `string` | `String` | `string` |
 | `text` | `string \| null` | `String?` | `string?` |
-| `money` | `Money` (value object) | `Decimal` + currency column | `number` (amount) |
+| `money` | `Money` | `Decimal` + `currency: String` | `number` |
 | `boolean` | `boolean` | `Boolean` | `boolean` |
 | `number` | `number` | `Int` or `Float` | `number` |
 | `date` | `Date` | `DateTime` | `string` (ISO) |
-| `enum` | `string` (the enum type) | `String` (enum name) | `string` |
+| `enum` | `string` | `String` | `string` |
 | `json` | `Record<string, unknown>` | `Json` | `object` |
 | `id` | `string` | `String` (UUID) | `string` |
 
-**Example — Product properties:**
-
-```ts
-properties: [
-  { name: 'sku',         type: 'string', required: true },
-  { name: 'name',        type: 'string', required: true, maxLength: 200 },
-  { name: 'unitPrice',   type: 'money',  required: true },
-  { name: 'description', type: 'text' },
-  { name: 'isActive',    type: 'boolean', defaultValue: true },
-]
-```
-
 ---
 
-### 3.3 Value Objects
+### 4.3 Value Objects
 
-Value objects are immutable, self-validating types that wrap primitive values. Each gets
-its own file with optional invariants.
+Immutable, self-validating wrappers around primitives.
 
 ```ts
 interface ValueObjectConfig {
-  name: string;                // PascalCase class name (e.g. 'Sku', 'ProductName', 'OrderNumber')
-  wraps: PropertyType;         // what primitive it wraps ('string', 'money', etc.)
-  normalize?: string;          // normalization rule: 'uppercase', 'trim', 'trim-uppercase', 'none'
-  invariants?: ValueObjectInvariantConfig[];
-}
-
-interface ValueObjectInvariantConfig {
-  name: string;                // kebab-case invariant name (e.g. 'sku-format')
-  description?: string;        // what the invariant checks
-  rules: InvariantRule[];      // validation rules
-}
-
-interface InvariantRule {
-  type: 'required' | 'minLength' | 'maxLength' | 'pattern' | 'custom';
-  value?: string | number | RegExp;  // for pattern/minLength/maxLength
-  message: string;             // error message on failure
+  name: string;                // PascalCase: 'Sku', 'OrderNumber'
+  wraps: PropertyType;         // primitive it wraps
+  normalize?: string;          // 'uppercase' | 'trim' | 'trim-uppercase' | 'none'
 }
 ```
 
-**What gets generated:**
+**Generated files:**
 
-- `domain/value-objects/<kebab>.vo.ts` — the ValueObject class
-- `domain/value-objects/<kebab>.invariants.ts` — invariant registrations (if rules provided)
-
-**Example:**
-
-```ts
-valueObjects: [
-  {
-    name: 'Sku',
-    wraps: 'string',
-    normalize: 'trim-uppercase',
-    invariants: [
-      {
-        name: 'sku-format',
-        rules: [
-          { type: 'required', message: 'SKU cannot be empty' },
-          { type: 'minLength', value: 2, message: 'SKU must be at least 2 characters' },
-          { type: 'maxLength', value: 64, message: 'SKU must be at most 64 characters' },
-          { type: 'pattern', value: /^[A-Z0-9-]+$/, message: 'SKU must be letters, digits or dashes' },
-        ],
-      },
-    ],
-  },
-  {
-    name: 'ProductName',
-    wraps: 'string',
-    normalize: 'trim',
-    invariants: [
-      {
-        name: 'product-name-length',
-        rules: [
-          { type: 'required', message: 'Product name cannot be empty' },
-          { type: 'maxLength', value: 200, message: 'Product name cannot exceed 200 characters' },
-        ],
-      },
-    ],
-  },
-]
-```
+| File | Marker | Contents |
+|---|---|---|
+| `<kebab>.vo.ts` | `@generated` | VO class: constructor, `create()`, `value` getter |
+| `<kebab>.invariants.ts` | `@custom` | Empty scaffold — you hand-code validation rules |
 
 ---
 
-### 3.4 Child Entities
+### 4.4 Child Entities
 
-Entities owned by the aggregate root (e.g. `PurchaseOrderLine` inside `PurchaseOrder`).
+Entities owned by the aggregate root.
 
 ```ts
 interface ChildEntityConfig {
-  name: string;                  // PascalCase class name (e.g. 'PurchaseOrderLine')
-  properties: PropertyConfig[];  // child entity properties (no id, no status, no dates)
-  methods?: ChildMethodConfig[]; // domain methods on the child entity
+  name: string;                  // PascalCase: 'PurchaseOrderLine'
+  properties: PropertyConfig[];  // no id/status/dates
+  methods?: ChildMethodConfig[];
 }
 
 interface ChildMethodConfig {
-  name: string;                  // method name (e.g. 'withUpdatedQuantity')
+  name: string;
   params: { name: string; type: string }[];
   returnType: string;
 }
 ```
 
-**What gets generated:**
-
-- `domain/entities/<kebab>-<child-kebab>.entity.ts`
+**Generated:** `<kebab>-<child-kebab>.entity.ts` (`@generated`)
 
 ---
 
-### 3.5 Status / Lifecycle States
+### 4.5 States
 
-If the aggregate has a lifecycle status, define the enum values.
+Lifecycle status enum values.
 
 ```ts
 states: ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED', 'COMPLETED']
 ```
 
-**What gets generated:**
+**Generated files:**
 
-- `domain/types/<kebab>.enum.ts` — the TypeScript enum
-- Status transition logic in the aggregate (activate/deactivate or custom transitions)
-- Status transition invariant registration
+| File | Marker | Contents |
+|---|---|---|
+| `<name>.enum.ts` | `@generated` | TypeScript enum |
+| `<name>.aggregate.ts` | `@generated` | Transition method stubs with `// TODO: add guards` |
+| `<name>.invariants.ts` | `@custom` | Empty scaffold — you hand-code transition rules |
 
-If `states` is omitted, no status enum is generated and the aggregate has no lifecycle.
+If `states` is omitted: no enum, no transitions, no status-related files.
 
 ---
 
-### 3.6 Events
+### 4.6 Events
 
-Domain events raised by the aggregate. Each event becomes a class and gets registered
-in the domain event registry.
+Domain events raised by the aggregate.
 
 ```ts
 interface EventConfig {
-  name: string;           // PascalCase event name suffix (e.g. 'Created', 'Submitted')
-  fields?: string[];      // extra payload fields beyond the aggregate ID
-  description?: string;   // documentation
+  name: string;           // suffix: 'Created', 'Submitted'
+  fields?: string[];      // extra payload beyond entity ID
 }
 ```
 
-**The generator automatically prefixes the event name with `entityName`:**
+**Auto-prefixed with `entityName`:**
 
 ```
-entityName = 'PurchaseOrder', event.name = 'Submitted'
+entityName = 'PurchaseOrder', name = 'Submitted'
   → class: PurchaseOrderSubmitted
   → file: purchase-order.submitted.event.ts
   → registry key: 'PurchaseOrderSubmitted'
 ```
 
-**Standard events (always generated if `states` is defined):**
+**Generated files (all `@generated`):**
 
-| Event | When | Extra Fields |
-|---|---|---|
-| `Created` | Factory creates aggregate | all required properties |
-| `Updated` | `update()` method called | none |
-| `Activated` | `activate()` called | none |
-| `Deactivated` | `deactivate()` called | none |
+| File | Contents |
+|---|---|
+| `<name>.<event>.event.ts` | Event class extending `DomainEvent` |
+| `<name>.registry.ts` | Rehydrator registrations for outbox |
 
-**Custom events (user-defined):**
+**Standard events (if `states` is defined):**
 
-```ts
-events: [
-  { name: 'Created', fields: ['sku', 'name', 'unitPrice', 'currency'] },
-  { name: 'Updated' },
-  { name: 'Submitted', fields: ['orderNumber', 'vendorId'] },
-  { name: 'Approved' },
-  { name: 'Rejected', fields: ['reason'] },
-  { name: 'Cancelled' },
-  { name: 'LineAdded', fields: ['productId'] },
-  { name: 'LineRemoved', fields: ['productId'] },
-]
-```
-
-**What gets generated per event:**
-
-- `domain/events/<kebab>.<event-kebab>.event.ts` — event class extending `DomainEvent`
-- Registration in `domain/events/<kebab>.registry.ts` — rehydrator for outbox
+| Event | Extra Fields |
+|---|---|
+| `Created` | required properties |
+| `Updated` | none |
+| `Activated` | none |
+| `Deactivated` | none |
 
 ---
 
-### 3.7 Invariants
+### 4.7 Status Transitions
 
-Aggregate-level invariant rules enforced during domain operations.
-
-```ts
-interface InvariantConfig {
-  operation: string;        // when to check: 'create', 'update', or custom operation name
-  name: string;             // kebab-case unique name (e.g. 'product-price-non-negative')
-  field?: string;           // which field to validate (optional, for simple cases)
-  rules: InvariantRule[];   // same rule types as value object invariants
-  customCheck?: string;     // pseudo-code description for complex logic (generator adds TODO)
-}
-```
-
-**What gets generated:**
-
-- Invariant registrations in `domain/entities/<kebab>.invariants.ts`
-
-**Example:**
-
-```ts
-invariants: [
-  {
-    operation: 'create',
-    name: 'product-price-non-negative',
-    field: 'unitPrice',
-    rules: [
-      { type: 'custom', message: 'Product price cannot be negative', value: '>= 0' },
-    ],
-  },
-]
-```
-
----
-
-### 3.8 Status Transitions
-
-Define the state machine edges explicitly.
+State machine edges. Generator creates method stubs; you add business guards.
 
 ```ts
 interface StatusTransitionConfig {
   from: string;        // source status
   to: string;          // target status
-  method?: string;     // aggregate method name (default: auto-generated from 'to')
-  guard?: string;      // additional guard description (adds TODO)
+  method?: string;     // method name (default: kebab `to`)
 }
 ```
 
-**What gets generated:**
-
-- Transition method on the aggregate (e.g. `submit()`, `approve()`, `reject()`)
-- Status transition invariant with the allowed edges map
-- Corresponding domain event for each transition
-
-**Example:**
+**Generated in aggregate (`@generated`):**
 
 ```ts
-statusTransitions: [
-  { from: 'DRAFT',     to: 'SUBMITTED',  method: 'submit' },
-  { from: 'SUBMITTED', to: 'APPROVED',   method: 'approve' },
-  { from: 'SUBMITTED', to: 'REJECTED',   method: 'reject', guard: 'requires reason' },
-  { from: 'SUBMITTED', to: 'CANCELLED',  method: 'cancel' },
-  { from: 'APPROVED',  to: 'COMPLETED',  method: 'complete' },
-]
-```
-
-This generates:
-
-```ts
-// In the aggregate:
-submit(): void { ... }
-approve(): void { ... }
-reject(reason: string): void { ... }
-cancel(): void { ... }
-complete(): void { ... }
-
-// In invariants:
-const allowed: Record<PurchaseOrderStatus, PurchaseOrderStatus[]> = {
-  [PurchaseOrderStatus.DRAFT]: [PurchaseOrderStatus.SUBMITTED],
-  [PurchaseOrderStatus.SUBMITTED]: [PurchaseOrderStatus.APPROVED, PurchaseOrderStatus.REJECTED, PurchaseOrderStatus.CANCELLED],
-  [PurchaseOrderStatus.APPROVED]: [PurchaseOrderStatus.COMPLETED],
-  [PurchaseOrderStatus.REJECTED]: [],
-  [PurchaseOrderStatus.CANCELLED]: [],
-  [PurchaseOrderStatus.COMPLETED]: [],
-};
-```
-
----
-
-### 3.9 Policies
-
-Business policies are evaluated (not thrown) — they return `true`/`false` and let the
-caller decide what to do.
-
-```ts
-interface PolicyConfig {
-  name: string;                // kebab-case policy name (e.g. 'product-reactivation')
-  description: string;         // what the policy evaluates
-  inputFields: string[];       // fields the policy needs (from aggregate state)
-  returnType?: string;         // default: 'boolean'
+// @generated — DO NOT EDIT. Update input config and regenerate.
+submit(): void {
+  // @custom-guard — add your business rules here
+  invariantRegistry.enforce('purchase-order.status-transition', {
+    status: this.props.status,
+    to: PurchaseOrderStatus.SUBMITTED,
+  });
+  this.props.status = PurchaseOrderStatus.SUBMITTED;
+  this.props.updatedAt = new Date();
+  this.addEvent(new PurchaseOrderSubmitted(this.id, this.props.orderNumber.value, this.vendorId));
 }
 ```
 
-**What gets generated:**
+The `// @custom-guard` marker inside the generated method tells you where to add hand-coded logic. On regeneration, the method body is overwritten BUT the generator preserves any code between `// @custom-guard` markers.
 
-- `domain/policies/<kebab>.policy.ts` — policy registration
-- Usage example in the aggregate (as a TODO if not obvious)
-
-**Example:**
+**Generated in invariants (`@custom`):**
 
 ```ts
-policies: [
+// @custom — Edit freely. This file is preserved across regenerations.
+invariantRegistry.register<{ status: PurchaseOrderStatus; to: PurchaseOrderStatus }>(
+  'purchase-order.status-transition',
   {
-    name: 'purchase-order-approval',
-    description: 'Orders above the auto-approve threshold require manual approval',
-    inputFields: ['status', 'totalAmount', 'autoApproveThreshold'],
+    name: 'purchase-order-valid-status-transition',
+    check: ({ status, to }) => {
+      if (status === to) return;
+      const allowed: Record<PurchaseOrderStatus, PurchaseOrderStatus[]> = {
+        // TODO: fill in your allowed transitions
+      };
+      if (!allowed[status]?.includes(to)) {
+        throw Object.assign(new Error(`Invalid transition: ${status} -> ${to}`), { statusCode: 422 });
+      }
+    },
   },
-]
+);
 ```
 
 ---
 
-### 3.10 Use Cases
+### 4.8 Use Cases
 
-Define which use cases to generate. The generator always produces standard CRUD use
-cases; this section lets you add **custom** use cases.
+Custom use cases beyond standard CRUD.
 
 ```ts
 interface UseCaseConfig {
-  name: string;                    // PascalCase name (e.g. 'ChangePrice', 'SubmitOrder')
-  type: 'command' | 'query';       // command mutates, query reads
+  name: string;                    // PascalCase: 'ChangePrice', 'SubmitOrder'
+  type: 'command' | 'query';
   description?: string;
-  inputFields?: PropertyConfig[];  // what the use case accepts
-  returnType?: string;             // what it returns (default: entityName + 'Id' for commands)
-  injects?: string[];              // additional ports to inject (e.g. ['NumberingPort'])
+  inputFields?: PropertyConfig[];
+  returnType?: string;             // default: entityName + 'Id'
+  injects?: string[];              // additional ports
   transactional?: boolean;         // default: true for commands
 }
 ```
 
-**Standard use cases (always generated):**
+**Standard use cases (always generated unless `options.skipCrud`):**
 
-| Use Case | Type | Description |
-|---|---|---|
-| `Create<Entity>` | command | Creates via factory, saves, appends to outbox |
-| `Update<Entity>` | command | Finds by ID, calls aggregate `update()`, saves, appends to outbox |
-| `Get<Entity>` | query | Finds by ID, throws NotFoundException |
-| `List<Entities>` | query | Returns all records |
+| Use Case | Type |
+|---|---|
+| `Create<Entity>` | command |
+| `Update<Entity>` | command |
+| `Get<Entity>` | query |
+| `List<Entities>` | query |
 
-If `states` is defined, a `<Entity>StatusUseCase` is also generated for status transitions.
+If `states` is defined: `<Entity>StatusUseCase`.
 
-**Custom use case example:**
-
-```ts
-useCases: [
-  {
-    name: 'ChangePrice',
-    type: 'command',
-    inputFields: [
-      { name: 'id', type: 'string' },
-      { name: 'unitPrice', type: 'money' },
-      { name: 'currency', type: 'string' },
-    ],
-  },
-  {
-    name: 'GetPurchasableProduct',
-    type: 'query',
-    inputFields: [{ name: 'id', type: 'string' }],
-    returnType: 'Product | null',
-  },
-]
-```
-
-**What gets generated per custom use case:**
-
-- `application/usecase/<kebab>.<use-case-kebab>.usecase.ts`
+**Generated:** `<name>.<use-case>.usecase.ts` (`@generated`)
 
 ---
 
-### 3.11 Cross-Module Ports
+### 4.9 Cross-Module Ports
 
-#### Outbound Ports (this module consumes from others)
+#### Outbound (this module consumes)
 
 ```ts
 interface OutboundPortConfig {
-  name: string;              // PascalCase name (e.g. 'VendorQuery', 'ProductQuery')
-  portClassName: string;     // the abstract class name (e.g. 'OrderableVendorQueryPort')
-  methods: OutboundMethodConfig[];
-  description?: string;      // why this module needs this data
-}
-
-interface OutboundMethodConfig {
-  name: string;              // method name (e.g. 'getOrderableVendor')
-  returnType: string;        // e.g. 'Promise<VendorReference | null>'
-  params?: { name: string; type: string }[];
+  name: string;
+  portClassName: string;     // abstract class name
+  methods: {
+    name: string;
+    returnType: string;
+    params?: { name: string; type: string }[];
+  }[];
 }
 ```
 
-**What gets generated:**
-
-- `application/ports/outbound/<kebab>-<port-kebab>.port.ts` — abstract class
-- Types/interfaces for the return shapes in `domain/types/`
-- Lazy resolver pattern in the use case that needs it
-
-**Example:**
-
-```ts
-outboundPorts: [
-  {
-    name: 'VendorQuery',
-    portClassName: 'OrderableVendorQueryPort',
-    methods: [
-      { name: 'getOrderableVendor', returnType: 'Promise<VendorReference | null>' },
-    ],
-  },
-]
-```
-
-#### Inbound Ports (this module exposes to others)
+#### Inbound (this module exposes)
 
 ```ts
 interface InboundPortConfig {
-  name: string;              // PascalCase name (e.g. 'PurchasableProductQuery')
-  portClassName: string;     // the abstract class name
-  methods: InboundMethodConfig[];
-  adapterClass?: string;     // adapter class that implements this port
-  implementsWith?: string;   // which use case implements it (e.g. 'GetPurchasableProductUseCase')
-  description?: string;
-}
-
-interface InboundMethodConfig {
   name: string;
-  returnType: string;
-  params?: { name: string; type: string }[];
+  portClassName: string;
+  methods: {
+    name: string;
+    returnType: string;
+    params?: { name: string; type: string }[];
+  }[];
+  implementsWith?: string;   // use case that implements it
 }
 ```
 
-**What gets generated:**
+**Generated (all `@generated`):**
 
-- `domain/ports/<kebab>-<port-kebab>.port.ts` — abstract class in the consuming module's domain
-- `application/adapters/<module>.adapter.ts` — adapter implementing the port via own use case
-- Module binding: `{ provide: PortClass, useExisting: AdapterClass }`
-- Module export of the port class
-
-**Example:**
-
-```ts
-inboundPorts: [
-  {
-    name: 'PurchasableProductQuery',
-    portClassName: 'PurchasableProductQueryPort',
-    methods: [
-      { name: 'getPurchasableProduct', returnType: 'Promise<ProductReference | null>', params: [{ name: 'id', type: 'string' }] },
-    ],
-    implementsWith: 'GetPurchasableProductUseCase',
-  },
-]
-```
+| File | Contents |
+|---|---|
+| `outbound/<name>.port.ts` | Abstract class |
+| `adapters/<name>.adapter.ts` | Adapter implementation |
+| Module binding + export | In `<name>.module.ts` |
 
 ---
 
-### 3.12 Prisma Model
-
-Optional Prisma schema definition. If provided, generates the `.prisma` file.
+### 4.10 Prisma Model
 
 ```ts
 interface PrismaModelConfig {
-  modelName: string;           // PascalCase model name (e.g. 'PurchaseOrder')
-  tableName?: string;          // snake_case table name (default: pluralized kebab → snake)
-  fields: PrismaFieldConfig[];
-  indexes?: PrismaIndexConfig[];
-  enums?: PrismaEnumConfig[];  // Prisma-level enums
-}
-
-interface PrismaFieldConfig {
-  name: string;
-  type: string;                // Prisma type: String, Int, Float, Boolean, DateTime, Json, Decimal
-  id?: boolean;
-  unique?: boolean;
-  required?: boolean;          // default: true
-  default?: unknown;
-  relation?: string;           // related model name
-  relationFields?: string[];   // foreign key fields
-}
-
-interface PrismaIndexConfig {
-  fields: string[];
-  unique?: boolean;
-}
-
-interface PrismaEnumConfig {
-  name: string;
-  values: string[];
+  modelName: string;
+  tableName?: string;
+  fields: {
+    name: string;
+    type: string;          // String, Int, Float, Boolean, DateTime, Json, Decimal
+    id?: boolean;
+    unique?: boolean;
+    required?: boolean;    // default: true
+    default?: unknown;
+    relation?: string;
+    relationFields?: string[];
+  }[];
+  indexes?: {
+    fields: string[];
+    unique?: boolean;
+  }[];
+  enums?: {
+    name: string;
+    values: string[];
+  }[];
 }
 ```
 
-**What gets generated:**
-
-- `prisma/schema/<kebab>.prisma` — Prisma model definition
+**Generated:** `prisma/schema/<name>.prisma` (`@generated`)
 
 ---
 
-### 3.13 Module Options
-
-Fine-grained control over what the generator produces.
+### 4.11 Module Options
 
 ```ts
 interface ModuleOptions {
   skipConsumers?: boolean;          // don't generate consumer files
-  skipSwagger?: boolean;            // don't add @ApiTags / @ApiOperation decorators
-  skipSpecFiles?: boolean;          // don't generate .spec.ts files
-  customModuleFile?: boolean;       // use hand-written module file (don't overwrite)
-  enablePagination?: boolean;       // use PageQuery/PageResult in list use case
-  enableVersioning?: boolean;       // add API version prefix to controller route
-  outboxEnabled?: boolean;          // default: true — append events to outbox in commands
-  companyConfigEnabled?: boolean;   // default: true — inject CompanyConfigPort in commands
+  skipSwagger?: boolean;            // no @ApiTags / @ApiOperation
+  skipSpecFiles?: boolean;          // no .spec.ts files
+  skipCrud?: boolean;               // skip standard CRUD use cases
+  customModuleFile?: boolean;       // don't overwrite module file
+  enablePagination?: boolean;       // PageQuery/PageResult in list use case
+  enableVersioning?: boolean;       // API version prefix
+  outboxEnabled?: boolean;          // default: true
+  companyConfigEnabled?: boolean;   // default: true
 }
 ```
 
 ---
 
-## 4. Complete Example
-
-Here is a full configuration for a **PurchaseOrder** aggregate:
+## 5. Example Config
 
 ```ts
+// configs/purchase-order.config.ts
+import type { AggregateModuleConfig } from '../aggregate.generator';
+
 const config: AggregateModuleConfig = {
-  // ── Identity ──
   name: 'purchase-order',
   context: 'procurement',
   displayName: 'PurchaseOrder',
   entityName: 'PurchaseOrder',
   entityNamePlural: 'PurchaseOrders',
 
-  // ── Properties ──
   properties: [
     { name: 'orderNumber', type: 'string', required: true },
     { name: 'vendorId',    type: 'id',     required: true },
     { name: 'currency',    type: 'string', required: false, defaultValue: 'USD' },
   ],
 
-  // ── Value Objects ──
   valueObjects: [
-    {
-      name: 'OrderNumber',
-      wraps: 'string',
-      normalize: 'trim-uppercase',
-      invariants: [
-        {
-          name: 'order-number-format',
-          rules: [
-            { type: 'required', message: 'Order number cannot be empty' },
-            { type: 'pattern', value: /^PO-\d{8}$/, message: 'Order number must match PO-XXXXXXXX format' },
-          ],
-        },
-      ],
-    },
-    {
-      name: 'VendorIdRef',
-      wraps: 'id',
-      normalize: 'none',
-    },
-    {
-      name: 'ProductIdRef',
-      wraps: 'id',
-      normalize: 'none',
-    },
+    { name: 'OrderNumber', wraps: 'string', normalize: 'trim-uppercase' },
+    { name: 'VendorIdRef', wraps: 'id', normalize: 'none' },
+    { name: 'ProductIdRef', wraps: 'id', normalize: 'none' },
   ],
 
-  // ── Child Entities ──
   childEntities: [
     {
       name: 'PurchaseOrderLine',
@@ -716,10 +533,8 @@ const config: AggregateModuleConfig = {
     },
   ],
 
-  // ── States ──
   states: ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED', 'COMPLETED'],
 
-  // ── Events ──
   events: [
     { name: 'Created',     fields: ['orderNumber', 'vendorId'] },
     { name: 'LineAdded',   fields: ['productId'] },
@@ -731,35 +546,14 @@ const config: AggregateModuleConfig = {
     { name: 'Completed' },
   ],
 
-  // ── Invariants ──
-  invariants: [
-    {
-      operation: 'create',
-      name: 'purchase-order-has-vendor',
-      field: 'vendorId',
-      rules: [{ type: 'required', message: 'Vendor ID is required' }],
-    },
-  ],
-
-  // ── Status Transitions ──
   statusTransitions: [
     { from: 'DRAFT',     to: 'SUBMITTED',  method: 'submit' },
     { from: 'SUBMITTED', to: 'APPROVED',   method: 'approve' },
-    { from: 'SUBMITTED', to: 'REJECTED',   method: 'reject', guard: 'requires reason' },
+    { from: 'SUBMITTED', to: 'REJECTED',   method: 'reject' },
     { from: 'SUBMITTED', to: 'CANCELLED',  method: 'cancel' },
     { from: 'APPROVED',  to: 'COMPLETED',  method: 'complete' },
   ],
 
-  // ── Policies ──
-  policies: [
-    {
-      name: 'purchase-order-approval',
-      description: 'Orders above the auto-approve threshold require manual approval',
-      inputFields: ['status', 'totalAmount', 'autoApproveThreshold'],
-    },
-  ],
-
-  // ── Custom Use Cases ──
   useCases: [
     {
       name: 'AddPurchaseOrderLine',
@@ -769,7 +563,6 @@ const config: AggregateModuleConfig = {
         { name: 'productId', type: 'string' },
         { name: 'quantity',  type: 'number' },
         { name: 'unitPrice', type: 'money' },
-        { name: 'currency',  type: 'string' },
       ],
     },
     {
@@ -782,7 +575,6 @@ const config: AggregateModuleConfig = {
     },
   ],
 
-  // ── Cross-Module Ports ──
   outboundPorts: [
     {
       name: 'VendorQuery',
@@ -800,7 +592,6 @@ const config: AggregateModuleConfig = {
     },
   ],
 
-  // ── Prisma ──
   prismaModel: {
     modelName: 'PurchaseOrder',
     fields: [
@@ -820,7 +611,6 @@ const config: AggregateModuleConfig = {
     ],
   },
 
-  // ── Options ──
   options: {
     enablePagination: true,
   },
@@ -831,184 +621,165 @@ export default config;
 
 ---
 
-## 5. What Gets Generated
-
-For the config above, the generator produces:
+## 6. Generated File Tree
 
 ```
 src/business/procurement/purchase/
-├── purchase-order.module.ts                          ← NestJS module
-├── index.ts                                          ← barrel exports
 │
-├── domain/
-│   ├── entities/
-│   │   ├── purchase-order.aggregate.ts               ← aggregate root
-│   │   ├── purchase-order.aggregate.spec.ts          ← unit test scaffold
-│   │   ├── purchase-order-line.entity.ts             ← child entity
-│   │   └── purchase-order.invariants.ts              ← invariant registrations
-│   │
-│   ├── types/
-│   │   ├── purchase-order.enum.ts                    ← status enum
-│   │   └── purchase-order.types.ts                   ← Props, Inputs, Requests, References
-│   │
-│   ├── value-objects/
-│   │   ├── purchase-order-id.vo.ts                   ← aggregate ID value object
-│   │   ├── order-number.vo.ts                        ← OrderNumber value object
-│   │   ├── order-number.invariants.ts                ← OrderNumber invariants
-│   │   ├── vendor-id-ref.vo.ts                       ← VendorIdRef value object
-│   │   ├── product-id-ref.vo.ts                      ← ProductIdRef value object
-│   │   └── index.ts
-│   │
-│   ├── events/
-│   │   ├── purchase-order.created.event.ts
-│   │   ├── purchase-order.submitted.event.ts
-│   │   ├── purchase-order.approved.event.ts
-│   │   ├── purchase-order.rejected.event.ts
-│   │   ├── purchase-order.cancelled.event.ts
-│   │   ├── purchase-order.completed.event.ts
-│   │   ├── purchase-order.line-added.event.ts
-│   │   ├── purchase-order.line-removed.event.ts
-│   │   ├── purchase-order.registry.ts                ← event rehydrators
-│   │   └── index.ts
-│   │
-│   ├── factories/
-│   │   ├── purchase-order.factory.ts                 ← domain factory
-│   │   └── index.ts
-│   │
-│   ├── policies/
-│   │   └── purchase-order.policy.ts                  ← policy registration
-│   │
-│   ├── ports/
-│   │   ├── purchase-order-command-repository.port.ts ← abstract command repo
-│   │   ├── purchase-order-query-repository.port.ts   ← abstract query repo
-│   │   └── index.ts
-│   │
-│   └── errors/
-│       └── (empty, ready for domain errors)
+│  ┌─── @generated (readonly, overwritten on regen) ──────────────────┐
+│  │                                                                   │
+├── purchase-order.module.ts                                          │
+├── index.ts                                                          │
+│                                                                     │
+├── domain/                                                           │
+│   ├── entities/                                                     │
+│   │   ├── purchase-order.aggregate.ts                               │
+│   │   ├── purchase-order.aggregate.spec.ts                          │
+│   │   └── purchase-order-line.entity.ts                             │
+│   │                                                                 │
+│   ├── types/                                                        │
+│   │   ├── purchase-order.enum.ts                                    │
+│   │   └── purchase-order.types.ts                                   │
+│   │                                                                 │
+│   ├── value-objects/                                                │
+│   │   ├── purchase-order-id.vo.ts                                   │
+│   │   ├── order-number.vo.ts                                        │
+│   │   ├── vendor-id-ref.vo.ts                                       │
+│   │   ├── product-id-ref.vo.ts                                      │
+│   │   └── index.ts                                                  │
+│   │                                                                 │
+│   ├── events/                                                       │
+│   │   ├── purchase-order.created.event.ts                           │
+│   │   ├── purchase-order.submitted.event.ts                         │
+│   │   ├── purchase-order.approved.event.ts                          │
+│   │   ├── purchase-order.rejected.event.ts                          │
+│   │   ├── purchase-order.cancelled.event.ts                         │
+│   │   ├── purchase-order.completed.event.ts                         │
+│   │   ├── purchase-order.line-added.event.ts                        │
+│   │   ├── purchase-order.line-removed.event.ts                      │
+│   │   ├── purchase-order.registry.ts                                │
+│   │   └── index.ts                                                  │
+│   │                                                                 │
+│   ├── factories/                                                    │
+│   │   ├── purchase-order.factory.ts                                 │
+│   │   └── index.ts                                                  │
+│   │                                                                 │
+│   ├── ports/                                                        │
+│   │   ├── purchase-order-command-repository.port.ts                 │
+│   │   ├── purchase-order-query-repository.port.ts                   │
+│   │   └── index.ts                                                  │
+│   │                                                                 │
+│   └── errors/                                                       │
+│                                                                     │
+├── application/                                                      │
+│   ├── usecase/                                                      │
+│   │   ├── create-purchase-order.usecase.ts                          │
+│   │   ├── update-purchase-order.usecase.ts                          │
+│   │   ├── purchase-order-transition.usecase.ts                      │
+│   │   ├── add-purchase-order-line.usecase.ts                        │
+│   │   ├── remove-purchase-order-line.usecase.ts                     │
+│   │   ├── get-purchase-order.usecase.ts                             │
+│   │   ├── list-purchase-orders.usecase.ts                           │
+│   │   └── index.ts                                                  │
+│   │                                                                 │
+│   ├── consumers/                                                    │
+│   │   ├── purchase-order.event-emitter.consumer.ts                  │
+│   │   ├── purchase-order.kafka.consumer.ts                          │
+│   │   ├── purchase-order.rabbitmq.consumer.ts                       │
+│   │   ├── purchase-order.sqs.consumer.ts                            │
+│   │   └── index.ts                                                  │
+│   │                                                                 │
+│   ├── adapters/                                                     │
+│   │   └── index.ts                                                  │
+│   │                                                                 │
+│   └── ports/                                                        │
+│       └── outbound/                                                 │
+│           ├── purchase-order-vendor-query.port.ts                   │
+│           ├── purchase-order-product-query.port.ts                  │
+│           └── index.ts                                              │
+│                                                                     │
+├── infrastructure/                                                   │
+│   └── persistence/                                                  │
+│       ├── purchase-order.mapper.ts                                  │
+│       ├── prisma-purchase-order-command.repository.ts               │
+│       ├── prisma-purchase-order-query.repository.ts                 │
+│       └── index.ts                                                  │
+│                                                                     │
+└── presentation/                                                     │
+    └── http/                                                         │
+        ├── controllers/                                              │
+        │   └── purchase-order.controller.ts                          │
+        └── request/                                                  │
+            └── purchase-order.request.ts                             │
+│                                                                     │
+│  └──────────────────────────────────────────────────────────────────┘
 │
-├── application/
-│   ├── usecase/
-│   │   ├── create-purchase-order.usecase.ts
-│   │   ├── update-purchase-order.usecase.ts
-│   │   ├── purchase-order-transition.usecase.ts
-│   │   ├── add-purchase-order-line.usecase.ts
-│   │   ├── remove-purchase-order-line.usecase.ts
-│   │   ├── get-purchase-order.usecase.ts
-│   │   ├── list-purchase-orders.usecase.ts
-│   │   └── index.ts
-│   │
-│   ├── consumers/
-│   │   ├── purchase-order.event-emitter.consumer.ts
-│   │   ├── purchase-order.kafka.consumer.ts
-│   │   ├── purchase-order.rabbitmq.consumer.ts
-│   │   ├── purchase-order.sqs.consumer.ts
-│   │   └── index.ts
-│   │
-│   ├── adapters/                                      ← (empty, for inbound port adapters)
-│   │   └── index.ts
-│   │
-│   └── ports/
-│       └── outbound/
-│           ├── purchase-order-vendor-query.port.ts   ← outbound port
-│           ├── purchase-order-product-query.port.ts  ← outbound port
-│           └── index.ts
-│
-├── infrastructure/
-│   └── persistence/
-│       ├── purchase-order.mapper.ts                   ← domain ↔ Prisma mapper
-│       ├── prisma-purchase-order-command.repository.ts
-│       ├── prisma-purchase-order-query.repository.ts
-│       └── index.ts
-│
-└── presentation/
-    └── http/
-        ├── controllers/
-        │   └── purchase-order.controller.ts
-        └── request/
-            └── purchase-order.request.ts             ← request DTOs
+│  ┌─── @custom (editable, preserved across regen) ──────────────────┐
+│  │                                                                   │
+├── domain/                                                           │
+│   ├── entities/                                                     │
+│   │   └── purchase-order.invariants.ts            ← hand-code       │
+│   │                                                                 │
+│   ├── value-objects/                                                │
+│   │   └── order-number.invariants.ts              ← hand-code       │
+│   │                                                                 │
+│   └── policies/                                                     │
+│       └── purchase-order.policy.ts                ← hand-code       │
+│                                                                     │
+│  └──────────────────────────────────────────────────────────────────┘
 
 prisma/schema/
-└── purchase-order.prisma                              ← Prisma model definition
+└── purchase-order.prisma                         ← @generated
 ```
-
-**Total: ~35 files** generated from a single config object.
 
 ---
 
-## 6. Naming Conventions
+## 7. Naming Conventions
 
-All naming derives from the `name` and `entityName` fields:
-
-| Artifact | Pattern | Example (`name='purchase-order'`, `entityName='PurchaseOrder'`) |
+| Artifact | Pattern | Example |
 |---|---|---|
 | Module class | `<EntityName>Module` | `PurchaseOrderModule` |
 | Module file | `<name>.module.ts` | `purchase-order.module.ts` |
-| Aggregate file | `<entity-name>.aggregate.ts` | `purchase-order.aggregate.ts` |
-| Enum file | `<name>.enum.ts` | `purchase-order.enum.ts` |
-| Types file | `<name>.types.ts` | `purchase-order.types.ts` |
-| ID value object | `<entity-name>-id.vo.ts` | `purchase-order-id.vo.ts` |
-| Other value objects | `<kebab>.vo.ts` | `order-number.vo.ts` |
-| Event file | `<name>.<event-kebab>.event.ts` | `purchase-order.submitted.event.ts` |
-| Registry file | `<name>.registry.ts` | `purchase-order.registry.ts` |
-| Invariants file | `<name>.invariants.ts` | `purchase-order.invariants.ts` |
-| Factory file | `<entity-name>.factory.ts` | `purchase-order.factory.ts` |
-| Policy file | `<name>.policy.ts` | `purchase-order.policy.ts` |
-| Repository port | `<name>-command-repository.port.ts` | `purchase-order-command-repository.port.ts` |
-| Use case file | `<name>.<use-case-kebab>.usecase.ts` | `purchase-order-transition.usecase.ts` |
-| Consumer file | `<name>.<broker>.consumer.ts` | `purchase-order.kafka.consumer.ts` |
-| Controller file | `<name>.controller.ts` | `purchase-order.controller.ts` |
-| Request DTO file | `<name>.request.ts` | `purchase-order.request.ts` |
-| Mapper file | `<name>.mapper.ts` | `purchase-order.mapper.ts` |
-| Prisma repository | `prisma-<entity-name>-command.repository.ts` | `prisma-purchase-order-command.repository.ts` |
-| Prisma model file | `<name>.prisma` | `purchase-order.prisma` |
+| Aggregate | `<entity-name>.aggregate.ts` | `purchase-order.aggregate.ts` |
+| Enum | `<name>.enum.ts` | `purchase-order.enum.ts` |
+| Types | `<name>.types.ts` | `purchase-order.types.ts` |
+| ID VO | `<entity-name>-id.vo.ts` | `purchase-order-id.vo.ts` |
+| Other VOs | `<kebab>.vo.ts` | `order-number.vo.ts` |
+| VO invariants | `<kebab>.invariants.ts` | `order-number.invariants.ts` |
+| Aggregate invariants | `<name>.invariants.ts` | `purchase-order.invariants.ts` |
+| Policy | `<name>.policy.ts` | `purchase-order.policy.ts` |
+| Event | `<name>.<event>.event.ts` | `purchase-order.submitted.event.ts` |
+| Registry | `<name>.registry.ts` | `purchase-order.registry.ts` |
+| Factory | `<entity-name>.factory.ts` | `purchase-order.factory.ts` |
+| Command repo port | `<name>-command-repository.port.ts` | `purchase-order-command-repository.port.ts` |
+| Query repo port | `<name>-query-repository.port.ts` | `purchase-order-query-repository.port.ts` |
+| Use case | `<name>.<use-case>.usecase.ts` | `purchase-order-transition.usecase.ts` |
+| Consumer | `<name>.<broker>.consumer.ts` | `purchase-order.kafka.consumer.ts` |
+| Controller | `<name>.controller.ts` | `purchase-order.controller.ts` |
+| Request DTO | `<name>.request.ts` | `purchase-order.request.ts` |
+| Mapper | `<name>.mapper.ts` | `purchase-order.mapper.ts` |
+| Prisma repo | `prisma-<entity>-command.repository.ts` | `prisma-purchase-order-command.repository.ts` |
+| Prisma model | `<name>.prisma` | `purchase-order.prisma` |
 
 ---
 
-## Appendix: Property Type → Code Mapping
-
-### How `money` properties work
-
-When a property has `type: 'money'`:
-
-1. **Domain**: The aggregate stores a `Money` value object (from `@business/shared-business`)
-2. **Props interface**: `unitPrice: Money`
-3. **Input DTO**: `unitPrice: number` (amount in minor units or major units — your choice)
-4. **Factory**: Accepts `Money` or number, wraps in `Money.fromMinorUnits()` or `Money.of()`
-5. **Mapper**: Converts between `Money` value object and Prisma `Decimal` + currency column
-6. **Prisma**: Two columns: `unitPrice: Decimal` + `currency: String`
-
-### How `enum` properties work
-
-When a property has `type: 'enum'`:
-
-1. **Domain**: TypeScript string union or enum type
-2. **Props interface**: `status: string` (or the enum type if `states` is defined)
-3. **Input DTO**: `string`
-4. **Prisma**: `String` column (or Prisma enum if `prismaModel.enums` is provided)
-
-### How `id` properties work
-
-When a property has `type: 'id'`:
-
-1. **Domain**: `string` (UUID)
-2. **Props interface**: `vendorId: string`
-3. **Input DTO**: `string`
-4. **Prisma**: `String` column with `@db.Uuid` or plain `String`
-
----
-
-## Appendix: Generator CLI Usage
+## CLI
 
 ```bash
-# Generate from a config file
-npx tsx scripts/generators/module.generator.ts --config scripts/generators/configs/purchase-order.config.ts
+# Generate (creates or regenerates)
+npx tsx scripts/generators/aggregate.generator.ts \
+  --config scripts/generators/configs/purchase-order.config.ts
 
-# Force overwrite existing files
-npx tsx scripts/generators/module.generator.ts --config scripts/generators/configs/purchase-order.config.ts --force
+# Force overwrite everything (destroys hand-coded files)
+npx tsx scripts/generators/aggregate.generator.ts \
+  --config scripts/generators/configs/purchase-order.config.ts \
+  --force
 
-# Generate with inline config (for quick tests)
-npx tsx scripts/generators/module.generator.ts --name my-module --context my-context
+# Dry run (show what would be created/overwritten)
+npx tsx scripts/generators/aggregate.generator.ts \
+  --config scripts/generators/configs/purchase-order.config.ts \
+  --dry-run
 
-# Sync barrel index files for all modules
+# Sync barrel indexes only
 npx tsx scripts/generators/sync-barrels.ts
 ```
