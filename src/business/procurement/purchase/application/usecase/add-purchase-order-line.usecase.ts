@@ -1,4 +1,4 @@
-import { Inject, Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ModulePortResolver } from '@shared-kernel/ports';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
@@ -10,13 +10,12 @@ import { PurchasableProductQueryPort } from '../ports/outbound';
 import { PurchaseOrderCommandRepositoryPort } from '../../domain/domain-ports';
 
 @Injectable()
-export class AddPurchaseOrderLineUseCase  {
+export class AddPurchaseOrderLineUseCase {
   constructor(
-    @Inject(PurchaseOrderCommandRepositoryPort)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
-    @Inject(ModulePortResolver) private readonly portResolver: ModulePortResolver,
-    @Inject(OutboxWriterPort) private readonly outboxWriter: OutboxWriterPort,
-    @Inject(CompanyConfigPort) private readonly companyConfig: CompanyConfigPort,
+    private readonly portResolver: ModulePortResolver,
+    private readonly outboxWriter: OutboxWriterPort,
+    private readonly companyConfig: CompanyConfigPort,
   ) {}
 
   private get productQueryPort(): PurchasableProductQueryPort {
@@ -39,7 +38,11 @@ export class AddPurchaseOrderLineUseCase  {
       throw new NotFoundException('Purchase order not found');
     }
 
-    purchaseOrder.addLine(input.productId, input.quantity, Money.fromDecimal(input.unitPrice, currency));
+    purchaseOrder.addLine(
+      input.productId,
+      input.quantity,
+      Money.fromDecimal(input.unitPrice, currency),
+    );
     await this.purchaseOrderRepository.update(purchaseOrder);
 
     for (const event of purchaseOrder.pullEvents()) {

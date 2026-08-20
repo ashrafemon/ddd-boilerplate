@@ -1,4 +1,4 @@
-import { Inject, Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
@@ -7,17 +7,14 @@ import { CreateProductRequest } from '../../domain/types/product.types';
 import { productFactory } from '../../domain/factories';
 import { ProductId } from '../../domain/value-objects';
 import { Sku } from '../../domain/value-objects';
-import {
-  ProductCommandRepositoryPort,
-} from '../../domain/domain-ports';
+import { ProductCommandRepositoryPort } from '../../domain/domain-ports';
 
 @Injectable()
-export class CreateProductUseCase  {
+export class CreateProductUseCase {
   constructor(
-    @Inject(ProductCommandRepositoryPort)
     private readonly productRepository: ProductCommandRepositoryPort,
-    @Inject(OutboxWriterPort) private readonly outboxWriter: OutboxWriterPort,
-    @Inject(CompanyConfigPort) private readonly companyConfig: CompanyConfigPort,
+    private readonly outboxWriter: OutboxWriterPort,
+    private readonly companyConfig: CompanyConfigPort,
   ) {}
 
   @Transactional()

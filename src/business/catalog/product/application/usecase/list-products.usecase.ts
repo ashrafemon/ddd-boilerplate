@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import {
   ProductQueryRepositoryPort,
@@ -12,10 +12,7 @@ import {
  */
 @Injectable()
 export class ListProductsUseCase {
-  constructor(
-    @Inject(ProductQueryRepositoryPort)
-    private readonly productQueryRepo: ProductQueryRepositoryPort,
-  ) {}
+  constructor(private readonly productQueryRepo: ProductQueryRepositoryPort) {}
 
   async execute(query: PageQuery): Promise<PageResult<ProductQueryRecord>> {
     return this.productQueryRepo.findAll(query);

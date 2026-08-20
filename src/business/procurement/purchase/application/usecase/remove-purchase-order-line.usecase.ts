@@ -1,20 +1,17 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { RemoveLineRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects';
-import {
-  PurchaseOrderCommandRepositoryPort,
-} from '../../domain/domain-ports';
+import { PurchaseOrderCommandRepositoryPort } from '../../domain/domain-ports';
 
 @Injectable()
-export class RemovePurchaseOrderLineUseCase  {
+export class RemovePurchaseOrderLineUseCase {
   constructor(
-    @Inject(PurchaseOrderCommandRepositoryPort)
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
-    @Inject(OutboxWriterPort) private readonly outboxWriter: OutboxWriterPort,
-    @Inject(CompanyConfigPort) private readonly companyConfig: CompanyConfigPort,
+    private readonly outboxWriter: OutboxWriterPort,
+    private readonly companyConfig: CompanyConfigPort,
   ) {}
 
   @Transactional()

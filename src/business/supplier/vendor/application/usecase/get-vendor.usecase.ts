@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   VendorQueryRepositoryPort,
   VendorQueryRecord,
@@ -6,10 +6,8 @@ import {
 } from '../../domain/ports';
 
 @Injectable()
-export class GetVendorUseCase  {
-  constructor(
-    @Inject(VendorQueryRepositoryPort) private readonly vendorQueryRepo: VendorQueryRepositoryPort,
-  ) {}
+export class GetVendorUseCase {
+  constructor(private readonly vendorQueryRepo: VendorQueryRepositoryPort) {}
 
   async execute(id: string): Promise<VendorQueryRecord | null> {
     return this.vendorQueryRepo.findById(id);

@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
@@ -7,12 +7,11 @@ import { VendorId } from '../../domain/value-objects';
 import { VendorCommandRepositoryPort } from '../../domain/domain-ports';
 
 @Injectable()
-export class VendorStatusUseCase  {
+export class VendorStatusUseCase {
   constructor(
-    @Inject(VendorCommandRepositoryPort)
     private readonly vendorRepository: VendorCommandRepositoryPort,
-    @Inject(OutboxWriterPort) private readonly outboxWriter: OutboxWriterPort,
-    @Inject(CompanyConfigPort) private readonly companyConfig: CompanyConfigPort,
+    private readonly outboxWriter: OutboxWriterPort,
+    private readonly companyConfig: CompanyConfigPort,
   ) {}
 
   @Transactional()

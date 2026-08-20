@@ -1,11 +1,7 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { VendorId } from '../value-objects';
-import {
-  CreateVendorInput,
-  VendorProps,
-  VendorStatus,
-} from '../types/vendor.types';
+import { CreateVendorInput, VendorProps, VendorStatus } from '../types/vendor.types';
 import { VendorCode, VendorEmail, VendorName } from '../value-objects';
 import { VendorActivated, VendorBlocked, VendorDeactivated, VendorUpdated } from '../events';
 export class Vendor extends AggregateRoot<VendorId> {

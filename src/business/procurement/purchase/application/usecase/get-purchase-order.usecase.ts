@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   PurchaseOrderQueryRepositoryPort,
   PurchaseOrderQueryRecord,
@@ -7,10 +7,7 @@ import {
 
 @Injectable()
 export class GetPurchaseOrderUseCase {
-  constructor(
-    @Inject(PurchaseOrderQueryRepositoryPort)
-    private readonly purchaseOrderQueryRepo: PurchaseOrderQueryRepositoryPort,
-  ) {}
+  constructor(private readonly purchaseOrderQueryRepo: PurchaseOrderQueryRepositoryPort) {}
 
   async execute(id: string): Promise<PurchaseOrderQueryRecord | null> {
     return this.purchaseOrderQueryRepo.findById(id);

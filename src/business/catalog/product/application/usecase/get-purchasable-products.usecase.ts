@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   ProductQueryRepositoryPort,
   ProductQueryRecord,
@@ -9,11 +9,8 @@ import {
  * Read-side use case. Skips the domain and returns projections directly.
  */
 @Injectable()
-export class GetPurchasableProductsUseCase  {
-  constructor(
-    @Inject(ProductQueryRepositoryPort)
-    private readonly productQueryRepo: ProductQueryRepositoryPort,
-  ) {}
+export class GetPurchasableProductsUseCase {
+  constructor(private readonly productQueryRepo: ProductQueryRepositoryPort) {}
 
   async execute(ids: string[]): Promise<ProductQueryRecord[]> {
     return this.productQueryRepo.findPurchasableByIds(ids);

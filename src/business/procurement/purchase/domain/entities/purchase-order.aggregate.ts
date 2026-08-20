@@ -20,9 +20,6 @@ import {
   PurchaseOrderSubmitted,
 } from '../events';
 
-
-
-
 export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
   private props: PurchaseOrderProps;
 

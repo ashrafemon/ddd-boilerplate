@@ -2,11 +2,7 @@ import { AggregateRoot } from '@business/shared-business/domain/bases';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
-import {
-  CreateProductInput,
-  ProductProps,
-  ProductStatus,
-} from '../types/product.types';
+import { CreateProductInput, ProductProps, ProductStatus } from '../types/product.types';
 import { ProductId } from '../value-objects';
 import { Sku } from '../value-objects';
 import { ProductName } from '../value-objects';

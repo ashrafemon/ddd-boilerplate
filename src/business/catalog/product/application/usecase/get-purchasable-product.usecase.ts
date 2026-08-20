@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   ProductQueryRepositoryPort,
   ProductQueryRecord,
@@ -12,10 +12,7 @@ import {
  */
 @Injectable()
 export class GetPurchasableProductUseCase {
-  constructor(
-    @Inject(ProductQueryRepositoryPort)
-    private readonly productQueryRepo: ProductQueryRepositoryPort,
-  ) {}
+  constructor(private readonly productQueryRepo: ProductQueryRepositoryPort) {}
 
   async execute(id: string): Promise<ProductQueryRecord | null> {
     return this.productQueryRepo.findPurchasableById(id);
