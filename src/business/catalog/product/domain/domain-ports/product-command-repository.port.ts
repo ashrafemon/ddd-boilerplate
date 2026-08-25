@@ -1,5 +1,4 @@
-import { Product } from '../../domain/entities';
-import { ProductId } from '../../domain/value-objects';
+import { Product } from '../aggregates';
 
 /**
  * Command-side repository port. The adapter injects the transactional host
@@ -9,6 +8,4 @@ import { ProductId } from '../../domain/value-objects';
 export abstract class ProductCommandRepositoryPort {
   abstract save(product: Product): Promise<Product>;
   abstract update(product: Product): Promise<Product>;
-  abstract findById(id: ProductId): Promise<Product | null>;
-  abstract findBySku(sku: string): Promise<Product | null>;
 }

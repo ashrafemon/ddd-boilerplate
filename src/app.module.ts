@@ -1,8 +1,6 @@
+import { BusinessModule } from '@business/business.module';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { ProductModule } from '@business/catalog/product/product.module';
-import { VendorModule } from '@business/supplier/vendor/vendor.module';
-import { PurchaseOrderModule } from '@business/procurement/purchase/purchase-order.module';
 import { ConfigModule } from './config/config.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { PlatformModule } from './platform/platform.module';
@@ -13,14 +11,7 @@ import { ResponseInterceptor } from './shared-kernel/interceptors/response.inter
 import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
 
 @Module({
-  imports: [
-    ConfigModule,
-    InfrastructureModule,
-    PlatformModule,
-    ProductModule,
-    VendorModule,
-    PurchaseOrderModule,
-  ],
+  imports: [ConfigModule, InfrastructureModule, PlatformModule, BusinessModule],
   controllers: [],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: RequestIdInterceptor },

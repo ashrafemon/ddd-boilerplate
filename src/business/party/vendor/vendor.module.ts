@@ -11,11 +11,10 @@ import { VendorKafkaConsumer } from './application/consumers';
 import { VendorSqsConsumer } from './application/consumers';
 import { VendorEventEmitterConsumer } from './application/consumers';
 import { VendorQueryAdapter } from './application/adapters';
-import { VendorCommandRepositoryPort } from './domain/domain-ports';
-import { VendorQueryRepositoryPort } from './domain/domain-ports';
 import { OrderableVendorQueryPort } from '@business/procurement/purchase';
 import { PrismaVendorCommandRepository } from './infrastructure/persistence';
 import { PrismaVendorQueryRepository } from './infrastructure/persistence';
+import { VendorCommandRepositoryPort, VendorQueryRepositoryPort } from './domain/ports';
 
 /**
  * Vendor aggregate module. Controllers call use cases directly — no inbound

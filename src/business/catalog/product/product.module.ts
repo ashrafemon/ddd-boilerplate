@@ -1,23 +1,28 @@
-import { Module } from '@nestjs/common';
-import { ProductController } from './presentation/http/controllers';
-import { CreateProductUseCase } from './application/usecase';
-import { UpdateProductUseCase } from './application/usecase';
-import { ChangePriceUseCase } from './application/usecase';
-import { ProductStatusUseCase } from './application/usecase';
-import { GetProductUseCase } from './application/usecase';
-import { ListProductsUseCase } from './application/usecase';
-import { GetPurchasableProductUseCase } from './application/usecase';
-import { GetPurchasableProductsUseCase } from './application/usecase';
-import { ProductRabbitMQConsumer } from './application/consumers';
-import { ProductKafkaConsumer } from './application/consumers';
-import { ProductSqsConsumer } from './application/consumers';
-import { ProductEventEmitterConsumer } from './application/consumers';
-import { ProductQueryAdapter } from './application/adapters';
-import { ProductCommandRepositoryPort } from './domain/domain-ports';
-import { ProductQueryRepositoryPort } from './domain/domain-ports';
 import { PurchasableProductQueryPort } from '@business/procurement/purchase';
-import { PrismaProductCommandRepository } from './infrastructure/persistence';
-import { PrismaProductQueryRepository } from './infrastructure/persistence';
+import { Module } from '@nestjs/common';
+import { ProductQueryAdapter } from './application/inbound-adapters';
+import {
+  ProductEventEmitterConsumer,
+  ProductKafkaConsumer,
+  ProductRabbitMQConsumer,
+  ProductSqsConsumer,
+} from './application/integrations';
+import {
+  ChangePriceUseCase,
+  CreateProductUseCase,
+  GetProductUseCase,
+  GetPurchasableProductsUseCase,
+  GetPurchasableProductUseCase,
+  ListProductsUseCase,
+  ProductStatusUseCase,
+  UpdateProductUseCase,
+} from './application/usecase';
+import { ProductCommandRepositoryPort, ProductQueryRepositoryPort } from './domain/domain-ports';
+import {
+  PrismaProductCommandRepository,
+  PrismaProductQueryRepository,
+} from './infrastructure/persistence';
+import { ProductController } from './presentation/http/product.controller';
 
 /**
  * Product aggregate module. Controllers call use cases directly — no inbound

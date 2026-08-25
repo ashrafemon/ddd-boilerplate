@@ -11,12 +11,14 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
-import { CreateProductUseCase } from '../../application/usecase';
-import { UpdateProductUseCase } from '../../application/usecase';
-import { ChangePriceUseCase } from '../../application/usecase';
-import { ProductStatusUseCase } from '../../application/usecase';
-import { GetProductUseCase } from '../../application/usecase';
-import { ListProductsUseCase } from '../../application/usecase';
+import {
+  ChangePriceUseCase,
+  CreateProductUseCase,
+  GetProductUseCase,
+  ListProductsUseCase,
+  ProductStatusUseCase,
+  UpdateProductUseCase,
+} from '../../application/usecase';
 import { ChangePriceDto, CreateProductDto, ProductQueryDto, UpdateProductDto } from './request';
 
 @ApiTags('products')

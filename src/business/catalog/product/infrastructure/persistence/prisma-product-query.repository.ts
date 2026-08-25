@@ -1,14 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { ProductQueryRepositoryPort } from '@business/catalog/product/domain/domain-ports';
 import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.service';
+import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
-import {
-  ProductQueryRecord,
-  ProductQueryRepositoryPort,
-} from '@business/catalog/product/domain/domain-ports';
+import { ProductQueryRecord } from '../../domain/types/product.types';
 
 @Injectable()
 export class PrismaProductQueryRepository extends ProductQueryRepositoryPort {
-  constructor(private readonly prismaRead: PrismaReadService) {}
+  constructor(private readonly prismaRead: PrismaReadService) {
+    super();
+  }
 
   async findById(id: string): Promise<ProductQueryRecord | null> {
     const row = await this.prismaRead.product.findUnique({ where: { id } });

@@ -1,13 +1,15 @@
+import { Product } from '@business/catalog/product/domain/aggregates';
 import { ProductCommandRepositoryPort } from '@business/catalog/product/domain/domain-ports';
-import { Product } from '@business/catalog/product/domain/entities';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Injectable } from '@nestjs/common';
-import { ProductMapper } from './product.mapper';
+import { ProductMapper } from '../../application/mappers/product.mapper';
 
 @Injectable()
 export class PrismaProductCommandRepository extends ProductCommandRepositoryPort {
-  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
+  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {
+    super();
+  }
 
   async save(product: Product): Promise<Product> {
     await this.txHost.tx.product.create({ data: { ...ProductMapper.toRow(product) } as never });
