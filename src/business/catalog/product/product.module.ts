@@ -23,6 +23,7 @@ import {
   PrismaProductQueryRepository,
 } from './infrastructure/persistence';
 import { ProductController } from './presentation/http/product.controller';
+import './domain/domain-events/product.registry';
 
 /**
  * Product aggregate module. Controllers call use cases directly — no inbound

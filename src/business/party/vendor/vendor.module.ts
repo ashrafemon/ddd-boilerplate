@@ -21,6 +21,7 @@ import {
   PrismaVendorQueryRepository,
 } from './infrastructure/persistence';
 import { VendorController } from './presentation/http/vendor.controller';
+import './domain/domain-events/vendor.registry';
 
 /**
  * Vendor aggregate module. Controllers call use cases directly — no inbound

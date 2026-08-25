@@ -14,6 +14,7 @@ import { PurchaseOrderCommandRepositoryPort } from './domain/ports';
 import { PurchaseOrderQueryRepositoryPort } from './domain/ports';
 import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence';
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence';
+import './domain/events/purchase-order.registry';
 
 /**
  * PurchaseOrder aggregate module (procurement context). Controllers call use
