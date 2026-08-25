@@ -1,6 +1,4 @@
-import { Vendor } from '../../domain/entities';
-import { VendorId } from '../../domain/value-objects';
-import { VendorCode } from '../../domain/value-objects';
+import { Vendor } from '../aggregates';
 
 /**
  * Command-side repository port. The adapter injects the transactional host
@@ -9,6 +7,4 @@ import { VendorCode } from '../../domain/value-objects';
 export abstract class VendorCommandRepositoryPort {
   abstract save(vendor: Vendor): Promise<Vendor>;
   abstract update(vendor: Vendor): Promise<Vendor>;
-  abstract findById(id: VendorId): Promise<Vendor | null>;
-  abstract findByCode(code: VendorCode): Promise<Vendor | null>;
 }

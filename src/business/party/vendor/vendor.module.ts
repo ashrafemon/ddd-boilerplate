@@ -1,20 +1,26 @@
-import { Module } from '@nestjs/common';
-import { VendorController } from './presentation/http/controllers';
-import { CreateVendorUseCase } from './application/usecase';
-import { UpdateVendorUseCase } from './application/usecase';
-import { VendorStatusUseCase } from './application/usecase';
-import { GetVendorUseCase } from './application/usecase';
-import { ListVendorsUseCase } from './application/usecase';
-import { GetOrderableVendorUseCase } from './application/usecase';
-import { VendorRabbitMQConsumer } from './application/consumers';
-import { VendorKafkaConsumer } from './application/consumers';
-import { VendorSqsConsumer } from './application/consumers';
-import { VendorEventEmitterConsumer } from './application/consumers';
-import { VendorQueryAdapter } from './application/adapters';
 import { OrderableVendorQueryPort } from '@business/procurement/purchase';
-import { PrismaVendorCommandRepository } from './infrastructure/persistence';
-import { PrismaVendorQueryRepository } from './infrastructure/persistence';
-import { VendorCommandRepositoryPort, VendorQueryRepositoryPort } from './domain/ports';
+import { Module } from '@nestjs/common';
+import { VendorQueryAdapter } from './application/inbound-adapters';
+import {
+  VendorEventEmitterConsumer,
+  VendorKafkaConsumer,
+  VendorRabbitMQConsumer,
+  VendorSqsConsumer,
+} from './application/integrations';
+import {
+  CreateVendorUseCase,
+  GetOrderableVendorUseCase,
+  GetVendorUseCase,
+  ListVendorsUseCase,
+  UpdateVendorUseCase,
+  VendorStatusUseCase,
+} from './application/usecase';
+import { VendorCommandRepositoryPort, VendorQueryRepositoryPort } from './domain/domain-ports';
+import {
+  PrismaVendorCommandRepository,
+  PrismaVendorQueryRepository,
+} from './infrastructure/persistence';
+import { VendorController } from './presentation/http/vendor.controller';
 
 /**
  * Vendor aggregate module. Controllers call use cases directly — no inbound

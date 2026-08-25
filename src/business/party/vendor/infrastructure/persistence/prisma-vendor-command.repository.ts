@@ -1,15 +1,18 @@
-import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { Vendor } from '@business/supplier/vendor/domain/entities';
-import { VendorId } from '@business/supplier/vendor/domain/value-objects';
-import { VendorCode } from '@business/supplier/vendor/domain/value-objects';
-import { VendorCommandRepositoryPort } from '@business/supplier/vendor/domain/domain-ports';
-import { VendorMapper } from './vendor.mapper';
+import { Injectable } from '@nestjs/common';
+
+import { VendorId } from '@business/shared-business';
+import { VendorMapper } from '../../application/mappers/vendor.mapper';
+import { Vendor } from '../../domain/aggregates';
+import { VendorCommandRepositoryPort } from '../../domain/domain-ports';
+import { VendorCode } from '../../domain/value-objects';
 
 @Injectable()
 export class PrismaVendorCommandRepository extends VendorCommandRepositoryPort {
-  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
+  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {
+    super();
+  }
 
   async save(vendor: Vendor): Promise<Vendor> {
     await this.txHost.tx.vendor.create({ data: { ...VendorMapper.toRow(vendor) } as never });

@@ -10,7 +10,9 @@ import { OrderableVendorQueryPort, VendorReference } from '@business/procurement
  */
 @Injectable()
 export class VendorQueryAdapter extends OrderableVendorQueryPort {
-  constructor(private readonly getOrderableVendorUseCase: GetOrderableVendorUseCase) {}
+  constructor(private readonly getOrderableVendorUseCase: GetOrderableVendorUseCase) {
+    super();
+  }
 
   getOrderableVendor(id: string): Promise<VendorReference | null> {
     return this.getOrderableVendorUseCase.execute(id);

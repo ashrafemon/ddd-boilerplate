@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.service';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
-import {
-  VendorQueryRecord,
-  VendorQueryRepositoryPort,
-} from '@business/supplier/vendor/domain/domain-ports';
+import { VendorQueryRepositoryPort } from '@business/party/vendor/domain/domain-ports';
+import { VendorQueryRecord } from '../../domain/types/vendor.types';
 
 @Injectable()
 export class PrismaVendorQueryRepository extends VendorQueryRepositoryPort {
-  constructor(private readonly prismaRead: PrismaReadService) {}
+  constructor(private readonly prismaRead: PrismaReadService) {
+    super();
+  }
 
   async findById(id: string): Promise<VendorQueryRecord | null> {
     const row = await this.prismaRead.vendor.findUnique({ where: { id } });
