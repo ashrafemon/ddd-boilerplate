@@ -1,0 +1,6 @@
+export enum GrnStatus {
+  DRAFT = 'DRAFT',
+  RECEIVED = 'RECEIVED',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
