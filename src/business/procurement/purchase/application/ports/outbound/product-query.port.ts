@@ -1,4 +1,4 @@
-import { ProductReference } from '@business/catalog/product/public/contracts/product.contracts';
+import { ProductReference } from '@business/catalog/product/public';
 
 export abstract class PurchasableProductQueryPort {
   abstract getPurchasableProduct(id: string): Promise<ProductReference | null>;
