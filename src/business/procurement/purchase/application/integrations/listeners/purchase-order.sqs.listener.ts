@@ -2,8 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SqsMessageHandler } from '@ssut/nestjs-sqs';
 
 @Injectable()
-export class VendorSqsConsumer {
-  private readonly logger = new Logger(VendorSqsConsumer.name);
+export class PurchaseOrderSqsListener {
+  private readonly logger = new Logger(PurchaseOrderSqsListener.name);
 
   @SqsMessageHandler('consumer1', false)
   onMessage(message: unknown): void {

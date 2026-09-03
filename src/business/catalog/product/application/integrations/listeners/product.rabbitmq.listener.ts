@@ -6,13 +6,13 @@ const EXCHANGE = 'erp.events';
 const QUEUE = 'product-created.erp';
 
 /**
- * RabbitMQ consumer for Product integration events. Sits in the business
+ * RabbitMQ listener for Product integration events. Sits in the business
  * aggregate's application layer and follows the @golevelup/nestjs-rabbitmq
  * pattern. Workers delegate to use cases/facades — never infrastructure.
  */
 @Injectable()
-export class ProductRabbitMQConsumer {
-  private readonly logger = new Logger(ProductRabbitMQConsumer.name);
+export class ProductRabbitMQListener {
+  private readonly logger = new Logger(ProductRabbitMQListener.name);
 
   @RabbitSubscribe({
     exchange: EXCHANGE,

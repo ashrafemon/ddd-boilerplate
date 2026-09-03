@@ -1,10 +1,10 @@
 import { OrderableVendorQueryPort } from '@business/procurement/purchase/application/ports/outbound/vendor-query.port';
 import { Module } from '@nestjs/common';
 import { VendorQueryFacade } from './application/facades/vendor-query.facade';
-import { VendorEventEmitterConsumer } from './application/integrations/consumers/vendor.event-emitter.consumer';
-import { VendorKafkaConsumer } from './application/integrations/consumers/vendor.kafka.consumer';
-import { VendorRabbitMQConsumer } from './application/integrations/consumers/vendor.rabbitmq.consumer';
-import { VendorSqsConsumer } from './application/integrations/consumers/vendor.sqs.consumer';
+import { VendorEventEmitterListener } from './application/integrations/listeners/vendor.event-emitter.listener';
+import { VendorKafkaListener } from './application/integrations/listeners/vendor.kafka.listener';
+import { VendorRabbitMQListener } from './application/integrations/listeners/vendor.rabbitmq.listener';
+import { VendorSqsListener } from './application/integrations/listeners/vendor.sqs.listener';
 import { VendorIntegrationPort } from './application/integrations/publishers/vendor.integration-port';
 import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
 import { CreateVendorUseCase } from './application/usecase/create-vendor.usecase';
@@ -32,10 +32,10 @@ import './domain/domain-events/vendor.registry';
     GetVendorUseCase,
     ListVendorsUseCase,
     GetOrderableVendorUseCase,
-    VendorEventEmitterConsumer,
-    VendorRabbitMQConsumer,
-    VendorKafkaConsumer,
-    VendorSqsConsumer,
+    VendorEventEmitterListener,
+    VendorRabbitMQListener,
+    VendorKafkaListener,
+    VendorSqsListener,
     VendorQueryFacade,
     { provide: VendorQueryPort, useExisting: VendorQueryFacade },
     { provide: OrderableVendorQueryPort, useExisting: VendorQueryFacade },

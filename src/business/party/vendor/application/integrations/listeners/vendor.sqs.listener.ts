@@ -1,13 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SqsMessageHandler } from '@ssut/nestjs-sqs';
 
-/**
- * SQS consumer for Product integration events following the @ssut/nestjs-sqs
- * pattern.
- */
 @Injectable()
-export class ProductSqsConsumer {
-  private readonly logger = new Logger(ProductSqsConsumer.name);
+export class VendorSqsListener {
+  private readonly logger = new Logger(VendorSqsListener.name);
 
   @SqsMessageHandler('consumer1', false)
   onMessage(message: unknown): void {

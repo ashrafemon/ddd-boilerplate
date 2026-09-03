@@ -1,10 +1,10 @@
+import { PurchaseOrderCreated } from '../../../domain/events/purchase-order.created.event';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { PurchaseOrderCreated } from '../../domain/events/purchase-order.created.event';
 
 @Injectable()
-export class PurchaseOrderEventEmitterConsumer {
-  private readonly logger = new Logger(PurchaseOrderEventEmitterConsumer.name);
+export class PurchaseOrderEventEmitterListener {
+  private readonly logger = new Logger(PurchaseOrderEventEmitterListener.name);
 
   @OnEvent('PurchaseOrderCreated')
   onPurchaseOrderCreated(event: PurchaseOrderCreated): void {

@@ -3,8 +3,8 @@ import { KafkaEvent } from '@shared-kernel/decorators/kafka-event.decorator';
 import { IntegrationMessage } from '@shared-kernel/ports';
 
 @Injectable()
-export class PurchaseOrderKafkaConsumer {
-  private readonly logger = new Logger(PurchaseOrderKafkaConsumer.name);
+export class PurchaseOrderKafkaListener {
+  private readonly logger = new Logger(PurchaseOrderKafkaListener.name);
 
   @KafkaEvent('PurchaseOrderCreated')
   onPurchaseOrderCreated(message: IntegrationMessage): void {

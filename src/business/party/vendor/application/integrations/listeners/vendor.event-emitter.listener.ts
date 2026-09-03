@@ -3,8 +3,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 @Injectable()
-export class VendorEventEmitterConsumer {
-  private readonly logger = new Logger(VendorEventEmitterConsumer.name);
+export class VendorEventEmitterListener {
+  private readonly logger = new Logger(VendorEventEmitterListener.name);
 
   @OnEvent('VendorCreated')
   onVendorCreated(event: VendorCreated): void {

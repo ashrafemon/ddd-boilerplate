@@ -6,8 +6,8 @@ const EXCHANGE = 'erp.events';
 const QUEUE = 'purchase-order-created.erp';
 
 @Injectable()
-export class PurchaseOrderRabbitMQConsumer {
-  private readonly logger = new Logger(PurchaseOrderRabbitMQConsumer.name);
+export class PurchaseOrderRabbitMQListener {
+  private readonly logger = new Logger(PurchaseOrderRabbitMQListener.name);
 
   @RabbitSubscribe({
     exchange: EXCHANGE,

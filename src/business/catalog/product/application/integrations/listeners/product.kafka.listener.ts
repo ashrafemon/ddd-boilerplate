@@ -3,13 +3,13 @@ import { KafkaEvent } from '@shared-kernel/decorators/kafka-event.decorator';
 import { IntegrationMessage } from '@shared-kernel/ports';
 
 /**
- * Kafka consumer for Product integration events using the custom @KafkaEvent
+ * Kafka listener for Product integration events using the custom @KafkaEvent
  * decorator. The infrastructure KafkaConsumerHost wires these handlers to the
  * broker topic.
  */
 @Injectable()
-export class ProductKafkaConsumer {
-  private readonly logger = new Logger(ProductKafkaConsumer.name);
+export class ProductKafkaListener {
+  private readonly logger = new Logger(ProductKafkaListener.name);
 
   @KafkaEvent('ProductCreated')
   onProductCreated(message: IntegrationMessage): void {

@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { PurchasableProductFacade } from './application/facades/purchasable-product.facade';
-import { ProductEventEmitterConsumer } from './application/integrations/consumers/product.event-emitter.consumer';
-import { ProductKafkaConsumer } from './application/integrations/consumers/product.kafka.consumer';
-import { ProductRabbitMQConsumer } from './application/integrations/consumers/product.rabbitmq.consumer';
-import { ProductSqsConsumer } from './application/integrations/consumers/product.sqs.consumer';
+import { ProductEventEmitterListener } from './application/integrations/listeners/product.event-emitter.listener';
+import { ProductKafkaListener } from './application/integrations/listeners/product.kafka.listener';
+import { ProductRabbitMQListener } from './application/integrations/listeners/product.rabbitmq.listener';
+import { ProductSqsListener } from './application/integrations/listeners/product.sqs.listener';
 import { ProductIntegrationPort } from './application/integrations/publishers/product.integration-port';
 import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
 import { ChangePriceUseCase } from './application/usecase/change-price.usecase';
@@ -41,10 +41,10 @@ import { PurchasableProductPort } from './public/ports/purchasable-product.port'
     ListProductsUseCase,
     GetPurchasableProductUseCase,
     GetPurchasableProductsUseCase,
-    ProductRabbitMQConsumer,
-    ProductKafkaConsumer,
-    ProductSqsConsumer,
-    ProductEventEmitterConsumer,
+    ProductRabbitMQListener,
+    ProductKafkaListener,
+    ProductSqsListener,
+    ProductEventEmitterListener,
     PurchasableProductFacade,
     { provide: PurchasableProductPort, useExisting: PurchasableProductFacade },
     { provide: ProductCommandRepositoryPort, useClass: PrismaProductCommandRepository },

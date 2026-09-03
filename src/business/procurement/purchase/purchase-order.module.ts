@@ -7,10 +7,10 @@ import { RemovePurchaseOrderLineUseCase } from './application/usecase/remove-pur
 import { PurchaseOrderTransitionUseCase } from './application/usecase/purchase-order-transition.usecase';
 import { GetPurchaseOrderUseCase } from './application/usecase/get-purchase-order.usecase';
 import { ListPurchaseOrdersUseCase } from './application/usecase/list-purchase-orders.usecase';
-import { PurchaseOrderEventEmitterConsumer } from './application/consumers/purchase-order.event-emitter.consumer';
-import { PurchaseOrderKafkaConsumer } from './application/consumers/purchase-order.kafka.consumer';
-import { PurchaseOrderRabbitMQConsumer } from './application/consumers/purchase-order.rabbitmq.consumer';
-import { PurchaseOrderSqsConsumer } from './application/consumers/purchase-order.sqs.consumer';
+import { PurchaseOrderEventEmitterListener } from './application/integrations/listeners/purchase-order.event-emitter.listener';
+import { PurchaseOrderKafkaListener } from './application/integrations/listeners/purchase-order.kafka.listener';
+import { PurchaseOrderRabbitMQListener } from './application/integrations/listeners/purchase-order.rabbitmq.listener';
+import { PurchaseOrderSqsListener } from './application/integrations/listeners/purchase-order.sqs.listener';
 import { PurchaseOrderCommandRepositoryPort } from './domain/ports/purchase-order-command-repository.port';
 import { PurchaseOrderQueryRepositoryPort } from './domain/ports/purchase-order-query-repository.port';
 import { PurchaseOrderIntegrationPort } from './application/integrations/publishers/purchase-order.integration-port';
@@ -31,10 +31,10 @@ import './domain/events/purchase-order.registry';
     PurchaseOrderTransitionUseCase,
     GetPurchaseOrderUseCase,
     ListPurchaseOrdersUseCase,
-    PurchaseOrderEventEmitterConsumer,
-    PurchaseOrderRabbitMQConsumer,
-    PurchaseOrderKafkaConsumer,
-    PurchaseOrderSqsConsumer,
+    PurchaseOrderEventEmitterListener,
+    PurchaseOrderRabbitMQListener,
+    PurchaseOrderKafkaListener,
+    PurchaseOrderSqsListener,
     PurchaseOrderQueryFacade,
     { provide: PurchaseOrderQueryPort, useExisting: PurchaseOrderQueryFacade },
     { provide: PurchaseOrderCommandRepositoryPort, useClass: PrismaPurchaseOrderCommandRepository },
