@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
-import { VendorQueryRepositoryPort } from '../../domain/domain-ports';
+import { VendorQueryRepositoryPort } from '../../domain/domain-ports/vendor-query-repository.port';
 import { VendorQueryRecord } from '../../domain/types/vendor.types';
 
 @Injectable()

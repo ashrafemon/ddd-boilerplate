@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
   PurchaseOrderQueryRepositoryPort,
-  PurchaseOrderQueryRecord,
-} from '../../domain/ports';
+} from '../../domain/ports/purchase-order-query-repository.port';
+import { PurchaseOrderQueryRecord } from '../../domain/types/purchase-order.types';
 
 @Injectable()
 export class GetPurchaseOrderUseCase {

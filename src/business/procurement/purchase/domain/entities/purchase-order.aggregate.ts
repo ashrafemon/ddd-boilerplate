@@ -1,24 +1,22 @@
-import { AggregateRoot } from '@business/shared-business/domain/bases';
+import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
-import { PurchaseOrderId } from '../value-objects';
+import { PurchaseOrderId } from '../value-objects/purchase-order-id.vo';
 import {
   CreatePurchaseOrderInput,
   PurchaseOrderProps,
   PurchaseOrderStatus,
 } from '../types/purchase-order.types';
-import { OrderNumber, ProductIdRef, VendorIdRef } from '../value-objects';
+import { OrderNumber, ProductIdRef, VendorIdRef } from '../value-objects/purchase-order.vos';
 import { PurchaseOrderLine } from './purchase-order-line.entity';
-import {
-  PurchaseOrderApproved,
-  PurchaseOrderCancelled,
-  PurchaseOrderCompleted,
-  PurchaseOrderLineAdded,
-  PurchaseOrderLineRemoved,
-  PurchaseOrderRejected,
-  PurchaseOrderSubmitted,
-} from '../events';
+import { PurchaseOrderApproved } from '../events/purchase-order.approved.event';
+import { PurchaseOrderCancelled } from '../events/purchase-order.cancelled.event';
+import { PurchaseOrderCompleted } from '../events/purchase-order.completed.event';
+import { PurchaseOrderLineAdded } from '../events/purchase-order.line-added.event';
+import { PurchaseOrderLineRemoved } from '../events/purchase-order.line-removed.event';
+import { PurchaseOrderRejected } from '../events/purchase-order.rejected.event';
+import { PurchaseOrderSubmitted } from '../events/purchase-order.submitted.event';
 
 export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
   private props: PurchaseOrderProps;

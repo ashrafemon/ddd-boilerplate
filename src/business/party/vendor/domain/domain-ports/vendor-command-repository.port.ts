@@ -1,4 +1,4 @@
-import { Vendor } from '../aggregates';
+import { Vendor } from '../aggregates/vendor.aggregate';
 
 /**
  * Command-side repository port. The adapter injects the transactional host

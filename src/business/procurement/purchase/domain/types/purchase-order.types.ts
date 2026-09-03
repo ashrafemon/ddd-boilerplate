@@ -1,6 +1,6 @@
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { OrderNumber } from '../value-objects';
-import { ProductIdRef, VendorIdRef } from '../value-objects';
+import { OrderNumber } from '../value-objects/purchase-order.vos';
+import { ProductIdRef, VendorIdRef } from '../value-objects/purchase-order.vos';
 import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
 import { PurchaseOrderStatus } from './purchase-order.enum';
 export { PurchaseOrderStatus } from './purchase-order.enum';

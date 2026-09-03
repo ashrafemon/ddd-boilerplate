@@ -1,15 +1,14 @@
-import { AggregateRoot } from '@business/shared-business/domain/bases';
+import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
-import {
-  ProductActivated,
-  ProductDeactivated,
-  ProductDiscontinued,
-  ProductUpdated,
-} from '../domain-events';
+import { ProductActivated } from '../domain-events/product.activated.event';
+import { ProductDeactivated } from '../domain-events/product.deactivated.event';
+import { ProductDiscontinued } from '../domain-events/product.discontinued.event';
+import { ProductUpdated } from '../domain-events/product.updated.event';
 import { ProductProps } from '../types/product.types';
-import { ProductId, ProductName } from '../value-objects';
+import { ProductId } from '../value-objects/product-id.vo';
+import { ProductName } from '../value-objects/product-name.vo';
 import { ProductStatus } from '../types/product.enum';
 
 export class Product extends AggregateRoot<ProductId> {

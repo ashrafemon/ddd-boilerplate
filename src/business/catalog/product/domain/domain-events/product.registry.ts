@@ -1,6 +1,6 @@
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
-import { ProductId } from '../value-objects';
+import { ProductId } from '../value-objects/product-id.vo';
 import { ProductCreated } from './product.created.event';
 import { ProductUpdated } from './product.updated.event';
 import { ProductActivated } from './product.activated.event';

@@ -1,5 +1,5 @@
-import { DomainEvent } from '@business/shared-business/domain/bases';
-import { VendorId } from '../value-objects';
+import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
 
 export class VendorCreated extends DomainEvent {
   constructor(

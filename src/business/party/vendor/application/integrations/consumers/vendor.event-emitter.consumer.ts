@@ -1,4 +1,4 @@
-import { VendorCreated } from '@business/party/vendor/domain/domain-events';
+import { VendorCreated } from '@business/party/vendor/domain/domain-events/vendor.created.event';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 

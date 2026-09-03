@@ -11,18 +11,16 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
-import { CreatePurchaseOrderUseCase } from '../../../application/usecase';
-import { AddPurchaseOrderLineUseCase } from '../../../application/usecase';
-import { RemovePurchaseOrderLineUseCase } from '../../../application/usecase';
-import { PurchaseOrderTransitionUseCase } from '../../../application/usecase';
-import { GetPurchaseOrderUseCase } from '../../../application/usecase';
-import { ListPurchaseOrdersUseCase } from '../../../application/usecase';
-import {
-  AddLineDto,
-  CreatePurchaseOrderDto,
-  PurchaseOrderQueryDto,
-  RejectPurchaseOrderDto,
-} from '../request';
+import { CreatePurchaseOrderUseCase } from '../../../application/usecase/create-purchase-order.usecase';
+import { AddPurchaseOrderLineUseCase } from '../../../application/usecase/add-purchase-order-line.usecase';
+import { RemovePurchaseOrderLineUseCase } from '../../../application/usecase/remove-purchase-order-line.usecase';
+import { PurchaseOrderTransitionUseCase } from '../../../application/usecase/purchase-order-transition.usecase';
+import { GetPurchaseOrderUseCase } from '../../../application/usecase/get-purchase-order.usecase';
+import { ListPurchaseOrdersUseCase } from '../../../application/usecase/list-purchase-orders.usecase';
+import { AddLineDto } from '../request/purchase-order.request';
+import { CreatePurchaseOrderDto } from '../request/purchase-order.request';
+import { PurchaseOrderQueryDto } from '../request/purchase-order.request';
+import { RejectPurchaseOrderDto } from '../request/purchase-order.request';
 
 @ApiTags('purchase-orders')
 @ApiBearerAuth()

@@ -1,12 +1,13 @@
 import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { Vendor } from '../aggregates';
+import { Vendor } from '../aggregates/vendor.aggregate';
 import '../aggregates/vendor.invariants';
-import { VendorCreated } from '../domain-events';
+import { VendorCreated } from '../domain-events/vendor.created.event';
 import '../domain-policies/vendor.policy';
 import { VendorStatus } from '../types/vendor.enum';
 import { CreateVendorInput, VendorProps } from '../types/vendor.types';
-import { VendorCode, VendorEmail, VendorId, VendorName } from '../value-objects';
+import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
+import { VendorCode, VendorEmail, VendorName } from '../value-objects/vendor.vos';
 import '../value-objects/vendor-code.invariants';
 import '../value-objects/vendor-email.invariants';
 import '../value-objects/vendor-name.invariants';

@@ -1,11 +1,11 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { CreateVendorRequest } from '../../domain/types/vendor.types';
-import { vendorFactory } from '../../domain/factories';
-import { VendorId } from '../../domain/value-objects';
-import { VendorCode } from '../../domain/value-objects';
-import { VendorCommandRepositoryPort } from '../../domain/domain-ports';
-import { VendorIntegrationPort } from '../integrations';
+import { vendorFactory } from '../../domain/factories/vendor.factory';
+import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
+import { VendorCode } from '../../domain/value-objects/vendor.vos';
+import { VendorCommandRepositoryPort } from '../../domain/domain-ports/vendor-command-repository.port';
+import { VendorIntegrationPort } from '../integrations/publishers/vendor.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()

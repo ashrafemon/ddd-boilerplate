@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
   ProductQueryRepositoryPort,
-  ProductQueryRecord,
-} from '../../domain/domain-ports';
+} from '../../domain/domain-ports/product-query-repository.port';
+import { ProductQueryRecord } from '../../domain/types/product.types';
 
 /**
  * Cross-aggregate query surface. Other modules (e.g. purchase) depend on the

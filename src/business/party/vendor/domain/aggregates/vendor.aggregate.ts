@@ -1,9 +1,12 @@
-import { AggregateRoot } from '@business/shared-business/domain/bases';
+import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { VendorId } from '../value-objects';
+import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
 import { CreateVendorInput, VendorProps, VendorStatus } from '../types/vendor.types';
-import { VendorCode, VendorEmail, VendorName } from '../value-objects';
-import { VendorActivated, VendorBlocked, VendorDeactivated, VendorUpdated } from '../domain-events';
+import { VendorCode, VendorEmail, VendorName } from '../value-objects/vendor.vos';
+import { VendorActivated } from '../domain-events/vendor.activated.event';
+import { VendorBlocked } from '../domain-events/vendor.blocked.event';
+import { VendorDeactivated } from '../domain-events/vendor.deactivated.event';
+import { VendorUpdated } from '../domain-events/vendor.updated.event';
 export class Vendor extends AggregateRoot<VendorId> {
   private props: VendorProps;
 

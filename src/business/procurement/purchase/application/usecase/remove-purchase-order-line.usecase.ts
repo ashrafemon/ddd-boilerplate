@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { RemoveLineRequest } from '../../domain/types/purchase-order.types';
-import { PurchaseOrderId } from '../../domain/value-objects';
-import { PurchaseOrderCommandRepositoryPort } from '../../domain/ports';
-import { PurchaseOrderIntegrationPort } from '../integrations';
+import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
+import { PurchaseOrderCommandRepositoryPort } from '../../domain/ports/purchase-order-command-repository.port';
+import { PurchaseOrderIntegrationPort } from '../integrations/publishers/purchase-order.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()

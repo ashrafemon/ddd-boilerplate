@@ -1,9 +1,10 @@
 import { PurchaseOrder } from './purchase-order.aggregate';
 import { PurchaseOrderStatus } from '../types/purchase-order.enum';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { PurchaseOrderApproved, PurchaseOrderSubmitted } from '../events';
+import { PurchaseOrderApproved } from '../events/purchase-order.approved.event';
+import { PurchaseOrderSubmitted } from '../events/purchase-order.submitted.event';
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
-import { purchaseOrderFactory } from '../factories';
+import { purchaseOrderFactory } from '../factories/purchase-order.factory';
 
 describe('PurchaseOrder aggregate', () => {
   const create = () =>

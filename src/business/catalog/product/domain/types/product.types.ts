@@ -1,6 +1,6 @@
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { ProductName } from '../value-objects';
-import { Sku } from '../value-objects';
+import { ProductName } from '../value-objects/product-name.vo';
+import { Sku } from '../value-objects/sku.vo';
 import { ProductStatus } from './product.enum';
 export { ProductStatus } from './product.enum';
 

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
   ProductQueryRepositoryPort,
-  ProductQueryRecord,
-} from '../../domain/domain-ports';
+} from '../../domain/domain-ports/product-query-repository.port';
+import { ProductQueryRecord } from '../../domain/types/product.types';
 
 /**
  * Read-side use case. Skips the domain and returns projections directly.

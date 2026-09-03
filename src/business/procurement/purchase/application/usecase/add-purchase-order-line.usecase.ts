@@ -3,10 +3,10 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { ModulePortResolver } from '@shared-kernel/ports';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { AddLineRequest } from '../../domain/types/purchase-order.types';
-import { PurchaseOrderId } from '../../domain/value-objects';
-import { PurchasableProductQueryPort } from '../ports/outbound';
-import { PurchaseOrderCommandRepositoryPort } from '../../domain/ports';
-import { PurchaseOrderIntegrationPort } from '../integrations';
+import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
+import { PurchasableProductQueryPort } from '../ports/outbound/product-query.port';
+import { PurchaseOrderCommandRepositoryPort } from '../../domain/ports/purchase-order-command-repository.port';
+import { PurchaseOrderIntegrationPort } from '../integrations/publishers/purchase-order.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()

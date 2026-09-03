@@ -1,5 +1,5 @@
 import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
-import { VendorId } from '../value-objects';
+import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
 import { VendorCreated } from './vendor.created.event';
 import { VendorUpdated } from './vendor.updated.event';
 import { VendorActivated } from './vendor.activated.event';

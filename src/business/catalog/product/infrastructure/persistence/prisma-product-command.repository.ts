@@ -1,5 +1,5 @@
-import { Product } from '@business/catalog/product/domain/aggregates';
-import { ProductCommandRepositoryPort } from '@business/catalog/product/domain/domain-ports';
+import { Product } from '@business/catalog/product/domain/aggregates/product.aggregate';
+import { ProductCommandRepositoryPort } from '@business/catalog/product/domain/domain-ports/product-command-repository.port';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Injectable } from '@nestjs/common';

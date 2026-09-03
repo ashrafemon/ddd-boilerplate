@@ -2,11 +2,11 @@ import { Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ModulePortResolver } from '@shared-kernel/ports';
 import { CreatePurchaseOrderRequest } from '../../domain/types/purchase-order.types';
-import { purchaseOrderFactory } from '../../domain/factories';
-import { PurchaseOrderId } from '../../domain/value-objects';
-import { OrderableVendorQueryPort } from '../ports/outbound';
-import { PurchaseOrderCommandRepositoryPort } from '../../domain/ports';
-import { PurchaseOrderIntegrationPort } from '../integrations';
+import { purchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
+import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
+import { OrderableVendorQueryPort } from '../ports/outbound/vendor-query.port';
+import { PurchaseOrderCommandRepositoryPort } from '../../domain/ports/purchase-order-command-repository.port';
+import { PurchaseOrderIntegrationPort } from '../integrations/publishers/purchase-order.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()

@@ -1,6 +1,6 @@
-import { VendorEmail } from '../value-objects';
-import { VendorName } from '../value-objects';
-import { VendorCode } from '../value-objects';
+import { VendorEmail } from '../value-objects/vendor.vos';
+import { VendorName } from '../value-objects/vendor.vos';
+import { VendorCode } from '../value-objects/vendor.vos';
 import { VendorStatus } from './vendor.enum';
 export { VendorStatus } from './vendor.enum';
 

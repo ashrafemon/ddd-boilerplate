@@ -1,4 +1,4 @@
-import { ProductQueryRepositoryPort } from '@business/catalog/product/domain/domain-ports';
+import { ProductQueryRepositoryPort } from '@business/catalog/product/domain/domain-ports/product-query-repository.port';
 import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.service';
 import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';

@@ -1,11 +1,12 @@
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ConflictException, Injectable } from '@nestjs/common';
-import { ProductCommandRepositoryPort } from '../../domain/domain-ports';
-import { productFactory } from '../../domain/factories';
+import { ProductCommandRepositoryPort } from '../../domain/domain-ports/product-command-repository.port';
+import { productFactory } from '../../domain/factories/product.factory';
 import { CreateProductRequest } from '../../domain/types/product.types';
-import { ProductId, Sku } from '../../domain/value-objects';
-import { ProductIntegrationPort } from '../integrations';
+import { ProductId } from '../../domain/value-objects/product-id.vo';
+import { Sku } from '../../domain/value-objects/sku.vo';
+import { ProductIntegrationPort } from '../integrations/publishers/product.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()

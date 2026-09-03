@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.service';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
-import {
-  PurchaseOrderQueryRecord,
-  PurchaseOrderQueryRepositoryPort,
-} from '@business/procurement/purchase/domain/ports';
+import { PurchaseOrderQueryRepositoryPort } from '@business/procurement/purchase/domain/ports/purchase-order-query-repository.port';
+import { PurchaseOrderQueryRecord } from '@business/procurement/purchase/domain/types/purchase-order.types';
 
 @Injectable()
 export class PrismaPurchaseOrderQueryRepository extends PurchaseOrderQueryRepositoryPort {

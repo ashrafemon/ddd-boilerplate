@@ -1,4 +1,4 @@
-import { Product } from '../aggregates';
+import { Product } from '../aggregates/product.aggregate';
 
 /**
  * Command-side repository port. The adapter injects the transactional host

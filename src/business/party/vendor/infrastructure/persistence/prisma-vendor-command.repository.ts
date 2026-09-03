@@ -2,11 +2,11 @@ import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Injectable } from '@nestjs/common';
 
-import { VendorId } from '@business/shared-business';
+import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
 import { VendorMapper } from '../../application/mappers/vendor.mapper';
-import { Vendor } from '../../domain/aggregates';
-import { VendorCommandRepositoryPort } from '../../domain/domain-ports';
-import { VendorCode } from '../../domain/value-objects';
+import { Vendor } from '../../domain/aggregates/vendor.aggregate';
+import { VendorCommandRepositoryPort } from '../../domain/domain-ports/vendor-command-repository.port';
+import { VendorCode } from '../../domain/value-objects/vendor.vos';
 
 @Injectable()
 export class PrismaVendorCommandRepository extends VendorCommandRepositoryPort {

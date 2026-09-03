@@ -1,4 +1,4 @@
-import { ValueObject } from '@business/shared-business/domain/bases';
+import { ValueObject } from '@business/shared-business/domain/bases/value-object.base';
 
 export class Sku extends ValueObject<{ value: string }> {
   private constructor(value: string) {

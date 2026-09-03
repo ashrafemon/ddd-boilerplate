@@ -7,7 +7,7 @@ import { PurchaseOrderApproved } from './purchase-order.approved.event';
 import { PurchaseOrderRejected } from './purchase-order.rejected.event';
 import { PurchaseOrderCancelled } from './purchase-order.cancelled.event';
 import { PurchaseOrderCompleted } from './purchase-order.completed.event';
-import { PurchaseOrderId } from '../value-objects';
+import { PurchaseOrderId } from '../value-objects/purchase-order-id.vo';
 
 domainEventRegistry.register('PurchaseOrderCreated', payload => {
   const p = payload as unknown as {

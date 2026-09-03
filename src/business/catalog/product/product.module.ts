@@ -1,31 +1,26 @@
 import { Module } from '@nestjs/common';
-import { PurchasableProductFacade } from './application/facades';
-import {
-  ProductEventEmitterConsumer,
-  ProductKafkaConsumer,
-  ProductRabbitMQConsumer,
-  ProductSqsConsumer,
-} from './application/integrations';
+import { PurchasableProductFacade } from './application/facades/purchasable-product.facade';
+import { ProductEventEmitterConsumer } from './application/integrations/consumers/product.event-emitter.consumer';
+import { ProductKafkaConsumer } from './application/integrations/consumers/product.kafka.consumer';
+import { ProductRabbitMQConsumer } from './application/integrations/consumers/product.rabbitmq.consumer';
+import { ProductSqsConsumer } from './application/integrations/consumers/product.sqs.consumer';
 import { ProductIntegrationPort } from './application/integrations/publishers/product.integration-port';
 import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
-import {
-  ChangePriceUseCase,
-  CreateProductUseCase,
-  GetProductUseCase,
-  GetPurchasableProductsUseCase,
-  GetPurchasableProductUseCase,
-  ListProductsUseCase,
-  ProductStatusUseCase,
-  UpdateProductUseCase,
-} from './application/usecase';
+import { ChangePriceUseCase } from './application/usecase/change-price.usecase';
+import { CreateProductUseCase } from './application/usecase/create-product.usecase';
+import { GetProductUseCase } from './application/usecase/get-product.usecase';
+import { GetPurchasableProductsUseCase } from './application/usecase/get-purchasable-products.usecase';
+import { GetPurchasableProductUseCase } from './application/usecase/get-purchasable-product.usecase';
+import { ListProductsUseCase } from './application/usecase/list-products.usecase';
+import { ProductStatusUseCase } from './application/usecase/product-status.usecase';
+import { UpdateProductUseCase } from './application/usecase/update-product.usecase';
 import './domain/domain-events/product.registry';
-import { ProductCommandRepositoryPort, ProductQueryRepositoryPort } from './domain/domain-ports';
+import { ProductCommandRepositoryPort } from './domain/domain-ports/product-command-repository.port';
+import { ProductQueryRepositoryPort } from './domain/domain-ports/product-query-repository.port';
 import { CompanyConfigOutboundAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
-import {
-  PrismaProductCommandRepository,
-  PrismaProductQueryRepository,
-} from './infrastructure/persistence';
+import { PrismaProductCommandRepository } from './infrastructure/persistence/prisma-product-command.repository';
+import { PrismaProductQueryRepository } from './infrastructure/persistence/prisma-product-query.repository';
 import { ProductController } from './presentation/http/product.controller';
 import { PurchasableProductPort } from './public/ports/purchasable-product.port';
 

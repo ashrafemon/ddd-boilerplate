@@ -1,8 +1,8 @@
-import { VendorId } from '@business/shared-business';
-import { Vendor } from '../../domain/aggregates';
+import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
+import { Vendor } from '../../domain/aggregates/vendor.aggregate';
 import { VendorStatus } from '../../domain/types/vendor.enum';
 import { VendorProps } from '../../domain/types/vendor.types';
-import { VendorCode, VendorEmail, VendorName } from '../../domain/value-objects';
+import { VendorCode, VendorEmail, VendorName } from '../../domain/value-objects/vendor.vos';
 
 interface VendorRow {
   id: string;

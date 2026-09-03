@@ -1,6 +1,8 @@
-import { ProductId, ProductName, Sku } from '@business/catalog/product/domain/value-objects';
+import { ProductId } from '@business/catalog/product/domain/value-objects/product-id.vo';
+import { ProductName } from '@business/catalog/product/domain/value-objects/product-name.vo';
+import { Sku } from '@business/catalog/product/domain/value-objects/sku.vo';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { Product } from '../../domain/aggregates';
+import { Product } from '../../domain/aggregates/product.aggregate';
 import { ProductStatus } from '../../domain/types/product.enum';
 import { ProductProps } from '../../domain/types/product.types';
 

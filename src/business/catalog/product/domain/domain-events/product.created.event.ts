@@ -1,5 +1,6 @@
-import { DomainEvent, Money } from '@business/shared-business';
-import { ProductId } from '../value-objects';
+import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { Money } from '@business/shared-business/domain/common/value-objects/money';
+import { ProductId } from '../value-objects/product-id.vo';
 
 export class ProductCreated extends DomainEvent {
   constructor(

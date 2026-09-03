@@ -2,9 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { ChangePriceRequest } from '../../domain/types/product.types';
-import { ProductId } from '../../domain/value-objects';
-import { ProductCommandRepositoryPort } from '../../domain/domain-ports';
-import { ProductIntegrationPort } from '../integrations';
+import { ProductId } from '../../domain/value-objects/product-id.vo';
+import { ProductCommandRepositoryPort } from '../../domain/domain-ports/product-command-repository.port';
+import { ProductIntegrationPort } from '../integrations/publishers/product.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
