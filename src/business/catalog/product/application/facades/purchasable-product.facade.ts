@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GetPurchasableProductUseCase } from '../usecase';
-import { PurchasableProductQueryPort, ProductReference } from '@business/procurement/purchase';
+import { PurchasableProductPort } from '../../public/ports/purchasable-product.port';
+import { ProductReference } from '../../public/contracts/product.contracts';
 
 /**
  * Product module's implementation of PurchaseOrder's outbound contract. Lives
@@ -9,8 +10,10 @@ import { PurchasableProductQueryPort, ProductReference } from '@business/procure
  * infrastructure services.
  */
 @Injectable()
-export class ProductQueryAdapter extends PurchasableProductQueryPort {
-  constructor(private readonly getPurchasableProductUseCase: GetPurchasableProductUseCase) {}
+export class PurchasableProductFacade extends PurchasableProductPort {
+  constructor(private readonly getPurchasableProductUseCase: GetPurchasableProductUseCase) {
+    super();
+  }
 
   getPurchasableProduct(id: string): Promise<ProductReference | null> {
     return this.getPurchasableProductUseCase.execute(id);

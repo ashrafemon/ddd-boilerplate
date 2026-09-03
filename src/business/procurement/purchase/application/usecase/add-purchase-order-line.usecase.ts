@@ -1,21 +1,21 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ModulePortResolver } from '@shared-kernel/ports';
-import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
-import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { AddLineRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects';
 import { PurchasableProductQueryPort } from '../ports/outbound';
-import { PurchaseOrderCommandRepositoryPort } from '../../domain/domain-ports';
+import { PurchaseOrderCommandRepositoryPort } from '../../domain/ports';
+import { PurchaseOrderIntegrationPort } from '../integrations';
+import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class AddPurchaseOrderLineUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
     private readonly portResolver: ModulePortResolver,
-    private readonly outboxWriter: OutboxWriterPort,
-    private readonly companyConfig: CompanyConfigPort,
+    private readonly integrationEvent: PurchaseOrderIntegrationPort,
+    private readonly companyConfig: CompanyConfigOutboundPort,
   ) {}
 
   private get productQueryPort(): PurchasableProductQueryPort {
@@ -46,7 +46,7 @@ export class AddPurchaseOrderLineUseCase {
     await this.purchaseOrderRepository.update(purchaseOrder);
 
     for (const event of purchaseOrder.pullEvents()) {
-      await this.outboxWriter.append(event, 'PurchaseOrder', purchaseOrder.id.toString());
+      await this.integrationEvent.send(event, purchaseOrder.id.toString());
     }
 
     return purchaseOrder.id;

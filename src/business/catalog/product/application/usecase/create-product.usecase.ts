@@ -1,20 +1,19 @@
-import { Injectable, ConflictException } from '@nestjs/common';
-import { Transactional } from '@nestjs-cls/transactional';
-import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
-import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { CreateProductRequest } from '../../domain/types/product.types';
-import { productFactory } from '../../domain/factories';
-import { ProductId } from '../../domain/value-objects';
-import { Sku } from '../../domain/value-objects';
+import { Transactional } from '@nestjs-cls/transactional';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { ProductCommandRepositoryPort } from '../../domain/domain-ports';
+import { productFactory } from '../../domain/factories';
+import { CreateProductRequest } from '../../domain/types/product.types';
+import { ProductId, Sku } from '../../domain/value-objects';
+import { ProductIntegrationPort } from '../integrations';
+import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class CreateProductUseCase {
   constructor(
     private readonly productRepository: ProductCommandRepositoryPort,
-    private readonly outboxWriter: OutboxWriterPort,
-    private readonly companyConfig: CompanyConfigPort,
+    private readonly integrationEvent: ProductIntegrationPort,
+    private readonly companyConfig: CompanyConfigOutboundPort,
   ) {}
 
   @Transactional()
@@ -30,7 +29,7 @@ export class CreateProductUseCase {
       currency,
     });
 
-    const existing = await this.productRepository.findBySku(Sku.create(product.sku));
+    const existing = await this.productRepository.findBySku(Sku.create(product.sku).toString());
     if (existing) {
       throw new ConflictException(`Product with SKU "${product.sku}" already exists`);
     }
@@ -38,7 +37,7 @@ export class CreateProductUseCase {
     await this.productRepository.save(product);
 
     for (const event of product.pullEvents()) {
-      await this.outboxWriter.append(event, 'Product', product.id.toString());
+      await this.integrationEvent.send(event, product.id.toString());
     }
 
     return product.id;

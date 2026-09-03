@@ -3,7 +3,6 @@ import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import {
   ProductQueryRepositoryPort,
   ProductQueryRecord,
-  ProductQueryRepositoryPort,
 } from '../../domain/domain-ports';
 
 /**

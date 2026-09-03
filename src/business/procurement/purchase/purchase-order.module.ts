@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PurchaseOrderController } from './presentation/http/controllers';
+import { PurchaseOrderQueryFacade } from './application/facades';
 import { CreatePurchaseOrderUseCase } from './application/usecase';
 import { AddPurchaseOrderLineUseCase } from './application/usecase';
 import { RemovePurchaseOrderLineUseCase } from './application/usecase';
@@ -12,18 +13,15 @@ import { PurchaseOrderSqsConsumer } from './application/consumers';
 import { PurchaseOrderEventEmitterConsumer } from './application/consumers';
 import { PurchaseOrderCommandRepositoryPort } from './domain/ports';
 import { PurchaseOrderQueryRepositoryPort } from './domain/ports';
+import { PurchaseOrderIntegrationPort } from './application/integrations/publishers/purchase-order.integration-port';
+import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
+import { PurchaseOrderQueryPort } from './public/ports/purchase-order.port';
 import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence';
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence';
+import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
+import { CompanyConfigOutboundAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import './domain/events/purchase-order.registry';
 
-/**
- * PurchaseOrder aggregate module (procurement context). Controllers call use
- * cases directly — no inbound ports, no facades. Cross-aggregate calls go
- * through outbound ports that are implemented in the Vendor/Product modules
- * and resolved at runtime via the ModulePortResolver — this module does NOT
- * import VendorModule/ProductModule. Repository ports are bound to this
- * module's own infrastructure adapters.
- */
 @Module({
   controllers: [PurchaseOrderController],
   providers: [
@@ -37,8 +35,13 @@ import './domain/events/purchase-order.registry';
     PurchaseOrderRabbitMQConsumer,
     PurchaseOrderKafkaConsumer,
     PurchaseOrderSqsConsumer,
+    PurchaseOrderQueryFacade,
+    { provide: PurchaseOrderQueryPort, useExisting: PurchaseOrderQueryFacade },
     { provide: PurchaseOrderCommandRepositoryPort, useClass: PrismaPurchaseOrderCommandRepository },
     { provide: PurchaseOrderQueryRepositoryPort, useClass: PrismaPurchaseOrderQueryRepository },
+    { provide: PurchaseOrderIntegrationPort, useClass: OutboxAdapter },
+    { provide: CompanyConfigOutboundPort, useClass: CompanyConfigOutboundAdapter },
   ],
+  exports: [PurchaseOrderQueryPort],
 })
 export class PurchaseOrderModule {}

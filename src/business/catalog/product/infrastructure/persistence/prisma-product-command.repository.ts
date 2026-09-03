@@ -11,6 +11,16 @@ export class PrismaProductCommandRepository extends ProductCommandRepositoryPort
     super();
   }
 
+  async findById(id: string): Promise<Product | null> {
+    const row = await this.txHost.tx.product.findUnique({ where: { id } });
+    return row ? ProductMapper.toDomain(row) : null;
+  }
+
+  async findBySku(sku: string): Promise<Product | null> {
+    const row = await this.txHost.tx.product.findUnique({ where: { sku } });
+    return row ? ProductMapper.toDomain(row) : null;
+  }
+
   async save(product: Product): Promise<Product> {
     await this.txHost.tx.product.create({ data: { ...ProductMapper.toRow(product) } as never });
     return product;

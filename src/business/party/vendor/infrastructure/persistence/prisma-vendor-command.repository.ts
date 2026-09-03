@@ -27,13 +27,13 @@ export class PrismaVendorCommandRepository extends VendorCommandRepositoryPort {
     return vendor;
   }
 
-  async findById(id: VendorId): Promise<Vendor | null> {
-    const row = await this.txHost.tx.vendor.findUnique({ where: { id: id.toString() } });
+  async findById(id: string): Promise<Vendor | null> {
+    const row = await this.txHost.tx.vendor.findUnique({ where: { id } });
     return row ? VendorMapper.toDomain(row) : null;
   }
 
-  async findByCode(code: VendorCode): Promise<Vendor | null> {
-    const row = await this.txHost.tx.vendor.findUnique({ where: { code: code.value } });
+  async findByCode(code: string): Promise<Vendor | null> {
+    const row = await this.txHost.tx.vendor.findUnique({ where: { code } });
     return row ? VendorMapper.toDomain(row) : null;
   }
 }

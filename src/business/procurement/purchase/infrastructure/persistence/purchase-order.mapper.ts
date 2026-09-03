@@ -1,9 +1,8 @@
 import {
-  PurchaseOrder,
   PurchaseOrderProps,
   PurchaseOrderStatus,
 } from '../../domain/types/purchase-order.types';
-import { PurchaseOrderLine } from '@business/procurement/purchase/domain/entities/purchase-order-line.entity';
+import { PurchaseOrder, PurchaseOrderLine } from '@business/procurement/purchase/domain/entities';
 import { PurchaseOrderId } from '@business/procurement/purchase/domain/value-objects';
 import {
   OrderNumber,

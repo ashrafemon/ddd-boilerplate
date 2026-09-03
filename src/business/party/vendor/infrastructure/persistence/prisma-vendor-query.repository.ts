@@ -3,6 +3,7 @@ import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.s
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { VendorQueryRepositoryPort } from '@business/party/vendor/domain/domain-ports';
 import { VendorQueryRecord } from '../../domain/types/vendor.types';
+import { VendorStatus } from '../../domain/types/vendor.enum';
 
 @Injectable()
 export class PrismaVendorQueryRepository extends VendorQueryRepositoryPort {
@@ -60,7 +61,7 @@ export class PrismaVendorQueryRepository extends VendorQueryRepositoryPort {
       email: r.email,
       phone: r.phone,
       address: r.address,
-      status: r.status,
+      status: r.status as VendorStatus,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     };

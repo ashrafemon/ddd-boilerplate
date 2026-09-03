@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import {
   ProductQueryRepositoryPort,
   ProductQueryRecord,
-  ProductQueryRepositoryPort,
 } from '../../domain/domain-ports';
 
 /**

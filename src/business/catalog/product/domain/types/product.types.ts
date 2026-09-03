@@ -2,6 +2,7 @@ import { Money } from '@business/shared-business/domain/common/value-objects/mon
 import { ProductName } from '../value-objects';
 import { Sku } from '../value-objects';
 import { ProductStatus } from './product.enum';
+export { ProductStatus } from './product.enum';
 
 export interface ProductProps {
   sku: Sku;

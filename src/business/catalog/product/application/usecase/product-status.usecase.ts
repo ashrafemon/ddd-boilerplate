@@ -1,17 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
-import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { ProductStatusRequest } from '../../domain/types/product.types';
 import { ProductId } from '../../domain/value-objects';
 import { ProductCommandRepositoryPort } from '../../domain/domain-ports';
+import { ProductIntegrationPort } from '../integrations';
+import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class ProductStatusUseCase {
   constructor(
     private readonly productRepository: ProductCommandRepositoryPort,
-    private readonly outboxWriter: OutboxWriterPort,
-    private readonly companyConfig: CompanyConfigPort,
+    private readonly integrationEvent: ProductIntegrationPort,
+    private readonly companyConfig: CompanyConfigOutboundPort,
   ) {}
 
   @Transactional()
@@ -19,7 +19,7 @@ export class ProductStatusUseCase {
     await this.companyConfig.getCompanyConfig();
 
     const id = ProductId.fromString(input.id);
-    const product = await this.productRepository.findById(id);
+    const product = await this.productRepository.findById(id.toString());
     if (!product) {
       throw new NotFoundException('Product not found');
     }
@@ -39,7 +39,7 @@ export class ProductStatusUseCase {
     await this.productRepository.update(product);
 
     for (const event of product.pullEvents()) {
-      await this.outboxWriter.append(event, 'Product', product.id.toString());
+      await this.integrationEvent.send(event, product.id.toString());
     }
 
     return product.id;

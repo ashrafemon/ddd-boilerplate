@@ -1,12 +1,13 @@
-import { PurchasableProductQueryPort } from '@business/procurement/purchase';
 import { Module } from '@nestjs/common';
-import { ProductQueryAdapter } from './application/inbound-adapters';
+import { PurchasableProductFacade } from './application/facades';
 import {
   ProductEventEmitterConsumer,
   ProductKafkaConsumer,
   ProductRabbitMQConsumer,
   ProductSqsConsumer,
 } from './application/integrations';
+import { ProductIntegrationPort } from './application/integrations/publishers/product.integration-port';
+import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
 import {
   ChangePriceUseCase,
   CreateProductUseCase,
@@ -17,13 +18,16 @@ import {
   ProductStatusUseCase,
   UpdateProductUseCase,
 } from './application/usecase';
+import './domain/domain-events/product.registry';
 import { ProductCommandRepositoryPort, ProductQueryRepositoryPort } from './domain/domain-ports';
+import { CompanyConfigOutboundAdapter } from './infrastructure/adapters/platform/company-config.adapter';
+import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
 import {
   PrismaProductCommandRepository,
   PrismaProductQueryRepository,
 } from './infrastructure/persistence';
 import { ProductController } from './presentation/http/product.controller';
-import './domain/domain-events/product.registry';
+import { PurchasableProductPort } from './public/ports/purchasable-product.port';
 
 /**
  * Product aggregate module. Controllers call use cases directly — no inbound
@@ -46,15 +50,13 @@ import './domain/domain-events/product.registry';
     ProductKafkaConsumer,
     ProductSqsConsumer,
     ProductEventEmitterConsumer,
-    ProductQueryAdapter,
-    { provide: PurchasableProductQueryPort, useExisting: ProductQueryAdapter },
+    PurchasableProductFacade,
+    { provide: PurchasableProductPort, useExisting: PurchasableProductFacade },
     { provide: ProductCommandRepositoryPort, useClass: PrismaProductCommandRepository },
     { provide: ProductQueryRepositoryPort, useClass: PrismaProductQueryRepository },
+    { provide: ProductIntegrationPort, useClass: OutboxAdapter },
+    { provide: CompanyConfigOutboundPort, useClass: CompanyConfigOutboundAdapter },
   ],
-  exports: [
-    GetPurchasableProductUseCase,
-    GetPurchasableProductsUseCase,
-    PurchasableProductQueryPort,
-  ],
+  exports: [PurchasableProductPort],
 })
 export class ProductModule {}

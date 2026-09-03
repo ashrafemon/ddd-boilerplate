@@ -1,17 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
-import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 import { RemoveLineRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects';
-import { PurchaseOrderCommandRepositoryPort } from '../../domain/domain-ports';
+import { PurchaseOrderCommandRepositoryPort } from '../../domain/ports';
+import { PurchaseOrderIntegrationPort } from '../integrations';
+import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class RemovePurchaseOrderLineUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepositoryPort,
-    private readonly outboxWriter: OutboxWriterPort,
-    private readonly companyConfig: CompanyConfigPort,
+    private readonly integrationEvent: PurchaseOrderIntegrationPort,
+    private readonly companyConfig: CompanyConfigOutboundPort,
   ) {}
 
   @Transactional()
@@ -28,7 +28,7 @@ export class RemovePurchaseOrderLineUseCase {
     await this.purchaseOrderRepository.update(purchaseOrder);
 
     for (const event of purchaseOrder.pullEvents()) {
-      await this.outboxWriter.append(event, 'PurchaseOrder', purchaseOrder.id.toString());
+      await this.integrationEvent.send(event, purchaseOrder.id.toString());
     }
 
     return purchaseOrder.id;

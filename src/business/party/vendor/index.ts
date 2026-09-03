@@ -1,4 +1,4 @@
-export * from './application/inbound-adapters';
+export * from './application/facades';
 export * from './application/integrations';
 export * from './application/usecase';
 export * from './domain/aggregates';
@@ -6,5 +6,8 @@ export * from './domain/domain-events';
 export * from './domain/domain-ports';
 export * from './domain/factories';
 export * from './domain/value-objects';
+export * from './infrastructure/adapters';
 export * from './infrastructure/persistence';
+export * from './public/contracts';
+export * from './public/ports';
 export * from './vendor.module';

@@ -3,7 +3,6 @@ import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import {
   PurchaseOrderQueryRepositoryPort,
   PurchaseOrderQueryRecord,
-  PurchaseOrderQueryRepositoryPort,
 } from '../../domain/ports';
 
 @Injectable()

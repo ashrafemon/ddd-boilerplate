@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import {
   VendorQueryRepositoryPort,
   VendorQueryRecord,
-  VendorQueryRepositoryPort,
 } from '../../domain/domain-ports';
 
 @Injectable()

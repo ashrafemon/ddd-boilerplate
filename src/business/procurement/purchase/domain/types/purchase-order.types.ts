@@ -2,6 +2,7 @@ import { Money } from '@business/shared-business/domain/common/value-objects/mon
 import { OrderNumber } from '../value-objects';
 import { ProductIdRef, VendorIdRef } from '../value-objects';
 import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
+import { PurchaseOrderStatus } from './purchase-order.enum';
 export { PurchaseOrderStatus } from './purchase-order.enum';
 
 export interface PurchaseOrderProps {
@@ -63,26 +64,6 @@ export interface PurchaseOrderQueryRecord {
   }[];
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface VendorReference {
-  id: string;
-  code: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  address: string | null;
-  status: string;
-}
-
-export interface ProductReference {
-  id: string;
-  sku: string;
-  name: string;
-  description: string | null;
-  status: string;
-  unitPrice: number;
-  currency: string;
 }
 
 export interface CreatePurchaseOrderRequest {

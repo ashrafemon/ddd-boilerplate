@@ -8,7 +8,9 @@ import {
 
 @Injectable()
 export class PrismaPurchaseOrderQueryRepository extends PurchaseOrderQueryRepositoryPort {
-  constructor(private readonly prismaRead: PrismaReadService) {}
+  constructor(private readonly prismaRead: PrismaReadService) {
+    super();
+  }
 
   async findById(id: string): Promise<PurchaseOrderQueryRecord | null> {
     const row = await this.prismaRead.purchaseOrder.findUnique({

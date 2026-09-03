@@ -1,6 +1,7 @@
 import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { PurchaseOrder, PurchaseOrderProps } from '../entities';
+import { PurchaseOrder } from '../entities';
+import { PurchaseOrderProps } from '../types/purchase-order.types';
 import { PurchaseOrderStatus } from '../types/purchase-order.enum';
 import { CreatePurchaseOrderInput } from '../types/purchase-order.types';
 import { PurchaseOrderId } from '../value-objects';

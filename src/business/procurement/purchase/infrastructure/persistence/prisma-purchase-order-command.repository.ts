@@ -9,7 +9,9 @@ import { PageQuery } from '@shared-kernel/types/pagination';
 
 @Injectable()
 export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRepositoryPort {
-  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
+  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {
+    super();
+  }
 
   async save(purchaseOrder: PurchaseOrder): Promise<PurchaseOrder> {
     await this.txHost.tx.purchaseOrder.create({

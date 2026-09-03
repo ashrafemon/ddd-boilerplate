@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import {
   PurchaseOrderQueryRepositoryPort,
   PurchaseOrderQueryRecord,
-  PurchaseOrderQueryRepositoryPort,
 } from '../../domain/ports';
 
 @Injectable()
