@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { PurchaseOrder } from '@business/procurement/purchase/domain/entities/purchase-order.aggregate';
+import { PurchaseOrder } from '@business/procurement/purchase/domain/aggregates/purchase-order.aggregate';
 import { PurchaseOrderId } from '@business/procurement/purchase/domain/value-objects/purchase-order-id.vo';
-import { PurchaseOrderCommandRepositoryPort } from '@business/procurement/purchase/domain/ports/purchase-order-command-repository.port';
+import { PurchaseOrderCommandRepositoryPort } from '@business/procurement/purchase/domain/domain-ports/purchase-order-command-repository.port';
 import { PurchaseOrderMapper } from './purchase-order.mapper';
 import { PageQuery } from '@shared-kernel/types/pagination';
 

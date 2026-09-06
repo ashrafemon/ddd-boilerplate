@@ -1,5 +1,6 @@
-import { Grn, GrnLine, GrnProps, GrnStatus } from '../../domain/types/grn.types';
-import { GrnId, GrnNumber, PurchaseOrderIdRef, ReceivedQuantity } from '../../domain/value-objects';
+import { GoodReceiptNote } from '../../domain/aggregates/grn.aggregate';
+import { GrnLine, GrnProps, GrnStatus } from '../../domain/types/grn.types';
+import { GrnId } from '../../domain/value-objects/grn.vos';
 
 export class GrnMapper {
   static toDomain(row: {
@@ -21,28 +22,34 @@ export class GrnMapper {
     receivedAt: Date;
     createdAt: Date;
     updatedAt: Date;
-  }): Grn {
-    const grn = Grn.instantiate(
+  }): GoodReceiptNote {
+    const grn = GoodReceiptNote.instantiate(
       GrnId.fromString(row.id),
       {
+        id: GrnId.fromString(row.id),
         grnNumber: row.grnNumber,
         purchaseOrderId: row.purchaseOrderId,
         vendorId: row.vendorId,
         status: row.status as GrnStatus,
         currency: row.currency,
         lines: row.lines.map(line =>
-          GrnLine.create(line.productId, line.orderedQuantity, line.receivedQuantity, line.unitPrice),
+          GrnLine.create(
+            line.productId,
+            line.orderedQuantity,
+            line.receivedQuantity,
+            line.unitPrice,
+          ),
         ),
         receivedAt: row.receivedAt,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
-      },
+      } satisfies GrnProps,
       1,
     );
     return grn;
   }
 
-  static toRow(grn: Grn) {
+  static toRow(grn: GoodReceiptNote) {
     return {
       id: grn.id.toString(),
       grnNumber: grn.grnNumber,

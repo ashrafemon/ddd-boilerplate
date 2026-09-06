@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GrnQueryRepositoryPort } from '../../domain/ports';
+import { GrnQueryRepositoryPort } from '../../domain/domain-ports/grn-query-repository.port';
 import { GrnQueryRecord } from '../../domain/types/grn.types';
 
 @Injectable()

@@ -5,7 +5,7 @@ import { Money } from '@business/shared-business/domain/common/value-objects/mon
 import { AddLineRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchasableProductQueryPort } from '../ports/outbound/product-query.port';
-import { PurchaseOrderCommandRepositoryPort } from '../../domain/ports/purchase-order-command-repository.port';
+import { PurchaseOrderCommandRepositoryPort } from '../../domain/domain-ports/purchase-order-command-repository.port';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishers/purchase-order.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 

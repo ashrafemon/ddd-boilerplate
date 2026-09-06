@@ -11,16 +11,16 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
-import { CreatePurchaseOrderUseCase } from '../../../application/usecase/create-purchase-order.usecase';
-import { AddPurchaseOrderLineUseCase } from '../../../application/usecase/add-purchase-order-line.usecase';
-import { RemovePurchaseOrderLineUseCase } from '../../../application/usecase/remove-purchase-order-line.usecase';
-import { PurchaseOrderTransitionUseCase } from '../../../application/usecase/purchase-order-transition.usecase';
-import { GetPurchaseOrderUseCase } from '../../../application/usecase/get-purchase-order.usecase';
-import { ListPurchaseOrdersUseCase } from '../../../application/usecase/list-purchase-orders.usecase';
-import { AddLineDto } from '../request/purchase-order.request';
-import { CreatePurchaseOrderDto } from '../request/purchase-order.request';
-import { PurchaseOrderQueryDto } from '../request/purchase-order.request';
-import { RejectPurchaseOrderDto } from '../request/purchase-order.request';
+import { AddPurchaseOrderLineUseCase } from '../../application/usecase/add-purchase-order-line.usecase';
+import { CreatePurchaseOrderUseCase } from '../../application/usecase/create-purchase-order.usecase';
+import { GetPurchaseOrderUseCase } from '../../application/usecase/get-purchase-order.usecase';
+import { ListPurchaseOrdersUseCase } from '../../application/usecase/list-purchase-orders.usecase';
+import { PurchaseOrderTransitionUseCase } from '../../application/usecase/purchase-order-transition.usecase';
+import { RemovePurchaseOrderLineUseCase } from '../../application/usecase/remove-purchase-order-line.usecase';
+import { CreatePurchaseOrderDto } from './request/create-purchase-order.request.dto';
+import { AddLineDto } from './request/add-purchase-order-line.request.dto';
+import { PurchaseOrderQueryDto } from './request/query-purchase-order.request.dto';
+import { RejectPurchaseOrderDto } from './request/reject-purchase-order.request.dto';
 
 @ApiTags('purchase-orders')
 @ApiBearerAuth()

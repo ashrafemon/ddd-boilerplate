@@ -8,7 +8,12 @@ export class GrnLine {
     public readonly unitPrice: number,
   ) {}
 
-  static create(productId: string, orderedQuantity: number, receivedQuantity: number, unitPrice: number): GrnLine {
+  static create(
+    productId: string,
+    orderedQuantity: number,
+    receivedQuantity: number,
+    unitPrice: number,
+  ): GrnLine {
     return new GrnLine(productId, orderedQuantity, receivedQuantity, unitPrice);
   }
 
@@ -103,7 +108,12 @@ export interface ReceiveGrnRequest {
   id: string;
 }
 
-export type GrnStatus = 'DRAFT' | 'RECEIVED' | 'COMPLETED' | 'CANCELLED';
+export enum GrnStatus {
+  DRAFT = 'DRAFT',
+  RECEIVED = 'RECEIVED',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
 
 export interface GrnState {
   status: GrnStatus;

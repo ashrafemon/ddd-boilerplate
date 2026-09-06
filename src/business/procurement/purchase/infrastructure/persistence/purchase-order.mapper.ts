@@ -1,9 +1,6 @@
-import {
-  PurchaseOrderProps,
-  PurchaseOrderStatus,
-} from '../../domain/types/purchase-order.types';
-import { PurchaseOrder } from '@business/procurement/purchase/domain/entities/purchase-order.aggregate';
-import { PurchaseOrderLine } from '@business/procurement/purchase/domain/entities/purchase-order-line.entity';
+import { PurchaseOrderProps, PurchaseOrderStatus } from '../../domain/types/purchase-order.types';
+import { PurchaseOrder } from '@business/procurement/purchase/domain/aggregates/purchase-order.aggregate';
+import { PurchaseOrderLine } from '@business/procurement/purchase/domain/aggregates/purchase-order-line.entity';
 import { PurchaseOrderId } from '@business/procurement/purchase/domain/value-objects/purchase-order-id.vo';
 import {
   OrderNumber,

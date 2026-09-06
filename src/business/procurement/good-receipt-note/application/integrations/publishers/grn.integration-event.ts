@@ -1,5 +1,5 @@
 import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
-import { GrnId } from '../../domain/value-objects';
+import { GrnId } from '../../../domain/value-objects/grn.vos';
 
 export class GrnCreatedIntegrationEvent extends DomainEvent {
   constructor(

@@ -22,7 +22,9 @@ export class CreateVendorUseCase {
 
     const vendor = vendorFactory.create(input);
 
-    const existing = await this.vendorRepository.findByCode(VendorCode.create(vendor.code).toString());
+    const existing = await this.vendorRepository.findByCode(
+      VendorCode.create(vendor.code).toString(),
+    );
     if (existing) {
       throw new ConflictException(`Vendor with code "${vendor.code}" already exists`);
     }

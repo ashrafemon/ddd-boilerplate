@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
-import {
-  ProductQueryRepositoryPort,
-} from '../../domain/domain-ports/product-query-repository.port';
+import { ProductQueryRepositoryPort } from '../../domain/domain-ports/product-query-repository.port';
 import { ProductQueryRecord } from '../../domain/types/product.types';
 
 /**

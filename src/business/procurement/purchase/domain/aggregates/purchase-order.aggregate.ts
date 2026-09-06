@@ -10,13 +10,13 @@ import {
 } from '../types/purchase-order.types';
 import { OrderNumber, ProductIdRef, VendorIdRef } from '../value-objects/purchase-order.vos';
 import { PurchaseOrderLine } from './purchase-order-line.entity';
-import { PurchaseOrderApproved } from '../events/purchase-order.approved.event';
-import { PurchaseOrderCancelled } from '../events/purchase-order.cancelled.event';
-import { PurchaseOrderCompleted } from '../events/purchase-order.completed.event';
-import { PurchaseOrderLineAdded } from '../events/purchase-order.line-added.event';
-import { PurchaseOrderLineRemoved } from '../events/purchase-order.line-removed.event';
-import { PurchaseOrderRejected } from '../events/purchase-order.rejected.event';
-import { PurchaseOrderSubmitted } from '../events/purchase-order.submitted.event';
+import { PurchaseOrderApproved } from '../domain-events/purchase-order.approved.event';
+import { PurchaseOrderCancelled } from '../domain-events/purchase-order.cancelled.event';
+import { PurchaseOrderCompleted } from '../domain-events/purchase-order.completed.event';
+import { PurchaseOrderLineAdded } from '../domain-events/purchase-order.line-added.event';
+import { PurchaseOrderLineRemoved } from '../domain-events/purchase-order.line-removed.event';
+import { PurchaseOrderRejected } from '../domain-events/purchase-order.rejected.event';
+import { PurchaseOrderSubmitted } from '../domain-events/purchase-order.submitted.event';
 
 export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
   private props: PurchaseOrderProps;

@@ -5,7 +5,7 @@ import { CreatePurchaseOrderRequest } from '../../domain/types/purchase-order.ty
 import { purchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { OrderableVendorQueryPort } from '../ports/outbound/vendor-query.port';
-import { PurchaseOrderCommandRepositoryPort } from '../../domain/ports/purchase-order-command-repository.port';
+import { PurchaseOrderCommandRepositoryPort } from '../../domain/domain-ports/purchase-order-command-repository.port';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishers/purchase-order.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 

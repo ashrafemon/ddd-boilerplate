@@ -1,15 +1,15 @@
 import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { PurchaseOrder } from '../entities/purchase-order.aggregate';
+import { PurchaseOrder } from '../aggregates/purchase-order.aggregate';
 import { PurchaseOrderProps } from '../types/purchase-order.types';
 import { PurchaseOrderStatus } from '../types/purchase-order.enum';
 import { CreatePurchaseOrderInput } from '../types/purchase-order.types';
 import { PurchaseOrderId } from '../value-objects/purchase-order-id.vo';
 import { OrderNumber, VendorIdRef } from '../value-objects/purchase-order.vos';
-import { PurchaseOrderCreated } from '../events/purchase-order.created.event';
-import './../invariants/purchase-order.invariants';
+import { PurchaseOrderCreated } from '../domain-events/purchase-order.created.event';
+import './../aggregates/purchase-order.invariants';
 import '../value-objects/order-number.invariants';
-import './../policies/purchase-order.policy';
+import './../domain-policies/purchase-order.policy';
 
 /**
  * PurchaseOrder domain factory — single entry point for creating and

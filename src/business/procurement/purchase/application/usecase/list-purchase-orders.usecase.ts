@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
-import {
-  PurchaseOrderQueryRepositoryPort,
-} from '../../domain/ports/purchase-order-query-repository.port';
+import { PurchaseOrderQueryRepositoryPort } from '../../domain/domain-ports/purchase-order-query-repository.port';
 import { PurchaseOrderQueryRecord } from '../../domain/types/purchase-order.types';
 
 @Injectable()

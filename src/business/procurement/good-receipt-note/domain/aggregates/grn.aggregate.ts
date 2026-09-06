@@ -1,18 +1,11 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { GrnId } from '../value-objects/grn.vos';
-import {
-  CreateGrnInput,
-  GrnLine,
-  GrnProps,
-  GrnStatus,
-} from '../types/grn.types';
-import { GrnCompleted } from '../events/grn.completed.event';
-import { GrnCreated } from '../events/grn.created.event';
-import { GrnLineAdded } from '../events/grn.line-added.event';
-import { GrnReceived } from '../events/grn.received.event';
-import { GrnCancelled } from '../events/grn.cancelled.event';
+import { GrnLine, GrnProps, GrnStatus } from '../types/grn.types';
+import { GrnCompleted } from '../domain-events/grn.completed.event';
+import { GrnLineAdded } from '../domain-events/grn.line-added.event';
+import { GrnReceived } from '../domain-events/grn.received.event';
+import { GrnCancelled } from '../domain-events/grn.cancelled.event';
 
 export class GoodReceiptNote extends AggregateRoot<GrnId> {
   private props: GrnProps;
@@ -67,7 +60,12 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
     invariantRegistry.enforce('grn.editable', { status: this.props.status });
   }
 
-  addLine(productId: string, orderedQuantity: number, receivedQuantity: number, unitPrice: number): void {
+  addLine(
+    productId: string,
+    orderedQuantity: number,
+    receivedQuantity: number,
+    unitPrice: number,
+  ): void {
     this.assertEditable();
     invariantRegistry.enforce('grn.line-quantity', { receivedQuantity });
 
@@ -75,9 +73,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
     if (existing) {
       const newReceivedQty = existing.receivedQuantity + receivedQuantity;
       this.props.lines = this.props.lines.map(line =>
-        line.productId === productId
-          ? line.withReceivedQuantity(newReceivedQty)
-          : line,
+        line.productId === productId ? line.withReceivedQuantity(newReceivedQty) : line,
       );
     } else {
       this.props.lines.push(

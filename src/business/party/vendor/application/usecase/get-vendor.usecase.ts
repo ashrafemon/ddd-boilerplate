@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  VendorQueryRepositoryPort,
-} from '../../domain/domain-ports/vendor-query-repository.port';
+import { VendorQueryRepositoryPort } from '../../domain/domain-ports/vendor-query-repository.port';
 import { VendorQueryRecord } from '../../domain/types/vendor.types';
 
 @Injectable()

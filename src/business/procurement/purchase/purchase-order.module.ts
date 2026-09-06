@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { PurchaseOrderController } from './presentation/http/controllers/purchase-order.controller';
+import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
 import { PurchaseOrderQueryFacade } from './application/facades/purchase-order-query.facade';
 import { CreatePurchaseOrderUseCase } from './application/usecase/create-purchase-order.usecase';
 import { AddPurchaseOrderLineUseCase } from './application/usecase/add-purchase-order-line.usecase';
@@ -11,8 +11,8 @@ import { PurchaseOrderEventEmitterListener } from './application/integrations/li
 import { PurchaseOrderKafkaListener } from './application/integrations/listeners/purchase-order.kafka.listener';
 import { PurchaseOrderRabbitMQListener } from './application/integrations/listeners/purchase-order.rabbitmq.listener';
 import { PurchaseOrderSqsListener } from './application/integrations/listeners/purchase-order.sqs.listener';
-import { PurchaseOrderCommandRepositoryPort } from './domain/ports/purchase-order-command-repository.port';
-import { PurchaseOrderQueryRepositoryPort } from './domain/ports/purchase-order-query-repository.port';
+import { PurchaseOrderCommandRepositoryPort } from './domain/domain-ports/purchase-order-command-repository.port';
+import { PurchaseOrderQueryRepositoryPort } from './domain/domain-ports/purchase-order-query-repository.port';
 import { PurchaseOrderIntegrationPort } from './application/integrations/publishers/purchase-order.integration-port';
 import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
 import { PurchaseOrderQueryPort } from './public/ports/purchase-order.port';

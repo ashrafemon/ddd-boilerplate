@@ -1,12 +1,12 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ModulePortResolver } from '@shared-kernel/ports';
 import { CreateGrnRequest } from '../../domain/types/grn.types';
-import { grnFactory } from '../../domain/factories';
-import { GrnId } from '../../domain/value-objects';
-import { PurchaseOrderQueryPort } from '../ports/outbound';
-import { GrnCommandRepositoryPort } from '../../domain/ports';
-import { GrnIntegrationPort } from '../integrations';
+import { grnFactory } from '../../domain/factories/grn.factory';
+import { GrnId } from '../../domain/value-objects/grn.vos';
+import { PurchaseOrderQueryPort } from '../ports/outbound/purchase-order-query.port';
+import { GrnCommandRepositoryPort } from '../../domain/domain-ports/grn-command-repository.port';
+import { GrnIntegrationPort } from '../integrations/publishers/grn.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
@@ -32,10 +32,9 @@ export class CreateGrnUseCase {
       throw new NotFoundException('Purchase order not found');
     }
 
-    const sequence = await this.grnRepository.nextGrnSequence();
     const grn = grnFactory.create({
       purchaseOrderId: input.purchaseOrderId,
-      vendorId: purchaseOrder.vendorId,
+      vendorId: input.vendorId,
       currency,
       lines: input.lines,
     });
