@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PurchaseOrderIntegrationPort } from '@business/procurement/purchase/application/integrations/publishers/purchase-order.integration-port';
+import { PurchaseOrderIntegrationPort } from '@business/procurement/purchase-order/application/integrations/publishers/purchase-order.integration-port';
 import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 

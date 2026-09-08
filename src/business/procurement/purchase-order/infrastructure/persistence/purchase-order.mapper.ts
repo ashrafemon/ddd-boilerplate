@@ -1,12 +1,12 @@
 import { PurchaseOrderProps, PurchaseOrderStatus } from '../../domain/types/purchase-order.types';
-import { PurchaseOrder } from '@business/procurement/purchase/domain/aggregates/purchase-order.aggregate';
-import { PurchaseOrderLine } from '@business/procurement/purchase/domain/aggregates/purchase-order-line.entity';
-import { PurchaseOrderId } from '@business/procurement/purchase/domain/value-objects/purchase-order-id.vo';
+import { PurchaseOrder } from '@business/procurement/purchase-order/domain/aggregates/purchase-order.aggregate';
+import { PurchaseOrderLine } from '@business/procurement/purchase-order/domain/aggregates/purchase-order-line.entity';
+import { PurchaseOrderId } from '@business/procurement/purchase-order/domain/value-objects/purchase-order-id.vo';
 import {
   OrderNumber,
   ProductIdRef,
   VendorIdRef,
-} from '@business/procurement/purchase/domain/value-objects/purchase-order.vos';
+} from '@business/procurement/purchase-order/domain/value-objects/purchase-order.vos';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 
 interface PurchaseOrderLineRow {

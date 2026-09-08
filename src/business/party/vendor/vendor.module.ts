@@ -1,4 +1,4 @@
-import { OrderableVendorQueryPort } from '@business/procurement/purchase/application/ports/outbound/vendor-query.port';
+import { OrderableVendorQueryPort } from '@business/procurement/purchase-order/application/ports/outbound/vendor-query.port';
 import { Module } from '@nestjs/common';
 import { VendorQueryFacade } from './application/facades/vendor-query.facade';
 import { VendorEventEmitterListener } from './application/integrations/listeners/vendor.event-emitter.listener';

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CompanyConfigOutboundPort } from '@business/procurement/purchase/application/outbound-ports/company-config.port';
+import { CompanyConfigOutboundPort } from '@business/procurement/purchase-order/application/outbound-ports/company-config.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 
 @Injectable()
