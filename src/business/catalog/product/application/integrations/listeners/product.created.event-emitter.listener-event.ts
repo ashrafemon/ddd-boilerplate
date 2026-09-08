@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { ProductCreated } from '../../../domain/domain-events/product.created.event';
+import { ProductCreated } from '../../../domain/events/product.created.event';
 
 /**
  * In-process listener for Product domain events via @nestjs/event-emitter.

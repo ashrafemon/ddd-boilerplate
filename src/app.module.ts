@@ -8,6 +8,7 @@ import { HttpExceptionsFilter } from './shared-kernel/filters/http-exception.fil
 import { LoggingInterceptor } from './shared-kernel/interceptors/logging.interceptor';
 import { RequestIdInterceptor } from './shared-kernel/interceptors/request-id.interceptor';
 import { ResponseInterceptor } from './shared-kernel/interceptors/response.interceptor';
+import { DeviceResponseInterceptor } from './shared-kernel/interceptors/device-response.interceptor';
 import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
 
 @Module({
@@ -17,6 +18,7 @@ import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
     { provide: APP_INTERCEPTOR, useClass: RequestIdInterceptor },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: DeviceResponseInterceptor },
     { provide: APP_FILTER, useClass: HttpExceptionsFilter },
     { provide: APP_PIPE, useClass: AppValidationPipe },
   ],

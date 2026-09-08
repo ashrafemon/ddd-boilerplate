@@ -1,18 +1,18 @@
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ConflictException, Injectable } from '@nestjs/common';
-import { ProductCommandRepositoryPort } from '../../domain/domain-ports/product-command-repository.port';
-import { productFactory } from '../../domain/factories/product.factory';
+import { ProductCommandRepository } from '../../domain/repositories/product-command.repository';
+import { ProductFactory } from '../../domain/factories/product.factory';
 import { CreateProductRequest } from '../../domain/types/product.types';
 import { ProductId } from '../../domain/value-objects/product-id.vo';
 import { Sku } from '../../domain/value-objects/sku.vo';
-import { ProductIntegrationPort } from '../integrations/publishers/product.integration-port';
+import { ProductIntegrationPort } from '../integrations/publishes/product.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class CreateProductUseCase {
   constructor(
-    private readonly productRepository: ProductCommandRepositoryPort,
+    private readonly productRepository: ProductCommandRepository,
     private readonly integrationEvent: ProductIntegrationPort,
     private readonly companyConfig: CompanyConfigOutboundPort,
   ) {}
@@ -22,7 +22,7 @@ export class CreateProductUseCase {
     const company = await this.companyConfig.getCompanyConfig();
     const currency = input.currency ?? company.defaultCurrency;
 
-    const product = productFactory.create({
+    const product = ProductFactory.create({
       sku: input.sku,
       name: input.name,
       description: input.description,

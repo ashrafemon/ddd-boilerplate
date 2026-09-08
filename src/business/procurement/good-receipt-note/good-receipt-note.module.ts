@@ -1,26 +1,26 @@
 import { Module } from '@nestjs/common';
 import { GrnQueryFacade } from './application/facades/grn-query.facade';
-import { GrnEventEmitterListener } from './application/integrations/listeners/grn.event-emitter.listener';
-import { GrnKafkaListener } from './application/integrations/listeners/grn.kafka.listener';
-import { GrnRabbitMQListener } from './application/integrations/listeners/grn.rabbitmq.listener';
-import { GrnSqsListener } from './application/integrations/listeners/grn.sqs.listener';
-import { GrnIntegrationPort } from './application/integrations/publishers/grn.integration-port';
+import { GrnEventEmitterListener } from './application/integrations/listeners/grn.created.event-emitter.listener-event';
+import { GrnKafkaListener } from './application/integrations/listeners/grn.created.kafka.listener-event';
+import { GrnRabbitMQListener } from './application/integrations/listeners/grn.created.rabbitmq.listener-event';
+import { GrnSqsListener } from './application/integrations/listeners/grn.sqs.listener-event';
+import { GrnIntegrationPort } from './application/integrations/publishes/grn.integration-port';
 import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
-import { CreateGrnUseCase } from './application/usecase/create-grn.usecase';
-import { AddGrnLineUseCase } from './application/usecase/add-grn-line.usecase';
-import { ReceiveGrnUseCase } from './application/usecase/receive-grn.usecase';
-import { CompleteGrnUseCase } from './application/usecase/complete-grn.usecase';
-import { GetGrnUseCase } from './application/usecase/get-grn.usecase';
-import { ListGrnsUseCase } from './application/usecase/list-grns.usecase';
-import { GrnCommandRepositoryPort } from './domain/domain-ports/grn-command-repository.port';
-import { GrnQueryRepositoryPort } from './domain/domain-ports/grn-query-repository.port';
+import { CreateGrnUseCase } from './application/usecases/create-grn.usecase';
+import { AddGrnLineUseCase } from './application/usecases/add-grn-line.usecase';
+import { ReceiveGrnUseCase } from './application/usecases/receive-grn.usecase';
+import { CompleteGrnUseCase } from './application/usecases/complete-grn.usecase';
+import { GetGrnUseCase } from './application/usecases/get-grn.usecase';
+import { ListGrnsUseCase } from './application/usecases/list-grns.usecase';
+import { GrnCommandRepository } from './domain/repositories/grn-command.repository';
+import { GrnQuery } from './application/queries/grn.query';
 import { CompanyConfigOutboundAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
 import { PrismaGrnCommandRepository } from './infrastructure/persistence/prisma-grn-command.repository';
 import { PrismaGrnQueryRepository } from './infrastructure/persistence/prisma-grn-query.repository';
 import { GrnController } from './presentation/http/grn.controller';
-import { GrnQueryPort } from './public/ports/grn.port';
-import './domain/domain-events/grn.registry';
+import { GrnQueryPort } from '@business/procurement/good-receipt-note/public';
+import './domain/events/grn.registry';
 
 @Module({
   controllers: [GrnController],
@@ -37,8 +37,8 @@ import './domain/domain-events/grn.registry';
     GrnSqsListener,
     GrnQueryFacade,
     { provide: GrnQueryPort, useExisting: GrnQueryFacade },
-    { provide: GrnCommandRepositoryPort, useClass: PrismaGrnCommandRepository },
-    { provide: GrnQueryRepositoryPort, useClass: PrismaGrnQueryRepository },
+    { provide: GrnCommandRepository, useClass: PrismaGrnCommandRepository },
+    { provide: GrnQuery, useClass: PrismaGrnQueryRepository },
     { provide: GrnIntegrationPort, useClass: OutboxAdapter },
     { provide: CompanyConfigOutboundPort, useClass: CompanyConfigOutboundAdapter },
   ],

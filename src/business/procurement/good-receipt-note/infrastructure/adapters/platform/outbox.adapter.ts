@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GrnIntegrationPort } from '@business/procurement/good-receipt-note/application/integrations/publishers/grn.integration-port';
+import { GrnIntegrationPort } from '@business/procurement/good-receipt-note/application/integrations/publishes/grn.integration-port';
 import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { GetGrnUseCase } from '../usecase/get-grn.usecase';
-import { GrnQueryPort } from '../../public/ports/grn.port';
-import { GrnReference } from '../../public/contracts/grn.contracts';
+import { GetGrnUseCase } from '../usecases/get-grn.usecase';
+import { GrnQueryPort, GrnReference } from '@business/procurement/good-receipt-note/public';
 
 @Injectable()
 export class GrnQueryFacade extends GrnQueryPort {

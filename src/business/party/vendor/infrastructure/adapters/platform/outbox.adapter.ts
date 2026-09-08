@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { VendorIntegrationPort } from '@business/party/vendor/application/integrations/publishers/vendor.integration-port';
+import { VendorIntegrationPort } from '@business/party/vendor/application/integrations/publishes/vendor.integration-port';
 import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 

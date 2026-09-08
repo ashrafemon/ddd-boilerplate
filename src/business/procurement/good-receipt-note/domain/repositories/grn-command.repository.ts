@@ -1,6 +1,6 @@
 import { GoodReceiptNote } from '../aggregates/grn.aggregate';
 
-export abstract class GrnCommandRepositoryPort {
+export abstract class GrnCommandRepository {
   abstract save(grn: GoodReceiptNote): Promise<GoodReceiptNote>;
   abstract update(grn: GoodReceiptNote): Promise<GoodReceiptNote>;
   abstract findById(id: string): Promise<GoodReceiptNote | null>;

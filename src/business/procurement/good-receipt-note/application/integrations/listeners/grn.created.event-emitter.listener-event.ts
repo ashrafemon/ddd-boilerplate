@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { GrnCreated } from '../../../domain/domain-events/grn.created.event';
+import { GrnCreated } from '../../../domain/events/grn.created.event';
 
 @Injectable()
 export class GrnEventEmitterListener {

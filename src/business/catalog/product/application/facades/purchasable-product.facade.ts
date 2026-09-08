@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { GetPurchasableProductUseCase } from '../usecase/get-purchasable-product.usecase';
-import { PurchasableProductPort } from '../../public/ports/purchasable-product.port';
-import { ProductReference } from '../../public';
+import { GetPurchasableProductUseCase } from '../usecases/get-purchasable-product.usecase';
+import { PurchasableProductPort, ProductReference } from '@business/catalog/product/public';
 
 /**
  * Product module's implementation of PurchaseOrder's outbound contract. Lives

@@ -1,31 +1,47 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
-import { CreateGrnUseCase } from '../../application/usecase/create-grn.usecase';
-import { AddGrnLineUseCase } from '../../application/usecase/add-grn-line.usecase';
-import { ReceiveGrnUseCase } from '../../application/usecase/receive-grn.usecase';
-import { CompleteGrnUseCase } from '../../application/usecase/complete-grn.usecase';
-import { GetGrnUseCase } from '../../application/usecase/get-grn.usecase';
-import { ListGrnsUseCase } from '../../application/usecase/list-grns.usecase';
-import { CreateGrnDto } from './request/create-grn.request.dto';
-import { AddGrnLineDto } from './request/add-grn-line.request.dto';
-import { GrnQueryDto } from './request/query-grn.request.dto';
-import { DeviceContext } from '@shared-kernel/decorators/device-context.decorator';
-import { IDeviceContext } from '@shared-kernel/types/device-context';
-import { GrnMobileListResponse } from './response/device/mobile/grn-list.response.dto';
-import { GrnMobileResponse } from './response/device/mobile/grn.response.dto';
-import { GrnWebListResponse } from './response/device/web/grn-list.response.dto';
-import { GrnWebResponse } from './response/device/web/grn.response.dto';
-import { GrnResponseTransformer } from './transformers/grn.response.transformer';
-import { IdResponse } from './response/id.response.dto';
+import { CreateGrnUseCase } from '../../application/usecases/create-grn.usecase';
+import { AddGrnLineUseCase } from '../../application/usecases/add-grn-line.usecase';
+import { ReceiveGrnUseCase } from '../../application/usecases/receive-grn.usecase';
+import { CompleteGrnUseCase } from '../../application/usecases/complete-grn.usecase';
+import { GetGrnUseCase } from '../../application/usecases/get-grn.usecase';
+import { ListGrnsUseCase } from '../../application/usecases/list-grns.usecase';
+import { CreateGrnDto } from './requests/create-grn.request.dto';
+import { AddGrnLineDto } from './requests/add-grn-line.request.dto';
+import { GrnQueryDto } from './requests/query-grns.request.dto';
+import {
+  GetGrnMobileResponseSchema,
+  type GetGrnMobileResponse,
+} from './responses/get-grn.mobile.response.dto';
+import {
+  GetGrnWebResponseSchema,
+  type GetGrnWebResponse,
+} from './responses/get-grn.web.response.dto';
+import {
+  ListGrnsMobileResponseSchema,
+  type ListGrnsMobileResponse,
+} from './responses/list-grns.mobile.response.dto';
+import {
+  ListGrnsWebResponseSchema,
+  type ListGrnsWebResponse,
+} from './responses/list-grns.web.response.dto';
+import { IdResponse } from './responses/id.response.dto';
+import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
+import { ApiResponse } from '@shared-kernel/types/api-response.type';
 
-type SuccessResponse<T> = {
-  data: T;
-  message: string;
-};
-
-type GrnGetResponse = GrnMobileResponse | GrnWebResponse;
-type GrnListResponse = GrnMobileListResponse | GrnWebListResponse;
+type GrnGetResponse = GetGrnMobileResponse | GetGrnWebResponse;
+type GrnListResponse = ListGrnsMobileResponse | ListGrnsWebResponse;
 
 @ApiTags('grn')
 @ApiBearerAuth()
@@ -43,37 +59,33 @@ export class GrnController {
   @Post()
   @ApiOperation({ summary: 'Create a GRN' })
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateGrnDto): Promise<SuccessResponse<IdResponse>> {
+  async create(@Body() dto: CreateGrnDto): Promise<ApiResponse<IdResponse>> {
     const id = await this.createGrnUseCase.execute({ ...dto });
     return { data: { id: id.toString() }, message: 'GRN created' };
   }
 
   @Get()
   @ApiOperation({ summary: 'List GRNs' })
-  async list(
-    @Query() query: GrnQueryDto,
-    @DeviceContext() device: IDeviceContext,
-  ): Promise<SuccessResponse<GrnListResponse>> {
+  @DeviceResponse(ListGrnsMobileResponseSchema, ListGrnsWebResponseSchema)
+  async list(@Query() query: GrnQueryDto): Promise<ApiResponse<GrnListResponse>> {
     const pageQuery: PageQuery = normalizePageQuery(query);
     const result = await this.listGrnsUseCase.execute(pageQuery);
     return {
-      data: GrnResponseTransformer.toListResponse(result, device),
+      data: result,
       message: 'GRNs fetched',
     };
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a GRN by id' })
-  async get(
-    @Param('id') id: string,
-    @DeviceContext() device: IDeviceContext,
-  ): Promise<SuccessResponse<GrnGetResponse>> {
+  @DeviceResponse(GetGrnMobileResponseSchema, GetGrnWebResponseSchema)
+  async get(@Param('id') id: string): Promise<ApiResponse<GrnGetResponse>> {
     const grn = await this.getGrnUseCase.execute(id);
     if (!grn) {
       return { data: null as never, message: 'GRN fetched' };
     }
     return {
-      data: GrnResponseTransformer.toResponse(grn, device),
+      data: grn,
       message: 'GRN fetched',
     };
   }
@@ -84,23 +96,23 @@ export class GrnController {
   async addLine(
     @Param('id') id: string,
     @Body() dto: AddGrnLineDto,
-  ): Promise<SuccessResponse<IdResponse>> {
+  ): Promise<ApiResponse<IdResponse>> {
     const grnId = await this.addGrnLineUseCase.execute({ id, ...dto });
     return { data: { id: grnId.toString() }, message: 'Line added' };
   }
 
-  @Post(':id/receive')
+  @Patch(':id/receive')
   @ApiOperation({ summary: 'Receive a GRN' })
   @HttpCode(HttpStatus.OK)
-  async receive(@Param('id') id: string): Promise<SuccessResponse<IdResponse>> {
+  async receive(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const grnId = await this.receiveGrnUseCase.execute({ id });
     return { data: { id: grnId.toString() }, message: 'GRN received' };
   }
 
-  @Post(':id/complete')
+  @Patch(':id/complete')
   @ApiOperation({ summary: 'Complete a GRN' })
   @HttpCode(HttpStatus.OK)
-  async complete(@Param('id') id: string): Promise<SuccessResponse<IdResponse>> {
+  async complete(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const grnId = await this.completeGrnUseCase.execute(id);
     return { data: { id: grnId.toString() }, message: 'GRN completed' };
   }

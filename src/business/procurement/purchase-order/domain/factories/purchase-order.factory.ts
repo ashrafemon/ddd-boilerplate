@@ -1,4 +1,3 @@
-import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { PurchaseOrder } from '../aggregates/purchase-order.aggregate';
 import { PurchaseOrderProps } from '../types/purchase-order.types';
@@ -6,17 +5,14 @@ import { PurchaseOrderStatus } from '../types/purchase-order.enum';
 import { CreatePurchaseOrderInput } from '../types/purchase-order.types';
 import { PurchaseOrderId } from '../value-objects/purchase-order-id.vo';
 import { OrderNumber, VendorIdRef } from '../value-objects/purchase-order.vos';
-import { PurchaseOrderCreated } from '../domain-events/purchase-order.created.event';
+import { PurchaseOrderCreated } from '../events/purchase-order.created.event';
 import './../aggregates/purchase-order.invariants';
+import '../entities/purchase-order-line.invariants';
 import '../value-objects/order-number.invariants';
-import './../domain-policies/purchase-order.policy';
+import './../policies/approval.policy';
 
-/**
- * PurchaseOrder domain factory — single entry point for creating and
- * rehydrating PurchaseOrder aggregates.
- */
-export class PurchaseOrderFactory extends DomainFactory<PurchaseOrder, CreatePurchaseOrderInput> {
-  create(input: CreatePurchaseOrderInput): PurchaseOrder {
+export class PurchaseOrderFactory {
+  static create(input: CreatePurchaseOrderInput): PurchaseOrder {
     invariantRegistry.enforce('purchase-order.create', {
       orderNumber: input.orderNumber,
     });
@@ -44,9 +40,7 @@ export class PurchaseOrderFactory extends DomainFactory<PurchaseOrder, CreatePur
     return purchaseOrder;
   }
 
-  reconstitute(id: PurchaseOrderId, props: PurchaseOrderProps, version: number): PurchaseOrder {
+  static reconstitute(id: PurchaseOrderId, props: PurchaseOrderProps, version: number): PurchaseOrder {
     return PurchaseOrder.instantiate(id, props, version);
   }
 }
-
-export const purchaseOrderFactory = new PurchaseOrderFactory();

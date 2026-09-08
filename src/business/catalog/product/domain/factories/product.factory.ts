@@ -1,23 +1,17 @@
-import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { Product } from '../aggregates/product.aggregate';
 import { CreateProductInput, ProductProps, ProductStatus } from '../types/product.types';
 import { ProductId } from '../value-objects/product-id.vo';
 import { Sku } from '../value-objects/sku.vo';
 import { ProductName } from '../value-objects/product-name.vo';
-import { ProductCreated } from '../domain-events/product.created.event';
+import { ProductCreated } from '../events/product.created.event';
 import '../aggregates/product.invariants';
 import '../value-objects/sku.invariants';
 import '../value-objects/product-name.invariants';
-import '../domain-policies/product.policy';
+import '../policies/reactivation.policy';
 
-/**
- * Product domain factory — the single entry point for creating and
- * rehydrating Product aggregates. Enforces creation invariants through the
- * invariant registry and raises the ProductCreated domain event.
- */
-export class ProductFactory extends DomainFactory<Product, CreateProductInput> {
-  create(input: CreateProductInput): Product {
+export class ProductFactory {
+  static create(input: CreateProductInput): Product {
     invariantRegistry.enforce('product.create', {
       sku: input.sku,
       name: input.name,
@@ -56,9 +50,7 @@ export class ProductFactory extends DomainFactory<Product, CreateProductInput> {
     return product;
   }
 
-  reconstitute(id: ProductId, props: ProductProps, version: number): Product {
+  static reconstitute(id: ProductId, props: ProductProps, version: number): Product {
     return Product.instantiate(id, props, version);
   }
 }
-
-export const productFactory = new ProductFactory();

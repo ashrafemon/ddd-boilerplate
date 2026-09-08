@@ -1,21 +1,21 @@
 import { Module } from '@nestjs/common';
 import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
 import { PurchaseOrderQueryFacade } from './application/facades/purchase-order-query.facade';
-import { CreatePurchaseOrderUseCase } from './application/usecase/create-purchase-order.usecase';
-import { AddPurchaseOrderLineUseCase } from './application/usecase/add-purchase-order-line.usecase';
-import { RemovePurchaseOrderLineUseCase } from './application/usecase/remove-purchase-order-line.usecase';
-import { PurchaseOrderTransitionUseCase } from './application/usecase/purchase-order-transition.usecase';
-import { GetPurchaseOrderUseCase } from './application/usecase/get-purchase-order.usecase';
-import { ListPurchaseOrdersUseCase } from './application/usecase/list-purchase-orders.usecase';
-import { PurchaseOrderEventEmitterListener } from './application/integrations/listeners/purchase-order.event-emitter.listener';
-import { PurchaseOrderKafkaListener } from './application/integrations/listeners/purchase-order.kafka.listener';
-import { PurchaseOrderRabbitMQListener } from './application/integrations/listeners/purchase-order.rabbitmq.listener';
-import { PurchaseOrderSqsListener } from './application/integrations/listeners/purchase-order.sqs.listener';
-import { PurchaseOrderCommandRepositoryPort } from './domain/domain-ports/purchase-order-command-repository.port';
-import { PurchaseOrderQueryRepositoryPort } from './domain/domain-ports/purchase-order-query-repository.port';
-import { PurchaseOrderIntegrationPort } from './application/integrations/publishers/purchase-order.integration-port';
+import { CreatePurchaseOrderUseCase } from './application/usecases/create-purchase-order.usecase';
+import { AddPurchaseOrderLineUseCase } from './application/usecases/add-purchase-order-line.usecase';
+import { RemovePurchaseOrderLineUseCase } from './application/usecases/remove-purchase-order-line.usecase';
+import { PurchaseOrderTransitionUseCase } from './application/usecases/purchase-order-transition.usecase';
+import { GetPurchaseOrderUseCase } from './application/usecases/get-purchase-order.usecase';
+import { ListPurchaseOrdersUseCase } from './application/usecases/list-purchase-orders.usecase';
+import { PurchaseOrderEventEmitterListener } from './application/integrations/listeners/purchase-order.created.event-emitter.listener-event';
+import { PurchaseOrderKafkaListener } from './application/integrations/listeners/purchase-order.created.kafka.listener-event';
+import { PurchaseOrderRabbitMQListener } from './application/integrations/listeners/purchase-order.created.rabbitmq.listener-event';
+import { PurchaseOrderSqsListener } from './application/integrations/listeners/purchase-order.sqs.listener-event';
+import { PurchaseOrderCommandRepository } from './domain/repositories/purchase-order-command.repository';
+import { PurchaseOrderQuery } from './application/queries/purchase-order.query';
+import { PurchaseOrderIntegrationPort } from './application/integrations/publishes/purchase-order.integration-port';
 import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
-import { PurchaseOrderQueryPort } from './public/ports/purchase-order.port';
+import { PurchaseOrderQueryPort } from '@business/procurement/purchase-order/public';
 import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence/prisma-purchase-order-command.repository';
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence/prisma-purchase-order-query.repository';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
@@ -37,8 +37,8 @@ import './domain/events/purchase-order.registry';
     PurchaseOrderSqsListener,
     PurchaseOrderQueryFacade,
     { provide: PurchaseOrderQueryPort, useExisting: PurchaseOrderQueryFacade },
-    { provide: PurchaseOrderCommandRepositoryPort, useClass: PrismaPurchaseOrderCommandRepository },
-    { provide: PurchaseOrderQueryRepositoryPort, useClass: PrismaPurchaseOrderQueryRepository },
+    { provide: PurchaseOrderCommandRepository, useClass: PrismaPurchaseOrderCommandRepository },
+    { provide: PurchaseOrderQuery, useClass: PrismaPurchaseOrderQueryRepository },
     { provide: PurchaseOrderIntegrationPort, useClass: OutboxAdapter },
     { provide: CompanyConfigOutboundPort, useClass: CompanyConfigOutboundAdapter },
   ],

@@ -1,11 +1,11 @@
-import { ProductQueryRepositoryPort } from '@business/catalog/product/domain/domain-ports/product-query-repository.port';
+import { ProductQuery } from '@business/catalog/product/application/queries/product.query';
 import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.service';
 import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { ProductQueryRecord } from '../../domain/types/product.types';
 
 @Injectable()
-export class PrismaProductQueryRepository extends ProductQueryRepositoryPort {
+export class PrismaProductQueryRepository extends ProductQuery {
   constructor(private readonly prismaRead: PrismaReadService) {
     super();
   }

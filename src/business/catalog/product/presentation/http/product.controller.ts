@@ -11,32 +11,24 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
-import { ChangePriceUseCase } from '../../application/usecase/change-price.usecase';
-import { CreateProductUseCase } from '../../application/usecase/create-product.usecase';
-import { GetProductUseCase } from '../../application/usecase/get-product.usecase';
-import { ListProductsUseCase } from '../../application/usecase/list-products.usecase';
-import { ProductStatusUseCase } from '../../application/usecase/product-status.usecase';
-import { UpdateProductUseCase } from '../../application/usecase/update-product.usecase';
-import { ChangePriceDto } from './request/change-price.product.request.dto';
-import { CreateProductDto } from './request/create.product.request.dto';
-import { ProductQueryDto } from './request/query.product.request.dto';
-import { UpdateProductDto } from './request/update.product.request.dto';
+import { ChangePriceUseCase } from '../../application/usecases/change-price.usecase';
+import { CreateProductUseCase } from '../../application/usecases/create-product.usecase';
+import { GetProductUseCase } from '../../application/usecases/get-product.usecase';
+import { ListProductsUseCase } from '../../application/usecases/list-products.usecase';
+import { ProductStatusUseCase } from '../../application/usecases/product-status.usecase';
+import { UpdateProductUseCase } from '../../application/usecases/update-product.usecase';
+import { ChangePriceDto } from './requests/change-price.request.dto';
+import { CreateProductDto } from './requests/create-product.request.dto';
+import { ProductQueryDto } from './requests/query-products.request.dto';
+import { UpdateProductDto } from './requests/update-product.request.dto';
 import { DeviceContext } from '@shared-kernel/decorators/device-context.decorator';
-import { IDeviceContext } from '@shared-kernel/types/device-context';
-import { ProductMobileListResponse } from './response/device/mobile/product-list.response.dto';
-import { ProductMobileResponse } from './response/device/mobile/product.response.dto';
-import { ProductWebListResponse } from './response/device/web/product-list.response.dto';
-import { ProductWebResponse } from './response/device/web/product.response.dto';
-import { ProductResponseTransformer } from './transformers/product.response.transformer';
-import { IdResponse } from './response/id.response.dto';
-
-type SuccessResponse<T> = {
-  data: T;
-  message: string;
-};
-
-type ProductGetResponse = ProductMobileResponse | ProductWebResponse;
-type ProductListResponse = ProductMobileListResponse | ProductWebListResponse;
+import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
+import { ApiResponse } from '@shared-kernel/types/api-response.type';
+import { GetProductMobileResponseSchema } from './responses/get-product.mobile.response.dto';
+import { GetProductWebResponseSchema } from './responses/get-product.web.response.dto';
+import { ListProductsMobileResponseSchema } from './responses/list-products.mobile.response.dto';
+import { ListProductsWebResponseSchema } from './responses/list-products.web.response.dto';
+import { IdResponse } from './responses/id.response.dto';
 
 @ApiTags('products')
 @ApiBearerAuth()
@@ -54,39 +46,29 @@ export class ProductController {
   @Post()
   @ApiOperation({ summary: 'Create a product' })
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateProductDto): Promise<SuccessResponse<IdResponse>> {
+  async create(@Body() dto: CreateProductDto): Promise<ApiResponse<IdResponse>> {
     const id = await this.createProductUseCase.execute({ ...dto });
     return { data: { id: id.toString() }, message: 'Product created' };
   }
 
   @Get()
   @ApiOperation({ summary: 'List products' })
-  async list(
-    @Query() query: ProductQueryDto,
-    @DeviceContext() device: IDeviceContext,
-  ): Promise<SuccessResponse<ProductListResponse>> {
+  @DeviceResponse(ListProductsMobileResponseSchema, ListProductsWebResponseSchema)
+  async list(@Query() query: ProductQueryDto): Promise<ApiResponse<unknown>> {
     const pageQuery: PageQuery = normalizePageQuery(query);
     const result = await this.listProductsUseCase.execute(pageQuery);
-    return {
-      data: ProductResponseTransformer.toListResponse(result, device),
-      message: 'Products fetched',
-    };
+    return { data: result, message: 'Products fetched' };
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a product by id' })
-  async get(
-    @Param('id') id: string,
-    @DeviceContext() device: IDeviceContext,
-  ): Promise<SuccessResponse<ProductGetResponse>> {
+  @DeviceResponse(GetProductMobileResponseSchema, GetProductWebResponseSchema)
+  async get(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     const product = await this.getProductUseCase.execute(id);
     if (!product) {
-      return { data: null as never, message: 'Product fetched' };
+      return { data: null, message: 'Product fetched' };
     }
-    return {
-      data: ProductResponseTransformer.toResponse(product, device),
-      message: 'Product fetched',
-    };
+    return { data: product, message: 'Product fetched' };
   }
 
   @Patch(':id')
@@ -94,41 +76,41 @@ export class ProductController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateProductDto,
-  ): Promise<SuccessResponse<IdResponse>> {
+  ): Promise<ApiResponse<IdResponse>> {
     const productId = await this.updateProductUseCase.execute({ id, ...dto });
     return { data: { id: productId.toString() }, message: 'Product updated' };
   }
 
-  @Post(':id/change-price')
+  @Patch(':id/change-price')
   @ApiOperation({ summary: 'Change product price' })
   async changePrice(
     @Param('id') id: string,
     @Body() dto: ChangePriceDto,
-  ): Promise<SuccessResponse<IdResponse>> {
+  ): Promise<ApiResponse<IdResponse>> {
     const productId = await this.changePriceUseCase.execute({ id, ...dto });
     return { data: { id: productId.toString() }, message: 'Product price updated' };
   }
 
-  @Post(':id/activate')
+  @Patch(':id/activate')
   @ApiOperation({ summary: 'Activate a product' })
   @HttpCode(HttpStatus.OK)
-  async activate(@Param('id') id: string): Promise<SuccessResponse<IdResponse>> {
+  async activate(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const productId = await this.productStatusUseCase.execute({ id, action: 'activate' });
     return { data: { id: productId.toString() }, message: 'Product activated' };
   }
 
-  @Post(':id/deactivate')
+  @Patch(':id/deactivate')
   @ApiOperation({ summary: 'Deactivate a product' })
   @HttpCode(HttpStatus.OK)
-  async deactivate(@Param('id') id: string): Promise<SuccessResponse<IdResponse>> {
+  async deactivate(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const productId = await this.productStatusUseCase.execute({ id, action: 'deactivate' });
     return { data: { id: productId.toString() }, message: 'Product deactivated' };
   }
 
-  @Post(':id/discontinue')
+  @Patch(':id/discontinue')
   @ApiOperation({ summary: 'Discontinue a product' })
   @HttpCode(HttpStatus.OK)
-  async discontinue(@Param('id') id: string): Promise<SuccessResponse<IdResponse>> {
+  async discontinue(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const productId = await this.productStatusUseCase.execute({ id, action: 'discontinue' });
     return { data: { id: productId.toString() }, message: 'Product discontinued' };
   }

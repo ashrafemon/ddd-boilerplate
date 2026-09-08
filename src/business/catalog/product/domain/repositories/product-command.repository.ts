@@ -5,7 +5,7 @@ import { Product } from '../aggregates/product.aggregate';
  * adapter so all writes participate in the use case's @Transactional boundary.
  * Returns/accepts domain aggregates only — never Prisma rows.
  */
-export abstract class ProductCommandRepositoryPort {
+export abstract class ProductCommandRepository {
   abstract findById(id: string): Promise<Product | null>;
   abstract findBySku(sku: string): Promise<Product | null>;
   abstract save(product: Product): Promise<Product>;

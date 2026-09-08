@@ -2,17 +2,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ModulePortResolver } from '@shared-kernel/ports';
 import { CreateGrnRequest } from '../../domain/types/grn.types';
-import { grnFactory } from '../../domain/factories/grn.factory';
+import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GrnId } from '../../domain/value-objects/grn.vos';
 import { PurchaseOrderQueryPort } from '../ports/outbound/purchase-order-query.port';
-import { GrnCommandRepositoryPort } from '../../domain/domain-ports/grn-command-repository.port';
-import { GrnIntegrationPort } from '../integrations/publishers/grn.integration-port';
+import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
+import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class CreateGrnUseCase {
   constructor(
-    private readonly grnRepository: GrnCommandRepositoryPort,
+    private readonly grnRepository: GrnCommandRepository,
     private readonly portResolver: ModulePortResolver,
     private readonly integrationEvent: GrnIntegrationPort,
     private readonly companyConfig: CompanyConfigOutboundPort,
@@ -32,7 +32,7 @@ export class CreateGrnUseCase {
       throw new NotFoundException('Purchase order not found');
     }
 
-    const grn = grnFactory.create({
+    const grn = GrnFactory.create({
       purchaseOrderId: input.purchaseOrderId,
       vendorId: input.vendorId,
       currency,

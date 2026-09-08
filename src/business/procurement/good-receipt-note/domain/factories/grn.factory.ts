@@ -1,14 +1,13 @@
-import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { GoodReceiptNote } from '../aggregates/grn.aggregate';
 import { GrnLine, GrnProps, GrnStatus } from '../types/grn.types';
 import { CreateGrnInput } from '../types/grn.types';
 import { GrnId } from '../value-objects/grn.vos';
-import { GrnCreated } from '../domain-events/grn.created.event';
+import { GrnCreated } from '../events/grn.created.event';
 import './../aggregates/grn.invariants';
 
-export class GrnFactory extends DomainFactory<GoodReceiptNote, CreateGrnInput> {
-  create(input: CreateGrnInput): GoodReceiptNote {
+export class GrnFactory {
+  static create(input: CreateGrnInput): GoodReceiptNote {
     invariantRegistry.enforce('grn.create', {
       purchaseOrderId: input.purchaseOrderId,
     });
@@ -42,9 +41,7 @@ export class GrnFactory extends DomainFactory<GoodReceiptNote, CreateGrnInput> {
     return grn;
   }
 
-  reconstitute(id: GrnId, props: GrnProps, version: number): GoodReceiptNote {
+  static reconstitute(id: GrnId, props: GrnProps, version: number): GoodReceiptNote {
     return GoodReceiptNote.instantiate(id, props, version);
   }
 }
-
-export const grnFactory = new GrnFactory();

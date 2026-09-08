@@ -2,10 +2,10 @@ import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { GrnId } from '../value-objects/grn.vos';
 import { GrnLine, GrnProps, GrnStatus } from '../types/grn.types';
-import { GrnCompleted } from '../domain-events/grn.completed.event';
-import { GrnLineAdded } from '../domain-events/grn.line-added.event';
-import { GrnReceived } from '../domain-events/grn.received.event';
-import { GrnCancelled } from '../domain-events/grn.cancelled.event';
+import { GrnCompleted } from '../events/grn.completed.event';
+import { GrnLineAdded } from '../events/grn.line-added.event';
+import { GrnReceived } from '../events/grn.received.event';
+import { GrnCancelled } from '../events/grn.cancelled.event';
 
 export class GoodReceiptNote extends AggregateRoot<GrnId> {
   private props: GrnProps;

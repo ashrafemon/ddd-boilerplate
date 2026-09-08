@@ -1,9 +1,8 @@
-import { DomainFactory } from '@business/shared-business/domain/bases/factory.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { Vendor } from '../aggregates/vendor.aggregate';
 import '../aggregates/vendor.invariants';
-import { VendorCreated } from '../domain-events/vendor.created.event';
-import '../domain-policies/vendor.policy';
+import { VendorCreated } from '../events/vendor.created.event';
+import '../policies/orderability.policy';
 import { VendorStatus } from '../types/vendor.enum';
 import { CreateVendorInput, VendorProps } from '../types/vendor.types';
 import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
@@ -12,13 +11,8 @@ import '../value-objects/vendor-code.invariants';
 import '../value-objects/vendor-email.invariants';
 import '../value-objects/vendor-name.invariants';
 
-/**
- * Vendor domain factory — single entry point for creating and rehydrating
- * Vendor aggregates. Enforces creation invariants and raises the VendorCreated
- * domain event.
- */
-export class VendorFactory extends DomainFactory<Vendor, CreateVendorInput> {
-  create(input: CreateVendorInput): Vendor {
+export class VendorFactory {
+  static create(input: CreateVendorInput): Vendor {
     invariantRegistry.enforce('vendor.create', {
       code: input.code,
       name: input.name,
@@ -51,9 +45,7 @@ export class VendorFactory extends DomainFactory<Vendor, CreateVendorInput> {
     return vendor;
   }
 
-  reconstitute(id: VendorId, props: VendorProps, version: number): Vendor {
+  static reconstitute(id: VendorId, props: VendorProps, version: number): Vendor {
     return Vendor.instantiate(id, props, version);
   }
 }
-
-export const vendorFactory = new VendorFactory();

@@ -1,27 +1,28 @@
 import { OrderableVendorQueryPort } from '@business/procurement/purchase-order/application/ports/outbound/vendor-query.port';
 import { Module } from '@nestjs/common';
 import { VendorQueryFacade } from './application/facades/vendor-query.facade';
-import { VendorEventEmitterListener } from './application/integrations/listeners/vendor.event-emitter.listener';
-import { VendorKafkaListener } from './application/integrations/listeners/vendor.kafka.listener';
-import { VendorRabbitMQListener } from './application/integrations/listeners/vendor.rabbitmq.listener';
-import { VendorSqsListener } from './application/integrations/listeners/vendor.sqs.listener';
-import { VendorIntegrationPort } from './application/integrations/publishers/vendor.integration-port';
+import { OrderableVendorQueryAdapter } from './application/facades/orderable-vendor-query.adapter';
+import { VendorEventEmitterListener } from './application/integrations/listeners/vendor.created.event-emitter.listener-event';
+import { VendorKafkaListener } from './application/integrations/listeners/vendor.created.kafka.listener-event';
+import { VendorRabbitMQListener } from './application/integrations/listeners/vendor.created.rabbitmq.listener-event';
+import { VendorSqsListener } from './application/integrations/listeners/vendor.sqs.listener-event';
+import { VendorIntegrationPort } from './application/integrations/publishes/vendor.integration-port';
 import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
-import { CreateVendorUseCase } from './application/usecase/create-vendor.usecase';
-import { GetOrderableVendorUseCase } from './application/usecase/get-orderable-vendor.usecase';
-import { GetVendorUseCase } from './application/usecase/get-vendor.usecase';
-import { ListVendorsUseCase } from './application/usecase/list-vendors.usecase';
-import { UpdateVendorUseCase } from './application/usecase/update-vendor.usecase';
-import { VendorStatusUseCase } from './application/usecase/vendor-status.usecase';
-import { VendorCommandRepositoryPort } from './domain/domain-ports/vendor-command-repository.port';
-import { VendorQueryRepositoryPort } from './domain/domain-ports/vendor-query-repository.port';
+import { CreateVendorUseCase } from './application/usecases/create-vendor.usecase';
+import { GetOrderableVendorUseCase } from './application/usecases/get-orderable-vendor.usecase';
+import { GetVendorUseCase } from './application/usecases/get-vendor.usecase';
+import { ListVendorsUseCase } from './application/usecases/list-vendors.usecase';
+import { UpdateVendorUseCase } from './application/usecases/update-vendor.usecase';
+import { VendorStatusUseCase } from './application/usecases/vendor-status.usecase';
+import { VendorCommandRepository } from './domain/repositories/vendor-command.repository';
+import { VendorQuery } from './application/queries/vendor.query';
 import { CompanyConfigOutboundAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
 import { PrismaVendorCommandRepository } from './infrastructure/persistence/prisma-vendor-command.repository';
 import { PrismaVendorQueryRepository } from './infrastructure/persistence/prisma-vendor-query.repository';
 import { VendorController } from './presentation/http/vendor.controller';
-import { VendorQueryPort } from './public/ports/vendor.port';
-import './domain/domain-events/vendor.registry';
+import { VendorQueryPort } from '@business/party/vendor/public';
+import './domain/events/vendor.registry';
 
 @Module({
   controllers: [VendorController],
@@ -37,10 +38,11 @@ import './domain/domain-events/vendor.registry';
     VendorKafkaListener,
     VendorSqsListener,
     VendorQueryFacade,
+    OrderableVendorQueryAdapter,
     { provide: VendorQueryPort, useExisting: VendorQueryFacade },
-    { provide: OrderableVendorQueryPort, useExisting: VendorQueryFacade },
-    { provide: VendorCommandRepositoryPort, useClass: PrismaVendorCommandRepository },
-    { provide: VendorQueryRepositoryPort, useClass: PrismaVendorQueryRepository },
+    { provide: OrderableVendorQueryPort, useExisting: OrderableVendorQueryAdapter },
+    { provide: VendorCommandRepository, useClass: PrismaVendorCommandRepository },
+    { provide: VendorQuery, useClass: PrismaVendorQueryRepository },
     { provide: VendorIntegrationPort, useClass: OutboxAdapter },
     { provide: CompanyConfigOutboundPort, useClass: CompanyConfigOutboundAdapter },
   ],

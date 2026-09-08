@@ -3,14 +3,14 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { ChangePriceRequest } from '../../domain/types/product.types';
 import { ProductId } from '../../domain/value-objects/product-id.vo';
-import { ProductCommandRepositoryPort } from '../../domain/domain-ports/product-command-repository.port';
-import { ProductIntegrationPort } from '../integrations/publishers/product.integration-port';
+import { ProductCommandRepository } from '../../domain/repositories/product-command.repository';
+import { ProductIntegrationPort } from '../integrations/publishes/product.integration-port';
 import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class ChangePriceUseCase {
   constructor(
-    private readonly productRepository: ProductCommandRepositoryPort,
+    private readonly productRepository: ProductCommandRepository,
     private readonly integrationEvent: ProductIntegrationPort,
     private readonly companyConfig: CompanyConfigOutboundPort,
   ) {}

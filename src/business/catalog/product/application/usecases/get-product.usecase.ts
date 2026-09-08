@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ProductQueryRepositoryPort } from '../../domain/domain-ports/product-query-repository.port';
+import { ProductQuery } from '../../application/queries/product.query';
 import { ProductQueryRecord } from '../../domain/types/product.types';
 
 /**
@@ -7,7 +7,7 @@ import { ProductQueryRecord } from '../../domain/types/product.types';
  */
 @Injectable()
 export class GetProductUseCase {
-  constructor(private readonly productQueryRepo: ProductQueryRepositoryPort) {}
+  constructor(private readonly productQueryRepo: ProductQuery) {}
 
   async execute(id: string): Promise<ProductQueryRecord | null> {
     return this.productQueryRepo.findById(id);
