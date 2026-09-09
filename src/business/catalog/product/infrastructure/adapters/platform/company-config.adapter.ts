@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { CompanyConfigOutboundPort } from '@business/catalog/product/application/outbound-ports/company-config.port';
+import { CompanyConfigPort as ProductCompanyConfigPort } from '@business/catalog/product/application/outbound-ports/company-config.port';
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 
 @Injectable()
-export class CompanyConfigOutboundAdapter implements CompanyConfigOutboundPort {
+export class CompanyConfigOutboundAdapter implements ProductCompanyConfigPort {
   constructor(private readonly platformConfig: CompanyConfigPort) {}
 
   async getCompanyConfig() {

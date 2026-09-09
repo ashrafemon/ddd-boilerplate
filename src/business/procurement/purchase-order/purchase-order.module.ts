@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
-import { PurchaseOrderQueryFacade } from './application/facades/purchase-order-query.facade';
+import { PurchaseOrderForGrnFacade } from './application/facades/purchase-order-for-grn.facade';
 import { CreatePurchaseOrderUseCase } from './application/usecases/create-purchase-order.usecase';
 import { AddPurchaseOrderLineUseCase } from './application/usecases/add-purchase-order-line.usecase';
 import { RemovePurchaseOrderLineUseCase } from './application/usecases/remove-purchase-order-line.usecase';
@@ -14,8 +14,8 @@ import { PurchaseOrderSqsListener } from './application/integrations/listeners/p
 import { PurchaseOrderCommandRepository } from './domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from './application/queries/purchase-order.query';
 import { PurchaseOrderIntegrationPort } from './application/integrations/publishes/purchase-order.integration-port';
-import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
-import { PurchaseOrderQueryPort } from '@business/procurement/purchase-order/public';
+import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
+import { PurchaseOrderForGrnPort } from '@business/procurement/purchase-order/public';
 import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence/prisma-purchase-order-command.repository';
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence/prisma-purchase-order-query.repository';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
@@ -35,13 +35,13 @@ import './domain/events/purchase-order.registry';
     PurchaseOrderRabbitMQListener,
     PurchaseOrderKafkaListener,
     PurchaseOrderSqsListener,
-    PurchaseOrderQueryFacade,
-    { provide: PurchaseOrderQueryPort, useExisting: PurchaseOrderQueryFacade },
+    PurchaseOrderForGrnFacade,
+    { provide: PurchaseOrderForGrnPort, useExisting: PurchaseOrderForGrnFacade },
     { provide: PurchaseOrderCommandRepository, useClass: PrismaPurchaseOrderCommandRepository },
     { provide: PurchaseOrderQuery, useClass: PrismaPurchaseOrderQueryRepository },
     { provide: PurchaseOrderIntegrationPort, useClass: OutboxAdapter },
-    { provide: CompanyConfigOutboundPort, useClass: CompanyConfigOutboundAdapter },
+    { provide: CompanyConfigPort, useClass: CompanyConfigOutboundAdapter },
   ],
-  exports: [PurchaseOrderQueryPort],
+  exports: [PurchaseOrderForGrnPort],
 })
 export class PurchaseOrderModule {}

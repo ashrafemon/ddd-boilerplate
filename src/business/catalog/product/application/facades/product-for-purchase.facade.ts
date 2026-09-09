@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GetPurchasableProductUseCase } from '../usecases/get-purchasable-product.usecase';
-import { PurchasableProductPort, ProductReference } from '@business/catalog/product/public';
+import { ProductForPurchasePort, ProductReference } from '@business/catalog/product/public';
 
 /**
  * Product module's implementation of PurchaseOrder's outbound contract. Lives
@@ -9,7 +9,7 @@ import { PurchasableProductPort, ProductReference } from '@business/catalog/prod
  * infrastructure services.
  */
 @Injectable()
-export class PurchasableProductFacade extends PurchasableProductPort {
+export class ProductForPurchaseFacade extends ProductForPurchasePort {
   constructor(private readonly getPurchasableProductUseCase: GetPurchasableProductUseCase) {
     super();
   }

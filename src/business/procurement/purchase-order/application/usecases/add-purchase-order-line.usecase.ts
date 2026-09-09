@@ -4,10 +4,10 @@ import { ModulePortResolver } from '@platform/context/ports/module-port-resolver
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { AddLineRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
-import { PurchasableProductQueryPort } from '../ports/outbound/product-query.port';
+import { PurchasableProductPort } from '../outbound-ports/product-query.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
-import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
+import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class AddPurchaseOrderLineUseCase {
@@ -15,11 +15,11 @@ export class AddPurchaseOrderLineUseCase {
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
     private readonly portResolver: ModulePortResolver,
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
-    private readonly companyConfig: CompanyConfigOutboundPort,
+    private readonly companyConfig: CompanyConfigPort,
   ) {}
 
-  private get productQueryPort(): PurchasableProductQueryPort {
-    return this.portResolver.resolvePort<PurchasableProductQueryPort>(PurchasableProductQueryPort);
+  private get productQueryPort(): PurchasableProductPort {
+    return this.portResolver.resolvePort<PurchasableProductPort>(PurchasableProductPort);
   }
 
   @Transactional()

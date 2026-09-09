@@ -6,14 +6,14 @@ import { VendorId } from '@business/shared-business/domain/common/value-objects/
 import { VendorCode } from '../../domain/value-objects/vendor.vos';
 import { VendorCommandRepository } from '../../domain/repositories/vendor-command.repository';
 import { VendorIntegrationPort } from '../integrations/publishes/vendor.integration-port';
-import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
+import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class CreateVendorUseCase {
   constructor(
     private readonly vendorRepository: VendorCommandRepository,
     private readonly integrationEvent: VendorIntegrationPort,
-    private readonly companyConfig: CompanyConfigOutboundPort,
+    private readonly companyConfig: CompanyConfigPort,
   ) {}
 
   @Transactional()

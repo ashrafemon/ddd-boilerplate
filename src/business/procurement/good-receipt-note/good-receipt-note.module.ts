@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { GrnQueryFacade } from './application/facades/grn-query.facade';
+import { GrnForPurchaseOrderFacade } from './application/facades/grn-for-purchase-order.facade';
 import { GrnEventEmitterListener } from './application/integrations/listeners/grn.created.event-emitter.listener-event';
 import { GrnKafkaListener } from './application/integrations/listeners/grn.created.kafka.listener-event';
 import { GrnRabbitMQListener } from './application/integrations/listeners/grn.created.rabbitmq.listener-event';
 import { GrnSqsListener } from './application/integrations/listeners/grn.sqs.listener-event';
 import { GrnIntegrationPort } from './application/integrations/publishes/grn.integration-port';
-import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
+import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { CreateGrnUseCase } from './application/usecases/create-grn.usecase';
 import { AddGrnLineUseCase } from './application/usecases/add-grn-line.usecase';
 import { ReceiveGrnUseCase } from './application/usecases/receive-grn.usecase';
@@ -19,7 +19,7 @@ import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter
 import { PrismaGrnCommandRepository } from './infrastructure/persistence/prisma-grn-command.repository';
 import { PrismaGrnQueryRepository } from './infrastructure/persistence/prisma-grn-query.repository';
 import { GrnController } from './presentation/http/grn.controller';
-import { GrnQueryPort } from '@business/procurement/good-receipt-note/public';
+import { GrnForPurchaseOrderPort } from '@business/procurement/good-receipt-note/public';
 import './domain/events/grn.registry';
 
 @Module({
@@ -35,13 +35,13 @@ import './domain/events/grn.registry';
     GrnKafkaListener,
     GrnRabbitMQListener,
     GrnSqsListener,
-    GrnQueryFacade,
-    { provide: GrnQueryPort, useExisting: GrnQueryFacade },
+    GrnForPurchaseOrderFacade,
+    { provide: GrnForPurchaseOrderPort, useExisting: GrnForPurchaseOrderFacade },
     { provide: GrnCommandRepository, useClass: PrismaGrnCommandRepository },
     { provide: GrnQuery, useClass: PrismaGrnQueryRepository },
     { provide: GrnIntegrationPort, useClass: OutboxAdapter },
-    { provide: CompanyConfigOutboundPort, useClass: CompanyConfigOutboundAdapter },
+    { provide: CompanyConfigPort, useClass: CompanyConfigOutboundAdapter },
   ],
-  exports: [GrnQueryPort],
+  exports: [GrnForPurchaseOrderPort],
 })
 export class GoodReceiptNoteModule {}

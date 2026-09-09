@@ -4,10 +4,10 @@ import { ModulePortResolver } from '@platform/context/ports/module-port-resolver
 import { CreatePurchaseOrderRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
-import { OrderableVendorQueryPort } from '../ports/outbound/vendor-query.port';
+import { OrderableVendorPort } from '../outbound-ports/vendor-query.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
-import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
+import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class CreatePurchaseOrderUseCase {
@@ -15,11 +15,11 @@ export class CreatePurchaseOrderUseCase {
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
     private readonly portResolver: ModulePortResolver,
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
-    private readonly companyConfig: CompanyConfigOutboundPort,
+    private readonly companyConfig: CompanyConfigPort,
   ) {}
 
-  private get vendorQueryPort(): OrderableVendorQueryPort {
-    return this.portResolver.resolvePort<OrderableVendorQueryPort>(OrderableVendorQueryPort);
+  private get vendorQueryPort(): OrderableVendorPort {
+    return this.portResolver.resolvePort<OrderableVendorPort>(OrderableVendorPort);
   }
 
   @Transactional()

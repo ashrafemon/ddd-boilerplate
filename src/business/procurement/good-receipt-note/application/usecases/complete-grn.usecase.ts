@@ -3,14 +3,14 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { GrnId } from '../../domain/value-objects/grn.vos';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
-import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
+import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class CompleteGrnUseCase {
   constructor(
     private readonly grnRepository: GrnCommandRepository,
     private readonly integrationEvent: GrnIntegrationPort,
-    private readonly companyConfig: CompanyConfigOutboundPort,
+    private readonly companyConfig: CompanyConfigPort,
   ) {}
 
   @Transactional()

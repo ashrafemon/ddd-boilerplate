@@ -4,14 +4,14 @@ import { ProductStatusRequest } from '../../domain/types/product.types';
 import { ProductId } from '../../domain/value-objects/product-id.vo';
 import { ProductCommandRepository } from '../../domain/repositories/product-command.repository';
 import { ProductIntegrationPort } from '../integrations/publishes/product.integration-port';
-import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
+import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class ProductStatusUseCase {
   constructor(
     private readonly productRepository: ProductCommandRepository,
     private readonly integrationEvent: ProductIntegrationPort,
-    private readonly companyConfig: CompanyConfigOutboundPort,
+    private readonly companyConfig: CompanyConfigPort,
   ) {}
 
   @Transactional()

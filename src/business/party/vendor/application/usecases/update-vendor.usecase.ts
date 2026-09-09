@@ -4,14 +4,14 @@ import { UpdateVendorRequest } from '../../domain/types/vendor.types';
 import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
 import { VendorCommandRepository } from '../../domain/repositories/vendor-command.repository';
 import { VendorIntegrationPort } from '../integrations/publishes/vendor.integration-port';
-import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
+import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class UpdateVendorUseCase {
   constructor(
     private readonly vendorRepository: VendorCommandRepository,
     private readonly integrationEvent: VendorIntegrationPort,
-    private readonly companyConfig: CompanyConfigOutboundPort,
+    private readonly companyConfig: CompanyConfigPort,
   ) {}
 
   @Transactional()

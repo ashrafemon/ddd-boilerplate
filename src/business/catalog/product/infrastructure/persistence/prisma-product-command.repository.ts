@@ -25,7 +25,9 @@ export class PrismaProductCommandRepository extends ProductCommandRepository {
   }
 
   async save(product: Product): Promise<Product> {
-    await this.txHost.tx.product.create({ data: { ...PrismaProductMapper.toRow(product) } as never });
+    await this.txHost.tx.product.create({
+      data: { ...PrismaProductMapper.toRow(product) } as never,
+    });
     return product;
   }
 

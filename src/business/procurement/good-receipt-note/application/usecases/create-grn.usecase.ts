@@ -4,10 +4,10 @@ import { ModulePortResolver } from '@platform/context/ports/module-port-resolver
 import { CreateGrnRequest } from '../../domain/types/grn.types';
 import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GrnId } from '../../domain/value-objects/grn.vos';
-import { PurchaseOrderQueryPort } from '../ports/outbound/purchase-order-query.port';
+import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
-import { CompanyConfigOutboundPort } from '../outbound-ports/company-config.port';
+import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class CreateGrnUseCase {
@@ -15,11 +15,11 @@ export class CreateGrnUseCase {
     private readonly grnRepository: GrnCommandRepository,
     private readonly portResolver: ModulePortResolver,
     private readonly integrationEvent: GrnIntegrationPort,
-    private readonly companyConfig: CompanyConfigOutboundPort,
+    private readonly companyConfig: CompanyConfigPort,
   ) {}
 
-  private get purchaseOrderQueryPort(): PurchaseOrderQueryPort {
-    return this.portResolver.resolvePort<PurchaseOrderQueryPort>(PurchaseOrderQueryPort);
+  private get purchaseOrderQueryPort(): PurchaseOrderPort {
+    return this.portResolver.resolvePort<PurchaseOrderPort>(PurchaseOrderPort);
   }
 
   @Transactional()

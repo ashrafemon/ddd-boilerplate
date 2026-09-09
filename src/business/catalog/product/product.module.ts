@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { PurchasableProductFacade } from './application/facades/purchasable-product.facade';
+import { ProductForPurchaseFacade } from './application/facades/product-for-purchase.facade';
 import { ProductEventEmitterListener } from './application/integrations/listeners/product.created.event-emitter.listener-event';
 import { ProductKafkaListener } from './application/integrations/listeners/product.created.kafka.listener-event';
 import { ProductRabbitMQListener } from './application/integrations/listeners/product.created.rabbitmq.listener-event';
 import { ProductSqsListener } from './application/integrations/listeners/product.sqs.listener-event';
 import { ProductIntegrationPort } from './application/integrations/publishes/product.integration-port';
-import { CompanyConfigOutboundPort } from './application/outbound-ports/company-config.port';
+import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { ChangePriceUseCase } from './application/usecases/change-price.usecase';
 import { CreateProductUseCase } from './application/usecases/create-product.usecase';
 import { GetProductUseCase } from './application/usecases/get-product.usecase';
@@ -22,7 +22,7 @@ import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter
 import { PrismaProductCommandRepository } from './infrastructure/persistence/prisma-product-command.repository';
 import { PrismaProductQueryRepository } from './infrastructure/persistence/prisma-product-query.repository';
 import { ProductController } from './presentation/http/product.controller';
-import { PurchasableProductPort } from '@business/catalog/product/public';
+import { ProductForPurchasePort } from '@business/catalog/product/public';
 
 /**
  * Product aggregate module. Controllers call use cases directly — no inbound
@@ -45,13 +45,13 @@ import { PurchasableProductPort } from '@business/catalog/product/public';
     ProductKafkaListener,
     ProductSqsListener,
     ProductEventEmitterListener,
-    PurchasableProductFacade,
-    { provide: PurchasableProductPort, useExisting: PurchasableProductFacade },
+    ProductForPurchaseFacade,
+    { provide: ProductForPurchasePort, useExisting: ProductForPurchaseFacade },
     { provide: ProductCommandRepository, useClass: PrismaProductCommandRepository },
     { provide: ProductQuery, useClass: PrismaProductQueryRepository },
     { provide: ProductIntegrationPort, useClass: OutboxAdapter },
-    { provide: CompanyConfigOutboundPort, useClass: CompanyConfigOutboundAdapter },
+    { provide: CompanyConfigPort, useClass: CompanyConfigOutboundAdapter },
   ],
-  exports: [PurchasableProductPort],
+  exports: [ProductForPurchasePort],
 })
 export class ProductModule {}
