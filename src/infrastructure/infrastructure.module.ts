@@ -1,4 +1,3 @@
-import { ConfigModule } from '@config/config.module';
 import { Module } from '@nestjs/common';
 import { CacheModule } from './cache/cache.module';
 import { ContextModule } from './context/context.module';
@@ -16,21 +15,13 @@ import { StorageModule } from './storage/storage.module';
  */
 @Module({
   imports: [
-    ConfigModule,
-    PrismaModule,
     CacheModule.forRootAsync(),
-    MessagingModule,
-    ContextModule,
-    NotificationModule,
-    StorageModule,
-  ],
-  exports: [
     PrismaModule,
-    CacheModule,
-    MessagingModule,
     ContextModule,
     NotificationModule,
+    // MessagingModule,
     StorageModule,
   ],
+  exports: [],
 })
 export class InfrastructureModule {}

@@ -1,7 +1,6 @@
 import { SESClient } from '@aws-sdk/client-ses';
 import { ConfigService } from '@config/config.service';
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { LoggerPort } from '@platform/observability/ports/logger.port';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 /**
  * AWS SES email client. Falls back to the AWS default credential chain when
@@ -12,11 +11,9 @@ import { LoggerPort } from '@platform/observability/ports/logger.port';
 export class SesService implements OnModuleInit, OnModuleDestroy {
   private readonly ses?: SESClient;
   private readonly fromAddress?: string;
+  private readonly logger = new Logger(SesService.name);
 
-  constructor(
-    configService: ConfigService,
-    private readonly logger: LoggerPort,
-  ) {
+  constructor(configService: ConfigService) {
     const config = configService.getSes();
 
     if (!config.accessKey || !config.secretKey || !config.address) {
@@ -36,10 +33,10 @@ export class SesService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleInit() {
-    this.logger.info(this.isEnabled ? 'ses-connected' : 'ses-disabled');
+    this.logger.log(this.isEnabled ? 'ses-connected' : 'ses-disabled');
   }
   onModuleDestroy() {
-    this.logger.info('ses-disconnected');
+    this.logger.log('ses-disconnected');
   }
 
   public get client(): SESClient | undefined {

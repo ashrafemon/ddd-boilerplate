@@ -43,21 +43,5 @@ import { FileStoragePort } from './storage/ports/file-storage.port';
     NumberingModule,
     NotificationModule,
   ],
-  exports: [
-    OutboxWriterPort,
-    MessagePublisher,
-    MessageRoutingPolicy,
-    FileStoragePort,
-    LoggerPort,
-    MetricsPort,
-    ErrorTrackingPort,
-    CachePort,
-    RequestContextPort,
-    ModulePortResolver,
-    NumberingPort,
-    AuditPort,
-    NotificationDispatchPort,
-    CompanyConfigPort,
-  ],
 })
 export class PlatformModule {}

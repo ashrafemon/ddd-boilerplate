@@ -1,7 +1,6 @@
 import { SNSClient } from '@aws-sdk/client-sns';
 import { ConfigService } from '@config/config.service';
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { LoggerPort } from '@platform/observability/ports/logger.port';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 /**
  * AWS SNS notification client. Falls back to the AWS default credential chain
@@ -12,11 +11,9 @@ import { LoggerPort } from '@platform/observability/ports/logger.port';
 export class SnsService implements OnModuleInit, OnModuleDestroy {
   private readonly sns?: SNSClient;
   private readonly topicArn?: string;
+  private readonly logger = new Logger(SnsService.name);
 
-  constructor(
-    configService: ConfigService,
-    private readonly logger: LoggerPort,
-  ) {
+  constructor(configService: ConfigService) {
     const config = configService.getSns();
 
     if (!config.accessKey || !config.secretKey || !config.topicArn) {
@@ -36,10 +33,10 @@ export class SnsService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleInit() {
-    this.logger.info(this.isEnabled ? 'sns-connected' : 'sns-disabled');
+    this.logger.log(this.isEnabled ? 'sns-connected' : 'sns-disabled');
   }
   onModuleDestroy() {
-    this.logger.info('sns-disconnected');
+    this.logger.log('sns-disconnected');
   }
 
   public get client(): SNSClient | undefined {

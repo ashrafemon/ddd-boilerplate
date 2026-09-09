@@ -1,6 +1,5 @@
 import { ConfigService } from '@config/config.service';
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { LoggerPort } from '@platform/observability/ports/logger.port';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Consumer, Kafka, Producer } from 'kafkajs';
 
 @Injectable()
@@ -8,11 +7,9 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   private readonly kafka: Kafka;
   private readonly producer: Producer;
   private readonly consumerGroupId: string;
+  private readonly logger = new Logger(KafkaService.name);
 
-  constructor(
-    configService: ConfigService,
-    private readonly logger: LoggerPort,
-  ) {
+  constructor(configService: ConfigService) {
     const config = configService.getKafka();
     this.kafka = new Kafka({ clientId: config.clientId, brokers: config.brokers });
     this.producer = this.kafka.producer();
@@ -22,7 +19,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   public async onModuleInit(): Promise<void> {
     try {
       await this.producer.connect();
-      this.logger.info('kafka-producer-connected');
+      this.logger.log('kafka-producer-connected');
     } catch (error) {
       this.logger.warn('kafka-producer-connection-failed', { error: (error as Error).message });
     }

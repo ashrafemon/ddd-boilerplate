@@ -1,6 +1,5 @@
 import { ConfigService } from '@config/config.service';
-import { Injectable, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common';
-import { LoggerPort } from '@platform/observability/ports/logger.port';
+import { Injectable, Logger, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
 
 const MAX_RETRY_ATTEMPTS = 60;
@@ -8,11 +7,9 @@ const MAX_RETRY_ATTEMPTS = 60;
 @Injectable()
 export class RedisService implements OnModuleDestroy, OnApplicationShutdown {
   private readonly redis: Redis;
+  private readonly logger = new Logger(RedisService.name);
 
-  constructor(
-    configService: ConfigService,
-    private readonly logger: LoggerPort,
-  ) {
+  constructor(configService: ConfigService) {
     const config = configService.getRedis();
     this.redis = new Redis(config.url, {
       retryStrategy: times => (times > MAX_RETRY_ATTEMPTS ? null : Math.min(times * 50, 2000)),
@@ -24,7 +21,7 @@ export class RedisService implements OnModuleDestroy, OnApplicationShutdown {
     });
 
     this.redis.on('connect', () => {
-      this.logger.info('redis-connected', { url: config.url });
+      this.logger.log('redis-connected', { url: config.url });
     });
   }
 

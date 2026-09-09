@@ -1,5 +1,5 @@
 import { ConfigService } from '@config/config.service';
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from 'src/generated/client';
 import { LoggerPort } from '@platform/observability/ports/logger.port';
@@ -11,12 +11,10 @@ import { Pool } from 'pg';
  */
 @Injectable()
 export class PrismaWriteService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  private pool: Pool;
+  private readonly pool: Pool;
+  private readonly logger = new Logger(PrismaWriteService.name);
 
-  constructor(
-    configService: ConfigService,
-    private readonly logger: LoggerPort,
-  ) {
+  constructor(configService: ConfigService) {
     const dbConfig = configService.getPostgres();
     const pool = new Pool({ connectionString: dbConfig.url });
     const adapter = new PrismaPg(pool);
@@ -26,12 +24,12 @@ export class PrismaWriteService extends PrismaClient implements OnModuleInit, On
 
   public async onModuleInit(): Promise<void> {
     await this.$connect();
-    this.logger.info('prisma-write-connected');
+    this.logger.log('prisma-write-connected');
   }
 
   public async onModuleDestroy(): Promise<void> {
     await this.$disconnect();
     await this.pool.end();
-    this.logger.info('prisma-write-disconnected');
+    this.logger.log('prisma-write-disconnected');
   }
 }
