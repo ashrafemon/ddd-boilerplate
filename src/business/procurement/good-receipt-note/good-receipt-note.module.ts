@@ -18,7 +18,7 @@ import { GrnCommandRepository } from './domain/repositories/grn-command.reposito
 import { GrnQuery } from './application/queries/grn.query';
 import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
-import { PurchaseOrderAdapter } from './infrastructure/adapters/purchase-order.adapter';
+import { PurchaseOrderAdapter } from './infrastructure/adapters/module/purchase-order.adapter';
 import { PrismaGrnCommandRepository } from './infrastructure/persistence/prisma-grn-command.repository';
 import { PrismaGrnQueryRepository } from './infrastructure/persistence/prisma-grn-query.repository';
 import { GrnController } from './presentation/http/grn.controller';

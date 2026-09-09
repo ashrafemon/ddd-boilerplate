@@ -1,2 +1,2 @@
-export * from './contracts/product.contracts';
+export * from './contracts/product-for-purchase.contract';
 export * from './ports/product-for-purchase.port';

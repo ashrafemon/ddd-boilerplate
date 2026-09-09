@@ -24,8 +24,8 @@ import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persisten
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence/prisma-purchase-order-query.repository';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
 import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
-import { PurchasableProductAdapter } from './infrastructure/adapters/purchasable-product.adapter';
-import { OrderableVendorAdapter } from './infrastructure/adapters/orderable-vendor.adapter';
+import { PurchasableProductAdapter } from './infrastructure/adapters/module/purchasable-product.adapter';
+import { OrderableVendorAdapter } from './infrastructure/adapters/module/orderable-vendor.adapter';
 import './domain/events/purchase-order.registry';
 
 @Module({
