@@ -17,7 +17,7 @@ import { UpdateProductUseCase } from './application/usecases/update-product.usec
 import './domain/events/product.registry';
 import { ProductCommandRepository } from './domain/repositories/product-command.repository';
 import { ProductQuery } from './application/queries/product.query';
-import { CompanyConfigOutboundAdapter } from './infrastructure/adapters/platform/company-config.adapter';
+import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
 import { PrismaProductCommandRepository } from './infrastructure/persistence/prisma-product-command.repository';
 import { PrismaProductQueryRepository } from './infrastructure/persistence/prisma-product-query.repository';
@@ -50,7 +50,7 @@ import { ProductForPurchasePort } from '@business/catalog/product/public';
     { provide: ProductCommandRepository, useClass: PrismaProductCommandRepository },
     { provide: ProductQuery, useClass: PrismaProductQueryRepository },
     { provide: ProductIntegrationPort, useClass: OutboxAdapter },
-    { provide: CompanyConfigPort, useClass: CompanyConfigOutboundAdapter },
+    { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
   ],
   exports: [ProductForPurchasePort],
 })

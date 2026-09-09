@@ -3,7 +3,7 @@ import { CompanyConfigPort as PurchaseOrderCompanyConfigPort } from '@business/p
 import { CompanyConfigPort } from '@platform/configuration/ports/company-config.port';
 
 @Injectable()
-export class CompanyConfigOutboundAdapter implements PurchaseOrderCompanyConfigPort {
+export class CompanyConfigAdapter implements PurchaseOrderCompanyConfigPort {
   constructor(private readonly platformConfig: CompanyConfigPort) {}
 
   async getCompanyConfig() {

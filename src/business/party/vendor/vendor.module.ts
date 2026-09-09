@@ -16,7 +16,7 @@ import { UpdateVendorUseCase } from './application/usecases/update-vendor.usecas
 import { VendorStatusUseCase } from './application/usecases/vendor-status.usecase';
 import { VendorCommandRepository } from './domain/repositories/vendor-command.repository';
 import { VendorQuery } from './application/queries/vendor.query';
-import { CompanyConfigOutboundAdapter } from './infrastructure/adapters/platform/company-config.adapter';
+import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
 import { PrismaVendorCommandRepository } from './infrastructure/persistence/prisma-vendor-command.repository';
 import { PrismaVendorQueryRepository } from './infrastructure/persistence/prisma-vendor-query.repository';
@@ -44,7 +44,7 @@ import './domain/events/vendor.registry';
     { provide: VendorCommandRepository, useClass: PrismaVendorCommandRepository },
     { provide: VendorQuery, useClass: PrismaVendorQueryRepository },
     { provide: VendorIntegrationPort, useClass: OutboxAdapter },
-    { provide: CompanyConfigPort, useClass: CompanyConfigOutboundAdapter },
+    { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
   ],
   exports: [
     GetVendorUseCase,

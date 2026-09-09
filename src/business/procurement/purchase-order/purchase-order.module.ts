@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ProductModule } from '@business/catalog/product/product.module';
+import { VendorModule } from '@business/party/vendor/vendor.module';
 import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
 import { PurchaseOrderForGrnFacade } from './application/facades/purchase-order-for-grn.facade';
 import { CreatePurchaseOrderUseCase } from './application/usecases/create-purchase-order.usecase';
@@ -14,15 +16,20 @@ import { PurchaseOrderSqsListener } from './application/integrations/listeners/p
 import { PurchaseOrderCommandRepository } from './domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from './application/queries/purchase-order.query';
 import { PurchaseOrderIntegrationPort } from './application/integrations/publishes/purchase-order.integration-port';
+import { PurchasableProductPort } from './application/outbound-ports/product-query.port';
+import { OrderableVendorPort } from './application/outbound-ports/vendor-query.port';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { PurchaseOrderForGrnPort } from '@business/procurement/purchase-order/public';
 import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence/prisma-purchase-order-command.repository';
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence/prisma-purchase-order-query.repository';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
-import { CompanyConfigOutboundAdapter } from './infrastructure/adapters/platform/company-config.adapter';
+import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
+import { PurchasableProductAdapter } from './infrastructure/adapters/purchasable-product.adapter';
+import { OrderableVendorAdapter } from './infrastructure/adapters/orderable-vendor.adapter';
 import './domain/events/purchase-order.registry';
 
 @Module({
+  imports: [ProductModule, VendorModule],
   controllers: [PurchaseOrderController],
   providers: [
     CreatePurchaseOrderUseCase,
@@ -40,7 +47,9 @@ import './domain/events/purchase-order.registry';
     { provide: PurchaseOrderCommandRepository, useClass: PrismaPurchaseOrderCommandRepository },
     { provide: PurchaseOrderQuery, useClass: PrismaPurchaseOrderQueryRepository },
     { provide: PurchaseOrderIntegrationPort, useClass: OutboxAdapter },
-    { provide: CompanyConfigPort, useClass: CompanyConfigOutboundAdapter },
+    { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
+    { provide: PurchasableProductPort, useClass: PurchasableProductAdapter },
+    { provide: OrderableVendorPort, useClass: OrderableVendorAdapter },
   ],
   exports: [PurchaseOrderForGrnPort],
 })
