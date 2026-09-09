@@ -1,5 +1,5 @@
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { SqsModule } from '@ssut/nestjs-sqs';
 import { KafkaService } from '@infrastructure/messaging/kafka/kafka.service';
 import { RabbitMQConfigFactory } from '@infrastructure/messaging/rabbitmq/rabbitmq-config.factory';
@@ -10,7 +10,6 @@ import { SqsPublisherAdapter } from './adapters/sqs-publisher.adapter';
 import { MessagePublisher } from './ports/message-publisher.port';
 import { RabbitMqPublisher, KafkaPublisher, SqsPublisher } from './message-publisher.tokens';
 
-@Global()
 @Module({
   imports: [
     RabbitMQModule.forRootAsync({

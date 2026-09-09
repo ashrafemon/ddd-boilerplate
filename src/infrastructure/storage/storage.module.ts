@@ -8,7 +8,7 @@ import { StorageConfigFactory } from './storage-config.factory';
  * Registers the file storage disk configuration. The platform layer
  * provides the FileStoragePort adapter.
  */
-@Global()
+
 @Module({
   imports: [
     FileStorageModule.forRootAsync({

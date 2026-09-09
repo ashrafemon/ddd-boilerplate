@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { EmailPort } from './ports/email.port';
 import { NotificationPort } from './ports/notification.port';
 import { SesService } from '@infrastructure/notification/ses/ses.service';
@@ -8,7 +8,6 @@ import { SnsNotificationAdapter } from './adapters/sns-notification.adapter';
 import { NotificationDispatchService } from './notification-dispatch.service';
 import { NotificationDispatchPort } from './ports/notification.port';
 
-@Global()
 @Module({
   providers: [
     SesService,

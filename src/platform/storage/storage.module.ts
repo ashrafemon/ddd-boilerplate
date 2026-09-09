@@ -1,5 +1,5 @@
 import { FileStorageModule } from '@amirrivand/nestjs-file-storage';
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { StorageConfigFactory } from '@infrastructure/storage/storage-config.factory';
 import { S3FileStorageAdapter } from './adapters/s3-file-storage.adapter';
 import { FileStoragePort } from './ports/file-storage.port';
@@ -8,7 +8,6 @@ import { FileStoragePort } from './ports/file-storage.port';
  * Platform storage module — provides the FileStoragePort adapter
  * backed by the S3 client initialized in the infrastructure layer.
  */
-@Global()
 @Module({
   imports: [
     FileStorageModule.forRootAsync({

@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConsoleLoggerAdapter } from './adapters/console-logger.adapter';
 import { PrometheusMetricsAdapter } from './adapters/prometheus-metrics.adapter';
 import { SentryErrorTrackingAdapter } from './adapters/sentry-error-tracking.adapter';
@@ -10,7 +10,6 @@ import { MetricsPort } from './ports/metrics.port';
  * Platform observability module — provides logging, metrics and error
  * tracking ports backed by console, Prometheus and Sentry.
  */
-@Global()
 @Module({
   providers: [
     { provide: LoggerPort, useClass: ConsoleLoggerAdapter },

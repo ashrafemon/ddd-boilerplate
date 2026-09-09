@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { SesService } from './ses/ses.service';
 import { SnsService } from './sns/sns.service';
 
@@ -8,7 +8,7 @@ import { SnsService } from './sns/sns.service';
  * Provides raw SES and SNS client services. The platform layer
  * provides the EmailPort and NotificationPort adapters.
  */
-@Global()
+
 @Module({
   providers: [SnsService, SesService],
   exports: [SnsService, SesService],

@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import appConfig from './app.config';
 import authConfig from './auth.config';
@@ -12,7 +12,6 @@ import outboxConfig from './outbox.config';
 import securityConfig from './security.config';
 import storageConfig from './storage.config';
 
-@Global()
 @Module({
   imports: [
     NestConfigModule.forRoot({

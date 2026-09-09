@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { KafkaConsumerHost } from './kafka/kafka-consumer.host';
 import { KafkaService } from './kafka/kafka.service';
@@ -12,7 +12,7 @@ import { SqsConfigFactory } from './sqs/sqs-config.factory';
  * Kafka service and configuration factories so platform adapters can
  * publish directly through the configured clients.
  */
-@Global()
+
 @Module({
   imports: [EventEmitterModule.forRoot({ wildcard: true, delimiter: '.', maxListeners: 50 })],
   providers: [RabbitMQConfigFactory, SqsConfigFactory, KafkaService, KafkaConsumerHost],

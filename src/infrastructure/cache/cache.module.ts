@@ -1,4 +1,4 @@
-import { Global, Module, type DynamicModule, type Provider } from '@nestjs/common';
+import { Module, type DynamicModule, type Provider } from '@nestjs/common';
 import { MemcachedModule } from '@andreafspeziale/nestjs-memcached';
 import { MemcachedService } from './memcached/memcached.service';
 import { RedisService } from './redis/redis.service';
@@ -9,7 +9,7 @@ import { RedisService } from './redis/redis.service';
  * Registers the cache client selected by `CACHE_DRIVER` (redis or memcache).
  * The platform layer provides the CachePort adapter.
  */
-@Global()
+
 @Module({})
 export class CacheModule {
   static forRootAsync(): DynamicModule {
@@ -20,7 +20,6 @@ export class CacheModule {
 
     return {
       module: CacheModule,
-      global: true,
       imports: isMemcache
         ? [
             MemcachedModule.forRootAsync({

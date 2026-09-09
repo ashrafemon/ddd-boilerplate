@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { MessagingModule } from '../messaging/messaging.module';
 import { PrismaOutboxRepository } from './prisma-outbox-repository';
 import { OutboxWriter } from './outbox-writer';
@@ -6,7 +6,6 @@ import { OutboxPublisher } from './outbox-publisher';
 import { OutboxScheduler } from './outbox-scheduler';
 import { OutboxWriterPort } from './ports/outbox-writer.port';
 
-@Global()
 @Module({
   imports: [MessagingModule],
   providers: [

@@ -2,7 +2,7 @@ import { PrismaWriteService } from '@infrastructure/database/prisma/prisma-write
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { ClsPluginTransactional } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ClsModule } from 'nestjs-cls';
 
 /**
@@ -12,11 +12,10 @@ import { ClsModule } from 'nestjs-cls';
  * The platform layer provides the RequestContextPort and ModulePortResolver
  * implementations.
  */
-@Global()
+
 @Module({
   imports: [
     ClsModule.forRoot({
-      global: true,
       middleware: { mount: true },
       plugins: [
         new ClsPluginTransactional({
