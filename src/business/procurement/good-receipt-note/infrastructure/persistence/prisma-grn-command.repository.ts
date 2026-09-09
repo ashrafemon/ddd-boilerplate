@@ -4,7 +4,7 @@ import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-pr
 import { GoodReceiptNote } from '../../domain/aggregates/grn.aggregate';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnId } from '../../domain/value-objects/grn.vos';
-import { PrismaGrnCommandMapper } from './prisma-grn.mapper';
+import { PrismaGrnMapper } from './prisma-grn.mapper';
 
 @Injectable()
 export class PrismaGrnCommandRepository extends GrnCommandRepository {
@@ -17,7 +17,7 @@ export class PrismaGrnCommandRepository extends GrnCommandRepository {
       this.txHost.tx as never as {
         goodReceiptNote: { create: (args: { data: never }) => Promise<unknown> };
       }
-    ).goodReceiptNote.create({ data: { ...PrismaGrnCommandMapper.toRow(grn) } as never });
+    ).goodReceiptNote.create({ data: { ...PrismaGrnMapper.toRow(grn) } as never });
     return grn;
   }
 
@@ -30,7 +30,7 @@ export class PrismaGrnCommandRepository extends GrnCommandRepository {
       }
     ).goodReceiptNote.update({
       where: { id: grn.id.toString() },
-      data: { ...PrismaGrnCommandMapper.toRow(grn) } as never,
+      data: { ...PrismaGrnMapper.toRow(grn) } as never,
     });
     return grn;
   }
@@ -41,7 +41,7 @@ export class PrismaGrnCommandRepository extends GrnCommandRepository {
         goodReceiptNote: { findUnique: (args: { where: { id: string } }) => Promise<unknown> };
       }
     ).goodReceiptNote.findUnique({ where: { id } });
-    return row ? PrismaGrnCommandMapper.toDomain(row as never) : null;
+    return row ? PrismaGrnMapper.toDomain(row as never) : null;
   }
 
   async findByGrnNumber(grnNumber: string): Promise<GoodReceiptNote | null> {
@@ -52,7 +52,7 @@ export class PrismaGrnCommandRepository extends GrnCommandRepository {
         };
       }
     ).goodReceiptNote.findUnique({ where: { grnNumber } });
-    return row ? PrismaGrnCommandMapper.toDomain(row as never) : null;
+    return row ? PrismaGrnMapper.toDomain(row as never) : null;
   }
 
   async nextGrnSequence(): Promise<number> {

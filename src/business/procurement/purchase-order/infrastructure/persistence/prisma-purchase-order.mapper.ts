@@ -10,7 +10,7 @@ import { Money } from '@business/shared-business/domain/common/value-objects/mon
 import { PurchaseOrderQueryRecord } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderProps, PurchaseOrderStatus } from '../../domain/types/purchase-order.types';
 
-export class PrismaPurchaseOrderCommandMapper {
+export class PrismaPurchaseOrderMapper {
   static toDomain(row: {
     id: string;
     orderNumber: string;
@@ -68,9 +68,7 @@ export class PrismaPurchaseOrderCommandMapper {
       total: line.total.toDecimal(),
     }));
   }
-}
 
-export class PrismaPurchaseOrderQueryMapper {
   static toRecord(row: never): PurchaseOrderQueryRecord {
     const r = row as {
       id: string;

@@ -5,7 +5,7 @@ import { VendorStatus } from '../../domain/types/vendor.enum';
 import { VendorQueryRecord } from '../../domain/types/vendor.types';
 import { VendorProps } from '../../domain/types/vendor.types';
 
-export class PrismaVendorCommandMapper {
+export class PrismaVendorMapper {
   static toDomain(row: {
     id: string;
     code: string;
@@ -46,9 +46,7 @@ export class PrismaVendorCommandMapper {
       version: vendor.getVersion(),
     };
   }
-}
 
-export class PrismaVendorQueryMapper {
   static toRecord(row: never): VendorQueryRecord {
     const r = row as {
       id: string;

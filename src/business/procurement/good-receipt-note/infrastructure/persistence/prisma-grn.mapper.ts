@@ -3,7 +3,7 @@ import { GrnId } from '../../domain/value-objects/grn.vos';
 import { GrnLine, GrnProps, GrnStatus } from '../../domain/types/grn.types';
 import { GrnQueryRecord } from '../../domain/types/grn.types';
 
-export class PrismaGrnCommandMapper {
+export class PrismaGrnMapper {
   static toDomain(row: {
     id: string;
     grnNumber: string;
@@ -71,9 +71,7 @@ export class PrismaGrnCommandMapper {
       updatedAt: grn.updatedAt,
     };
   }
-}
 
-export class PrismaGrnQueryMapper {
   static toRecord(row: never): GrnQueryRecord {
     const r = row as {
       id: string;

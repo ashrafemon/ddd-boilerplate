@@ -7,7 +7,7 @@ import { ProductQueryRecord } from '../../domain/types/product.types';
 import { ProductStatus } from '../../domain/types/product.enum';
 import { ProductProps } from '../../domain/types/product.types';
 
-export class PrismaProductCommandMapper {
+export class PrismaProductMapper {
   static toDomain(row: {
     id: string;
     sku: string;
@@ -48,9 +48,7 @@ export class PrismaProductCommandMapper {
       version: product.getVersion(),
     };
   }
-}
 
-export class PrismaProductQueryMapper {
   static toRecord(row: never): ProductQueryRecord {
     const r = row as {
       id: string;

@@ -4,7 +4,7 @@ import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-pr
 import { PurchaseOrder } from '@business/procurement/purchase-order/domain/aggregates/purchase-order.aggregate';
 import { PurchaseOrderId } from '@business/procurement/purchase-order/domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderCommandRepository } from '@business/procurement/purchase-order/domain/repositories/purchase-order-command.repository';
-import { PrismaPurchaseOrderCommandMapper } from './prisma-purchase-order.mapper';
+import { PrismaPurchaseOrderMapper } from './prisma-purchase-order.mapper';
 import { PageQuery } from '@shared-kernel/types/pagination';
 
 @Injectable()
@@ -16,8 +16,8 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
   async save(purchaseOrder: PurchaseOrder): Promise<PurchaseOrder> {
     await this.txHost.tx.purchaseOrder.create({
       data: {
-        ...PrismaPurchaseOrderCommandMapper.toRow(purchaseOrder),
-        lines: { create: PrismaPurchaseOrderCommandMapper.toLinesCreateInput(purchaseOrder) },
+        ...PrismaPurchaseOrderMapper.toRow(purchaseOrder),
+        lines: { create: PrismaPurchaseOrderMapper.toLinesCreateInput(purchaseOrder) },
       } as never,
     });
     return purchaseOrder;
@@ -27,10 +27,10 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
     await this.txHost.tx.purchaseOrder.update({
       where: { id: purchaseOrder.id.toString() },
       data: {
-        ...PrismaPurchaseOrderCommandMapper.toRow(purchaseOrder),
+        ...PrismaPurchaseOrderMapper.toRow(purchaseOrder),
         lines: {
           deleteMany: {},
-          create: PrismaPurchaseOrderCommandMapper.toLinesCreateInput(purchaseOrder),
+          create: PrismaPurchaseOrderMapper.toLinesCreateInput(purchaseOrder),
         },
       } as never,
     });
@@ -42,7 +42,7 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
       where: { id: id.toString() },
       include: { lines: true },
     });
-    return row ? PrismaPurchaseOrderCommandMapper.toDomain(row) : null;
+    return row ? PrismaPurchaseOrderMapper.toDomain(row) : null;
   }
 
   async findByOrderNumber(orderNumber: string): Promise<PurchaseOrder | null> {
@@ -50,7 +50,7 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
       where: { orderNumber },
       include: { lines: true },
     });
-    return row ? PrismaPurchaseOrderCommandMapper.toDomain(row) : null;
+    return row ? PrismaPurchaseOrderMapper.toDomain(row) : null;
   }
 
   async nextOrderSequence(): Promise<number> {
@@ -75,7 +75,7 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
       this.txHost.tx.purchaseOrder.count(),
     ]);
     return {
-      items: rows.map((row: never) => PrismaPurchaseOrderCommandMapper.toDomain(row)),
+      items: rows.map((row: never) => PrismaPurchaseOrderMapper.toDomain(row)),
       total,
     };
   }
