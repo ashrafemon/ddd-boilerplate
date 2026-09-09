@@ -4,6 +4,7 @@ import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { VendorQuery } from '@business/party/vendor/application/queries/vendor.query';
 import { VendorQueryRecord } from '../../domain/types/vendor.types';
 import { VendorStatus } from '../../domain/types/vendor.enum';
+import { PrismaVendorQueryMapper } from './prisma-vendor.mapper';
 
 @Injectable()
 export class PrismaVendorQueryRepository extends VendorQuery {
@@ -13,14 +14,14 @@ export class PrismaVendorQueryRepository extends VendorQuery {
 
   async findById(id: string): Promise<VendorQueryRecord | null> {
     const row = await this.prismaRead.vendor.findUnique({ where: { id } });
-    return row ? this.toRecord(row as never) : null;
+    return row ? PrismaVendorQueryMapper.toRecord(row as never) : null;
   }
 
   async findOrderableById(id: string): Promise<VendorQueryRecord | null> {
     const row = await this.prismaRead.vendor.findFirst({
       where: { id, status: 'ACTIVE' as never },
     });
-    return row ? this.toRecord(row as never) : null;
+    return row ? PrismaVendorQueryMapper.toRecord(row as never) : null;
   }
 
   async findAll(query: PageQuery): Promise<PageResult<VendorQueryRecord>> {
@@ -34,36 +35,11 @@ export class PrismaVendorQueryRepository extends VendorQuery {
       this.prismaRead.vendor.count(),
     ]);
     return {
-      items: rows.map((row: never) => this.toRecord(row)),
+      items: rows.map((row: never) => PrismaVendorQueryMapper.toRecord(row)),
       page: query.page,
       pageSize: query.pageSize,
       total,
       totalPages: Math.ceil(total / query.pageSize),
-    };
-  }
-
-  private toRecord(row: never): VendorQueryRecord {
-    const r = row as {
-      id: string;
-      code: string;
-      name: string;
-      email: string | null;
-      phone: string | null;
-      address: string | null;
-      status: string;
-      createdAt: Date;
-      updatedAt: Date;
-    };
-    return {
-      id: r.id,
-      code: r.code,
-      name: r.name,
-      email: r.email,
-      phone: r.phone,
-      address: r.address,
-      status: r.status as VendorStatus,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
     };
   }
 }

@@ -3,6 +3,7 @@ import { GrnQuery } from '@business/procurement/good-receipt-note/application/qu
 import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.service';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { Injectable } from '@nestjs/common';
+import { PrismaGrnQueryMapper } from './prisma-grn.mapper';
 
 @Injectable()
 export class PrismaGrnQueryRepository extends GrnQuery {
@@ -16,7 +17,7 @@ export class PrismaGrnQueryRepository extends GrnQuery {
         goodReceiptNote: { findUnique: (args: { where: { id: string } }) => Promise<unknown> };
       }
     ).goodReceiptNote.findUnique({ where: { id } });
-    return row ? this.toRecord(row as never) : null;
+    return row ? PrismaGrnQueryMapper.toRecord(row as never) : null;
   }
 
   async findByGrnNumber(grnNumber: string): Promise<GrnQueryRecord | null> {
@@ -27,7 +28,7 @@ export class PrismaGrnQueryRepository extends GrnQuery {
         };
       }
     ).goodReceiptNote.findUnique({ where: { grnNumber } });
-    return row ? this.toRecord(row as never) : null;
+    return row ? PrismaGrnQueryMapper.toRecord(row as never) : null;
   }
 
   async findAll(query: PageQuery): Promise<PageResult<GrnQueryRecord>> {
@@ -53,48 +54,11 @@ export class PrismaGrnQueryRepository extends GrnQuery {
       ).goodReceiptNote.count(),
     ]);
     return {
-      items: (rows as never[]).map((row: never) => this.toRecord(row)),
+      items: (rows as never[]).map((row: never) => PrismaGrnQueryMapper.toRecord(row)),
       page: query.page,
       pageSize: query.pageSize,
       total,
       totalPages: Math.ceil(total / query.pageSize),
-    };
-  }
-
-  private toRecord(row: never): GrnQueryRecord {
-    const r = row as {
-      id: string;
-      grnNumber: string;
-      purchaseOrderId: string;
-      vendorId: string;
-      status: string;
-      currency: string;
-      subtotal: number;
-      total: number;
-      lines: {
-        productId: string;
-        orderedQuantity: number;
-        receivedQuantity: number;
-        unitPrice: number;
-        total: number;
-      }[];
-      receivedAt: Date;
-      createdAt: Date;
-      updatedAt: Date;
-    };
-    return {
-      id: r.id,
-      grnNumber: r.grnNumber,
-      purchaseOrderId: r.purchaseOrderId,
-      vendorId: r.vendorId,
-      status: r.status,
-      currency: r.currency,
-      subtotal: r.subtotal,
-      total: r.total,
-      lines: r.lines,
-      receivedAt: r.receivedAt,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
     };
   }
 }

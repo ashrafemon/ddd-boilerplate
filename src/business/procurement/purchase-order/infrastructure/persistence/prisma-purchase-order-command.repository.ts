@@ -2,16 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { PurchaseOrder } from '@business/procurement/purchase-order/domain/aggregates/purchase-order.aggregate';
-import { PurchaseOrderLine } from '@business/procurement/purchase-order/domain/entities/purchase-order-line.entity';
 import { PurchaseOrderId } from '@business/procurement/purchase-order/domain/value-objects/purchase-order-id.vo';
-import {
-  OrderNumber,
-  ProductIdRef,
-  VendorIdRef,
-} from '@business/procurement/purchase-order/domain/value-objects/purchase-order.vos';
 import { PurchaseOrderCommandRepository } from '@business/procurement/purchase-order/domain/repositories/purchase-order-command.repository';
-import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { PurchaseOrderProps, PurchaseOrderStatus } from '../../domain/types/purchase-order.types';
+import { PrismaPurchaseOrderCommandMapper } from './prisma-purchase-order.mapper';
 import { PageQuery } from '@shared-kernel/types/pagination';
 
 @Injectable()
@@ -23,8 +16,8 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
   async save(purchaseOrder: PurchaseOrder): Promise<PurchaseOrder> {
     await this.txHost.tx.purchaseOrder.create({
       data: {
-        ...this.toRow(purchaseOrder),
-        lines: { create: this.toLinesCreateInput(purchaseOrder) },
+        ...PrismaPurchaseOrderCommandMapper.toRow(purchaseOrder),
+        lines: { create: PrismaPurchaseOrderCommandMapper.toLinesCreateInput(purchaseOrder) },
       } as never,
     });
     return purchaseOrder;
@@ -34,10 +27,10 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
     await this.txHost.tx.purchaseOrder.update({
       where: { id: purchaseOrder.id.toString() },
       data: {
-        ...this.toRow(purchaseOrder),
+        ...PrismaPurchaseOrderCommandMapper.toRow(purchaseOrder),
         lines: {
           deleteMany: {},
-          create: this.toLinesCreateInput(purchaseOrder),
+          create: PrismaPurchaseOrderCommandMapper.toLinesCreateInput(purchaseOrder),
         },
       } as never,
     });
@@ -49,7 +42,7 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
       where: { id: id.toString() },
       include: { lines: true },
     });
-    return row ? this.toDomain(row) : null;
+    return row ? PrismaPurchaseOrderCommandMapper.toDomain(row) : null;
   }
 
   async findByOrderNumber(orderNumber: string): Promise<PurchaseOrder | null> {
@@ -57,7 +50,7 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
       where: { orderNumber },
       include: { lines: true },
     });
-    return row ? this.toDomain(row) : null;
+    return row ? PrismaPurchaseOrderCommandMapper.toDomain(row) : null;
   }
 
   async nextOrderSequence(): Promise<number> {
@@ -67,7 +60,7 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
     });
     if (!last) return 1;
     const match = /^PO-(\d+)$/.exec(last.orderNumber);
-    return match ? parseInt(match[1], 10) + 1 : 1;
+    return match ? parseInt(match[1], 10) + 1 : 0;
   }
 
   async findAll(query: PageQuery) {
@@ -82,66 +75,8 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
       this.txHost.tx.purchaseOrder.count(),
     ]);
     return {
-      items: rows.map((row: never) => this.toDomain(row)),
+      items: rows.map((row: never) => PrismaPurchaseOrderCommandMapper.toDomain(row)),
       total,
     };
-  }
-
-  private toDomain(row: {
-    id: string;
-    orderNumber: string;
-    vendorId: string;
-    status: string;
-    currency: string;
-    lines: { productId: string; quantity: number; unitPrice: unknown; total: unknown }[];
-    createdAt: Date;
-    updatedAt: Date;
-    version: number;
-  }): PurchaseOrder {
-    const lines = row.lines.map(
-      line =>
-        new PurchaseOrderLine(
-          new ProductIdRef(line.productId),
-          line.quantity,
-          Money.fromDecimal(Number(line.unitPrice), row.currency),
-          Money.fromDecimal(Number(line.total), row.currency),
-        ),
-    );
-
-    return PurchaseOrder.instantiate(
-      PurchaseOrderId.fromString(row.id),
-      {
-        orderNumber: OrderNumber.create(row.orderNumber),
-        vendorId: new VendorIdRef(row.vendorId),
-        status: row.status as PurchaseOrderStatus,
-        currency: row.currency,
-        lines,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-      } satisfies PurchaseOrderProps,
-      row.version,
-    );
-  }
-
-  private toRow(purchaseOrder: PurchaseOrder) {
-    return {
-      id: purchaseOrder.id.toString(),
-      orderNumber: purchaseOrder.orderNumber,
-      vendorId: purchaseOrder.vendorId,
-      status: purchaseOrder.status,
-      currency: purchaseOrder.currency,
-      subtotal: purchaseOrder.subtotal.toDecimal(),
-      total: purchaseOrder.total.toDecimal(),
-      version: purchaseOrder.getVersion(),
-    };
-  }
-
-  private toLinesCreateInput(purchaseOrder: PurchaseOrder) {
-    return purchaseOrder.lines.map(line => ({
-      productId: line.productId.toString(),
-      quantity: line.quantity,
-      unitPrice: line.unitPrice.toDecimal(),
-      total: line.total.toDecimal(),
-    }));
   }
 }

@@ -3,6 +3,7 @@ import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.s
 import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { ProductQueryRecord } from '../../domain/types/product.types';
+import { PrismaProductQueryMapper } from './prisma-product.mapper';
 
 @Injectable()
 export class PrismaProductQueryRepository extends ProductQuery {
@@ -12,19 +13,19 @@ export class PrismaProductQueryRepository extends ProductQuery {
 
   async findById(id: string): Promise<ProductQueryRecord | null> {
     const row = await this.prismaRead.product.findUnique({ where: { id } });
-    return row ? this.toRecord(row as never) : null;
+    return row ? PrismaProductQueryMapper.toRecord(row as never) : null;
   }
 
   async findBySku(sku: string): Promise<ProductQueryRecord | null> {
     const row = await this.prismaRead.product.findUnique({ where: { sku } });
-    return row ? this.toRecord(row as never) : null;
+    return row ? PrismaProductQueryMapper.toRecord(row as never) : null;
   }
 
   async findPurchasableById(id: string): Promise<ProductQueryRecord | null> {
     const row = await this.prismaRead.product.findFirst({
       where: { id, status: 'ACTIVE' as never },
     });
-    return row ? this.toRecord(row as never) : null;
+    return row ? PrismaProductQueryMapper.toRecord(row as never) : null;
   }
 
   async findPurchasableByIds(ids: string[]): Promise<ProductQueryRecord[]> {
@@ -32,7 +33,7 @@ export class PrismaProductQueryRepository extends ProductQuery {
     const rows = await this.prismaRead.product.findMany({
       where: { id: { in: ids }, status: 'ACTIVE' as never },
     });
-    return rows.map((row: never) => this.toRecord(row));
+    return rows.map((row: never) => PrismaProductQueryMapper.toRecord(row));
   }
 
   async findAll(query: PageQuery): Promise<PageResult<ProductQueryRecord>> {
@@ -46,36 +47,11 @@ export class PrismaProductQueryRepository extends ProductQuery {
       this.prismaRead.product.count(),
     ]);
     return {
-      items: rows.map((row: never) => this.toRecord(row)),
+      items: rows.map((row: never) => PrismaProductQueryMapper.toRecord(row)),
       page: query.page,
       pageSize: query.pageSize,
       total,
       totalPages: Math.ceil(total / query.pageSize),
-    };
-  }
-
-  private toRecord(row: never): ProductQueryRecord {
-    const r = row as {
-      id: string;
-      sku: string;
-      name: string;
-      description: string | null;
-      status: string;
-      unitPrice: { toString(): string };
-      currency: string;
-      createdAt: Date;
-      updatedAt: Date;
-    };
-    return {
-      id: r.id,
-      sku: r.sku,
-      name: r.name,
-      description: r.description,
-      status: r.status,
-      unitPrice: Number(r.unitPrice.toString()),
-      currency: r.currency,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
     };
   }
 }

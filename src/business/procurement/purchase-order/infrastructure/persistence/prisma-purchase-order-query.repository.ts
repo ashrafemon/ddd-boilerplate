@@ -3,6 +3,7 @@ import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.s
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { PurchaseOrderQuery } from '@business/procurement/purchase-order/application/queries/purchase-order.query';
 import { PurchaseOrderQueryRecord } from '@business/procurement/purchase-order/domain/types/purchase-order.types';
+import { PrismaPurchaseOrderQueryMapper } from './prisma-purchase-order.mapper';
 
 @Injectable()
 export class PrismaPurchaseOrderQueryRepository extends PurchaseOrderQuery {
@@ -15,7 +16,7 @@ export class PrismaPurchaseOrderQueryRepository extends PurchaseOrderQuery {
       where: { id },
       include: { lines: true },
     });
-    return row ? this.toRecord(row as never) : null;
+    return row ? PrismaPurchaseOrderQueryMapper.toRecord(row as never) : null;
   }
 
   async findByOrderNumber(orderNumber: string): Promise<PurchaseOrderQueryRecord | null> {
@@ -23,7 +24,7 @@ export class PrismaPurchaseOrderQueryRepository extends PurchaseOrderQuery {
       where: { orderNumber },
       include: { lines: true },
     });
-    return row ? this.toRecord(row as never) : null;
+    return row ? PrismaPurchaseOrderQueryMapper.toRecord(row as never) : null;
   }
 
   async findAll(query: PageQuery): Promise<PageResult<PurchaseOrderQueryRecord>> {
@@ -38,48 +39,11 @@ export class PrismaPurchaseOrderQueryRepository extends PurchaseOrderQuery {
       this.prismaRead.purchaseOrder.count(),
     ]);
     return {
-      items: rows.map((row: never) => this.toRecord(row)),
+      items: rows.map((row: never) => PrismaPurchaseOrderQueryMapper.toRecord(row)),
       page: query.page,
       pageSize: query.pageSize,
       total,
       totalPages: Math.ceil(total / query.pageSize),
-    };
-  }
-
-  private toRecord(row: never): PurchaseOrderQueryRecord {
-    const r = row as {
-      id: string;
-      orderNumber: string;
-      vendorId: string;
-      status: string;
-      currency: string;
-      subtotal: { toString(): string };
-      total: { toString(): string };
-      lines: {
-        productId: string;
-        quantity: number;
-        unitPrice: { toString(): string };
-        total: { toString(): string };
-      }[];
-      createdAt: Date;
-      updatedAt: Date;
-    };
-    return {
-      id: r.id,
-      orderNumber: r.orderNumber,
-      vendorId: r.vendorId,
-      status: r.status,
-      currency: r.currency,
-      subtotal: Number(r.subtotal.toString()),
-      total: Number(r.total.toString()),
-      lines: r.lines.map(line => ({
-        productId: line.productId,
-        quantity: line.quantity,
-        unitPrice: Number(line.unitPrice.toString()),
-        total: Number(line.total.toString()),
-      })),
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
     };
   }
 }
