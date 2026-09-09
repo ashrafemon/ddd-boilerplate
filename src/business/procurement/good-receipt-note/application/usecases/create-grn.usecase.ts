@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ModulePortResolver } from '@shared-kernel/ports';
+import { ModulePortResolver } from '@platform/context/ports/module-port-resolver.port';
 import { CreateGrnRequest } from '../../domain/types/grn.types';
 import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GrnId } from '../../domain/value-objects/grn.vos';

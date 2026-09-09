@@ -1,31 +1,24 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { CacheModule } from './cache/cache.module';
 import { ContextModule } from './context/context.module';
 import { PrismaModule } from './database/prisma/prisma.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { NotificationModule } from './notification/notification.module';
-import { ObservabilityModule } from './observability/observability.module';
 import { StorageModule } from './storage/storage.module';
 
 /**
- * Infrastructure layer — only client adapters and their wiring modules.
+ * Infrastructure layer — only client initialization/setup.
  *
- * Each client implements a port defined by the shared-kernel/platform layer
- * (request context, observability, event bus, cache, messaging, notification,
- * storage, database). There is no business or platform service logic here.
- *
- * ObservabilityModule provides LoggerPort, which every infra client depends on.
- * ContextModule registers the CLS store (ClsService) used by the HTTP
- * interceptors and the transactional unit-of-work plugin.
+ * Each sub-module registers third-party clients (Prisma, Kafka, RabbitMQ,
+ * SQS, Redis, Memcached, S3, SES, SNS, CLS). No ports or adapters are
+ * defined here; those live in the platform layer.
  */
-@Global()
 @Module({
   imports: [
     PrismaModule,
     CacheModule.forRootAsync(),
     MessagingModule,
     ContextModule,
-    ObservabilityModule,
     NotificationModule,
     StorageModule,
   ],

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InfrastructureException } from '@shared-kernel/exceptions/infrastructure.exception';
-import { CachePort } from '@shared-kernel/ports/cache/cache.port';
-import { RedisService } from './redis.service';
+import { CachePort } from '@platform/cache/ports/cache.port';
+import { RedisService } from '@infrastructure/cache/redis/redis.service';
 
 /**
  * Redis-backed cache adapter.

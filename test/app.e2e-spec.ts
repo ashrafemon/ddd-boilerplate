@@ -1,17 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './../src/app.module';
-import { CreateProductUseCase } from './../src/business/catalog/product/application/usecase/create-product.usecase';
-import { GetPurchasableProductUseCase } from './../src/business/catalog/product/application/usecase/get-purchasable-product.usecase';
-import { GetOrderableVendorUseCase } from './../src/business/supplier/vendor/application/usecase/get-orderable-vendor.usecase';
-import { CreatePurchaseOrderUseCase } from './../src/business/procurement/purchase/application/usecase/create-purchase-order.usecase';
-import { OUTBOX_WRITER } from './../src/platform/outbox/ports/outbox-writer.port';
+import { CreateProductUseCase } from './../src/business/catalog/product/application/usecases/create-product.usecase';
+import { GetPurchasableProductUseCase } from './../src/business/catalog/product/application/usecases/get-purchasable-product.usecase';
+import { GetOrderableVendorUseCase } from './../src/business/party/vendor/application/usecases/get-orderable-vendor.usecase';
+import { CreatePurchaseOrderUseCase } from './../src/business/procurement/purchase-order/application/usecases/create-purchase-order.usecase';
+import { OutboxWriterPort } from './../src/platform/outbox/ports/outbox-writer.port';
 
-/**
- * E2E smoke test — verifies the application boots with all business modules
- * wired. Requires Postgres + Redis + RabbitMQ running (`docker compose up -d`)
- * and DATABASE_URL set in .env.
- */
 describe('App (e2e)', () => {
   let app: NestFastifyApplication;
 
@@ -29,7 +24,7 @@ describe('App (e2e)', () => {
     expect(app.get(GetPurchasableProductUseCase)).toBeDefined();
     expect(app.get(GetOrderableVendorUseCase)).toBeDefined();
     expect(app.get(CreatePurchaseOrderUseCase)).toBeDefined();
-    expect(app.get(OUTBOX_WRITER)).toBeDefined();
+    expect(app.get(OutboxWriterPort)).toBeDefined();
   });
 
   it('returns a JSON error envelope for unknown routes', async () => {

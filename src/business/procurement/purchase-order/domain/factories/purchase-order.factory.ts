@@ -40,7 +40,11 @@ export class PurchaseOrderFactory {
     return purchaseOrder;
   }
 
-  static reconstitute(id: PurchaseOrderId, props: PurchaseOrderProps, version: number): PurchaseOrder {
+  static reconstitute(
+    id: PurchaseOrderId,
+    props: PurchaseOrderProps,
+    version: number,
+  ): PurchaseOrder {
     return PurchaseOrder.instantiate(id, props, version);
   }
 }

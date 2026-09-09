@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
-import { InProcessEventBus } from '@shared-kernel/ports/event-bus.port';
+import { InProcessEventBus } from '@platform/events/ports/event-bus.port';
 
 /**
  * In-process domain event bus backed by EventEmitter2. Used for local

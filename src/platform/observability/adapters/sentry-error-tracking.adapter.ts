@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
-import { ConfigService } from '../../config/config.service';
+import { ConfigService } from '@config/config.service';
 import {
   ErrorTrackingContext,
   ErrorTrackingPort,
-} from '../../shared-kernel/ports/observability/error-tracking.port';
+} from '@platform/observability/ports/error-tracking.port';
 
 /**
  * Sentry-backed error tracking. Self-disables when SENTRY_DSN is not

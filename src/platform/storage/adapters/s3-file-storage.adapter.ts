@@ -5,7 +5,7 @@ import {
   FileMetadata,
   FileStoragePort,
   FileUploadResult,
-} from '@shared-kernel/ports/storage/file-storage.port';
+} from '@platform/storage/ports/file-storage.port';
 
 /**
  * File storage adapter backed by @amirrivand/nestjs-file-storage (S3 / local

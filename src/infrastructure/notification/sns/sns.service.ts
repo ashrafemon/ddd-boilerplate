@@ -1,7 +1,7 @@
 import { SNSClient } from '@aws-sdk/client-sns';
 import { ConfigService } from '@config/config.service';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { LoggerPort } from '@shared-kernel/ports/observability/logger.port';
+import { LoggerPort } from '@platform/observability/ports/logger.port';
 
 /**
  * AWS SNS notification client. Falls back to the AWS default credential chain

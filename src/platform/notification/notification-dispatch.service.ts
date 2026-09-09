@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { EmailPort, EmailMessage } from '@shared-kernel/ports/notification/email.port';
-import {
-  NotificationChannel,
-  NotificationPort,
-} from '@shared-kernel/ports/notification/notification.port';
+import { EmailPort, EmailMessage } from './ports/email.port';
+import { NotificationPort, NotificationChannel } from './ports/notification.port';
 import { NotificationDispatchPort, NotificationMessage } from './ports/notification.port';
 
 /**

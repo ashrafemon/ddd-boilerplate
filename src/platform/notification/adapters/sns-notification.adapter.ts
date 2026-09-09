@@ -1,11 +1,11 @@
 import { PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { Injectable } from '@nestjs/common';
 import {
-  NotificationMessage,
+  NotificationMessageInternal,
   NotificationPort,
-} from '@shared-kernel/ports/notification/notification.port';
-import { LoggerPort } from '@shared-kernel/ports/observability/logger.port';
-import { SnsService } from './sns.service';
+} from '@platform/notification/ports/notification.port';
+import { LoggerPort } from '@platform/observability/ports/logger.port';
+import { SnsService } from '@infrastructure/notification/sns/sns.service';
 
 /**
  * AWS SNS notification adapter. Self-disables when SNS is not configured so
@@ -18,7 +18,7 @@ export class SnsNotificationAdapter implements NotificationPort {
     private readonly logger: LoggerPort,
   ) {}
 
-  public async send(message: NotificationMessage): Promise<void> {
+  public async send(message: NotificationMessageInternal): Promise<void> {
     const client = this.snsService.client;
     const topicArn = this.snsService.topic;
     if (!client || !topicArn) {

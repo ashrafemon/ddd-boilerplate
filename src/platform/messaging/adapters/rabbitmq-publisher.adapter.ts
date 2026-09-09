@@ -1,7 +1,10 @@
 import { ConfigService } from '@nestjs/config';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { Injectable } from '@nestjs/common';
-import { IntegrationMessage, MessagePublisher } from '@shared-kernel/ports/message-publisher.port';
+import {
+  IntegrationMessage,
+  MessagePublisher,
+} from '@platform/messaging/ports/message-publisher.port';
 
 /**
  * RabbitMQ publisher adapter. Publishes integration messages to the

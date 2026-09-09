@@ -3,19 +3,14 @@ import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { ClsPluginTransactional } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Global, Module } from '@nestjs/common';
-import { ModulePortResolver } from '@shared-kernel/ports/module-port-resolver.port';
-import { RequestContextPort } from '@shared-kernel/ports/context/request-context.port';
 import { ClsModule } from 'nestjs-cls';
-import { ClsRequestContextService } from './cls-request-context.service';
-import { NestModulePortResolver } from './nest-module-port-resolver';
 
 /**
- * Infrastructure context module — package initializer.
+ * Infrastructure context module — only CLS and transactional plugin setup.
  *
- * Initializes the nestjs-cls package (CLS store + transactional plugin) and
- * provides the CLS-backed request context implementation of the platform
- * `RequestContextPort`. The request context middleware lives in the platform
- * context module.
+ * Initializes the nestjs-cls package (CLS store + transactional plugin).
+ * The platform layer provides the RequestContextPort and ModulePortResolver
+ * implementations.
  */
 @Global()
 @Module({
@@ -34,11 +29,7 @@ import { NestModulePortResolver } from './nest-module-port-resolver';
       ],
     }),
   ],
-  providers: [
-    { provide: RequestContextPort, useClass: ClsRequestContextService },
-    NestModulePortResolver,
-    { provide: ModulePortResolver, useExisting: NestModulePortResolver },
-  ],
-  exports: [RequestContextPort, ModulePortResolver],
+  providers: [],
+  exports: [],
 })
 export class ContextModule {}

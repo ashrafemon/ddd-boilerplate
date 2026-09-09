@@ -1,8 +1,8 @@
 import { SendEmailCommand } from '@aws-sdk/client-ses';
 import { Injectable } from '@nestjs/common';
-import { EmailMessage, EmailPort } from '@shared-kernel/ports/notification/email.port';
-import { LoggerPort } from '@shared-kernel/ports/observability/logger.port';
-import { SesService } from './ses.service';
+import { EmailMessage, EmailPort } from '@platform/notification/ports/email.port';
+import { LoggerPort } from '@platform/observability/ports/logger.port';
+import { SesService } from '@infrastructure/notification/ses/ses.service';
 
 /**
  * AWS SES email adapter. Self-disables when SES is not configured.

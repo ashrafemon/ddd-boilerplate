@@ -1,6 +1,6 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ModulePortResolver } from '@shared-kernel/ports';
+import { ModulePortResolver } from '@platform/context/ports/module-port-resolver.port';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { AddLineRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';

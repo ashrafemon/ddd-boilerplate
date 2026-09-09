@@ -7,7 +7,7 @@ import {
   CLS_REQUEST_CONTEXT_KEY,
   RequestContext,
   RequestContextData,
-} from '@shared-kernel/ports/context/request-context';
+} from '@platform/context/ports/request-context';
 
 export const REQUEST_ID_KEY = 'requestId';
 export const CORRELATION_ID_KEY = 'correlationId';

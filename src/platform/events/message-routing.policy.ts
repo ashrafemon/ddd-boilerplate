@@ -1,7 +1,3 @@
-/**
- * Routes integration events to the appropriate brokers. This policy is the
- * single place where the "which broker(s)" decision lives.
- */
 export type BrokerTarget = 'rabbitmq' | 'kafka' | 'sqs';
 export type BrokerTargets = BrokerTarget[];
 

@@ -1,18 +1,36 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { IntegrationMessage } from '@shared-kernel/ports/message-publisher.port';
-import { OutboxMessageRecord, OutboxRepositoryPort } from './ports/outbox-repository.port';
+import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
 
-/**
- * Prisma-backed outbox repository. All DB access goes through the
- * TransactionHost so outbox rows land in the same transaction as the
- * aggregate change when called inside a @Transactional boundary, and the
- * fallback client otherwise.
- */
+export interface OutboxMessageRecord {
+  id: string;
+  eventType: string;
+  aggregateType: string;
+  aggregateId: string;
+  payload: Record<string, unknown>;
+  headers: Record<string, string> | null;
+  occurredAt: Date;
+  publishedAt: Date | null;
+  attempts: number;
+  lastError: string | null;
+  status: 'PENDING' | 'PUBLISHING' | 'PUBLISHED' | 'FAILED';
+}
+
+export abstract class OutboxRepository {
+  abstract save(message: IntegrationMessage): Promise<void>;
+  abstract claimBatch(batchSize: number): Promise<OutboxMessageRecord[]>;
+  abstract markPublished(id: string): Promise<void>;
+  abstract markFailed(id: string, error: string): Promise<void>;
+  abstract retryFailed(limit: number): Promise<number>;
+  abstract deletePublishedOlderThan(hours: number): Promise<number>;
+}
+
 @Injectable()
-export class PrismaOutboxRepository implements OutboxRepositoryPort {
-  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
+export class PrismaOutboxRepository extends OutboxRepository {
+  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {
+    super();
+  }
 
   public async save(message: IntegrationMessage): Promise<void> {
     await this.txHost.tx.outboxMessage.create({
@@ -105,7 +123,5 @@ export class PrismaOutboxRepository implements OutboxRepositoryPort {
 }
 
 function toPrismaJson(value: Record<string, unknown>): object {
-  // JSON round-trip produces a plain JSON value that satisfies Prisma's
-  // InputJsonValue, which the generated @ts-nocheck types don't expose to tsc.
   return JSON.parse(JSON.stringify(value)) as object;
 }

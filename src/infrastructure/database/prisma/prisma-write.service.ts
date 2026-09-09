@@ -2,7 +2,7 @@ import { ConfigService } from '@config/config.service';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from 'src/generated/client';
-import { LoggerPort } from '@shared-kernel/ports/observability/logger.port';
+import { LoggerPort } from '@platform/observability/ports/logger.port';
 import { Pool } from 'pg';
 
 /**

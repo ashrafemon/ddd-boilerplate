@@ -1,6 +1,6 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ModulePortResolver } from '@shared-kernel/ports';
+import { ModulePortResolver } from '@platform/context/ports/module-port-resolver.port';
 import { CreatePurchaseOrderRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';

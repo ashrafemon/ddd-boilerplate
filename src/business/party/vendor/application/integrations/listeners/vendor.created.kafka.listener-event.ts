@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { KafkaEvent } from '@shared-kernel/decorators/kafka-event.decorator';
-import { IntegrationMessage } from '@shared-kernel/ports';
+import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
 
 @Injectable()
 export class VendorKafkaListener {

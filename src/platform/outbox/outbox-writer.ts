@@ -1,23 +1,18 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
-import { IntegrationMessage } from '@shared-kernel/ports/message-publisher.port';
+import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
 import { OutboxWriterPort } from './ports/outbox-writer.port';
-import { OutboxRepositoryPort } from './ports/outbox-repository.port';
+import { OutboxRepository } from './prisma-outbox-repository';
 import {
   REQUEST_ID_KEY,
   CORRELATION_ID_KEY,
 } from '@shared-kernel/interceptors/request-id.interceptor';
 
-/**
- * Writes domain events into the transactional outbox as integration messages.
- * Called by use cases inside a unit of work so the write is atomic with the
- * aggregate change.
- */
 @Injectable()
 export class OutboxWriter implements OutboxWriterPort {
   constructor(
-    @Inject(OutboxRepositoryPort) private readonly outboxRepository: OutboxRepositoryPort,
+    private readonly outboxRepository: OutboxRepository,
     private readonly cls: ClsService,
   ) {}
 

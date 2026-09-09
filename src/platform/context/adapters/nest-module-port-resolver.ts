@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { ModulePortResolver } from '@shared-kernel/ports/module-port-resolver.port';
+import { ModulePortResolver } from '@platform/context/ports/module-port-resolver.port';
 
 /**
  * NestJS implementation of {@link ModulePortResolver}. Uses `ModuleRef.get` to

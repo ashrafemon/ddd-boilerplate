@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { IntegrationMessage, MessagePublisher } from '@shared-kernel/ports/message-publisher.port';
-import { KafkaService } from './kafka.service';
+import {
+  IntegrationMessage,
+  MessagePublisher,
+} from '@platform/messaging/ports/message-publisher.port';
+import { KafkaService } from '@infrastructure/messaging/kafka/kafka.service';
 
 /**
  * Kafka publisher adapter. Publishes integration messages through the shared

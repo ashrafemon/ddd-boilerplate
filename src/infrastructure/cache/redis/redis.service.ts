@@ -1,6 +1,6 @@
 import { ConfigService } from '@config/config.service';
 import { Injectable, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common';
-import { LoggerPort } from '@shared-kernel/ports/observability/logger.port';
+import { LoggerPort } from '@platform/observability/ports/logger.port';
 import Redis from 'ioredis';
 
 const MAX_RETRY_ATTEMPTS = 60;

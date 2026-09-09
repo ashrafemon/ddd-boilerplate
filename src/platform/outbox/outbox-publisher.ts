@@ -1,24 +1,16 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IntegrationMessage, MessagePublisher } from '@shared-kernel/ports/message-publisher.port';
-import { InProcessEventBus } from '@shared-kernel/ports/event-bus.port';
-import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
-import { OutboxMessageRecord, OutboxRepositoryPort } from './ports/outbox-repository.port';
-import { MessageRoutingPolicy } from '../events/message-routing.policy';
 import {
-  KafkaPublisher,
-  RabbitMqPublisher,
-  SqsPublisher,
-} from '@infrastructure/messaging/message-publisher.tokens';
+  IntegrationMessage,
+  MessagePublisher,
+} from '@platform/messaging/ports/message-publisher.port';
+import { InProcessEventBus } from '@platform/events/ports/event-bus.port';
+import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
+import { OutboxMessageRecord, OutboxRepository } from './prisma-outbox-repository';
+import { MessageRoutingPolicy } from '../events/message-routing.policy';
 
 const PARALLEL_PUBLISH_LIMIT = 10;
 
-/**
- * Publishes pending outbox messages to the configured brokers and re-dispatches
- * the domain event in-process (local reactions). If publishing fails, the
- * message is marked FAILED and retried by the scheduler — events are never
- * lost by committing first and publishing later.
- */
 @Injectable()
 export class OutboxPublisher {
   private readonly logger = new Logger(OutboxPublisher.name);
@@ -26,12 +18,12 @@ export class OutboxPublisher {
   private publishing = false;
 
   constructor(
-    @Inject(OutboxRepositoryPort) private readonly outboxRepository: OutboxRepositoryPort,
-    @Inject(MessageRoutingPolicy) private readonly routingPolicy: MessageRoutingPolicy,
-    @Inject(InProcessEventBus) private readonly eventBus: InProcessEventBus,
-    @Inject(RabbitMqPublisher) private readonly rabbitmqPublisher: MessagePublisher,
-    @Inject(KafkaPublisher) private readonly kafkaPublisher: MessagePublisher,
-    @Inject(SqsPublisher) private readonly sqsPublisher: MessagePublisher,
+    private readonly outboxRepository: OutboxRepository,
+    private readonly routingPolicy: MessageRoutingPolicy,
+    private readonly eventBus: InProcessEventBus,
+    private readonly rabbitmqPublisher: MessagePublisher,
+    private readonly kafkaPublisher: MessagePublisher,
+    private readonly sqsPublisher: MessagePublisher,
     configService: ConfigService,
   ) {
     this.configService = configService;
@@ -80,8 +72,6 @@ export class OutboxPublisher {
         await this.sqsPublisher.publish(message);
       }
 
-      // Re-dispatch the domain event in-process for local reactions (the use
-      // cases only append to the outbox; the scheduler owns publishing).
       const event = domainEventRegistry.rehydrate(record.eventType, record.payload);
       if (event) {
         this.eventBus.publish(event);

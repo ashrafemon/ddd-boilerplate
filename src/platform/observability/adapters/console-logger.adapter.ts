@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { LogFields, LoggerPort } from '@shared-kernel/ports/observability/logger.port';
+import { LogFields, LoggerPort } from '@platform/observability/ports/logger.port';
 
 /**
  * Console logger used in tests and local development. Kept as a lightweight

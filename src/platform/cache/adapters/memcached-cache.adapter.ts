@@ -1,7 +1,7 @@
 import { MemcachedService } from '@andreafspeziale/nestjs-memcached';
 import { Injectable } from '@nestjs/common';
 import { InfrastructureException } from '@shared-kernel/exceptions/infrastructure.exception';
-import { CachePort } from '@shared-kernel/ports/cache/cache.port';
+import { CachePort } from '@platform/cache/ports/cache.port';
 
 /**
  * Memcached-backed cache adapter built on @andreafspeziale/nestjs-memcached.
