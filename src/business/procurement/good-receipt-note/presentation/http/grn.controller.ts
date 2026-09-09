@@ -21,19 +21,16 @@ import { CreateGrnDto } from './requests/create-grn.request.dto';
 import { AddGrnLineDto } from './requests/add-grn-line.request.dto';
 import { GrnQueryDto } from './requests/query-grns.request.dto';
 import {
-  GetGrnMobileResponseSchema,
+  GetGrnMobileResponseDto,
   type GetGrnMobileResponse,
 } from './responses/get-grn.mobile.response.dto';
+import { GetGrnWebResponseDto, type GetGrnWebResponse } from './responses/get-grn.web.response.dto';
 import {
-  GetGrnWebResponseSchema,
-  type GetGrnWebResponse,
-} from './responses/get-grn.web.response.dto';
-import {
-  ListGrnsMobileResponseSchema,
+  ListGrnsMobileResponseDto,
   type ListGrnsMobileResponse,
 } from './responses/list-grns.mobile.response.dto';
 import {
-  ListGrnsWebResponseSchema,
+  ListGrnsWebResponseDto,
   type ListGrnsWebResponse,
 } from './responses/list-grns.web.response.dto';
 import { IdResponse } from './responses/id.response.dto';
@@ -66,7 +63,7 @@ export class GrnController {
 
   @Get()
   @ApiOperation({ summary: 'List GRNs' })
-  @DeviceResponse(ListGrnsMobileResponseSchema, ListGrnsWebResponseSchema)
+  @DeviceResponse(ListGrnsMobileResponseDto, ListGrnsWebResponseDto)
   async list(@Query() query: GrnQueryDto): Promise<ApiResponse<GrnListResponse>> {
     const pageQuery: PageQuery = normalizePageQuery(query);
     const result = await this.listGrnsUseCase.execute(pageQuery);
@@ -78,7 +75,7 @@ export class GrnController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a GRN by id' })
-  @DeviceResponse(GetGrnMobileResponseSchema, GetGrnWebResponseSchema)
+  @DeviceResponse(GetGrnMobileResponseDto, GetGrnWebResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<GrnGetResponse>> {
     const grn = await this.getGrnUseCase.execute(id);
     if (!grn) {

@@ -1,7 +1,9 @@
+import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-export const CreateVendorMobileResponseSchema = z.object({
+const createVendorMobileSchema = z.object({
   id: z.string(),
 });
 
-export type CreateVendorMobileResponse = z.infer<typeof CreateVendorMobileResponseSchema>;
+export class CreateVendorMobileResponseDto extends createZodDto(createVendorMobileSchema) {}
+export type CreateVendorMobileResponse = InstanceType<typeof CreateVendorMobileResponseDto>;

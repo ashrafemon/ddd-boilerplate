@@ -20,19 +20,19 @@ import { CreateVendorDto } from './requests/create-vendor.request.dto';
 import { UpdateVendorDto } from './requests/update-vendor.request.dto';
 import { VendorQueryDto } from './requests/query-vendors.request.dto';
 import {
-  GetVendorMobileResponseSchema,
+  GetVendorMobileResponseDto,
   type GetVendorMobileResponse,
 } from './responses/get-vendor.mobile.response.dto';
 import {
-  GetVendorWebResponseSchema,
+  GetVendorWebResponseDto,
   type GetVendorWebResponse,
 } from './responses/get-vendor.web.response.dto';
 import {
-  ListVendorsMobileResponseSchema,
+  ListVendorsMobileResponseDto,
   type ListVendorsMobileResponse,
 } from './responses/list-vendors.mobile.response.dto';
 import {
-  ListVendorsWebResponseSchema,
+  ListVendorsWebResponseDto,
   type ListVendorsWebResponse,
 } from './responses/list-vendors.web.response.dto';
 import { IdResponse } from './responses/id.response.dto';
@@ -64,7 +64,7 @@ export class VendorController {
 
   @Get()
   @ApiOperation({ summary: 'List vendors' })
-  @DeviceResponse(ListVendorsMobileResponseSchema, ListVendorsWebResponseSchema)
+  @DeviceResponse(ListVendorsMobileResponseDto, ListVendorsWebResponseDto)
   async list(@Query() query: VendorQueryDto): Promise<ApiResponse<VendorListResponse>> {
     const pageQuery: PageQuery = normalizePageQuery(query);
     const result = await this.listVendorsUseCase.execute(pageQuery);
@@ -76,7 +76,7 @@ export class VendorController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a vendor by id' })
-  @DeviceResponse(GetVendorMobileResponseSchema, GetVendorWebResponseSchema)
+  @DeviceResponse(GetVendorMobileResponseDto, GetVendorWebResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<VendorGetResponse>> {
     const vendor = await this.getVendorUseCase.execute(id);
     if (!vendor) {

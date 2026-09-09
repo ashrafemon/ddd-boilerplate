@@ -1,15 +1,16 @@
+import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { GetProductWebResponseSchema } from './get-product.web.response.dto';
+import { GetProductWebResponseDto } from './get-product.web.response.dto';
 
-export const ListProductsWebResponseSchema = z.object({
-  items: z.array(GetProductWebResponseSchema),
+const listProductsWebSchema = z.object({
+  items: z.array(z.any()),
   page: z.number(),
   pageSize: z.number(),
   total: z.number(),
   totalPages: z.number(),
 });
 
-// @ts-expect-error ZodSchema.deviceItem augmentation
-ListProductsWebResponseSchema.deviceItem = GetProductWebResponseSchema;
-
-export type ListProductsWebResponse = z.infer<typeof ListProductsWebResponseSchema>;
+export class ListProductsWebResponseDto extends createZodDto(listProductsWebSchema) {}
+// @ts-expect-error deviceItem metadata
+ListProductsWebResponseDto.deviceItem = GetProductWebResponseDto;
+export type ListProductsWebResponse = InstanceType<typeof ListProductsWebResponseDto>;

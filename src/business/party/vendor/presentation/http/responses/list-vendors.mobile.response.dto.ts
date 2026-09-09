@@ -1,15 +1,16 @@
+import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { GetVendorMobileResponseSchema } from './get-vendor.mobile.response.dto';
+import { GetVendorMobileResponseDto } from './get-vendor.mobile.response.dto';
 
-export const ListVendorsMobileResponseSchema = z.object({
-  items: z.array(GetVendorMobileResponseSchema),
+const listVendorsMobileSchema = z.object({
+  items: z.array(z.any()),
   page: z.number(),
   pageSize: z.number(),
   total: z.number(),
   totalPages: z.number(),
 });
 
-// @ts-expect-error ZodSchema.deviceItem augmentation
-ListVendorsMobileResponseSchema.deviceItem = GetVendorMobileResponseSchema;
-
-export type ListVendorsMobileResponse = z.infer<typeof ListVendorsMobileResponseSchema>;
+export class ListVendorsMobileResponseDto extends createZodDto(listVendorsMobileSchema) {}
+// @ts-expect-error deviceItem metadata
+ListVendorsMobileResponseDto.deviceItem = GetVendorMobileResponseDto;
+export type ListVendorsMobileResponse = InstanceType<typeof ListVendorsMobileResponseDto>;

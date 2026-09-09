@@ -1,15 +1,16 @@
+import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { GetGrnWebResponseSchema } from './get-grn.web.response.dto';
+import { GetGrnWebResponseDto } from './get-grn.web.response.dto';
 
-export const ListGrnsWebResponseSchema = z.object({
-  items: z.array(GetGrnWebResponseSchema),
+const listGrnsWebSchema = z.object({
+  items: z.array(z.any()),
   page: z.number(),
   pageSize: z.number(),
   total: z.number(),
   totalPages: z.number(),
 });
 
-// @ts-expect-error ZodSchema.deviceItem augmentation
-ListGrnsWebResponseSchema.deviceItem = GetGrnWebResponseSchema;
-
-export type ListGrnsWebResponse = z.infer<typeof ListGrnsWebResponseSchema>;
+export class ListGrnsWebResponseDto extends createZodDto(listGrnsWebSchema) {}
+// @ts-expect-error deviceItem metadata
+ListGrnsWebResponseDto.deviceItem = GetGrnWebResponseDto;
+export type ListGrnsWebResponse = InstanceType<typeof ListGrnsWebResponseDto>;

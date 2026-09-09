@@ -1,6 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class IdResponse {
-  @ApiProperty({ example: '8b3b9f9e-...' })
-  id!: string;
-}
+const idSchema = z.object({
+  id: z.string(),
+});
+
+export class IdResponseDto extends createZodDto(idSchema) {}
+export type IdResponse = InstanceType<typeof IdResponseDto>;

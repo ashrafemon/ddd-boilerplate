@@ -23,19 +23,19 @@ import { AddLineDto } from './requests/add-purchase-order-line.request.dto';
 import { PurchaseOrderQueryDto } from './requests/query-purchase-orders.request.dto';
 import { RejectPurchaseOrderDto } from './requests/reject-purchase-order.request.dto';
 import {
-  GetPurchaseOrderMobileResponseSchema,
+  GetPurchaseOrderMobileResponseDto,
   type GetPurchaseOrderMobileResponse,
 } from './responses/get-purchase-order.mobile.response.dto';
 import {
-  GetPurchaseOrderWebResponseSchema,
+  GetPurchaseOrderWebResponseDto,
   type GetPurchaseOrderWebResponse,
 } from './responses/get-purchase-order.web.response.dto';
 import {
-  ListPurchaseOrdersMobileResponseSchema,
+  ListPurchaseOrdersMobileResponseDto,
   type ListPurchaseOrdersMobileResponse,
 } from './responses/list-purchase-orders.mobile.response.dto';
 import {
-  ListPurchaseOrdersWebResponseSchema,
+  ListPurchaseOrdersWebResponseDto,
   type ListPurchaseOrdersWebResponse,
 } from './responses/list-purchase-orders.web.response.dto';
 import { IdResponse } from './responses/id.response.dto';
@@ -68,7 +68,7 @@ export class PurchaseOrderController {
 
   @Get()
   @ApiOperation({ summary: 'List purchase orders' })
-  @DeviceResponse(ListPurchaseOrdersMobileResponseSchema, ListPurchaseOrdersWebResponseSchema)
+  @DeviceResponse(ListPurchaseOrdersMobileResponseDto, ListPurchaseOrdersWebResponseDto)
   async list(
     @Query() query: PurchaseOrderQueryDto,
   ): Promise<ApiResponse<PurchaseOrderListResponse>> {
@@ -82,7 +82,7 @@ export class PurchaseOrderController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a purchase order by id' })
-  @DeviceResponse(GetPurchaseOrderMobileResponseSchema, GetPurchaseOrderWebResponseSchema)
+  @DeviceResponse(GetPurchaseOrderMobileResponseDto, GetPurchaseOrderWebResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<PurchaseOrderGetResponse>> {
     const purchaseOrder = await this.getPurchaseOrderUseCase.execute(id);
     if (!purchaseOrder) {

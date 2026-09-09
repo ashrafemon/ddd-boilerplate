@@ -1,13 +1,14 @@
+import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-export const PurchaseOrderLineWebResponseSchema = z.object({
+const purchaseOrderLineWebSchema = z.object({
   productId: z.string(),
   quantity: z.number(),
   unitPrice: z.number(),
   total: z.number(),
 });
 
-export const GetPurchaseOrderWebResponseSchema = z.object({
+const getPurchaseOrderWebSchema = z.object({
   id: z.string(),
   orderNumber: z.string(),
   vendorId: z.string(),
@@ -15,9 +16,10 @@ export const GetPurchaseOrderWebResponseSchema = z.object({
   currency: z.string(),
   subtotal: z.number(),
   total: z.number(),
-  lines: z.array(PurchaseOrderLineWebResponseSchema),
+  lines: z.array(purchaseOrderLineWebSchema),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
 
-export type GetPurchaseOrderWebResponse = z.infer<typeof GetPurchaseOrderWebResponseSchema>;
+export class GetPurchaseOrderWebResponseDto extends createZodDto(getPurchaseOrderWebSchema) {}
+export type GetPurchaseOrderWebResponse = InstanceType<typeof GetPurchaseOrderWebResponseDto>;

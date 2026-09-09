@@ -1,9 +1,13 @@
+import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-export const CreatePurchaseOrderMobileResponseSchema = z.object({
+const createPurchaseOrderMobileSchema = z.object({
   id: z.string(),
 });
 
-export type CreatePurchaseOrderMobileResponse = z.infer<
-  typeof CreatePurchaseOrderMobileResponseSchema
+export class CreatePurchaseOrderMobileResponseDto extends createZodDto(
+  createPurchaseOrderMobileSchema,
+) {}
+export type CreatePurchaseOrderMobileResponse = InstanceType<
+  typeof CreatePurchaseOrderMobileResponseDto
 >;

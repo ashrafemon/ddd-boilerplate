@@ -1,0 +1,45 @@
+// GoodReceiptNote aggregate persistence model. Owns its lines; references
+// purchase orders and vendors only by id (aggregate boundary).
+model GoodReceiptNote {
+  id              String       @id @default(uuid()) @db.Uuid
+  grnNumber       String       @unique
+  purchaseOrderId String       @db.Uuid
+  vendorId        String       @db.Uuid
+  status          GrnStatus    @default(DRAFT)
+  currency        String       @default("USD") @db.VarChar(3)
+  subtotal        Decimal      @default(0) @db.Decimal(18, 2)
+  total           Decimal      @default(0) @db.Decimal(18, 2)
+  receivedAt      DateTime
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  version         Int          @default(1)
+  lines           GrnLine[]
+
+  @@index([purchaseOrderId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("good_receipt_notes")
+}
+
+model GrnLine {
+  id                String          @id @default(uuid()) @db.Uuid
+  grnId             String          @db.Uuid
+  productId         String          @db.Uuid
+  orderedQuantity   Int
+  receivedQuantity  Int
+  unitPrice         Decimal         @db.Decimal(18, 2)
+  total             Decimal         @db.Decimal(18, 2)
+  goodReceiptNote   GoodReceiptNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
+
+  @@unique([grnId, productId])
+  @@index([productId])
+  @@map("grn_lines")
+}
+
+enum GrnStatus {
+  DRAFT
+  RECEIVED
+  COMPLETED
+  CANCELLED
+}

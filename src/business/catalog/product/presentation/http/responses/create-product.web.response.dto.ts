@@ -1,6 +1,7 @@
+import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-export const CreateProductWebResponseSchema = z.object({
+const createProductWebSchema = z.object({
   id: z.string(),
   sku: z.string(),
   name: z.string(),
@@ -12,4 +13,5 @@ export const CreateProductWebResponseSchema = z.object({
   updatedAt: z.date(),
 });
 
-export type CreateProductWebResponse = z.infer<typeof CreateProductWebResponseSchema>;
+export class CreateProductWebResponseDto extends createZodDto(createProductWebSchema) {}
+export type CreateProductWebResponse = InstanceType<typeof CreateProductWebResponseDto>;

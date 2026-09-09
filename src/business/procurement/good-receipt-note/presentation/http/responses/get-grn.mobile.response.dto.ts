@@ -1,6 +1,7 @@
+import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-export const GetGrnMobileResponseSchema = z.object({
+const getGrnMobileSchema = z.object({
   id: z.string(),
   grnNumber: z.string(),
   status: z.string(),
@@ -8,4 +9,5 @@ export const GetGrnMobileResponseSchema = z.object({
   lines: z.array(z.never()),
 });
 
-export type GetGrnMobileResponse = z.infer<typeof GetGrnMobileResponseSchema>;
+export class GetGrnMobileResponseDto extends createZodDto(getGrnMobileSchema) {}
+export type GetGrnMobileResponse = InstanceType<typeof GetGrnMobileResponseDto>;

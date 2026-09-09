@@ -24,10 +24,10 @@ import { UpdateProductDto } from './requests/update-product.request.dto';
 import { DeviceContext } from '@shared-kernel/decorators/device-context.decorator';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
-import { GetProductMobileResponseSchema } from './responses/get-product.mobile.response.dto';
-import { GetProductWebResponseSchema } from './responses/get-product.web.response.dto';
-import { ListProductsMobileResponseSchema } from './responses/list-products.mobile.response.dto';
-import { ListProductsWebResponseSchema } from './responses/list-products.web.response.dto';
+import { GetProductMobileResponseDto } from './responses/get-product.mobile.response.dto';
+import { GetProductWebResponseDto } from './responses/get-product.web.response.dto';
+import { ListProductsMobileResponseDto } from './responses/list-products.mobile.response.dto';
+import { ListProductsWebResponseDto } from './responses/list-products.web.response.dto';
 import { IdResponse } from './responses/id.response.dto';
 
 @ApiTags('products')
@@ -53,7 +53,7 @@ export class ProductController {
 
   @Get()
   @ApiOperation({ summary: 'List products' })
-  @DeviceResponse(ListProductsMobileResponseSchema, ListProductsWebResponseSchema)
+  @DeviceResponse(ListProductsMobileResponseDto, ListProductsWebResponseDto)
   async list(@Query() query: ProductQueryDto): Promise<ApiResponse<unknown>> {
     const pageQuery: PageQuery = normalizePageQuery(query);
     const result = await this.listProductsUseCase.execute(pageQuery);
@@ -62,7 +62,7 @@ export class ProductController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a product by id' })
-  @DeviceResponse(GetProductMobileResponseSchema, GetProductWebResponseSchema)
+  @DeviceResponse(GetProductMobileResponseDto, GetProductWebResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     const product = await this.getProductUseCase.execute(id);
     if (!product) {

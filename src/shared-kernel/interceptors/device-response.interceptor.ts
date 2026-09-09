@@ -36,9 +36,9 @@ export class DeviceResponseInterceptor implements NestInterceptor {
         const device = this.cls.get<{ type: DeviceType }>('deviceContext') ?? {
           type: DeviceType.WEB,
         };
-        const schema = device.type === DeviceType.MOBILE ? mobile : web;
+        const dtoClass = device.type === DeviceType.MOBILE ? mobile : web;
 
-        if (!schema) {
+        if (!dtoClass) {
           return response;
         }
 
@@ -47,7 +47,7 @@ export class DeviceResponseInterceptor implements NestInterceptor {
         if (data && typeof data === 'object') {
           return {
             ...rest,
-            data: this.mapToDto(data, schema),
+            data: this.mapToDto(data, dtoClass),
           };
         }
 
@@ -56,14 +56,20 @@ export class DeviceResponseInterceptor implements NestInterceptor {
     );
   }
 
-  private mapToDto(data: unknown, schema: ZodSchema & { deviceItem?: ZodSchema }): unknown {
+  private mapToDto(data: unknown, dtoClass: new () => unknown): unknown {
+    const schema = (dtoClass as unknown as { schema?: ZodSchema }).schema ?? dtoClass;
+    const itemClass = (dtoClass as unknown as { deviceItem?: new () => unknown }).deviceItem;
+    const itemSchema = itemClass
+      ? ((itemClass as unknown as { schema?: ZodSchema }).schema ?? itemClass)
+      : undefined;
+
     if (Array.isArray(data)) {
-      const itemSchema = schema.deviceItem ?? schema;
-      return data.map(item => itemSchema.parse(item));
+      const parseSchema = itemSchema ?? schema;
+      return data.map(item => (parseSchema as ZodSchema).parse(item));
     }
 
     if (data && typeof data === 'object' && !(data instanceof Date)) {
-      return schema.parse(data);
+      return (schema as ZodSchema).parse(data);
     }
 
     return data;
