@@ -1,5 +1,10 @@
 import { OrderableVendorPort } from '@business/procurement/purchase-order/application/outbound-ports/vendor-query.port';
-import { Module } from '@nestjs/common';
+import { Module, OnApplicationBootstrap } from '@nestjs/common';
+import { ImportHandlerRegistry } from '@platform/import/import-handler.registry';
+import {
+  VendorImportHandler,
+  VENDOR_IMPORT_DESCRIPTOR,
+} from './infrastructure/adapters/platform/vendor-import.adapter';
 import { PlatformModule } from '@platform/platform.module';
 import { VendorForPurchaseFacade } from './application/facades/vendor-for-purchase.facade';
 import { OrderableVendorQueryAdapter } from './application/facades/orderable-vendor-query.adapter';
@@ -29,6 +34,7 @@ import './domain/events/vendor.registry';
   imports: [PlatformModule],
   controllers: [VendorController],
   providers: [
+    VendorImportHandler,
     CreateVendorUseCase,
     UpdateVendorUseCase,
     VendorStatusUseCase,
@@ -56,4 +62,14 @@ import './domain/events/vendor.registry';
     OrderableVendorPort,
   ],
 })
-export class VendorModule {}
+export class VendorModule implements OnApplicationBootstrap {
+  constructor(
+    private readonly importHandlers: ImportHandlerRegistry,
+    private readonly vendorImportHandler: VendorImportHandler,
+  ) {}
+
+  /** Opt-in: register this entity's import handler directly on the platform registry. */
+  onApplicationBootstrap(): void {
+    this.importHandlers.register('vendor', VENDOR_IMPORT_DESCRIPTOR, this.vendorImportHandler);
+  }
+}

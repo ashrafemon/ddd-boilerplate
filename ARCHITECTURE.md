@@ -17,8 +17,8 @@ Key pillars:
 - **In-process event bus + integration event routing** — domain events drive local reactions;
   a routing policy decides which broker(s) receive each event.
 - **Module-to-module contracts** — aggregates talk to each other through `public/` port
-  contracts implemented by facades, resolved through the Nest container
-  (`ModulePortResolver`), never by importing another module's internals.
+  contracts implemented by facades, injected **directly** through the Nest container,
+  never by importing another module's internals.
 - **Device-aware responses** — one controller, two response shapes (`web` full payload,
   `mobile` minimal payload) selected by the `x-device-type` header and validated with Zod.
 - **Architecture enforced by ESLint** (`no-restricted-imports` in `eslint.config.mjs`).
@@ -62,14 +62,16 @@ src/
 ├── infrastructure/          # third-party client init ONLY (Prisma, brokers, cache, AWS, CLS)
 ├── platform/                # services built on those clients, exposed as ports
 │                            # (outbox, events, messaging, database, context, cache, audit,
-│                            #  numbering, configuration, notification, observability, storage)
+│                            #  numbering, configuration, notification, observability, storage,
+│                            #  condition-engine, scheduler, recurring, batch-operation, import)
 ├── generated/               # Prisma-generated client (DO NOT EDIT; `@prisma/client` alias)
 └── business/
     ├── shared-business/     # framework-independent domain primitives + registries
     ├── catalog/product/                 # Product aggregate      (context: catalog)
     ├── party/vendor/                    # Vendor aggregate       (context: party)
     ├── procurement/purchase-order/      # PurchaseOrder aggregate (context: procurement)
-    └── procurement/good-receipt-note/   # GoodReceiptNote aggregate (context: procurement)
+    ├── procurement/good-receipt-note/   # GoodReceiptNote aggregate (context: procurement)
+    └── sales/invoice/                   # Invoice aggregate       (context: sales)
 ```
 
 Module aliases (see `tsconfig.json` + Jest `moduleNameMapper` in `package.json`):
@@ -108,6 +110,11 @@ The only place that reads `process.env`. Each concern is a typed `registerAs` bl
 - `outbox.config.ts` — poll interval, batch size, max attempts, retry backoff, cleanup age
 - `notification.config.ts` — SNS (topic ARN/region) + SES (from address/region)
 - `observability.config.ts` — Sentry DSN/traces sample rate, Loki URL
+- `scheduler.config.ts` — poll interval, batch size, lock TTL, reconciliation interval,
+  worker concurrency, job attempts (platform/scheduler only)
+- `batch-operation.config.ts` — max records per job, sync threshold, chunk size, worker
+  concurrency, chunk attempts, reconciliation window, result-snapshot cap
+- `import.config.ts` — file/row limits, chunk sizes, lock TTL, retention, preview, build SHA
 
 `ConfigService` (`config/config.service.ts`) is a **typed facade** over Nest's
 `ConfigService`: adapters use `getPostgres()`, `getRabbitMQ()`, `getOutbox()`, ... and never
@@ -174,10 +181,10 @@ dependency stays visible in module metadata. See [§9](#9-platform-layer).
 ### business/
 
 `shared-business/` holds framework-independent primitives (see [§7](#7-domains--aggregates)).
-Concrete aggregates live under bounded-context folders (`catalog`, `party`, `procurement`).
-Each context folder has a thin composing module (`CatalogModule`, `PartyModule`,
-`ProcurementModule`), aggregated by `BusinessModule`. `BusinessModule` and everything below
-it may never import `@infrastructure`.
+Concrete aggregates live under bounded-context folders (`catalog`, `party`, `procurement`,
+`sales`). Each context folder has a thin composing module (`CatalogModule`, `PartyModule`,
+`ProcurementModule`, `SalesModule`), aggregated by `BusinessModule`. `BusinessModule` and
+everything below it may never import `@infrastructure`.
 
 ---
 
@@ -250,8 +257,7 @@ flowchart TD
     IP --> OA[OutboxAdapter] --> OWP[OutboxWriterPort platform]
     UC --> CMDREPO[Command Repository Port] --> PRISMACMD[Prisma command repo<br/>TransactionHost]
     QUC[Query Use Case] --> QREPO[Query Port] --> PRISMAQRY[Prisma query repo<br/>PrismaReadPort]
-    OUTBOUND --> RESOLVER[ModulePortResolver<br/>(ModuleRef strict:false)]
-    RESOLVER --> FACADE[Producer module facade] --> QUC
+    OUTBOUND --> OA2[Consumer adapter] --> FACADE[Producer module facade] --> QUC
     PRISMACMD --> DB[(PostgreSQL)]
     PRISMAQRY --> DB
     OWP --> DB
@@ -325,7 +331,7 @@ export class ProductModule {}
 ```
 
 Cross-cutting **platform ports** business code injects (never the concrete services):
-`OutboxWriterPort`, `ModulePortResolver`, `RequestContextPort`, `CompanyConfigPort`
+`OutboxWriterPort`, `RequestContextPort`, `CompanyConfigPort`
 (platform), `NumberingPort`, `AuditPort`, `NotificationDispatchPort`, `CachePort`,
 `FileStoragePort`, `LoggerPort`/`MetricsPort`/`ErrorTrackingPort`, `InProcessEventBus`,
 `MessageRoutingPolicy`, `PrismaReadPort`, plus the broker publisher tokens
@@ -351,13 +357,12 @@ Modules exchange **queries through contracts**, in three layers:
 2. **Outbound port (consumer-owned)** — the consuming module declares the port it needs in
    `application/outbound-ports/` (typed against the producer's contract shape) and binds an
    adapter in `infrastructure/adapters/module/` that injects the producer's public port.
-3. **Runtime resolution** — command use cases resolve the outbound port lazily through
-   `ModulePortResolver` (`NestModulePortResolver` over `ModuleRef.get(token, {strict:false})`):
+3. **Direct injection** — command use cases inject the outbound port token in their
+   constructor; Nest resolves the bound adapter at instantiation time (the consuming
+   module `imports` the producer module so the public port is resolvable):
 
 ```ts
-private get vendorQueryPort(): OrderableVendorPort {
-  return this.portResolver.resolvePort<OrderableVendorPort>(OrderableVendorPort);
-}
+constructor(private readonly vendorQueryPort: OrderableVendorPort) {}
 ```
 
 Current wiring:
@@ -380,13 +385,10 @@ another module's `domain`/`usecases`/`infrastructure`.
 ```mermaid
 sequenceDiagram
     participant PO as CreatePurchaseOrderUseCase
-    participant RES as ModulePortResolver (ModuleRef)
     participant OA as OrderableVendorAdapter (PO infra)
     participant VA as OrderableVendorPort binding
     participant UC as GetOrderableVendorUseCase
     participant QR as PrismaVendorQueryRepository
-    PO->>RES: resolvePort(OrderableVendorPort)
-    RES-->>PO: adapter instance
     PO->>OA: getOrderableVendor(id)
     OA->>UC: execute(id)
     UC->>QR: findOrderableById (PrismaReadPort)
@@ -586,9 +588,8 @@ platform/
 ├── messaging/       MessagingModule — binds RabbitMqPublisher/KafkaPublisher/SqsPublisher
 │                    tokens to MessagePublisher adapters over the infra clients
 ├── database/        DatabaseModule — PrismaReadPort (backed by PrismaReadService)
-├── context/         ContextModule — ClsRequestContextService (RequestContextPort),
-│                    NestModulePortResolver (ModulePortResolver); ports also define
-│                    RequestContext, Clock/SystemClock, UnitOfWork
+├── context/         ContextModule — ClsRequestContextService (RequestContextPort);
+│                    ports also define RequestContext, Clock/SystemClock, UnitOfWork
 ├── cache/           CacheModule — Redis or Memcached CachePort adapter, chosen by the same
 │                    resolveCacheDriver() the infrastructure layer uses (exactly one client)
 ├── configuration/   ConfigurationModule — PrismaCompanyConfigAdapter (CompanyConfigPort),
@@ -602,14 +603,66 @@ platform/
 ├── observability/   ObservabilityModule — ConsoleLoggerAdapter (LoggerPort),
 │                    PrometheusMetricsAdapter (MetricsPort),
 │                    SentryErrorTrackingAdapter (ErrorTrackingPort, self-disabling)
-└── storage/         StorageModule — S3FileStorageAdapter (FileStoragePort:
-                     upload/download/delete/metadata/presigned URL)
+├── storage/         StorageModule — S3FileStorageAdapter (FileStoragePort:
+│                    upload/download/delete/metadata/presigned URL)
+├── condition-engine/ ConditionEngineModule — ConditionEvaluationService (ConditionEvaluator)
+│                    + FieldResolverRegistry; generic AND/OR rule gate; data-owning modules
+│                    register FieldResolvers (opt-in, never imported here)
+├── scheduler/       SchedulerModule — DB-backed ScheduledJob table polled by SchedulerTicker,
+│                    BullMQ async execution, RedisDistributedLockAdapter, per-jobType fire
+│                    handlers via ScheduledJobHandlerRegistry, RabbitMqSchedulerEventPublisher;
+│                    inbound SchedulerPort facade + 9 granular ports; HTTP /scheduled-jobs
+├── recurring/       RecurringModule — RecurringTemplate/Execution (generic TIME+EVENT trigger
+│                    model), RecurringGenerationHandler (plugs into scheduler),
+│                    RecurringGeneratorRegistry, DomainEventDispatcher; HTTP /recurring-templates
+├── batch-operation/ BatchOperationModule — Sync/Async bulk transitions, job+row tables,
+│                    BatchOperationHandlerRegistry (aggregate handlers opt in from their own
+│                    module), BullMQ chunk fan-out, reconciliation cron; HTTP /batch-operations
+└── import/          ImportModule — upload→parse→mapping→validation→execution pipeline over
+                     S3 storage objects, BullMQ fan-out, ImportHandlerRegistry (entities opt in
+                     from their own module), xlsx/CSV parsing, reconciliation; HTTP /import
 ```
 
 Business code injects the **port abstractions** and never imports concrete platform services
 or infrastructure clients.
 
----
+### 9.1 Opt-in registration (business → platform, dependency points inward)
+
+The scheduler, recurring, batch-operation and import services each own a **registry**
+(`ScheduledJobHandlerRegistry`, `RecurringGeneratorRegistry`, `BatchOperationHandlerRegistry`,
+`ImportHandlerRegistry`). A platform service never imports a business module — instead the
+**owning module** injects the registry (and its own handler) directly and calls
+`register(...)` in `onApplicationBootstrap`, once the whole container is built. Duplicates /
+supportedOperations mismatches throw at boot. The registry classes are exported through each
+platform sub-module and re-exported by `PlatformModule`, so any module importing
+`PlatformModule` can inject them without a `ModuleRef` lookup.
+
+```ts
+// procurement/purchase-order.module.ts
+@Module({
+  imports: [PlatformModule, ProductModule, VendorModule],
+  providers: [PurchaseOrderBatchOperationAdapter, /* ... */],
+})
+export class PurchaseOrderModule implements OnApplicationBootstrap {
+  constructor(
+    private readonly batchHandlers: BatchOperationHandlerRegistry,
+    private readonly batchOperationHandler: PurchaseOrderBatchOperationAdapter,
+  ) {}
+
+  onApplicationBootstrap(): void {
+    this.batchHandlers.register(
+      'PurchaseOrder',
+      ['submit', 'approve', 'reject', 'cancel'],
+      this.batchOperationHandler,
+    );
+  }
+}
+
+// platform/recurring/recurring.module.ts — Recurring plugs into the scheduler the same way
+onApplicationBootstrap(): void {
+  this.scheduledJobHandlers.register('Recurring', this.generationHandler);
+}
+```
 
 ## 10. Infrastructure Layer
 
@@ -668,9 +721,16 @@ persistence stays encapsulated with it.
 | `CompanyConfig` | `company_configs` | unique `companyId`, default currency, auto-approve threshold |
 | `NumberSequence` | `number_sequences` | unique `key`, BigInt `currentValue`, prefix/padding/step |
 | `AuditLog` | `audit_logs` | action/entity/actor, tenant/org/request/correlation ids |
+| `Invoice` | `invoices` | unique `invoiceNo`, `customerId`, `status` enum, `lines` JSON, `version` (sales demo) |
+| `ScheduledJob` | `scheduled_jobs` | jobType/scope/scheduleMode, `nextRunAt`, `status`, `version`, `lockedUntil/By` |
+| `ScheduledJobDispatchLog` / `ScheduledJobEditLog` | `scheduled_job_dispatch_log` / `scheduled_job_edit_log` | dispatch outcomes + cron/nextRun edits |
+| `RecurringTemplate` / `RecurringExecution` | `recurring_templates` / `recurring_executions` | TIME+EVENT trigger model; execution unique on `(templateId, triggerKey)` = idempotency |
+| `BatchOperationJob` / `BatchOperationJobRow` | `batch_operation_jobs` / `batch_operation_job_rows` | header counters + per-row claim/status/result_snapshot |
+| `StorageObject` / `ImportJob` / `ImportJobRow` | `storage_objects` / `import_jobs` / `import_job_rows` | upload + job (descriptor snapshot, statusHistory) + row outcomes |
 
 All money columns are `Decimal(18,2)`; domain converts through `Money` (minor units).
-Migrations: `init`, `add_platform_numbering_audit`, `add_company_config` under
+Migrations: `init`, `add_platform_numbering_audit`, `add_company_config`,
+`add_platform_services_and_invoice` (scheduler/recurring/batch-operation/import + invoice) under
 `prisma/migrations/`.
 
 - **Command side** (`*CommandRepository` impls) injects `TransactionHost<TransactionalAdapterPrisma>`
@@ -729,6 +789,11 @@ call use case → wrap `{ data, message }`.
 | vendors | `POST /vendors`, `GET /vendors` (paged), `GET /vendors/:id`, `PATCH /vendors/:id`, `PATCH /vendors/:id/{activate,deactivate,block}` |
 | purchase-orders | `POST /purchase-orders`, `GET /purchase-orders` (paged), `GET /purchase-orders/:id`, `POST /purchase-orders/:id/lines`, `DELETE /purchase-orders/:id/lines/:productId`, `PATCH /purchase-orders/:id/{submit,approve,reject,cancel,complete}` |
 | grn | `POST /grn`, `GET /grn` (paged), `GET /grn/:id`, `POST /grn/:id/lines`, `PATCH /grn/:id/{receive,complete}` |
+| invoices | `POST /invoices`, `GET /invoices/:id`, `POST /invoices/:id/post` (sales demo) |
+| scheduler | `GET /scheduled-jobs` (+`/:id`, `/:id/dispatch-log`), `PATCH /scheduled-jobs/:id`, `POST /scheduled-jobs/:id/cancel`, `GET /scheduler/health` |
+| recurring | `POST /recurring-templates`, `GET /recurring-templates` (+`/:id`), `POST /recurring-templates/:id/{pause,resume,cancel}` |
+| batch-operations | `GET /batch-operations/_registry`, `POST /batch-operations/validate`, `POST /batch-operations` (Sync 200 / Async 202), `GET /batch-operations` (+`/:id`, `/:id/rows`), `POST /batch-operations/:id/cancel` |
+| import | `GET /import/_registry`, `POST /import/uploads`, `POST /import/jobs`, `GET /import/jobs` (+`/:id`, `/:id/preview`, `/:id/report`), `PATCH /import/jobs/:id/mapping`, `POST /import/jobs/:id/{execute,cancel}`, `GET /import/:entityKey/init` |
 
 ---
 
@@ -801,7 +866,7 @@ call use case → wrap `{ data, message }`.
    your own query use cases; export the port from your module.
 4. **Infrastructure** — `infrastructure/persistence/` (Prisma command repo on
    `TransactionHost`, query repo on `PrismaReadPort`, mapper),
-   `infrastructure/adapters/platform/` (outbox + company-config adapters).
+   `infrastructure/adapters/platform/` (outbox + company-config + numbering adapters; and, for opted-in aggregates, the batch/import/recurring handler adapters).
 5. **Presentation** — `presentation/http/` controller (thin) + Zod request DTOs +
    web/mobile response DTOs wired through `@DeviceResponse`.
 6. **Module** — `<name>.module.ts`: `imports: [PlatformModule]`, bind every port to its
@@ -818,8 +883,8 @@ call use case → wrap `{ data, message }`.
 
 Symmetry rule: if your module needs data from another module, define an **outbound port** in
 `application/outbound-ports/` typed against the producer's `public/` contract, bind a
-consumer-side adapter in `infrastructure/adapters/module/`, and resolve it via
-`ModulePortResolver` — never import the other module's internals.
+consumer-side adapter in `infrastructure/adapters/module/`, and inject the port directly —
+never import the other module's internals.
 
 ---
 

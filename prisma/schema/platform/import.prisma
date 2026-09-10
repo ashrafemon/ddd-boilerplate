@@ -1,0 +1,136 @@
+// Import Service persistence — storage_objects (shared) + import_jobs + import_job_rows.
+// Descriptors are snapshotted onto jobs (jsonb); no descriptor table.
+// UNIQUE (importJobId, rowNumber) is the execution claim / idempotency key.
+// No FK from entityId to domain tables — entityKey is opaque via registry.
+
+model StorageObject {
+  id          String              @id @default(uuid()) @db.Uuid
+  tenantId    String?
+  storageKey  String
+  purpose     StorageObjectPurpose
+  contentType String?
+  sizeBytes   Int?
+  checksum    String?
+  scanStatus  StorageScanStatus   @default(PENDING)
+  expiresAt   DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  importJobsAsSource      ImportJob[] @relation("ImportSourceObject")
+  importJobsAsErrorReport ImportJob[] @relation("ImportErrorReportObject")
+
+  @@unique([storageKey])
+  @@index([tenantId, purpose, createdAt(sort: Desc)])
+  @@index([scanStatus, createdAt])
+  @@map("storage_objects")
+}
+
+enum StorageObjectPurpose {
+  IMPORT_SOURCE
+  IMPORT_ERROR_REPORT
+  EXPORT_RESULT
+  OTHER
+}
+
+enum StorageScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  SKIPPED
+}
+
+model ImportJob {
+  id                        String          @id @default(uuid()) @db.Uuid
+  tenantId                  String?
+  jobNo                     String
+  entityKey                 String
+  status                    ImportJobStatus @default(PENDING_UPLOAD)
+  descriptorVersion         Int
+  descriptorSnapshot        Json
+  columnMapping             Json?
+  statusHistory             Json            @default("[]")
+  totalRows                 Int             @default(0)
+  validRows                 Int             @default(0)
+  invalidRows               Int             @default(0)
+  appliedRows               Int             @default(0)
+  failedRows                Int             @default(0)
+  cancelRequested           Boolean         @default(false)
+  sourceStorageObjectId     String?         @db.Uuid
+  errorReportStorageObjectId String?        @db.Uuid
+  options                   Json?
+  requestedBy               String?
+  traceId                   String?
+  buildSha                  String?
+  heartbeatAt               DateTime?
+  lockedUntil               DateTime?
+  lockedBy                  String?
+  version                   Int             @default(0)
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+  completedAt               DateTime?
+
+  sourceStorageObject      StorageObject?  @relation("ImportSourceObject", fields: [sourceStorageObjectId], references: [id], onDelete: Restrict)
+  errorReportStorageObject StorageObject?  @relation("ImportErrorReportObject", fields: [errorReportStorageObjectId], references: [id], onDelete: SetNull)
+  rows                     ImportJobRow[]
+
+  @@unique([tenantId, jobNo])
+  @@index([tenantId, status])
+  @@index([entityKey])
+  @@index([status, heartbeatAt])
+  @@map("import_jobs")
+}
+
+enum ImportJobStatus {
+  PENDING_UPLOAD
+  UPLOADED
+  PARSING
+  MAPPED
+  VALIDATING
+  VALIDATED
+  EXECUTING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+  FAILED
+  CANCELLED
+}
+
+model ImportJobRow {
+  id               String                    @id @default(uuid()) @db.Uuid
+  tenantId         String?
+  importJobId      String                    @db.Uuid
+  rowNumber        Int
+  rawPayload       Json?
+  mappedPayload    Json?
+  validationStatus ImportRowValidationStatus @default(PENDING)
+  executionStatus  ImportRowExecutionStatus  @default(PENDING)
+  validationErrors Json?
+  errorMessage     String?
+  entityId         String?
+  secondaryEntityIds Json?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  processedAt      DateTime?
+
+  job ImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+
+  @@unique([importJobId, rowNumber])
+  @@index([importJobId, validationStatus])
+  @@index([importJobId, executionStatus])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("import_job_rows")
+}
+
+enum ImportRowValidationStatus {
+  PENDING
+  VALID
+  INVALID
+  DUPLICATE
+}
+
+enum ImportRowExecutionStatus {
+  PENDING
+  PROCESSING
+  APPLIED
+  FAILED
+  SKIPPED
+}

@@ -9,7 +9,7 @@ import { ClsModule } from 'nestjs-cls';
  * Infrastructure context module — only CLS and transactional plugin setup.
  *
  * Initializes the nestjs-cls package (CLS store + transactional plugin).
- * The platform layer provides the RequestContextPort and ModulePortResolver
+ * The platform layer provides the RequestContextPort
  * implementations.
  */
 

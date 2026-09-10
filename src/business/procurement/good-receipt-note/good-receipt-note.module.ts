@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, OnApplicationBootstrap } from '@nestjs/common';
+import { BatchOperationHandlerRegistry } from '@platform/batch-operation/batch-operation-handler.registry';
 import { PlatformModule } from '@platform/platform.module';
 import { PurchaseOrderModule } from '@business/procurement/purchase-order/purchase-order.module';
 import { GrnForPurchaseOrderFacade } from './application/facades/grn-for-purchase-order.facade';
@@ -25,11 +26,13 @@ import { PrismaGrnQueryRepository } from './infrastructure/persistence/prisma-gr
 import { GrnController } from './presentation/http/grn.controller';
 import { GrnForPurchaseOrderPort } from '@business/procurement/good-receipt-note/public';
 import './domain/events/grn.registry';
+import { GrnBatchOperationAdapter } from './infrastructure/adapters/platform/grn-batch-operation.adapter';
 
 @Module({
   imports: [PlatformModule, PurchaseOrderModule],
   controllers: [GrnController],
   providers: [
+    GrnBatchOperationAdapter,
     CreateGrnUseCase,
     AddGrnLineUseCase,
     ReceiveGrnUseCase,
@@ -50,4 +53,18 @@ import './domain/events/grn.registry';
   ],
   exports: [GrnForPurchaseOrderPort],
 })
-export class GoodReceiptNoteModule {}
+export class GoodReceiptNoteModule implements OnApplicationBootstrap {
+  constructor(
+    private readonly batchHandlers: BatchOperationHandlerRegistry,
+    private readonly batchOperationHandler: GrnBatchOperationAdapter,
+  ) {}
+
+  /** Opt-in: register this aggregate's batch handler directly on the platform registry. */
+  onApplicationBootstrap(): void {
+    this.batchHandlers.register(
+      'GoodReceiptNote',
+      ['receive', 'complete'],
+      this.batchOperationHandler,
+    );
+  }
+}

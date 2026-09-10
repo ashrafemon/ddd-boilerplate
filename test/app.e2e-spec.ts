@@ -6,6 +6,14 @@ import { GetPurchasableProductUseCase } from './../src/business/catalog/product/
 import { GetOrderableVendorUseCase } from './../src/business/party/vendor/application/usecases/get-orderable-vendor.usecase';
 import { CreatePurchaseOrderUseCase } from './../src/business/procurement/purchase-order/application/usecases/create-purchase-order.usecase';
 import { OutboxWriterPort } from './../src/platform/outbox/ports/outbox-writer.port';
+import { SchedulerPort } from '../src/platform/scheduler/ports/scheduler.port';
+import { ScheduledJobHandlerRegistry } from '../src/platform/scheduler/scheduled-job-handler.registry';
+import { RecurringExecutionPort } from '../src/platform/recurring/ports/recurring-execution.port';
+import { RecurringGeneratorRegistry } from '../src/platform/recurring/recurring-generator.registry';
+import { ConditionEvaluator } from './../src/platform/condition-engine/ports/condition-evaluator.port';
+import { BatchOperationHandlerRegistry } from '../src/platform/batch-operation/batch-operation-handler.registry';
+import { ImportHandlerRegistry } from '../src/platform/import/import-handler.registry';
+import { GenerateRecurringInvoiceUseCase } from './../src/business/sales/invoice/application/usecases/generate-recurring-invoice.usecase';
 
 describe('App (e2e)', () => {
   let app: NestFastifyApplication;
@@ -25,6 +33,26 @@ describe('App (e2e)', () => {
     expect(app.get(GetOrderableVendorUseCase)).toBeDefined();
     expect(app.get(CreatePurchaseOrderUseCase)).toBeDefined();
     expect(app.get(OutboxWriterPort)).toBeDefined();
+  });
+
+  it('registers the ported platform services and their opt-in registries', () => {
+    expect(app.get(SchedulerPort)).toBeDefined();
+    expect(app.get(RecurringExecutionPort)).toBeDefined();
+    expect(app.get(ConditionEvaluator)).toBeDefined();
+    expect(app.get(GenerateRecurringInvoiceUseCase)).toBeDefined();
+
+    // opt-in registrations applied by the owning modules at bootstrap
+    expect(app.get(ScheduledJobHandlerRegistry).has('Recurring')).toBe(true);
+    expect(app.get(RecurringGeneratorRegistry)).toBeDefined();
+    expect(app.get(BatchOperationHandlerRegistry).health()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ aggregateType: 'PurchaseOrder' }),
+        expect.objectContaining({ aggregateType: 'GoodReceiptNote' }),
+      ]),
+    );
+    expect(app.get(ImportHandlerRegistry).health()).toEqual(
+      expect.arrayContaining([expect.objectContaining({ entityKey: 'vendor' })]),
+    );
   });
 
   it('returns a JSON error envelope for unknown routes', async () => {

@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, OnApplicationBootstrap } from '@nestjs/common';
+import { BatchOperationHandlerRegistry } from '@platform/batch-operation/batch-operation-handler.registry';
 import { PlatformModule } from '@platform/platform.module';
 import { ProductModule } from '@business/catalog/product/product.module';
 import { VendorModule } from '@business/party/vendor/vendor.module';
@@ -28,11 +29,13 @@ import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company
 import { PurchasableProductAdapter } from './infrastructure/adapters/module/purchasable-product.adapter';
 import { OrderableVendorAdapter } from './infrastructure/adapters/module/orderable-vendor.adapter';
 import './domain/events/purchase-order.registry';
+import { PurchaseOrderBatchOperationAdapter } from './infrastructure/adapters/platform/purchase-order-batch-operation.adapter';
 
 @Module({
   imports: [PlatformModule, ProductModule, VendorModule],
   controllers: [PurchaseOrderController],
   providers: [
+    PurchaseOrderBatchOperationAdapter,
     CreatePurchaseOrderUseCase,
     AddPurchaseOrderLineUseCase,
     RemovePurchaseOrderLineUseCase,
@@ -54,4 +57,18 @@ import './domain/events/purchase-order.registry';
   ],
   exports: [PurchaseOrderForGrnPort],
 })
-export class PurchaseOrderModule {}
+export class PurchaseOrderModule implements OnApplicationBootstrap {
+  constructor(
+    private readonly batchHandlers: BatchOperationHandlerRegistry,
+    private readonly batchOperationHandler: PurchaseOrderBatchOperationAdapter,
+  ) {}
+
+  /** Opt-in: register this aggregate's batch handler directly on the platform registry. */
+  onApplicationBootstrap(): void {
+    this.batchHandlers.register(
+      'PurchaseOrder',
+      ['submit', 'approve', 'reject', 'cancel'],
+      this.batchOperationHandler,
+    );
+  }
+}

@@ -29,7 +29,7 @@ import { ProductForPurchasePort } from '@business/catalog/product/public';
  * Product aggregate module. Controllers call use cases directly — no inbound
  * ports, no facades. ProductQueryAdapter implements PurchaseOrder's outbound
  * port contract in this module; the binding is exported so PurchaseOrder can
- * resolve it through the ModuleRef without importing this module.
+ * implement the public contract and inject its own use cases.
  */
 @Module({
   imports: [PlatformModule],

@@ -1,0 +1,24 @@
+// Invoice aggregate — minimal sales document for recurring-generation E2E tests.
+model Invoice {
+  id          String        @id @default(uuid()) @db.Uuid
+  invoiceNo   String        @unique
+  customerId  String        @db.Uuid
+  status      InvoiceStatus @default(DRAFT)
+  currency    String        @default("USD") @db.VarChar(3)
+  totalAmount Decimal       @default(0) @db.Decimal(18, 2)
+  lines       Json
+  postedAt    DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  version     Int           @default(0)
+
+  @@index([customerId, status])
+  @@index([status, createdAt])
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}

@@ -1,6 +1,5 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ModulePortResolver } from '@platform/context/ports/module-port-resolver.port';
 import { CreatePurchaseOrderRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
@@ -13,14 +12,10 @@ import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 export class CreatePurchaseOrderUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
-    private readonly portResolver: ModulePortResolver,
+    private readonly vendorQueryPort: OrderableVendorPort,
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
     private readonly companyConfig: CompanyConfigPort,
   ) {}
-
-  private get vendorQueryPort(): OrderableVendorPort {
-    return this.portResolver.resolvePort<OrderableVendorPort>(OrderableVendorPort);
-  }
 
   @Transactional()
   async execute(input: CreatePurchaseOrderRequest): Promise<PurchaseOrderId> {

@@ -1,0 +1,92 @@
+// Scheduler Service persistence — owned exclusively by platform/scheduler.
+// Producers never query these tables; they go through SchedulerPort / inbound ports.
+
+model ScheduledJob {
+  id             String                    @id @default(uuid()) @db.Uuid
+  tenantId       String?
+  jobType        String
+  scope          ScheduledJobScope         @default(AGGREGATE)
+  scheduleMode   ScheduledJobScheduleMode  @default(EXTERNAL)
+  cronExpression String?
+  aggregateType  String?
+  aggregateId    String?                   @db.Uuid
+  payload        Json?
+  nextRunAt      DateTime
+  lastRunAt      DateTime?
+  status         ScheduledJobStatus        @default(PENDING)
+  retryCount     Int                       @default(0)
+  version        Int                       @default(0)
+  lockedUntil    DateTime?
+  lockedBy       String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  dispatchLogs        ScheduledJobDispatchLog[]
+  editLogs            ScheduledJobEditLog[]
+  recurringExecutions RecurringExecution[]
+
+  @@index([jobType, status])
+  @@index([status, nextRunAt])
+  @@index([lockedUntil])
+  @@index([aggregateType, aggregateId])
+  @@index([tenantId])
+  @@map("scheduled_jobs")
+}
+
+enum ScheduledJobStatus {
+  PENDING
+  CLAIMED
+  RUNNING
+  FAILED
+  SUSPENDED
+  CANCELLED
+}
+
+enum ScheduledJobScope {
+  AGGREGATE
+  TENANT
+  PLATFORM
+}
+
+enum ScheduledJobScheduleMode {
+  CRON
+  EXTERNAL
+}
+
+model ScheduledJobDispatchLog {
+  id             String                      @id @default(uuid()) @db.Uuid
+  tenantId       String?
+  scheduledJobId String                      @db.Uuid
+  jobType        String
+  dispatchedAt   DateTime
+  completedAt    DateTime?
+  outcome        ScheduledJobDispatchOutcome
+  durationMs     Int?
+  errorMessage   String?                     @db.Text
+  idempotencyKey String                      @unique
+
+  scheduledJob ScheduledJob @relation(fields: [scheduledJobId], references: [id], onDelete: Cascade)
+
+  @@index([scheduledJobId, dispatchedAt(sort: Desc)])
+  @@index([jobType, outcome, dispatchedAt(sort: Desc)])
+  @@map("scheduled_job_dispatch_log")
+}
+
+enum ScheduledJobDispatchOutcome {
+  SUCCESS
+  FAILED
+  DEAD_LETTERED
+}
+
+model ScheduledJobEditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  scheduledJobId String   @db.Uuid
+  editedBy       String?
+  changedFields  Json
+  editedAt       DateTime @default(now())
+
+  scheduledJob ScheduledJob @relation(fields: [scheduledJobId], references: [id], onDelete: Cascade)
+
+  @@index([scheduledJobId, editedAt(sort: Desc)])
+  @@map("scheduled_job_edit_log")
+}

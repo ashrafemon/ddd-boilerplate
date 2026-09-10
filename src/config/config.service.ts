@@ -6,6 +6,9 @@ import { IKafkaConfig, IRabbitMQConfig, ISqsConfig } from './messaging.config';
 import { ISesConfig, ISnsConfig } from './notification.config';
 import { ILokiConfig, ISentryConfig } from './observability.config';
 import { IOutboxConfig } from './outbox.config';
+import { IBatchOperationConfig } from './batch-operation.config';
+import { IImportConfig } from './import.config';
+import { ISchedulerConfig } from './scheduler.config';
 import { ISecurityConfig, IThrottlerConfig } from './security.config';
 import { IS3Config, IStorageDriver } from './storage.config';
 
@@ -147,6 +150,56 @@ export class ConfigService {
       maxAttempts: 10,
       retryBackoffBaseMs: 1_000,
       cleanupOlderThanHours: 24,
+    });
+  }
+
+  /** Scheduler Environment Variables */
+  public getScheduler(): ISchedulerConfig {
+    return this.config.get<ISchedulerConfig>('scheduler', {
+      pollIntervalMs: 30_000,
+      batchSize: 20,
+      lockTtlMs: 300_000,
+      reconciliationIntervalMs: 300_000,
+      workerConcurrency: 5,
+      jobAttempts: 3,
+    });
+  }
+
+  /** Batch Operation Environment Variables */
+  public getBatchOperation(): IBatchOperationConfig {
+    return this.config.get<IBatchOperationConfig>('batchOperation', {
+      maxRecordsPerJob: 5_000,
+      syncThreshold: 20,
+      chunkSize: 50,
+      workerConcurrency: 5,
+      chunkAttempts: 3,
+      reconciliationWindowMs: 300_000,
+      resultSnapshotMaxBytes: 65_536,
+    });
+  }
+
+  /** Import Environment Variables */
+  public getImport(): IImportConfig {
+    return this.config.get<IImportConfig>('import', {
+      maxFileSizeBytes: 25 * 1024 * 1024,
+      maxRows: 50_000,
+      validationChunkSize: 500,
+      executionChunkSize: 200,
+      progressEveryNRows: 250,
+      progressEveryMs: 2_000,
+      lockTtlMs: 60_000,
+      lockRenewalMs: 15_000,
+      maxConcurrentJobsPerTenant: 2,
+      workerConcurrency: 5,
+      jobAttempts: 3,
+      reconciliationWindowMs: 300_000,
+      presignedUploadTtlSeconds: 900,
+      previewRows: 10,
+      previewTimeoutMs: 5_000,
+      sourceRetentionDays: 7,
+      rowRetentionDays: 90,
+      skipAvScan: true,
+      buildSha: 'dev',
     });
   }
 

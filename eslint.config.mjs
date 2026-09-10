@@ -20,6 +20,7 @@ const businessModules = [
   'party/vendor',
   'procurement/purchase-order',
   'procurement/good-receipt-note',
+  'sales/invoice',
 ];
 
 /** Paths that are private to one module and must not be reached from outside. */

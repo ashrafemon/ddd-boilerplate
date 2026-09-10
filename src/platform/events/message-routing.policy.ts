@@ -15,6 +15,7 @@ const FAN_OUT_EVENTS: Record<string, BrokerTargets> = {
   VendorCreated: ['rabbitmq', 'kafka', 'sqs'],
   PurchaseOrderCreated: ['rabbitmq', 'kafka', 'sqs'],
   GrnCreated: ['rabbitmq', 'kafka', 'sqs'],
+  InvoiceCreated: ['rabbitmq', 'kafka', 'sqs'],
 };
 
 export class DefaultMessageRoutingPolicy implements MessageRoutingPolicy {

@@ -2,14 +2,17 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import appConfig from './app.config';
 import authConfig from './auth.config';
+import batchOperationConfig from './batch-operation.config';
 import cacheConfig from './cache.config';
 import { envFileCandidates } from './env.util';
 import { ConfigService } from './config.service';
 import databaseConfig from './database.config';
+import importConfig from './import.config';
 import messagingConfig from './messaging.config';
 import notificationConfig from './notification.config';
 import observabilityConfig from './observability.config';
 import outboxConfig from './outbox.config';
+import schedulerConfig from './scheduler.config';
 import securityConfig from './security.config';
 import storageConfig from './storage.config';
 
@@ -30,6 +33,9 @@ import storageConfig from './storage.config';
     NestConfigModule.forFeature(outboxConfig),
     NestConfigModule.forFeature(notificationConfig),
     NestConfigModule.forFeature(observabilityConfig),
+    NestConfigModule.forFeature(schedulerConfig),
+    NestConfigModule.forFeature(batchOperationConfig),
+    NestConfigModule.forFeature(importConfig),
   ],
   providers: [ConfigService],
   exports: [ConfigService],

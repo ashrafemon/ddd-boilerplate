@@ -1,0 +1,118 @@
+// Recurring Service persistence models — generic trigger model (v2).
+//
+// ScheduledJob lives in scheduler.prisma (owned by platform/scheduler).
+// RecurringTemplate/RecurringExecution are owned by platform/recurring.
+// The unique constraint on (recurringTemplateId, triggerKey) below IS the
+// idempotency mechanism — never add a separate idempotency-key column.
+
+model RecurringTemplate {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  tenantId           String?
+  templateNo         String                  @unique
+  name               String
+  status             RecurringTemplateStatus @default(ACTIVE)
+  targetEntityType   String
+  targetEntityId     String?                 @db.Uuid
+  originDocumentType String?
+  originDocumentId   String?                 @db.Uuid
+  partyId            String?                 @db.Uuid
+  partyType          RecurringPartyType?
+  currency           String                  @default("USD") @db.VarChar(3)
+
+  // Generic trigger model — orthogonal to generationCondition below.
+  triggerType RecurringTriggerType
+  eventName   String?
+
+  // TIME-only fields, nullable — required iff triggerType = TIME (enforced
+  // by chk_recurring_templates_trigger_fields in the migration + app layer).
+  frequency    RecurringFrequency?
+  interval     Int?
+  startDate    DateTime?           @db.Date
+  endDate      DateTime?           @db.Date
+  nextRunDate  DateTime?           @db.Date
+  lastRunDate  DateTime?           @db.Date
+  timeZone     String              @default("UTC")
+
+  autoPost    Boolean @default(false)
+  autoEmail   Boolean @default(false)
+  autoApprove Boolean @default(false)
+
+  headerOverrides     Json?
+  generationCondition Json?
+  lines               Json
+
+  createdBy  String?
+  createdAt  DateTime  @default(now())
+  modifiedBy String?
+  modifiedAt DateTime?
+  isDeleted  Boolean   @default(false)
+
+  executions RecurringExecution[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, eventName, status])
+  @@map("recurring_templates")
+}
+
+enum RecurringTemplateStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  COMPLETED
+}
+
+enum RecurringTriggerType {
+  TIME
+  EVENT
+}
+
+enum RecurringFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum RecurringPartyType {
+  CUSTOMER
+  VENDOR
+  EMPLOYEE
+}
+
+model RecurringExecution {
+  id                  String  @id @default(uuid()) @db.Uuid
+  tenantId            String?
+  recurringTemplateId String  @db.Uuid
+  scheduleJobId       String? @db.Uuid
+
+  runDate       DateTime? @db.Date
+  sourceEventId String?   @db.Uuid
+  triggerKey    String
+
+  generatedDocumentType String
+  generatedDocumentId   String? @db.Uuid
+  generatedSnapshot     Json?
+  conditionEvaluation   Json?
+
+  status           RecurringExecutionStatus @default(IN_PROGRESS)
+  skipReason       String?
+  executionTimeMs  Int?
+  errorMessage     String?
+
+  createdAt DateTime @default(now())
+
+  recurringTemplate RecurringTemplate @relation(fields: [recurringTemplateId], references: [id], onDelete: Restrict)
+  scheduleJob       ScheduledJob?     @relation(fields: [scheduleJobId], references: [id], onDelete: SetNull)
+
+  @@unique([recurringTemplateId, triggerKey])
+  @@index([recurringTemplateId, createdAt(sort: Desc)])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@map("recurring_executions")
+}
+
+enum RecurringExecutionStatus {
+  IN_PROGRESS
+  SUCCESS
+  FAILED
+  SKIPPED
+}

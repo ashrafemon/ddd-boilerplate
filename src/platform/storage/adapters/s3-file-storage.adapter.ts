@@ -5,6 +5,7 @@ import {
   FileMetadata,
   FileStoragePort,
   FileUploadResult,
+  PresignedUpload,
 } from '@platform/storage/ports/file-storage.port';
 
 /**
@@ -66,5 +67,22 @@ export class S3FileStorageAdapter implements FileStoragePort {
       throw new Error('Presigned URLs are not supported by the configured storage disk');
     }
     return url;
+  }
+
+  public async createPresignedUpload(input: {
+    key: string;
+    expiresInSeconds: number;
+    maxBytes?: number;
+    contentTypes?: string[];
+  }): Promise<PresignedUpload> {
+    const url = await this.getPresignedUrl(input.key, input.expiresInSeconds);
+    return {
+      method: 'PUT',
+      url,
+      key: input.key,
+      expiresAt: new Date(Date.now() + input.expiresInSeconds * 1000),
+      maxBytes: input.maxBytes,
+      contentTypes: input.contentTypes,
+    };
   }
 }

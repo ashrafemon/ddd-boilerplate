@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ModulePortResolver } from '@platform/context/ports/module-port-resolver.port';
 import { CreateGrnRequest } from '../../domain/types/grn.types';
 import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GrnId } from '../../domain/value-objects/grn.vos';
@@ -13,14 +12,10 @@ import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 export class CreateGrnUseCase {
   constructor(
     private readonly grnRepository: GrnCommandRepository,
-    private readonly portResolver: ModulePortResolver,
+    private readonly purchaseOrderQueryPort: PurchaseOrderPort,
     private readonly integrationEvent: GrnIntegrationPort,
     private readonly companyConfig: CompanyConfigPort,
   ) {}
-
-  private get purchaseOrderQueryPort(): PurchaseOrderPort {
-    return this.portResolver.resolvePort<PurchaseOrderPort>(PurchaseOrderPort);
-  }
 
   @Transactional()
   async execute(input: CreateGrnRequest): Promise<GrnId> {

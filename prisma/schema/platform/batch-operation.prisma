@@ -1,0 +1,87 @@
+// Batch Operation Service persistence models.
+//
+// Two tables only: batch_operation_jobs (header) + batch_operation_job_rows
+// (one pre-created Pending row per selected record). No descriptor / template
+// table — the operation is fully described by (aggregateType, operationCode,
+// operationParams) on the job header. Both tables carry tenantId directly.
+//
+// Two separate guarantees:
+//   · UNIQUE (batchOperationJobId, entityId) — no duplicate row for a record.
+//   · UPDATE ... WHERE status='PENDING' (the claim) — no double-execution.
+// aggregateType / operationCode are opaque strings resolved via the
+// BatchOperationHandlerRegistry — never a DB-level FK to a domain table.
+
+model BatchOperationJob {
+  id               String  @id @default(uuid()) @db.Uuid
+  tenantId         String?
+  companyId        String?
+  branchId         String?
+  jobNo            String
+  aggregateType    String
+  operationCode    String
+  operationParams  Json?
+  mode             BatchOperationMode
+  status           BatchOperationJobStatus @default(PENDING)
+  totalRecords     Int     @default(0)
+  processedRecords Int     @default(0)
+  successRecords   Int     @default(0)
+  failedRecords    Int     @default(0)
+  skippedRecords   Int     @default(0)
+  cancelRequested  Boolean @default(false)
+  requestedBy      String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  rows BatchOperationJobRow[]
+
+  @@unique([tenantId, jobNo])
+  @@index([tenantId, status])
+  @@index([aggregateType])
+  @@map("batch_operation_jobs")
+}
+
+enum BatchOperationMode {
+  SYNC
+  ASYNC
+}
+
+enum BatchOperationJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+  FAILED
+  CANCELLED
+}
+
+model BatchOperationJobRow {
+  id                  String  @id @default(uuid()) @db.Uuid
+  tenantId            String?
+  batchOperationJobId String  @db.Uuid
+  entityId            String
+  status              BatchOperationRowStatus @default(PENDING)
+  skipReason          String?
+  errorMessage        String?
+  resultSnapshot      Json?
+  processingTimeMs    Int?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  processedAt         DateTime?
+
+  job BatchOperationJob @relation(fields: [batchOperationJobId], references: [id], onDelete: Cascade)
+
+  @@unique([batchOperationJobId, entityId])
+  @@index([batchOperationJobId, status])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@map("batch_operation_job_rows")
+}
+
+enum BatchOperationRowStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  SKIPPED
+}
