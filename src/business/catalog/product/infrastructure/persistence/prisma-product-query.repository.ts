@@ -1,5 +1,5 @@
 import { ProductQuery } from '@business/catalog/product/application/queries/product.query';
-import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.service';
+import { PrismaReadPort } from '@platform/database/ports/prisma-read.port';
 import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { ProductQueryRecord } from '../../domain/types/product.types';
@@ -7,7 +7,7 @@ import { PrismaProductMapper } from './prisma-product.mapper';
 
 @Injectable()
 export class PrismaProductQueryRepository extends ProductQuery {
-  constructor(private readonly prismaRead: PrismaReadService) {
+  constructor(private readonly prismaRead: PrismaReadPort) {
     super();
   }
 

@@ -1,17 +1,20 @@
 import { Module } from '@nestjs/common';
+import { ObservabilityModule } from '../observability/observability.module';
 import { EmailPort } from './ports/email.port';
 import { NotificationPort } from './ports/notification.port';
-import { SesService } from '@infrastructure/notification/ses/ses.service';
-import { SnsService } from '@infrastructure/notification/sns/sns.service';
+import { NotificationModule as InfraNotificationModule } from '@infrastructure/notification/notification.module';
 import { SesEmailAdapter } from './adapters/ses-email.adapter';
 import { SnsNotificationAdapter } from './adapters/sns-notification.adapter';
 import { NotificationDispatchService } from './notification-dispatch.service';
 import { NotificationDispatchPort } from './ports/notification.port';
 
+/**
+ * Platform notification module — binds the Email/Notification ports to the raw
+ * SES and SNS clients owned by the infrastructure layer.
+ */
 @Module({
+  imports: [InfraNotificationModule, ObservabilityModule],
   providers: [
-    SesService,
-    SnsService,
     SesEmailAdapter,
     SnsNotificationAdapter,
     NotificationDispatchService,

@@ -12,15 +12,15 @@ import { ResponseInterceptor } from './shared-kernel/interceptors/response.inter
 import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
 
 @Module({
-  imports: [ConfigModule, InfrastructureModule],
+  imports: [ConfigModule, InfrastructureModule, PlatformModule, BusinessModule],
   controllers: [],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_FILTER, useClass: HttpExceptionsFilter },
     { provide: APP_PIPE, useClass: AppValidationPipe },
-    // { provide: APP_INTERCEPTOR, useClass: RequestIdInterceptor },
-    // { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
-    // { provide: APP_INTERCEPTOR, useClass: DeviceResponseInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: RequestIdInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: DeviceResponseInterceptor },
   ],
 })
 export class AppModule {}

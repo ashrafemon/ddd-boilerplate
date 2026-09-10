@@ -1,8 +1,8 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
-import { CreateVendorInput, VendorProps, VendorStatus } from '../types/vendor.types';
-import { VendorCode, VendorEmail, VendorName } from '../value-objects/vendor.vos';
+import { VendorProps, VendorStatus } from '../types/vendor.types';
+import { VendorEmail, VendorName } from '../value-objects/vendor.vos';
 import { VendorActivated } from '../events/vendor.activated.event';
 import { VendorBlocked } from '../events/vendor.blocked.event';
 import { VendorDeactivated } from '../events/vendor.deactivated.event';

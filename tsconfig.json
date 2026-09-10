@@ -28,7 +28,7 @@
       "@platform/*": ["src/platform/*"],
       "@business/*": ["src/business/*"],
       "@test/*": ["test/*"],
-      "@prisma/*": ["src/generated/prisma/*"]
+      "@prisma/client": ["src/generated/client.ts"]
     },
     "rootDirs": ["src"]
   },

@@ -144,7 +144,7 @@
       "^@platform/(.*)$": "<rootDir>/platform/$1",
       "^@business/(.*)$": "<rootDir>/business/$1",
       "^@test/(.*)$": "<rootDir>/../test/$1",
-      "^@prisma/(.*)$": "<rootDir>/generated/prisma/$1",
+      "^@prisma/client$": "<rootDir>/generated/client.ts",
       "^(\\.{1,2}/.*)\\.js$": "$1"
     },
     "collectCoverageFrom": [

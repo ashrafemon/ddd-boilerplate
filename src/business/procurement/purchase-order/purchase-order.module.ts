@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PlatformModule } from '@platform/platform.module';
 import { ProductModule } from '@business/catalog/product/product.module';
 import { VendorModule } from '@business/party/vendor/vendor.module';
 import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
@@ -29,7 +30,7 @@ import { OrderableVendorAdapter } from './infrastructure/adapters/module/orderab
 import './domain/events/purchase-order.registry';
 
 @Module({
-  imports: [ProductModule, VendorModule],
+  imports: [PlatformModule, ProductModule, VendorModule],
   controllers: [PurchaseOrderController],
   providers: [
     CreatePurchaseOrderUseCase,

@@ -3,9 +3,10 @@ import { ConfigService } from '@config/config.service';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 /**
- * AWS SES email client. Falls back to the AWS default credential chain when
- * no explicit keys are configured. Self-disables (no client created) when SES
- * is not configured so local development runs without AWS.
+ * AWS SES email client. Explicit keys are used when present; otherwise the AWS
+ * default credential chain (profile, IAM role, task role) resolves them. The
+ * client is only skipped when there is no sender address to send from, so
+ * local development runs without AWS.
  */
 @Injectable()
 export class SesService implements OnModuleInit, OnModuleDestroy {
@@ -16,14 +17,16 @@ export class SesService implements OnModuleInit, OnModuleDestroy {
   constructor(configService: ConfigService) {
     const config = configService.getSes();
 
-    if (!config.accessKey || !config.secretKey || !config.address) {
-      this.logger.warn('ses-disabled-missing-config');
+    if (!config.address) {
+      this.logger.warn('ses-disabled-missing-sender');
       return;
     }
 
     this.ses = new SESClient({
       region: config.region,
-      credentials: { accessKeyId: config.accessKey, secretAccessKey: config.secretKey },
+      ...(config.accessKey && config.secretKey
+        ? { credentials: { accessKeyId: config.accessKey, secretAccessKey: config.secretKey } }
+        : {}),
     });
     this.fromAddress = config.address;
   }

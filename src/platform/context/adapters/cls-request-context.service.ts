@@ -27,7 +27,7 @@ export class ClsRequestContextService implements RequestContextPort {
     const context = this.get();
     if (!context) {
       throw new Error(
-        'Request context is not available. Is the RequestContextInterceptor mounted?',
+        'Request context is not available. Is RequestIdInterceptor registered and CLS middleware mounted?',
       );
     }
     return context;

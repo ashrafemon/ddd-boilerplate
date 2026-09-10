@@ -1,9 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Inject, Logger } from '@nestjs/common';
+import { ConfigService } from '@config/config.service';
 import {
   IntegrationMessage,
   MessagePublisher,
 } from '@platform/messaging/ports/message-publisher.port';
+import {
+  KafkaPublisher,
+  RabbitMqPublisher,
+  SqsPublisher,
+} from '@platform/messaging/message-publisher.tokens';
 import { InProcessEventBus } from '@platform/events/ports/event-bus.port';
 import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
 import { OutboxMessageRecord, OutboxRepository } from './prisma-outbox-repository';
@@ -14,20 +19,17 @@ const PARALLEL_PUBLISH_LIMIT = 10;
 @Injectable()
 export class OutboxPublisher {
   private readonly logger = new Logger(OutboxPublisher.name);
-  private readonly configService: ConfigService;
   private publishing = false;
 
   constructor(
     private readonly outboxRepository: OutboxRepository,
     private readonly routingPolicy: MessageRoutingPolicy,
     private readonly eventBus: InProcessEventBus,
-    private readonly rabbitmqPublisher: MessagePublisher,
-    private readonly kafkaPublisher: MessagePublisher,
-    private readonly sqsPublisher: MessagePublisher,
-    configService: ConfigService,
-  ) {
-    this.configService = configService;
-  }
+    @Inject(RabbitMqPublisher) private readonly rabbitmqPublisher: MessagePublisher,
+    @Inject(KafkaPublisher) private readonly kafkaPublisher: MessagePublisher,
+    @Inject(SqsPublisher) private readonly sqsPublisher: MessagePublisher,
+    private readonly configService: ConfigService,
+  ) {}
 
   async publishPendingBatch(): Promise<number> {
     if (this.publishing) {
@@ -105,11 +107,7 @@ export class OutboxPublisher {
   }
 
   private get config() {
-    return this.configService.get<{
-      batchSize: number;
-      maxAttempts: number;
-      cleanupOlderThanHours: number;
-    }>('outbox', { batchSize: 50, maxAttempts: 10, cleanupOlderThanHours: 24 });
+    return this.configService.getOutbox();
   }
 }
 

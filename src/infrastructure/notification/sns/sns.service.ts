@@ -3,9 +3,10 @@ import { ConfigService } from '@config/config.service';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 /**
- * AWS SNS notification client. Falls back to the AWS default credential chain
- * when no explicit keys are configured. Self-disables (no client created)
- * when SNS is not configured so local development runs without AWS.
+ * AWS SNS notification client. Explicit keys are used when present; otherwise
+ * the AWS default credential chain (profile, IAM role, task role) resolves
+ * them. The client is only skipped when there is no topic ARN to publish to,
+ * so local development runs without AWS.
  */
 @Injectable()
 export class SnsService implements OnModuleInit, OnModuleDestroy {
@@ -16,14 +17,16 @@ export class SnsService implements OnModuleInit, OnModuleDestroy {
   constructor(configService: ConfigService) {
     const config = configService.getSns();
 
-    if (!config.accessKey || !config.secretKey || !config.topicArn) {
-      this.logger.warn('sns-disabled-missing-config');
+    if (!config.topicArn) {
+      this.logger.warn('sns-disabled-missing-topic');
       return;
     }
 
     this.sns = new SNSClient({
       region: config.region,
-      credentials: { accessKeyId: config.accessKey, secretAccessKey: config.secretKey },
+      ...(config.accessKey && config.secretKey
+        ? { credentials: { accessKeyId: config.accessKey, secretAccessKey: config.secretKey } }
+        : {}),
     });
     this.topicArn = config.topicArn;
   }

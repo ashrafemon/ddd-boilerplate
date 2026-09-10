@@ -1,5 +1,6 @@
 import { OrderableVendorPort } from '@business/procurement/purchase-order/application/outbound-ports/vendor-query.port';
 import { Module } from '@nestjs/common';
+import { PlatformModule } from '@platform/platform.module';
 import { VendorForPurchaseFacade } from './application/facades/vendor-for-purchase.facade';
 import { OrderableVendorQueryAdapter } from './application/facades/orderable-vendor-query.adapter';
 import { VendorEventEmitterListener } from './application/integrations/listeners/vendor.created.event-emitter.listener-event';
@@ -25,6 +26,7 @@ import { VendorForPurchasePort } from '@business/party/vendor/public';
 import './domain/events/vendor.registry';
 
 @Module({
+  imports: [PlatformModule],
   controllers: [VendorController],
   providers: [
     CreateVendorUseCase,

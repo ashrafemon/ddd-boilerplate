@@ -1,7 +1,7 @@
 import { FileStorageModule } from '@amirrivand/nestjs-file-storage';
+import { ConfigService } from '@config/config.service';
 import { Module } from '@nestjs/common';
-import { StorageConfigFactory } from './storage-config.factory';
-import { ConfigModule } from '@config/config.module';
+import { buildStorageConfig } from './storage-config.factory';
 
 /**
  * Infrastructure storage module — only client initialization/setup.
@@ -13,12 +13,10 @@ import { ConfigModule } from '@config/config.module';
 @Module({
   imports: [
     FileStorageModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [StorageConfigFactory],
-      useFactory: (factory: StorageConfigFactory) => factory.createStorageConfig(),
+      inject: [ConfigService],
+      useFactory: buildStorageConfig,
     }),
   ],
-  providers: [StorageConfigFactory],
-  exports: [StorageConfigFactory],
+  exports: [FileStorageModule],
 })
 export class StorageModule {}

@@ -1,4 +1,4 @@
-import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@config/config.service';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { Injectable } from '@nestjs/common';
 import {
@@ -7,8 +7,10 @@ import {
 } from '@platform/messaging/ports/message-publisher.port';
 
 /**
- * RabbitMQ publisher adapter. Publishes integration messages to the
- * configured topic exchange using the event type as routing key.
+ * RabbitMQ publisher adapter. Publishes the *whole* integration envelope to
+ * the configured topic exchange, using the event type as routing key, so a
+ * `@RabbitSubscribe` handler receives the same shape the Kafka and SQS
+ * transports deliver (event type, aggregate id, payload, headers).
  */
 @Injectable()
 export class RabbitMQPublisherAdapter implements MessagePublisher {
@@ -18,16 +20,22 @@ export class RabbitMQPublisherAdapter implements MessagePublisher {
     private readonly amqp: AmqpConnection,
     config: ConfigService,
   ) {
-    const rabbitmq = config.get<{ exchange: string }>('messaging.rabbitmq', {
-      exchange: 'erp.events',
-    });
-    this.exchange = rabbitmq.exchange;
+    this.exchange = config.getRabbitMQ().exchange;
   }
 
   public async publish(message: IntegrationMessage): Promise<void> {
-    await this.amqp.publish(this.exchange, message.eventType, message.payload, {
-      persistent: true,
-      headers: message.headers ?? {},
-    });
+    await this.amqp.publish(
+      this.exchange,
+      message.eventType,
+      {
+        eventType: message.eventType,
+        aggregateType: message.aggregateType,
+        aggregateId: message.aggregateId,
+        payload: message.payload,
+        headers: message.headers ?? {},
+        occurredAt: message.occurredAt.toISOString(),
+      },
+      { persistent: true, headers: message.headers ?? {} },
+    );
   }
 }

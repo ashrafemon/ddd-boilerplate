@@ -3,6 +3,7 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import appConfig from './app.config';
 import authConfig from './auth.config';
 import cacheConfig from './cache.config';
+import { envFileCandidates } from './env.util';
 import { ConfigService } from './config.service';
 import databaseConfig from './database.config';
 import messagingConfig from './messaging.config';
@@ -17,11 +18,7 @@ import storageConfig from './storage.config';
   imports: [
     NestConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [
-        `.env.${process.env.NODE_ENV ?? 'development'}.local`,
-        `.env.${process.env.NODE_ENV ?? 'development'}`,
-        '.env',
-      ],
+      envFilePath: envFileCandidates(),
     }),
     NestConfigModule.forFeature(appConfig),
     NestConfigModule.forFeature(authConfig),

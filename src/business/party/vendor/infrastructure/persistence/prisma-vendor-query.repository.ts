@@ -1,14 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.service';
+import { PrismaReadPort } from '@platform/database/ports/prisma-read.port';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { VendorQuery } from '@business/party/vendor/application/queries/vendor.query';
 import { VendorQueryRecord } from '../../domain/types/vendor.types';
-import { VendorStatus } from '../../domain/types/vendor.enum';
 import { PrismaVendorMapper } from './prisma-vendor.mapper';
 
 @Injectable()
 export class PrismaVendorQueryRepository extends VendorQuery {
-  constructor(private readonly prismaRead: PrismaReadService) {
+  constructor(private readonly prismaRead: PrismaReadPort) {
     super();
   }
 

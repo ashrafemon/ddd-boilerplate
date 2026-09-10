@@ -6,7 +6,7 @@ import { KafkaService } from './kafka.service';
 
 interface HandlerEntry {
   instance: object;
-  method: string;
+  handler: (payload: unknown, message: unknown) => unknown;
 }
 
 /**
@@ -31,9 +31,15 @@ export class KafkaConsumerHost implements OnApplicationBootstrap, OnModuleDestro
       this.logger.log('No @KafkaEvent handlers found; skipping consumer wiring');
       return;
     }
+    if (!this.kafkaService.isEnabled) {
+      this.logger.warn('Kafka is disabled; @KafkaEvent handlers will not receive messages');
+      return;
+    }
+
+    const consumer = this.kafkaService.createConsumer();
+    this.consumer = consumer;
 
     try {
-      const consumer = this.kafkaService.createConsumer();
       await consumer.connect();
       for (const topic of this.handlers.keys()) {
         await consumer.subscribe({ topic, fromBeginning: false });
@@ -44,21 +50,19 @@ export class KafkaConsumerHost implements OnApplicationBootstrap, OnModuleDestro
           if (!entries) return;
           const payload = this.parse(message.value?.toString());
           for (const entry of entries) {
-            const instance = entry.instance as Record<
-              string,
-              { call: (thisArg: unknown, ...args: unknown[]) => Promise<void> | void }
-            >;
-            const fn = instance[entry.method];
-            await fn.call(entry.instance, payload, message);
+            await entry.handler.call(entry.instance, payload, message);
           }
         },
       });
-      this.consumer = consumer;
       this.logger.log(
         `Kafka consumer subscribed to topics: ${[...this.handlers.keys()].join(', ')}`,
       );
     } catch (error) {
-      this.logger.warn(`Kafka consumer wiring failed: ${(error as Error).message}`);
+      this.consumer = undefined;
+      this.logger.error(
+        `Kafka consumer wiring failed; @KafkaEvent handlers are inactive: ${(error as Error).message}`,
+      );
+      await consumer.disconnect().catch(() => undefined);
     }
   }
 
@@ -66,26 +70,55 @@ export class KafkaConsumerHost implements OnApplicationBootstrap, OnModuleDestro
     await this.consumer?.disconnect();
   }
 
+  /**
+   * Reads listener metadata off prototype *descriptors* along the whole
+   * prototype chain, so handlers inherited from a base class are found too.
+   * Descriptors are never invoked: touching instance properties would run
+   * arbitrary getters (e.g. Nest's `listen$`) and throw.
+   */
   private collectHandlers(): void {
     for (const wrapper of this.discovery.getProviders()) {
-      const rawInstance = wrapper.instance as unknown;
-      if (!rawInstance || typeof rawInstance !== 'object') continue;
-      const instance = rawInstance as Record<string, unknown>;
-      const prototype: unknown = Object.getPrototypeOf(instance);
-      if (!prototype || prototype === Object.prototype) continue;
-      const prototypeRecord = prototype as Record<string, unknown>;
+      const instance = wrapper.instance as unknown;
+      if (!instance || typeof instance !== 'object') continue;
 
-      for (const methodName of Object.getOwnPropertyNames(prototypeRecord)) {
-        const method = prototypeRecord[methodName];
-        if (typeof method !== 'function') continue;
-        const metadata = Reflect.getMetadata(KAFKA_EVENT_LISTENER_METADATA, method) as
-          { topic?: string } | undefined;
-        if (!metadata?.topic) continue;
-        const list = this.handlers.get(metadata.topic) ?? [];
-        list.push({ instance, method: methodName });
-        this.handlers.set(metadata.topic, list);
+      const seen = new Set<PropertyKey>();
+
+      for (
+        let target = this.handlerTarget(instance, wrapper.metatype);
+        target;
+        target = Object.getPrototypeOf(target) as Record<string, unknown> | null
+      ) {
+        if (target === Object.prototype) break;
+
+        for (const propertyName of Object.getOwnPropertyNames(target)) {
+          if (propertyName === 'constructor' || seen.has(propertyName)) continue;
+          seen.add(propertyName);
+
+          const method: unknown = Object.getOwnPropertyDescriptor(target, propertyName)?.value;
+          if (typeof method !== 'function') continue;
+
+          const metadata = Reflect.getMetadata(KAFKA_EVENT_LISTENER_METADATA, method) as
+            { topic?: string } | undefined;
+          if (!metadata?.topic) continue;
+
+          const entries = this.handlers.get(metadata.topic) ?? [];
+          entries.push({ instance, handler: method as HandlerEntry['handler'] });
+          this.handlers.set(metadata.topic, entries);
+        }
       }
     }
+  }
+
+  private handlerTarget(instance: object, metatype?: unknown): Record<string, unknown> | null {
+    const fromMetatype = (metatype as { prototype?: unknown } | undefined)?.prototype;
+    const candidate: unknown =
+      fromMetatype && typeof fromMetatype === 'object'
+        ? fromMetatype
+        : Object.getPrototypeOf(instance);
+
+    return candidate && candidate !== Object.prototype
+      ? (candidate as Record<string, unknown>)
+      : null;
   }
 
   private parse(raw?: string): unknown {

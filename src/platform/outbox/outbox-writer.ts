@@ -1,24 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { ClsService } from 'nestjs-cls';
 import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { OutboxWriterPort } from './ports/outbox-writer.port';
 import { OutboxRepository } from './prisma-outbox-repository';
-import {
-  REQUEST_ID_KEY,
-  CORRELATION_ID_KEY,
-} from '@shared-kernel/interceptors/request-id.interceptor';
 
 @Injectable()
 export class OutboxWriter implements OutboxWriterPort {
   constructor(
     private readonly outboxRepository: OutboxRepository,
-    private readonly cls: ClsService,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   async append(event: DomainEvent, aggregateType: string, aggregateId: string): Promise<void> {
-    const correlationId = this.cls.get<string>(CORRELATION_ID_KEY) ?? event.correlationId;
-    const requestId = this.cls.get<string>(REQUEST_ID_KEY);
+    const correlationId = this.requestContext.getCorrelationId() ?? event.correlationId;
+    const requestId = this.requestContext.getRequestId();
 
     const message: IntegrationMessage = {
       eventType: event.constructor.name,

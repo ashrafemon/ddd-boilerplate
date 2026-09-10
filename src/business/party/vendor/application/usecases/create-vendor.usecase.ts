@@ -3,7 +3,6 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { CreateVendorRequest } from '../../domain/types/vendor.types';
 import { VendorFactory } from '../../domain/factories/vendor.factory';
 import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
-import { VendorCode } from '../../domain/value-objects/vendor.vos';
 import { VendorCommandRepository } from '../../domain/repositories/vendor-command.repository';
 import { VendorIntegrationPort } from '../integrations/publishes/vendor.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
@@ -22,9 +21,7 @@ export class CreateVendorUseCase {
 
     const vendor = VendorFactory.create(input);
 
-    const existing = await this.vendorRepository.findByCode(
-      VendorCode.create(vendor.code).toString(),
-    );
+    const existing = await this.vendorRepository.findByCode(vendor.code);
     if (existing) {
       throw new ConflictException(`Vendor with code "${vendor.code}" already exists`);
     }

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PlatformModule } from '@platform/platform.module';
 import { ProductForPurchaseFacade } from './application/facades/product-for-purchase.facade';
 import { ProductEventEmitterListener } from './application/integrations/listeners/product.created.event-emitter.listener-event';
 import { ProductKafkaListener } from './application/integrations/listeners/product.created.kafka.listener-event';
@@ -31,6 +32,7 @@ import { ProductForPurchasePort } from '@business/catalog/product/public';
  * resolve it through the ModuleRef without importing this module.
  */
 @Module({
+  imports: [PlatformModule],
   controllers: [ProductController],
   providers: [
     CreateProductUseCase,

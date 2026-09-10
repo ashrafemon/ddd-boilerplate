@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PlatformModule } from '@platform/platform.module';
 import { PurchaseOrderModule } from '@business/procurement/purchase-order/purchase-order.module';
 import { GrnForPurchaseOrderFacade } from './application/facades/grn-for-purchase-order.facade';
 import { GrnEventEmitterListener } from './application/integrations/listeners/grn.created.event-emitter.listener-event';
@@ -26,7 +27,7 @@ import { GrnForPurchaseOrderPort } from '@business/procurement/good-receipt-note
 import './domain/events/grn.registry';
 
 @Module({
-  imports: [PurchaseOrderModule],
+  imports: [PlatformModule, PurchaseOrderModule],
   controllers: [GrnController],
   providers: [
     CreateGrnUseCase,

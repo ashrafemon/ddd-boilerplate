@@ -1,13 +1,13 @@
 import { GrnQueryRecord } from '@business/procurement/good-receipt-note/domain/types/grn.types';
 import { GrnQuery } from '@business/procurement/good-receipt-note/application/queries/grn.query';
-import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.service';
+import { PrismaReadPort } from '@platform/database/ports/prisma-read.port';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { Injectable } from '@nestjs/common';
 import { PrismaGrnMapper } from './prisma-grn.mapper';
 
 @Injectable()
 export class PrismaGrnQueryRepository extends GrnQuery {
-  constructor(private readonly prismaRead: PrismaReadService) {
+  constructor(private readonly prismaRead: PrismaReadPort) {
     super();
   }
 

@@ -7,11 +7,84 @@ import tseslint from 'typescript-eslint';
 /**
  * Architecture-enforcing ESLint config. The `no-restricted-imports` rules
  * below make it hard to violate the dependency rules documented in
- * ARCHITECTURE.md.
+ * ARCHITECTURE.md:
+ *
+ *   infrastructure  third-party clients only (Prisma, brokers, cache, S3, AWS)
+ *   platform        services built on those clients, exposed as ports
+ *   business        talks to platform ports only, never to @infrastructure
  */
+
+/** Aggregate modules, expressed as `<context>/<module>` under `src/business`. */
+const businessModules = [
+  'catalog/product',
+  'party/vendor',
+  'procurement/purchase-order',
+  'procurement/good-receipt-note',
+];
+
+/** Paths that are private to one module and must not be reached from outside. */
+const internalGroups = module => [
+  [`@business/${module}/domain/**`],
+  [`@business/${module}/application/queries/**`],
+  [`@business/${module}/application/usecases/**`],
+  [`@business/${module}/application/integrations/**`],
+  [`@business/${module}/application/facades/**`],
+  [`@business/${module}/infrastructure/**`],
+];
+
+/**
+ * One rule block per module: it may import its own internals, another module's
+ * `public/**` contract or its `application/outbound-ports/**` contract (the
+ * port a producer adapter implements), but nothing else from another module —
+ * and never `@infrastructure/**`.
+ */
+const businessBoundaryRules = businessModules.map(module => {
+  const forbidden = [
+    ...businessModules
+      .filter(other => other !== module)
+      .flatMap(other =>
+        internalGroups(other).map(group => ({
+          group,
+          message: `@business/${module} must not import internals of @business/${other}; go through its public/ contract`,
+        })),
+      ),
+    {
+      group: ['@infrastructure/**'],
+      message: `@business/${module} must depend on platform services, never on @infrastructure clients`,
+    },
+  ];
+
+  return {
+    files: [`src/business/${module}/**/*.ts`],
+    ignores: [`src/business/${module}/public/**`],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: forbidden,
+        },
+      ],
+    },
+  };
+});
+
+/** Broker/transport libraries are infrastructure + listener-decorator only. */
+const infrastructureOnlyPaths = [
+  { name: 'prisma/generated/prisma/client', message: 'Prisma is infrastructure-only' },
+  { name: '@prisma/client', message: 'Prisma is infrastructure-only' },
+  { name: '@prisma/adapter-pg', message: 'Prisma is infrastructure-only' },
+  { name: 'amqplib', message: 'RabbitMQ libraries are infrastructure-only' },
+  { name: 'kafkajs', message: 'Kafka libraries are infrastructure-only' },
+  { name: 'ioredis', message: 'Redis libraries are infrastructure-only' },
+  { name: 'redis', message: 'Redis libraries are infrastructure-only' },
+  { name: '@golevelup/nestjs-rabbitmq', message: 'RabbitMQ is infrastructure-only' },
+  { name: '@ssut/nestjs-sqs', message: 'SQS is infrastructure-only' },
+  { name: '@nestjs/schedule', message: 'Scheduler belongs to platform, not business' },
+];
+
 export default tseslint.config(
   {
-    ignores: ['eslint.config.mjs', 'prisma/generated/**', 'dist/**'],
+    ignores: ['eslint.config.mjs', 'prisma/generated/**', 'src/generated/**', 'dist/**'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -37,11 +110,11 @@ export default tseslint.config(
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
-  // ------------------------------------------------------------------
-  // Dependency rules. Keep in sync with ARCHITECTURE.md.
-  // ------------------------------------------------------------------
 
-  // Broker/DB/cache libraries are infrastructure-only.
+  // ------------------------------------------------------------------
+  // Broker/DB/cache libraries are infrastructure-only. Listeners may use the
+  // subscribe decorators, so they are carved out below.
+  // ------------------------------------------------------------------
   {
     files: ['src/**/*.ts'],
     ignores: [
@@ -49,32 +122,14 @@ export default tseslint.config(
       'src/config/**',
       'src/bootstrap/**',
       'src/platform/**',
-      'src/business/**/application/consumers/**',
+      'src/business/**/application/integrations/listeners/**',
     ],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            { name: 'prisma/generated/prisma/client', message: 'Prisma is infrastructure-only' },
-            { name: '@prisma/client', message: 'Prisma is infrastructure-only' },
-            { name: '@prisma/adapter-pg', message: 'Prisma is infrastructure-only' },
-            { name: 'amqplib', message: 'RabbitMQ libraries are infrastructure-only' },
-            { name: 'kafkajs', message: 'Kafka libraries are infrastructure-only' },
-            { name: 'ioredis', message: 'Redis libraries are infrastructure-only' },
-            { name: 'redis', message: 'Redis libraries are infrastructure-only' },
-            { name: '@golevelup/nestjs-rabbitmq', message: 'RabbitMQ is infrastructure-only' },
-            { name: '@nestjs/schedule', message: 'Scheduler belongs to platform, not business' },
-          ],
-        },
-      ],
+      'no-restricted-imports': ['error', { paths: infrastructureOnlyPaths }],
     },
   },
-
-  // Broker subscribe decorators are allowed inside business aggregate consumer
-  // classes (RabbitSubscribe, SqsMessageHandler, custom KafkaEvent).
   {
-    files: ['src/business/**/application/consumers/**'],
+    files: ['src/business/**/application/integrations/listeners/**'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -86,12 +141,20 @@ export default tseslint.config(
             { name: 'redis', message: 'Redis libraries are infrastructure-only' },
             { name: '@nestjs/schedule', message: 'Scheduler belongs to platform, not business' },
           ],
+          patterns: [
+            {
+              group: ['@infrastructure/**'],
+              message: 'Listeners must delegate to use cases, not import infrastructure clients',
+            },
+          ],
         },
       ],
     },
   },
 
+  // ------------------------------------------------------------------
   // Domain code must not import NestJS at all.
+  // ------------------------------------------------------------------
   {
     files: ['src/business/**/domain/**/*.ts', 'src/business/shared-business/domain/**/*.ts'],
     rules: {
@@ -109,153 +172,24 @@ export default tseslint.config(
     },
   },
 
-  // Business code cannot import infrastructure implementations. Port
-  // tokens from @infrastructure are allowed; everything else is not.
-  {
-    files: ['src/business/**/*.ts'],
-    ignores: ['src/business/shared-business/ports/**'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@infrastructure/database/repositories/*'],
-              message: 'Business must depend on ports, not repository implementations',
-            },
-            {
-              group: ['@infrastructure/database/mappers/*'],
-              message: 'Mappers belong to infrastructure',
-            },
-            {
-              group: ['@infrastructure/message/*'],
-              message: 'Business must not import messaging implementations',
-            },
-          ],
-        },
-      ],
-    },
-  },
+  // ------------------------------------------------------------------
+  // Module-to-module boundaries (see businessBoundaryRules above).
+  // ------------------------------------------------------------------
+  ...businessBoundaryRules,
 
-  // Cross-module imports must go through the module root index.ts, not
-  // through internal paths like domain/, application/, infrastructure/.
-  // Within-module imports are still allowed.
+  // ------------------------------------------------------------------
+  // shared-business must stay framework-free: no NestJS, no platform types.
+  // ------------------------------------------------------------------
   {
-    files: ['src/business/catalog/product/**/*.ts', 'src/business/party/vendor/**/*.ts', 'src/business/supplier/vendor/**/*.ts', 'src/business/procurement/purchase/**/*.ts'],
-    ignores: [
-      'src/business/shared-business/**',
-      'src/business/catalog/product/index.ts',
-      'src/business/party/vendor/index.ts',
-      'src/business/supplier/vendor/index.ts',
-      'src/business/procurement/purchase/index.ts',
-    ],
+    files: ['src/business/shared-business/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: [
             {
-              group: ['@business/party/vendor/domain/**', '@business/party/vendor/application/**', '@business/party/vendor/infrastructure/**'],
-              message: 'Import from @business/party/vendor (root index) instead of internal paths',
-            },
-            {
-              group: ['@business/supplier/vendor/domain/**', '@business/supplier/vendor/application/**', '@business/supplier/vendor/infrastructure/**'],
-              message: 'Import from @business/supplier/vendor (root index) instead of internal paths',
-            },
-            {
-              group: ['@business/procurement/purchase/domain/**', '@business/procurement/purchase/application/**', '@business/procurement/purchase/infrastructure/**'],
-              message: 'Import from @business/procurement/purchase (root index) instead of internal paths',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ['src/business/party/vendor/**/*.ts', 'src/business/supplier/vendor/**/*.ts', 'src/business/procurement/purchase/**/*.ts', 'src/business/catalog/product/**/*.ts'],
-    ignores: [
-      'src/business/shared-business/**',
-      'src/business/catalog/product/index.ts',
-      'src/business/party/vendor/index.ts',
-      'src/business/supplier/vendor/index.ts',
-      'src/business/procurement/purchase/index.ts',
-    ],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@business/catalog/product/domain/**', '@business/catalog/product/application/**', '@business/catalog/product/infrastructure/**'],
-              message: 'Import from @business/catalog/product (root index) instead of internal paths',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ['src/business/procurement/purchase/**/*.ts', 'src/business/catalog/product/**/*.ts', 'src/business/party/vendor/**/*.ts'],
-    ignores: [
-      'src/business/shared-business/**',
-      'src/business/catalog/product/index.ts',
-      'src/business/party/vendor/index.ts',
-      'src/business/supplier/vendor/index.ts',
-      'src/business/procurement/purchase/index.ts',
-    ],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@business/supplier/vendor/domain/**', '@business/supplier/vendor/application/**', '@business/supplier/vendor/infrastructure/**'],
-              message: 'Import from @business/supplier/vendor (root index) instead of internal paths',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ['src/business/catalog/product/**/*.ts', 'src/business/party/vendor/**/*.ts', 'src/business/supplier/vendor/**/*.ts'],
-    ignores: [
-      'src/business/shared-business/**',
-      'src/business/catalog/product/index.ts',
-      'src/business/party/vendor/index.ts',
-      'src/business/supplier/vendor/index.ts',
-      'src/business/procurement/purchase/index.ts',
-    ],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@business/procurement/purchase/domain/**', '@business/procurement/purchase/application/**', '@business/procurement/purchase/infrastructure/**'],
-              message: 'Import from @business/procurement/purchase (root index) instead of internal paths',
-            },
-          ],
-        },
-      ],
-    },
-  },
-
-  // Domain and application-layer ports must not cross into sibling business
-  // modules.
-  {
-    files: [
-      'src/business/**/domain/**/*.ts',
-      'src/business/**/application/ports/**/*.ts',
-    ],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@business/*/ports/outbound/*', '@business/*/application/ports/outbound/*'],
-              message: 'Outbound ports are owned by their module; cross-module calls go through use cases resolved by ModuleRef',
+              group: ['@platform/**', '@infrastructure/**', '@business/*/*/**'],
+              message: 'shared-business primitives cannot depend on platform, infrastructure or a concrete module',
             },
           ],
         },

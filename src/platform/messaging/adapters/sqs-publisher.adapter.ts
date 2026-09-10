@@ -1,4 +1,4 @@
-import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@config/config.service';
 import { Injectable } from '@nestjs/common';
 import { SqsService } from '@ssut/nestjs-sqs';
 import { randomUUID } from 'crypto';
@@ -21,8 +21,7 @@ export class SqsPublisherAdapter implements MessagePublisher {
     private readonly sqs: SqsService,
     config: ConfigService,
   ) {
-    const sqsConfig = config.get<{ url: string }>('messaging.sqs', { url: '' });
-    this.queueUrl = sqsConfig.url;
+    this.queueUrl = config.getSqs().url;
   }
 
   get isEnabled(): boolean {

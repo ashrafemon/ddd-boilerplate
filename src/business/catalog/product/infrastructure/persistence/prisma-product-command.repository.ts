@@ -3,9 +3,6 @@ import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Product } from '@business/catalog/product/domain/aggregates/product.aggregate';
 import { ProductCommandRepository } from '@business/catalog/product/domain/repositories/product-command.repository';
-import { ProductId } from '@business/catalog/product/domain/value-objects/product-id.vo';
-import { ProductName } from '@business/catalog/product/domain/value-objects/product-name.vo';
-import { Sku } from '@business/catalog/product/domain/value-objects/sku.vo';
 import { PrismaProductMapper } from './prisma-product.mapper';
 
 @Injectable()

@@ -3,12 +3,8 @@ import { Money } from '@business/shared-business/domain/common/value-objects/mon
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { PurchaseOrderId } from '../value-objects/purchase-order-id.vo';
-import {
-  CreatePurchaseOrderInput,
-  PurchaseOrderProps,
-  PurchaseOrderStatus,
-} from '../types/purchase-order.types';
-import { OrderNumber, ProductIdRef, VendorIdRef } from '../value-objects/purchase-order.vos';
+import { PurchaseOrderProps, PurchaseOrderStatus } from '../types/purchase-order.types';
+import { ProductIdRef } from '../value-objects/purchase-order.vos';
 import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
 import { PurchaseOrderApproved } from '../events/purchase-order.approved.event';
 import { PurchaseOrderCancelled } from '../events/purchase-order.cancelled.event';

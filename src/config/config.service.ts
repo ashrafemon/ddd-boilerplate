@@ -74,6 +74,7 @@ export class ConfigService {
     return this.config.get('messaging.rabbitmq', {
       url: 'amqp://localhost:5672',
       exchange: 'erp.events',
+      registerHandlers: true,
     });
   }
   public getKafka(): IKafkaConfig {

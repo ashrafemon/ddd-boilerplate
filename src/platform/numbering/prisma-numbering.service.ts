@@ -15,15 +15,18 @@ export class PrismaNumberingService implements NumberingPort {
   public async nextNumber(sequenceKey: string, options: NextNumberOptions = {}): Promise<string> {
     const padding = options.padding ?? 0;
 
-    const record = await this.txHost.tx.numberSequence.upsert({
+    const updated = await this.txHost.tx.numberSequence.upsert({
       where: { key: sequenceKey },
-      update: {},
-      create: { key: sequenceKey, prefix: options.prefix ?? '', padding },
-    });
-
-    const updated = await this.txHost.tx.numberSequence.update({
-      where: { id: record.id },
-      data: { currentValue: { increment: 1 } },
+      create: {
+        key: sequenceKey,
+        prefix: options.prefix ?? '',
+        padding,
+        currentValue: 1,
+      },
+      // Single statement: no read-then-write window, so two callers racing on a
+      // brand-new key cannot both insert it. `prefix`/`padding` are fixed when
+      // the sequence is first created; later calls must not silently change them.
+      update: { currentValue: { increment: 1 } },
     });
 
     const numberText =

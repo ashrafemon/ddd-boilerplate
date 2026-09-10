@@ -16,6 +16,7 @@ import { ClsModule } from 'nestjs-cls';
 @Module({
   imports: [
     ClsModule.forRoot({
+      global: true,
       middleware: { mount: true },
       plugins: [
         new ClsPluginTransactional({
@@ -28,7 +29,5 @@ import { ClsModule } from 'nestjs-cls';
       ],
     }),
   ],
-  providers: [],
-  exports: [],
 })
 export class ContextModule {}

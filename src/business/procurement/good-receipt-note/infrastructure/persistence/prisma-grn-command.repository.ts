@@ -3,7 +3,6 @@ import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { GoodReceiptNote } from '../../domain/aggregates/grn.aggregate';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
-import { GrnId } from '../../domain/value-objects/grn.vos';
 import { PrismaGrnMapper } from './prisma-grn.mapper';
 
 @Injectable()

@@ -5,7 +5,6 @@ import { ProductCommandRepository } from '../../domain/repositories/product-comm
 import { ProductFactory } from '../../domain/factories/product.factory';
 import { CreateProductRequest } from '../../domain/types/product.types';
 import { ProductId } from '../../domain/value-objects/product-id.vo';
-import { Sku } from '../../domain/value-objects/sku.vo';
 import { ProductIntegrationPort } from '../integrations/publishes/product.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 
@@ -30,7 +29,7 @@ export class CreateProductUseCase {
       currency,
     });
 
-    const existing = await this.productRepository.findBySku(Sku.create(product.sku).toString());
+    const existing = await this.productRepository.findBySku(product.sku);
     if (existing) {
       throw new ConflictException(`Product with SKU "${product.sku}" already exists`);
     }

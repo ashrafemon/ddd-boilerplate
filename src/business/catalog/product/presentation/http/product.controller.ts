@@ -21,7 +21,6 @@ import { ChangePriceDto } from './requests/change-price.request.dto';
 import { CreateProductDto } from './requests/create-product.request.dto';
 import { ProductQueryDto } from './requests/query-products.request.dto';
 import { UpdateProductDto } from './requests/update-product.request.dto';
-import { DeviceContext } from '@shared-kernel/decorators/device-context.decorator';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 import { GetProductMobileResponseDto } from './responses/get-product.mobile.response.dto';
