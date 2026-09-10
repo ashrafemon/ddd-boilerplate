@@ -26,6 +26,9 @@ Key pillars:
 This document is the single source of truth for the design. If you change the rules here,
 update `eslint.config.mjs` and vice versa.
 
+For the runtime **flows** (request lifecycles, module-to-module contracts, platform service
+internals, opt-in registrations) see [`docs/FLOWCHARTS.md`](docs/FLOWCHARTS.md).
+
 ---
 
 ## Table of Contents

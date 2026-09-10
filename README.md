@@ -9,6 +9,7 @@ A production-oriented ERP backend foundation using **NestJS 11 + TypeScript + Po
 Documentation:
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — design, layers, outbox, events, data model
+- [docs/FLOWCHARTS.md](./docs/FLOWCHARTS.md) — flowcharts: request lifecycles, port/adapter wiring, platform service internals
 
 ---
 
