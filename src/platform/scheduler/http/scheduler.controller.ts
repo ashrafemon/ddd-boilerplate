@@ -55,7 +55,7 @@ export class SchedulerController {
       jobId: id,
       expectedVersion: body.expectedVersion,
       cronExpression: body.cronExpression,
-      nextRunAt: body.nextRunAt,
+      nextRunAt: body.nextRunAt ? new Date(body.nextRunAt) : undefined,
       editedBy: body.editedBy,
     });
     const data = await this.getStatus.execute(id);
