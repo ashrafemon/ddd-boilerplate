@@ -9,8 +9,6 @@ A production-oriented ERP backend foundation using **NestJS 11 + TypeScript + Po
 Documentation:
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — design, layers, outbox, events, data model
-- [DEVELOPER.md](./DEVELOPER.md) — setup, conventions, adding modules, testing
-- [MAINTAINER.md](./MAINTAINER.md) — deployments, migrations, ops, releases
 
 ---
 
