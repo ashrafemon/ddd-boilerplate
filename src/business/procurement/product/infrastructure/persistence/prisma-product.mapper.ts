@@ -1,7 +1,7 @@
-import { Product } from '@business/catalog/product/domain/aggregates/product.aggregate';
-import { ProductId } from '@business/catalog/product/domain/value-objects/product-id.vo';
-import { ProductName } from '@business/catalog/product/domain/value-objects/product-name.vo';
-import { Sku } from '@business/catalog/product/domain/value-objects/sku.vo';
+import { Product } from '@business/procurement/product/domain/aggregates/product.aggregate';
+import { ProductId } from '@business/procurement/product/domain/value-objects/product-id.vo';
+import { ProductName } from '@business/procurement/product/domain/value-objects/product-name.vo';
+import { Sku } from '@business/procurement/product/domain/value-objects/sku.vo';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { ProductQueryRecord } from '../../domain/types/product.types';
 import { ProductStatus } from '../../domain/types/product.enum';

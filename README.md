@@ -77,9 +77,11 @@ src/
 ├── platform/          # outbox, event bus, routing policy, audit, numbering, notification, configuration
 └── business/
     ├── shared-business/   # domain/application/port primitives (framework-independent)
-    ├── catalog/product/       # Product aggregate
-    ├── supplier/vendor/       # Vendor aggregate
-    └── procurement/purchase/  # PurchaseOrder aggregate (uses vendor/product outbound ports)
+    ├── party/vendor/              # Vendor aggregate
+    ├── procurement/product/       # Product aggregate
+    ├── procurement/purchase-order/    # PurchaseOrder aggregate (uses vendor/product outbound ports)
+    ├── procurement/good-receipt-note/ # GoodReceiptNote aggregate
+    └── sales/invoice/               # Invoice aggregate
 ```
 
 Each aggregate module keeps its own `domain`, `application` (use cases, cross-module

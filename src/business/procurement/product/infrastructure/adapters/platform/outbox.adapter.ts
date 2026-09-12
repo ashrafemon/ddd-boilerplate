@@ -1,4 +1,4 @@
-import { ProductIntegrationPort } from '@business/catalog/product/application/integrations/publishes/product.integration-port';
+import { ProductIntegrationPort } from '@business/procurement/product/application/integrations/publishes/product.integration-port';
 import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { Injectable } from '@nestjs/common';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';

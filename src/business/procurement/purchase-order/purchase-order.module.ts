@@ -1,7 +1,7 @@
 import { Module, OnApplicationBootstrap } from '@nestjs/common';
 import { BatchOperationHandlerRegistry } from '@platform/batch-operation/batch-operation-handler.registry';
 import { PlatformModule } from '@platform/platform.module';
-import { ProductModule } from '@business/catalog/product/product.module';
+import { ProductModule } from '@business/procurement/product/product.module';
 import { VendorModule } from '@business/party/vendor/vendor.module';
 import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
 import { PurchaseOrderForGrnFacade } from './application/facades/purchase-order-for-grn.facade';

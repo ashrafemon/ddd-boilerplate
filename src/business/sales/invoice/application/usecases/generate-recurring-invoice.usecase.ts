@@ -1,4 +1,5 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
+import { LoggerPort } from '@platform/observability/ports/logger.port';
 import { RecurringExecutionPort } from '@platform/recurring/ports/recurring-execution.port';
 import { asInvoiceLines } from '../integrations/recurring-invoice.mapper';
 import { RecurringOccurrenceRequestedPayload } from '../integrations/recurring-occurrence.types';
@@ -13,13 +14,12 @@ import { PostInvoiceUseCase } from './post-invoice.usecase';
  */
 @Injectable()
 export class GenerateRecurringInvoiceUseCase {
-  private readonly logger = new Logger(GenerateRecurringInvoiceUseCase.name);
-
   constructor(
     private readonly createInvoice: CreateInvoiceUseCase,
     private readonly getInvoice: GetInvoiceUseCase,
     private readonly postInvoice: PostInvoiceUseCase,
     private readonly recurringExecution: RecurringExecutionPort,
+    private readonly logger: LoggerPort,
   ) {}
 
   async execute(command: RecurringOccurrenceRequestedPayload): Promise<void> {
@@ -41,7 +41,7 @@ export class GenerateRecurringInvoiceUseCase {
       return;
     }
     if (execution.status !== 'IN_PROGRESS') {
-      this.logger.log(
+      this.logger.info(
         `Skipping RecurringOccurrenceRequested for execution ${command.executionId} (status ${execution.status})`,
       );
       return;

@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './../src/app.module';
-import { CreateProductUseCase } from './../src/business/catalog/product/application/usecases/create-product.usecase';
-import { GetPurchasableProductUseCase } from './../src/business/catalog/product/application/usecases/get-purchasable-product.usecase';
+import { CreateProductUseCase } from './../src/business/procurement/product/application/usecases/create-product.usecase';
+import { GetPurchasableProductUseCase } from './../src/business/procurement/product/application/usecases/get-purchasable-product.usecase';
 import { GetOrderableVendorUseCase } from './../src/business/party/vendor/application/usecases/get-orderable-vendor.usecase';
 import { CreatePurchaseOrderUseCase } from './../src/business/procurement/purchase-order/application/usecases/create-purchase-order.usecase';
 import { OutboxWriterPort } from './../src/platform/outbox/ports/outbox-writer.port';

@@ -16,7 +16,7 @@ import tseslint from 'typescript-eslint';
 
 /** Aggregate modules, expressed as `<context>/<module>` under `src/business`. */
 const businessModules = [
-  'catalog/product',
+  'procurement/product',
   'party/vendor',
   'procurement/purchase-order',
   'procurement/good-receipt-note',

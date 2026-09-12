@@ -1,4 +1,3 @@
-import { OrderableVendorPort } from '@business/procurement/purchase-order/application/outbound-ports/vendor-query.port';
 import { Module, OnApplicationBootstrap } from '@nestjs/common';
 import { ImportHandlerRegistry } from '@platform/import/import-handler.registry';
 import {
@@ -7,7 +6,6 @@ import {
 } from './infrastructure/adapters/platform/vendor-import.adapter';
 import { PlatformModule } from '@platform/platform.module';
 import { VendorForPurchaseFacade } from './application/facades/vendor-for-purchase.facade';
-import { OrderableVendorQueryAdapter } from './application/facades/orderable-vendor-query.adapter';
 import { VendorEventEmitterListener } from './application/integrations/listeners/vendor.created.event-emitter.listener-event';
 import { VendorKafkaListener } from './application/integrations/listeners/vendor.created.kafka.listener-event';
 import { VendorRabbitMQListener } from './application/integrations/listeners/vendor.created.rabbitmq.listener-event';
@@ -46,21 +44,13 @@ import './domain/events/vendor.registry';
     VendorKafkaListener,
     VendorSqsListener,
     VendorForPurchaseFacade,
-    OrderableVendorQueryAdapter,
     { provide: VendorForPurchasePort, useExisting: VendorForPurchaseFacade },
-    { provide: OrderableVendorPort, useExisting: OrderableVendorQueryAdapter },
     { provide: VendorCommandRepository, useClass: PrismaVendorCommandRepository },
     { provide: VendorQuery, useClass: PrismaVendorQueryRepository },
     { provide: VendorIntegrationPort, useClass: OutboxAdapter },
     { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
   ],
-  exports: [
-    GetVendorUseCase,
-    GetOrderableVendorUseCase,
-    ListVendorsUseCase,
-    VendorForPurchasePort,
-    OrderableVendorPort,
-  ],
+  exports: [VendorForPurchasePort],
 })
 export class VendorModule implements OnApplicationBootstrap {
   constructor(

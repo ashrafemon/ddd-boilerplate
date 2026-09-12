@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { CatalogModule } from './catalog/catalog.module';
 import { PartyModule } from './party/party.module';
 import { ProcurementModule } from './procurement/procurement.module';
 import { SalesModule } from './sales/sales.module';
@@ -10,6 +9,6 @@ import { SalesModule } from './sales/sales.module';
  * here (or below) may import `@infrastructure`.
  */
 @Module({
-  imports: [CatalogModule, PartyModule, ProcurementModule, SalesModule],
+  imports: [PartyModule, ProcurementModule, SalesModule],
 })
 export class BusinessModule {}

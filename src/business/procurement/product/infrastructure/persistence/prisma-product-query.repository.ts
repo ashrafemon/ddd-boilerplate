@@ -1,4 +1,4 @@
-import { ProductQuery } from '@business/catalog/product/application/queries/product.query';
+import { ProductQuery } from '@business/procurement/product/application/queries/product.query';
 import { PrismaReadPort } from '@platform/database/ports/prisma-read.port';
 import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';

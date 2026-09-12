@@ -48,7 +48,7 @@ flowchart TD
     subgraph BIZ["BUSINESS (hexagonal aggregates)"]
         PO[procurement/purchase-order]
         GRN[procurement/good-receipt-note]
-        PROD[catalog/product]
+        PROD[procurement/product]
         VEN[party/vendor]
         INV[sales/invoice]
     end

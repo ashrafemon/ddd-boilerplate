@@ -11,11 +11,19 @@ describe('GenerateRecurringInvoiceUseCase', () => {
     complete: jest.fn(),
     fail: jest.fn(),
   };
+  const logger = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    fatal: jest.fn(),
+  };
   const useCase = new GenerateRecurringInvoiceUseCase(
     createInvoice,
     getInvoice,
     postInvoice,
     recurringExecution,
+    logger,
   );
   const command: RecurringOccurrenceRequestedPayload = {
     executionId: 'exec-1',

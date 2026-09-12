@@ -70,8 +70,8 @@ src/
 ├── generated/               # Prisma-generated client (DO NOT EDIT; `@prisma/client` alias)
 └── business/
     ├── shared-business/     # framework-independent domain primitives + registries
-    ├── catalog/product/                 # Product aggregate      (context: catalog)
     ├── party/vendor/                    # Vendor aggregate       (context: party)
+    ├── procurement/product/             # Product aggregate      (context: procurement)
     ├── procurement/purchase-order/      # PurchaseOrder aggregate (context: procurement)
     ├── procurement/good-receipt-note/   # GoodReceiptNote aggregate (context: procurement)
     └── sales/invoice/                   # Invoice aggregate       (context: sales)
@@ -184,8 +184,8 @@ dependency stays visible in module metadata. See [§9](#9-platform-layer).
 ### business/
 
 `shared-business/` holds framework-independent primitives (see [§7](#7-domains--aggregates)).
-Concrete aggregates live under bounded-context folders (`catalog`, `party`, `procurement`,
-`sales`). Each context folder has a thin composing module (`CatalogModule`, `PartyModule`,
+Concrete aggregates live under bounded-context folders (`party`, `procurement`,
+`sales`). Each context folder has a thin composing module (`PartyModule`,
 `ProcurementModule`, `SalesModule`), aggregated by `BusinessModule`. `BusinessModule` and
 everything below it may never import `@infrastructure`.
 
@@ -193,7 +193,7 @@ everything below it may never import `@infrastructure`.
 
 ## 3. Business Module Anatomy
 
-Every aggregate module follows the same shape (shown for `catalog/product`):
+Every aggregate module follows the same shape (shown for `procurement/product`):
 
 ```text
 business/<context>/<module>/
@@ -372,9 +372,10 @@ Current wiring:
 
 ```text
 PurchaseOrder ──PurchasableProductPort──▶ ProductModule: ProductForPurchaseFacade
-             ──OrderableVendorPort────▶ VendorModule:   VendorForPurchaseFacade
-                                          (VendorModule additionally binds OrderableVendorPort
-                                           itself via OrderableVendorQueryAdapter)
+              ──OrderableVendorPort────▶ VendorModule:   VendorForPurchaseFacade
+                                           (bound in PurchaseOrderModule via its own
+                                            OrderableVendorAdapter — outbound ports are
+                                            consumer-owned; the producer never binds them)
 GoodReceiptNote ──PurchaseOrderPort──▶ PurchaseOrderModule: PurchaseOrderForGrnFacade
 
 PurchaseOrderModule exposes  PurchaseOrderForGrnPort   (public/)   → consumed by GRN adapter
@@ -425,7 +426,7 @@ Aggregates register invariants/policies by importing side-effect files
 (`*.invariants.ts`, `policies/*.ts`, `events/<name>.registry.ts`); rule classes never
 cross-import aggregates.
 
-### Product (catalog) — `domain/aggregates/product.aggregate.ts`
+### Product (procurement) — `domain/aggregates/product.aggregate.ts`
 
 - VOs: `ProductId`, `Sku` (normalized uppercase), `ProductName`; `Money` unit price.
 - Status: `ACTIVE | INACTIVE | DISCONTINUED`.
