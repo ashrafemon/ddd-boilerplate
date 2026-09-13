@@ -1,6 +1,7 @@
 # Flowcharts — How Every Module Works and Communicates
 
-Companion to [`ARCHITECTURE.md`](../ARCHITECTURE.md). Where that document defines the **rules**,
+Companion to [`ARCHITECTURE.md`](../ARCHITECTURE.md) (the rules) and
+[`DI-WIRING.md`](DI-WIRING.md) (the generated who-injects-whom graph). Where that document defines the **rules**,
 this one draws the **flows**: how a request travels through a business module, how modules talk
 to each other and to the platform through ports & adapters, and how each platform service works
 internally. Every class, port, and file name here is the real one from `src/`.
@@ -43,10 +44,10 @@ file. Dependencies always point **inward**: HTTP / brokers / queues → use case
 
 ```mermaid
 flowchart TD
-    UI[Client / UI] -->|x-device-type, x-tenant-id| GW["Global pipeline\nRequestId → Response → Logging → DeviceResponse → AppValidationPipe(Zod)"]
+    UI[Client / UI] -->|x-device-type, x-tenant-id| GW["Global pipeline: RequestId > Response > Logging > DeviceResponse > AppValidationPipe(Zod)"]
     GW --> BIZ
     subgraph BIZ["BUSINESS (hexagonal aggregates)"]
-        PO[procurement/purchase-order]
+        PO["procurement/purchase-order"]
         GRN[procurement/good-receipt-note]
         PROD[procurement/product]
         VEN[party/vendor]
@@ -61,7 +62,7 @@ flowchart TD
         CTX[context CLS] --- DB[database] --- CACHE[cache] --- STORAGE[storage] --- OBS[observability]
     end
     PLAT --> INFRA["INFRASTRUCTURE (clients only: Prisma, RabbitMQ, Kafka, SQS, Redis, S3, SES/SNS, CLS, BullMQ)"]
-    INFRA --> EXT[(PostgreSQL) Redis RabbitMQ Kafka SQS S3]
+    INFRA --> EXT["PostgreSQL | Redis | RabbitMQ | Kafka | SQS | S3"]
 ```
 
 Rules this diagram encodes: business never imports `@infrastructure`; platform wraps every
@@ -132,12 +133,12 @@ exported provider resolvable; the use case injects its outbound port directly.
 ```mermaid
 flowchart LR
     subgraph PO["procurement/purchase-order (CONSUMER)"]
-        UCX[CreatePurchaseOrderUseCase] --> OBP["application/outbound-ports/vendor-query.port.ts\nOrderableVendorPort"]
-        OBP -. "bound (useClass)" .-> ADA["infrastructure/adapters/module/orderable-vendor.adapter.ts"]
+        UCX[CreatePurchaseOrderUseCase] --> OBP["application/outbound-ports/vendor-query.port.ts  ::  OrderableVendorPort"]
+        OBP -.->|bound via useClass| ADA["infrastructure/adapters/module/orderable-vendor.adapter.ts"]
     end
-    ADA -->|direct ctor injection| PUB["party/vendor public/ports\nVendorForPurchasePort"]
+    ADA -->|direct ctor injection| PUB["party/vendor public/ports :: VendorForPurchasePort"]
     subgraph VEN["party/vendor (PRODUCER)"]
-        PUB -. "implemented (useExisting)" .-> FAC[application/facades/VendorForPurchaseFacade]
+        PUB -.->|implemented by useExisting| FAC[application/facades/VendorForPurchaseFacade]
         FAC --> QUC[GetOrderableVendorUseCase] --> QR[VendorQuery → PrismaReadPort]
     end
 ```

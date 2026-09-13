@@ -10,6 +10,7 @@ Documentation:
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — design, layers, outbox, events, data model
 - [docs/FLOWCHARTS.md](./docs/FLOWCHARTS.md) — flowcharts: request lifecycles, port/adapter wiring, platform service internals
+- [docs/DI-WIRING.md](./docs/DI-WIRING.md) — generated DI graph: who injects whom, token→implementation bindings (`npm run docs:di`)
 
 ---
 
@@ -93,15 +94,15 @@ resolved via the Nest container — modules never import each other.
 
 ## Scripts
 
-| Command | Purpose |
-|---|---|
-| `npm run start:dev` | watch mode dev server |
-| `npm run build` | compile to `dist/` |
-| `npm run lint` | ESLint + architecture import restrictions (`--fix`) |
-| `npm run lint:check` | ESLint + architecture checks (read-only) |
-| `npm test` | unit tests (aggregates, use cases with fakes) |
-| `npm run test:e2e` | e2e smoke (requires `docker compose up -d`) |
-| `npx prisma migrate dev` | create/apply migration + regenerate client |
-| `npm run db:deploy` | apply migrations in staging/production |
-| `npm run db:seed` | seed products/vendors |
-| `npm run prisma:studio` | Prisma Studio UI |
+| Command                  | Purpose                                             |
+| ------------------------ | --------------------------------------------------- |
+| `npm run start:dev`      | watch mode dev server                               |
+| `npm run build`          | compile to `dist/`                                  |
+| `npm run lint`           | ESLint + architecture import restrictions (`--fix`) |
+| `npm run lint:check`     | ESLint + architecture checks (read-only)            |
+| `npm test`               | unit tests (aggregates, use cases with fakes)       |
+| `npm run test:e2e`       | e2e smoke (requires `docker compose up -d`)         |
+| `npx prisma migrate dev` | create/apply migration + regenerate client          |
+| `npm run db:deploy`      | apply migrations in staging/production              |
+| `npm run db:seed`        | seed products/vendors                               |
+| `npm run prisma:studio`  | Prisma Studio UI                                    |
