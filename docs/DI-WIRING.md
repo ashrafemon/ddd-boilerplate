@@ -755,7 +755,7 @@ flowchart LR
 
 #### ImportModule — `src/platform/import/import.module.ts`
 
-imports: ContextModule, NumberingModule, OutboxModule, StorageModule, BullModule.registerQueue({ name: IMPORT_QUEUE_NAME }) · exports: ImportHandlerRegistry, InitImportPort, CreateImportUploadPort, CreateImportJobPort, GetImportPreviewPort, UpdateImportMappingPort, GetImportReportPort, ExecuteImportJobPort, CancelImportJobPort, GetImportJobStatusPort, ListImportJobsPort
+imports: ContextModule, NumberingModule, OutboxModule, StorageModule, BullModule.registerQueue({ name: IMPORT_QUEUE_NAME }) · exports: ImportHandlerRegistry
 
 ```mermaid
 flowchart LR
@@ -774,56 +774,27 @@ flowchart LR
     ImportQueuePublisherPort["ImportQueuePublisherPort"]
     BullMqImportQueueAdapter["BullMqImportQueueAdapter"]
     ImportQueuePublisherPort -.->|useExisting| BullMqImportQueueAdapter
-    InitImportPort["InitImportPort"]
-    InitImportAdapter["InitImportAdapter"]
-    InitImportPort -.->|useExisting| InitImportAdapter
-    CreateImportUploadPort["CreateImportUploadPort"]
-    CreateImportUploadAdapter["CreateImportUploadAdapter"]
-    CreateImportUploadPort -.->|useExisting| CreateImportUploadAdapter
-    CreateImportJobPort["CreateImportJobPort"]
-    CreateImportJobAdapter["CreateImportJobAdapter"]
-    CreateImportJobPort -.->|useExisting| CreateImportJobAdapter
-    GetImportPreviewPort["GetImportPreviewPort"]
-    GetImportPreviewAdapter["GetImportPreviewAdapter"]
-    GetImportPreviewPort -.->|useExisting| GetImportPreviewAdapter
-    UpdateImportMappingPort["UpdateImportMappingPort"]
-    UpdateImportMappingAdapter["UpdateImportMappingAdapter"]
-    UpdateImportMappingPort -.->|useExisting| UpdateImportMappingAdapter
-    GetImportReportPort["GetImportReportPort"]
-    GetImportReportAdapter["GetImportReportAdapter"]
-    GetImportReportPort -.->|useExisting| GetImportReportAdapter
-    ExecuteImportJobPort["ExecuteImportJobPort"]
-    ExecuteImportJobAdapter["ExecuteImportJobAdapter"]
-    ExecuteImportJobPort -.->|useExisting| ExecuteImportJobAdapter
-    CancelImportJobPort["CancelImportJobPort"]
-    CancelImportJobAdapter["CancelImportJobAdapter"]
-    CancelImportJobPort -.->|useExisting| CancelImportJobAdapter
-    GetImportJobStatusPort["GetImportJobStatusPort"]
-    GetImportJobStatusAdapter["GetImportJobStatusAdapter"]
-    GetImportJobStatusPort -.->|useExisting| GetImportJobStatusAdapter
-    ListImportJobsPort["ListImportJobsPort"]
-    ListImportJobsAdapter["ListImportJobsAdapter"]
-    ListImportJobsPort -.->|useExisting| ListImportJobsAdapter
-    ParseImportJobPort["ParseImportJobPort"]
-    ParseImportJobAdapter["ParseImportJobAdapter"]
-    ParseImportJobPort -.->|useExisting| ParseImportJobAdapter
-    ValidateImportJobPort["ValidateImportJobPort"]
-    ValidateImportJobAdapter["ValidateImportJobAdapter"]
-    ValidateImportJobPort -.->|useExisting| ValidateImportJobAdapter
-    RunImportExecutionPort["RunImportExecutionPort"]
-    RunImportExecutionAdapter["RunImportExecutionAdapter"]
-    RunImportExecutionPort -.->|useExisting| RunImportExecutionAdapter
     ImportController["ImportController"]
-    ImportController -->|injects| InitImportPort
-    ImportController -->|injects| CreateImportUploadPort
-    ImportController -->|injects| CreateImportJobPort
-    ImportController -->|injects| GetImportPreviewPort
-    ImportController -->|injects| UpdateImportMappingPort
-    ImportController -->|injects| GetImportReportPort
-    ImportController -->|injects| ExecuteImportJobPort
-    ImportController -->|injects| CancelImportJobPort
-    ImportController -->|injects| GetImportJobStatusPort
-    ImportController -->|injects| ListImportJobsPort
+    InitImportUseCase["InitImportUseCase"]
+    ImportController -->|injects| InitImportUseCase
+    CreateImportUploadUseCase["CreateImportUploadUseCase"]
+    ImportController -->|injects| CreateImportUploadUseCase
+    CreateImportJobUseCase["CreateImportJobUseCase"]
+    ImportController -->|injects| CreateImportJobUseCase
+    GetImportPreviewUseCase["GetImportPreviewUseCase"]
+    ImportController -->|injects| GetImportPreviewUseCase
+    UpdateImportMappingUseCase["UpdateImportMappingUseCase"]
+    ImportController -->|injects| UpdateImportMappingUseCase
+    GetImportReportUseCase["GetImportReportUseCase"]
+    ImportController -->|injects| GetImportReportUseCase
+    ExecuteImportJobUseCase["ExecuteImportJobUseCase"]
+    ImportController -->|injects| ExecuteImportJobUseCase
+    CancelImportJobUseCase["CancelImportJobUseCase"]
+    ImportController -->|injects| CancelImportJobUseCase
+    GetImportJobStatusUseCase["GetImportJobStatusUseCase"]
+    ImportController -->|injects| GetImportJobStatusUseCase
+    ListImportJobsUseCase["ListImportJobsUseCase"]
+    ImportController -->|injects| ListImportJobsUseCase
     ImportHandlerRegistry["ImportHandlerRegistry"]
     ImportController -->|injects| ImportHandlerRegistry
     RequestContextPort["RequestContextPort"]
@@ -845,28 +816,24 @@ flowchart LR
     BullMqImportQueueAdapter -->|injects| Queue__library_
     BullMqImportQueueAdapter -->|injects via ConfigModule| ConfigService
     BullMqImportWorker["BullMqImportWorker"]
-    BullMqImportWorker -->|injects| ParseImportJobPort
-    BullMqImportWorker -->|injects| ValidateImportJobPort
-    BullMqImportWorker -->|injects| RunImportExecutionPort
+    ParseImportJobUseCase["ParseImportJobUseCase"]
+    BullMqImportWorker -->|injects| ParseImportJobUseCase
+    ValidateImportJobUseCase["ValidateImportJobUseCase"]
+    BullMqImportWorker -->|injects| ValidateImportJobUseCase
+    RunImportExecutionUseCase["RunImportExecutionUseCase"]
+    BullMqImportWorker -->|injects| RunImportExecutionUseCase
     ImportReconciliationConsumer["ImportReconciliationConsumer"]
     ImportReconciliationConsumer -->|injects via ConfigModule| ConfigService
     ImportReconciliationConsumer -->|injects| ImportJobRepositoryPort
     ImportReconciliationConsumer -->|injects| ImportJobRowRepositoryPort
     ImportReconciliationConsumer -->|injects| ImportJobOutboxWriterPort
-    InitImportUseCase["InitImportUseCase"]
     InitImportUseCase -->|injects| ImportHandlerRegistry
     InitImportUseCase -->|injects| ImportJobRepositoryPort
-    InitImportAdapter -->|injects| InitImportUseCase
-    InitImportAdapter -->|injects| InitImportUseCase
-    CreateImportUploadUseCase["CreateImportUploadUseCase"]
     CreateImportUploadUseCase -->|injects| ImportHandlerRegistry
     CreateImportUploadUseCase -->|injects via ConfigModule| ConfigService
     FileStoragePort["FileStoragePort"]
     CreateImportUploadUseCase -->|injects via StorageModule| FileStoragePort
     CreateImportUploadUseCase -->|injects| StorageObjectRepositoryPort
-    CreateImportUploadAdapter -->|injects| CreateImportUploadUseCase
-    CreateImportUploadAdapter -->|injects| CreateImportUploadUseCase
-    CreateImportJobUseCase["CreateImportJobUseCase"]
     CreateImportJobUseCase -->|injects| ImportHandlerRegistry
     CreateImportJobUseCase -->|injects via ConfigModule| ConfigService
     CreateImportJobUseCase -->|injects via StorageModule| FileStoragePort
@@ -875,67 +842,35 @@ flowchart LR
     CreateImportJobUseCase -->|injects| StorageObjectRepositoryPort
     CreateImportJobUseCase -->|injects| ImportJobRepositoryPort
     CreateImportJobUseCase -->|injects| ImportQueuePublisherPort
-    CreateImportJobAdapter -->|injects| CreateImportJobUseCase
-    CreateImportJobAdapter -->|injects| CreateImportJobUseCase
-    GetImportPreviewUseCase["GetImportPreviewUseCase"]
     GetImportPreviewUseCase -->|injects| ImportJobRepositoryPort
     GetImportPreviewUseCase -->|injects| ImportJobRowRepositoryPort
     GetImportPreviewUseCase -->|injects via ConfigModule| ConfigService
-    GetImportPreviewAdapter -->|injects| GetImportPreviewUseCase
-    GetImportPreviewAdapter -->|injects| GetImportPreviewUseCase
-    UpdateImportMappingUseCase["UpdateImportMappingUseCase"]
     UpdateImportMappingUseCase -->|injects| ImportJobRepositoryPort
     UpdateImportMappingUseCase -->|injects| ImportQueuePublisherPort
-    UpdateImportMappingAdapter -->|injects| UpdateImportMappingUseCase
-    UpdateImportMappingAdapter -->|injects| UpdateImportMappingUseCase
-    GetImportReportUseCase["GetImportReportUseCase"]
-    GetImportReportUseCase -->|injects| ImportJobRepositoryPort
-    GetImportReportUseCase -->|injects| ImportJobRowRepositoryPort
-    GetImportReportAdapter -->|injects| GetImportReportUseCase
-    GetImportReportAdapter -->|injects| GetImportReportUseCase
-    ExecuteImportJobUseCase["ExecuteImportJobUseCase"]
-    ExecuteImportJobUseCase -->|injects| ImportJobRepositoryPort
-    ExecuteImportJobUseCase -->|injects| ImportQueuePublisherPort
-    ExecuteImportJobAdapter -->|injects| ExecuteImportJobUseCase
-    ExecuteImportJobAdapter -->|injects| ExecuteImportJobUseCase
-    CancelImportJobUseCase["CancelImportJobUseCase"]
-    CancelImportJobUseCase -->|injects| ImportJobRepositoryPort
-    CancelImportJobUseCase -->|injects| ImportJobOutboxWriterPort
-    CancelImportJobAdapter -->|injects| CancelImportJobUseCase
-    CancelImportJobAdapter -->|injects| CancelImportJobUseCase
-    GetImportJobStatusUseCase["GetImportJobStatusUseCase"]
-    GetImportJobStatusUseCase -->|injects| ImportJobRepositoryPort
-    GetImportJobStatusAdapter -->|injects| GetImportJobStatusUseCase
-    GetImportJobStatusAdapter -->|injects| GetImportJobStatusUseCase
-    ListImportJobsUseCase["ListImportJobsUseCase"]
-    ListImportJobsUseCase -->|injects| ImportJobRepositoryPort
-    ListImportJobsAdapter -->|injects| ListImportJobsUseCase
-    ListImportJobsAdapter -->|injects| ListImportJobsUseCase
-    ParseImportJobUseCase["ParseImportJobUseCase"]
+    ValidateImportJobUseCase -->|injects| ImportHandlerRegistry
+    ValidateImportJobUseCase -->|injects via ConfigModule| ConfigService
+    ValidateImportJobUseCase -->|injects| ImportJobRepositoryPort
+    ValidateImportJobUseCase -->|injects| ImportJobRowRepositoryPort
+    ValidateImportJobUseCase -->|injects| ImportJobOutboxWriterPort
     ParseImportJobUseCase -->|injects via ConfigModule| ConfigService
     ParseImportJobUseCase -->|injects via StorageModule| FileStoragePort
     ParseImportJobUseCase -->|injects| ImportJobRepositoryPort
     ParseImportJobUseCase -->|injects| ImportJobRowRepositoryPort
     ParseImportJobUseCase -->|injects| StorageObjectRepositoryPort
     ParseImportJobUseCase -->|injects| ImportJobOutboxWriterPort
-    ParseImportJobAdapter -->|injects| ParseImportJobUseCase
-    ParseImportJobAdapter -->|injects| ParseImportJobUseCase
-    ValidateImportJobUseCase["ValidateImportJobUseCase"]
-    ValidateImportJobUseCase -->|injects| ImportHandlerRegistry
-    ValidateImportJobUseCase -->|injects via ConfigModule| ConfigService
-    ValidateImportJobUseCase -->|injects| ImportJobRepositoryPort
-    ValidateImportJobUseCase -->|injects| ImportJobRowRepositoryPort
-    ValidateImportJobUseCase -->|injects| ImportJobOutboxWriterPort
-    ValidateImportJobAdapter -->|injects| ValidateImportJobUseCase
-    ValidateImportJobAdapter -->|injects| ValidateImportJobUseCase
-    RunImportExecutionUseCase["RunImportExecutionUseCase"]
+    ExecuteImportJobUseCase -->|injects| ImportJobRepositoryPort
+    ExecuteImportJobUseCase -->|injects| ImportQueuePublisherPort
+    CancelImportJobUseCase -->|injects| ImportJobRepositoryPort
+    CancelImportJobUseCase -->|injects| ImportJobOutboxWriterPort
+    GetImportJobStatusUseCase -->|injects| ImportJobRepositoryPort
+    ListImportJobsUseCase -->|injects| ImportJobRepositoryPort
+    GetImportReportUseCase -->|injects| ImportJobRepositoryPort
+    GetImportReportUseCase -->|injects| ImportJobRowRepositoryPort
     RunImportExecutionUseCase -->|injects| ImportHandlerRegistry
     RunImportExecutionUseCase -->|injects via ConfigModule| ConfigService
     RunImportExecutionUseCase -->|injects| ImportJobRepositoryPort
     RunImportExecutionUseCase -->|injects| ImportJobRowRepositoryPort
     RunImportExecutionUseCase -->|injects| ImportJobOutboxWriterPort
-    RunImportExecutionAdapter -->|injects| RunImportExecutionUseCase
-    RunImportExecutionAdapter -->|injects| RunImportExecutionUseCase
 ```
 
 #### RecurringModule — `src/platform/recurring/recurring.module.ts`
@@ -1012,7 +947,7 @@ flowchart LR
 
 #### SchedulerModule — `src/platform/scheduler/scheduler.module.ts`
 
-imports: MessagingModule, BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }) · exports: SchedulerPort, UpdateScheduledJobPort, DispatchDueJobsPort, ReconcileMissedJobsPort, GetScheduledJobStatusPort, ListScheduledJobDispatchLogPort, GetSchedulerHealthMetricsPort, ScheduledJobHandlerRegistry
+imports: MessagingModule, BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }) · exports: SchedulerPort, ScheduledJobHandlerRegistry
 
 ```mermaid
 flowchart LR
@@ -1034,34 +969,20 @@ flowchart LR
     SchedulerJobQueuePort["SchedulerJobQueuePort"]
     BullMqSchedulerQueueAdapter["BullMqSchedulerQueueAdapter"]
     SchedulerJobQueuePort -.->|useExisting| BullMqSchedulerQueueAdapter
-    UpdateScheduledJobPort["UpdateScheduledJobPort"]
-    UpdateScheduledJobAdapter["UpdateScheduledJobAdapter"]
-    UpdateScheduledJobPort -.->|useExisting| UpdateScheduledJobAdapter
-    DispatchDueJobsPort["DispatchDueJobsPort"]
-    DispatchDueJobsAdapter["DispatchDueJobsAdapter"]
-    DispatchDueJobsPort -.->|useExisting| DispatchDueJobsAdapter
-    ReconcileMissedJobsPort["ReconcileMissedJobsPort"]
-    ReconcileMissedJobsAdapter["ReconcileMissedJobsAdapter"]
-    ReconcileMissedJobsPort -.->|useExisting| ReconcileMissedJobsAdapter
-    GetScheduledJobStatusPort["GetScheduledJobStatusPort"]
-    GetScheduledJobStatusAdapter["GetScheduledJobStatusAdapter"]
-    GetScheduledJobStatusPort -.->|useExisting| GetScheduledJobStatusAdapter
-    ListScheduledJobDispatchLogPort["ListScheduledJobDispatchLogPort"]
-    ListScheduledJobDispatchLogAdapter["ListScheduledJobDispatchLogAdapter"]
-    ListScheduledJobDispatchLogPort -.->|useExisting| ListScheduledJobDispatchLogAdapter
-    GetSchedulerHealthMetricsPort["GetSchedulerHealthMetricsPort"]
-    GetSchedulerHealthMetricsAdapter["GetSchedulerHealthMetricsAdapter"]
-    GetSchedulerHealthMetricsPort -.->|useExisting| GetSchedulerHealthMetricsAdapter
     SchedulerPort["SchedulerPort"]
     SchedulerAdapter["SchedulerAdapter"]
     SchedulerPort -.->|useExisting| SchedulerAdapter
     SchedulerController["SchedulerController"]
-    SchedulerController -->|injects| GetScheduledJobStatusPort
-    SchedulerController -->|injects| ListScheduledJobDispatchLogPort
-    SchedulerController -->|injects| UpdateScheduledJobPort
+    GetScheduledJobStatusUseCase["GetScheduledJobStatusUseCase"]
+    SchedulerController -->|injects| GetScheduledJobStatusUseCase
+    ListScheduledJobDispatchLogUseCase["ListScheduledJobDispatchLogUseCase"]
+    SchedulerController -->|injects| ListScheduledJobDispatchLogUseCase
+    UpdateScheduledJobUseCase["UpdateScheduledJobUseCase"]
+    SchedulerController -->|injects| UpdateScheduledJobUseCase
     SchedulerController -->|injects| SchedulerPort
     SchedulerHealthController["SchedulerHealthController"]
-    SchedulerHealthController -->|injects| GetSchedulerHealthMetricsPort
+    GetSchedulerHealthMetricsUseCase["GetSchedulerHealthMetricsUseCase"]
+    SchedulerHealthController -->|injects| GetSchedulerHealthMetricsUseCase
     TransactionHost__library_["TransactionHost (library)"]
     PrismaScheduledJobRepository -->|injects| TransactionHost__library_
     ConfigService["ConfigService"]
@@ -1098,37 +1019,21 @@ flowchart LR
     CancelScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
     RescheduleExternalJobUseCase["RescheduleExternalJobUseCase"]
     RescheduleExternalJobUseCase -->|injects| ScheduledJobRepositoryPort
-    UpdateScheduledJobUseCase["UpdateScheduledJobUseCase"]
     UpdateScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
     UpdateScheduledJobUseCase -->|injects| ScheduledJobEditLogRepositoryPort
-    UpdateScheduledJobAdapter -->|injects| UpdateScheduledJobUseCase
-    UpdateScheduledJobAdapter -->|injects| UpdateScheduledJobUseCase
     DispatchDueJobsUseCase["DispatchDueJobsUseCase"]
     DispatchDueJobsUseCase -->|injects| ScheduledJobRepositoryPort
     DispatchDueJobsUseCase -->|injects| DistributedLockPort
     DispatchDueJobsUseCase -->|injects| SchedulerJobQueuePort
     DispatchDueJobsUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
     DispatchDueJobsUseCase -->|injects via ConfigModule| ConfigService
-    DispatchDueJobsAdapter -->|injects| DispatchDueJobsUseCase
-    DispatchDueJobsAdapter -->|injects| DispatchDueJobsUseCase
     ReconcileMissedJobsUseCase["ReconcileMissedJobsUseCase"]
     ReconcileMissedJobsUseCase -->|injects| ScheduledJobRepositoryPort
     ReconcileMissedJobsUseCase -->|injects| DistributedLockPort
-    ReconcileMissedJobsAdapter -->|injects| ReconcileMissedJobsUseCase
-    ReconcileMissedJobsAdapter -->|injects| ReconcileMissedJobsUseCase
-    GetScheduledJobStatusUseCase["GetScheduledJobStatusUseCase"]
     GetScheduledJobStatusUseCase -->|injects| ScheduledJobRepositoryPort
-    GetScheduledJobStatusAdapter -->|injects| GetScheduledJobStatusUseCase
-    GetScheduledJobStatusAdapter -->|injects| GetScheduledJobStatusUseCase
-    ListScheduledJobDispatchLogUseCase["ListScheduledJobDispatchLogUseCase"]
     ListScheduledJobDispatchLogUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
-    ListScheduledJobDispatchLogAdapter -->|injects| ListScheduledJobDispatchLogUseCase
-    ListScheduledJobDispatchLogAdapter -->|injects| ListScheduledJobDispatchLogUseCase
-    GetSchedulerHealthMetricsUseCase["GetSchedulerHealthMetricsUseCase"]
     GetSchedulerHealthMetricsUseCase -->|injects| ScheduledJobRepositoryPort
     GetSchedulerHealthMetricsUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
-    GetSchedulerHealthMetricsAdapter -->|injects| GetSchedulerHealthMetricsUseCase
-    GetSchedulerHealthMetricsAdapter -->|injects| GetSchedulerHealthMetricsUseCase
     SchedulerAdapter -->|injects| RegisterScheduledJobUseCase
     SchedulerAdapter -->|injects| CancelScheduledJobUseCase
     SchedulerAdapter -->|injects| RescheduleExternalJobUseCase
@@ -1136,8 +1041,8 @@ flowchart LR
     SchedulerAdapter -->|injects| CancelScheduledJobUseCase
     SchedulerAdapter -->|injects| RescheduleExternalJobUseCase
     SchedulerTicker["SchedulerTicker"]
-    SchedulerTicker -->|injects| DispatchDueJobsPort
-    SchedulerTicker -->|injects| ReconcileMissedJobsPort
+    SchedulerTicker -->|injects| DispatchDueJobsUseCase
+    SchedulerTicker -->|injects| ReconcileMissedJobsUseCase
     SchedulerTicker -->|injects via ConfigModule| ConfigService
     SchedulerRegistry__library_["SchedulerRegistry (library)"]
     SchedulerTicker -->|injects| SchedulerRegistry__library_

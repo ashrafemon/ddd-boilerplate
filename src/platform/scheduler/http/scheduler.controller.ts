@@ -5,20 +5,20 @@ import { ScheduledJobDispatchLogRecord } from '../scheduler.types';
 import { ScheduledJobRecord } from '../scheduler.types';
 import { SchedulerHealthMetrics } from '../scheduler.types';
 import { SchedulerPort } from '../ports/scheduler.port';
-import { GetScheduledJobStatusPort } from '../ports/get-scheduled-job-status.port';
-import { GetSchedulerHealthMetricsPort } from '../ports/get-scheduler-health-metrics.port';
-import { ListScheduledJobDispatchLogPort } from '../ports/list-scheduled-job-dispatch-log.port';
-import { UpdateScheduledJobPort } from '../ports/update-scheduled-job.port';
 import { ListScheduledJobsDto, UpdateScheduledJobDto } from './requests/scheduler.request.dto';
+import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
+import { GetScheduledJobStatusUseCase } from '../usecases/get-scheduled-job-status.usecase';
+import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
+import { GetSchedulerHealthMetricsUseCase } from '../usecases/get-scheduler-health-metrics.usecase';
 
 @ApiTags('scheduler')
 @ApiBearerAuth()
 @Controller('scheduled-jobs')
 export class SchedulerController {
   constructor(
-    private readonly getStatus: GetScheduledJobStatusPort,
-    private readonly listDispatchLog: ListScheduledJobDispatchLogPort,
-    private readonly updateJob: UpdateScheduledJobPort,
+    private readonly getStatus: GetScheduledJobStatusUseCase,
+    private readonly listDispatchLog: ListScheduledJobDispatchLogUseCase,
+    private readonly updateJob: UpdateScheduledJobUseCase,
     private readonly scheduler: SchedulerPort,
   ) {}
 
@@ -75,7 +75,7 @@ export class SchedulerController {
 @ApiBearerAuth()
 @Controller('scheduler')
 export class SchedulerHealthController {
-  constructor(private readonly health: GetSchedulerHealthMetricsPort) {}
+  constructor(private readonly health: GetSchedulerHealthMetricsUseCase) {}
 
   @Get('health')
   @ApiOperation({ summary: 'Scheduler health metrics' })

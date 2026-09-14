@@ -1,20 +1,20 @@
 import { Body, Controller, Get, Headers, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  CancelImportJobUseCase,
+  CreateImportJobUseCase,
+  CreateImportUploadUseCase,
+  ExecuteImportJobUseCase,
+  GetImportJobStatusUseCase,
+  GetImportPreviewUseCase,
+  GetImportReportUseCase,
+  InitImportUseCase,
+  ListImportJobsUseCase,
+  UpdateImportMappingUseCase,
+} from '../usecases/import.usecases';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { normalizePageQuery } from '@shared-kernel/types/pagination';
 import { ImportHandlerRegistry } from '../import-handler.registry';
-import {
-  CancelImportJobPort,
-  CreateImportJobPort,
-  CreateImportUploadPort,
-  ExecuteImportJobPort,
-  GetImportJobStatusPort,
-  GetImportPreviewPort,
-  GetImportReportPort,
-  InitImportPort,
-  ListImportJobsPort,
-  UpdateImportMappingPort,
-} from '../ports/import.ports';
 import {
   CreateJobDto,
   CreateUploadDto,
@@ -27,16 +27,16 @@ import {
 @Controller('import')
 export class ImportController {
   constructor(
-    private readonly initImport: InitImportPort,
-    private readonly createUpload: CreateImportUploadPort,
-    private readonly createJob: CreateImportJobPort,
-    private readonly getPreview: GetImportPreviewPort,
-    private readonly updateMapping: UpdateImportMappingPort,
-    private readonly getReport: GetImportReportPort,
-    private readonly executeJob: ExecuteImportJobPort,
-    private readonly cancelJob: CancelImportJobPort,
-    private readonly getStatus: GetImportJobStatusPort,
-    private readonly listJobs: ListImportJobsPort,
+    private readonly initImport: InitImportUseCase,
+    private readonly createUpload: CreateImportUploadUseCase,
+    private readonly createJob: CreateImportJobUseCase,
+    private readonly getPreview: GetImportPreviewUseCase,
+    private readonly updateMapping: UpdateImportMappingUseCase,
+    private readonly getReport: GetImportReportUseCase,
+    private readonly executeJob: ExecuteImportJobUseCase,
+    private readonly cancelJob: CancelImportJobUseCase,
+    private readonly getStatus: GetImportJobStatusUseCase,
+    private readonly listJobs: ListImportJobsUseCase,
     private readonly registry: ImportHandlerRegistry,
     private readonly requestContext: RequestContextPort,
   ) {}

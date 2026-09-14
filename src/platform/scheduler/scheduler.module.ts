@@ -5,13 +5,7 @@ import { Module } from '@nestjs/common';
 import { ScheduledJobHandlerRegistry } from './scheduled-job-handler.registry';
 import { ScheduledJobProcessor } from './scheduled-job.processor';
 import { SchedulerTicker } from './scheduler.ticker';
-import { DispatchDueJobsPort } from './ports/dispatch-due-jobs.port';
-import { GetScheduledJobStatusPort } from './ports/get-scheduled-job-status.port';
-import { GetSchedulerHealthMetricsPort } from './ports/get-scheduler-health-metrics.port';
-import { ListScheduledJobDispatchLogPort } from './ports/list-scheduled-job-dispatch-log.port';
-import { ReconcileMissedJobsPort } from './ports/reconcile-missed-jobs.port';
 import { SchedulerPort } from './ports/scheduler.port';
-import { UpdateScheduledJobPort } from './ports/update-scheduled-job.port';
 import { DistributedLockPort } from './ports/distributed-lock.port';
 import { ScheduledJobDispatchLogRepositoryPort } from './ports/scheduled-job-dispatch-log-repository.port';
 import { ScheduledJobEditLogRepositoryPort } from './ports/scheduled-job-edit-log-repository.port';
@@ -36,12 +30,6 @@ import { BullMqSchedulerJobWorker } from './adapters/bullmq-scheduler-job.worker
 import { RabbitMqSchedulerEventPublisher } from './adapters/rabbitmq-scheduler-event.publisher';
 import { RedisDistributedLockAdapter } from './adapters/redis-distributed-lock.adapter';
 import { SchedulerAdapter } from './adapters/scheduler.adapter';
-import { DispatchDueJobsAdapter } from './adapters/dispatch-due-jobs.adapter';
-import { GetScheduledJobStatusAdapter } from './adapters/get-scheduled-job-status.adapter';
-import { GetSchedulerHealthMetricsAdapter } from './adapters/get-scheduler-health-metrics.adapter';
-import { ListScheduledJobDispatchLogAdapter } from './adapters/list-scheduled-job-dispatch-log.adapter';
-import { ReconcileMissedJobsAdapter } from './adapters/reconcile-missed-jobs.adapter';
-import { UpdateScheduledJobAdapter } from './adapters/update-scheduled-job.adapter';
 import { SchedulerController, SchedulerHealthController } from './http/scheduler.controller';
 
 /**
@@ -81,47 +69,20 @@ import { SchedulerController, SchedulerHealthController } from './http/scheduler
     { provide: SchedulerJobQueuePort, useExisting: BullMqSchedulerQueueAdapter },
     BullMqSchedulerJobWorker,
 
-    // use cases (business logic only) bound to their inbound ports via a thin adapter
+    // use cases — internal consumers (ticker/controller/adapter) inject them directly
     RegisterScheduledJobUseCase,
     CancelScheduledJobUseCase,
     RescheduleExternalJobUseCase,
     UpdateScheduledJobUseCase,
-    UpdateScheduledJobAdapter,
-    { provide: UpdateScheduledJobPort, useExisting: UpdateScheduledJobAdapter },
     DispatchDueJobsUseCase,
-    DispatchDueJobsAdapter,
-    { provide: DispatchDueJobsPort, useExisting: DispatchDueJobsAdapter },
     ReconcileMissedJobsUseCase,
-    ReconcileMissedJobsAdapter,
-    { provide: ReconcileMissedJobsPort, useExisting: ReconcileMissedJobsAdapter },
     GetScheduledJobStatusUseCase,
-    GetScheduledJobStatusAdapter,
-    { provide: GetScheduledJobStatusPort, useExisting: GetScheduledJobStatusAdapter },
     ListScheduledJobDispatchLogUseCase,
-    ListScheduledJobDispatchLogAdapter,
-    {
-      provide: ListScheduledJobDispatchLogPort,
-      useExisting: ListScheduledJobDispatchLogAdapter,
-    },
     GetSchedulerHealthMetricsUseCase,
-    GetSchedulerHealthMetricsAdapter,
-    {
-      provide: GetSchedulerHealthMetricsPort,
-      useExisting: GetSchedulerHealthMetricsAdapter,
-    },
     SchedulerAdapter,
     { provide: SchedulerPort, useExisting: SchedulerAdapter },
     SchedulerTicker,
   ],
-  exports: [
-    SchedulerPort,
-    UpdateScheduledJobPort,
-    DispatchDueJobsPort,
-    ReconcileMissedJobsPort,
-    GetScheduledJobStatusPort,
-    ListScheduledJobDispatchLogPort,
-    GetSchedulerHealthMetricsPort,
-    ScheduledJobHandlerRegistry,
-  ],
+  exports: [SchedulerPort, ScheduledJobHandlerRegistry],
 })
 export class SchedulerModule {}

@@ -1,11 +1,11 @@
 import { Logger } from '@nestjs/common';
+import {
+  ParseImportJobUseCase,
+  RunImportExecutionUseCase,
+  ValidateImportJobUseCase,
+} from '../usecases/import.usecases';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import {
-  ParseImportJobPort,
-  ValidateImportJobPort,
-  RunImportExecutionPort,
-} from '../ports/import.ports';
 import {
   IMPORT_EXECUTE_JOB_NAME,
   IMPORT_PARSE_JOB_NAME,
@@ -20,9 +20,9 @@ export class BullMqImportWorker extends WorkerHost {
   private readonly logger = new Logger(BullMqImportWorker.name);
 
   constructor(
-    private readonly parseJob: ParseImportJobPort,
-    private readonly validateJob: ValidateImportJobPort,
-    private readonly runExecution: RunImportExecutionPort,
+    private readonly parseJob: ParseImportJobUseCase,
+    private readonly validateJob: ValidateImportJobUseCase,
+    private readonly runExecution: RunImportExecutionUseCase,
   ) {
     super();
   }
