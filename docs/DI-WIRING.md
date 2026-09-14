@@ -39,7 +39,7 @@ flowchart LR
     ContextModule__src_platform_context__2["ContextModule__src_platform_context_"]
     PurchaseOrderModule -->|RequestContextPort| ContextModule__src_platform_context__2
     RecurringModule["RecurringModule"]
-    PurchaseOrderModule -->|CreateRecurringTemplateUseCase, RecurringExecutionPort| RecurringModule
+    PurchaseOrderModule -->|RecurringTemplatePort, RecurringExecutionPort| RecurringModule
     ObservabilityModule["ObservabilityModule"]
     PurchaseOrderModule -->|LoggerPort| ObservabilityModule
     PurchaseOrderModule -->|PrismaReadPort| DatabaseModule
@@ -319,11 +319,11 @@ flowchart LR
     ListPurchaseOrdersUseCase -->|injects| PurchaseOrderQuery
     CreateRecurringPurchaseOrderUseCase -->|injects| OrderableVendorPort
     CreateRecurringPurchaseOrderUseCase -->|injects| NumberingPort
-    CreateRecurringTemplateUseCase["CreateRecurringTemplateUseCase"]
-    CreateRecurringPurchaseOrderUseCase -->|injects via RecurringModule| CreateRecurringTemplateUseCase
+    RecurringTemplatePort["RecurringTemplatePort"]
+    CreateRecurringPurchaseOrderUseCase -->|injects via RecurringModule| RecurringTemplatePort
     CreateRecurringFromPurchaseOrderUseCase -->|injects| GetPurchaseOrderUseCase
     CreateRecurringFromPurchaseOrderUseCase -->|injects| NumberingPort
-    CreateRecurringFromPurchaseOrderUseCase -->|injects via RecurringModule| CreateRecurringTemplateUseCase
+    CreateRecurringFromPurchaseOrderUseCase -->|injects via RecurringModule| RecurringTemplatePort
     GenerateRecurringPurchaseOrderUseCase["GenerateRecurringPurchaseOrderUseCase"]
     GenerateRecurringPurchaseOrderUseCase -->|injects| CreatePurchaseOrderUseCase
     GenerateRecurringPurchaseOrderUseCase -->|injects| AddPurchaseOrderLineUseCase
@@ -950,7 +950,7 @@ flowchart LR
 
 #### RecurringModule — `src/platform/recurring/recurring.module.ts`
 
-imports: ContextModule, OutboxModule, SchedulerModule, ConditionEngineModule · exports: RecurringGeneratorRegistry, RecurringExecutionPort, CreateRecurringTemplateUseCase
+imports: ContextModule, OutboxModule, SchedulerModule, ConditionEngineModule · exports: RecurringGeneratorRegistry, RecurringExecutionPort, RecurringTemplatePort
 
 ```mermaid
 flowchart LR
@@ -963,6 +963,9 @@ flowchart LR
     RecurringExecutionPort["RecurringExecutionPort"]
     RecurringExecutionAdapter["RecurringExecutionAdapter"]
     RecurringExecutionPort -.->|useExisting| RecurringExecutionAdapter
+    RecurringTemplatePort["RecurringTemplatePort"]
+    RecurringTemplateAdapter["RecurringTemplateAdapter"]
+    RecurringTemplatePort -.->|useExisting| RecurringTemplateAdapter
     RecurringTemplateController["RecurringTemplateController"]
     CreateRecurringTemplateUseCase["CreateRecurringTemplateUseCase"]
     RecurringTemplateController -->|injects| CreateRecurringTemplateUseCase
@@ -994,6 +997,8 @@ flowchart LR
     RecurringGenerationHandler -->|injects via ConditionEngineModule| ConditionEvaluator
     RecurringExecutionAdapter -->|injects| RecurringExecutionRepositoryPort
     RecurringExecutionAdapter -->|injects| RecurringExecutionRepositoryPort
+    RecurringTemplateAdapter -->|injects| CreateRecurringTemplateUseCase
+    RecurringTemplateAdapter -->|injects| CreateRecurringTemplateUseCase
     DomainEventDispatcher["DomainEventDispatcher"]
     EventEmitter2__library_["EventEmitter2 (library)"]
     DomainEventDispatcher -->|injects| EventEmitter2__library_

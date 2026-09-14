@@ -632,11 +632,14 @@ or infrastructure clients.
 
 > **Port discipline (current convention).** An inbound port + thin adapter exists only where
 > there is a real public boundary — a cross-module API (`SchedulerPort`, `RecurringExecutionPort`,
-> public module ports). Where the sole consumer is the service's own controller/worker
-> (batch-operation job commands, recurring template CRUD), the controller injects the **use case
-> directly** and the module exports use cases — no one-implementation port+adapter pairs. Registries
-> (`KeyedRegistryBase` in `shared-kernel/utils`) are the plugin boundaries: handler ports stay, and
-> owner modules register into them in `onApplicationBootstrap`.
+> `RecurringTemplatePort`, public module ports). Where the sole consumer is the service's own
+> controller/worker (batch-operation job commands), the controller injects the **use case
+> directly** — no one-implementation port+adapter pairs. The moment another module needs the same
+> operation it is published behind a port (recurring template creation = `RecurringTemplatePort`;
+> the internal controller keeps using the use case directly). All five registries
+> (`BatchOperationHandler` / `ImportHandler` / `ScheduledJobFireHandler` / `FieldResolver` /
+> `RecurringGenerator`) share `KeyedRegistryBase` (`shared-kernel/utils`); owner modules register
+> into them in `onApplicationBootstrap`.
 
 ### 9.1 Opt-in registration (business → platform, dependency points inward)
 

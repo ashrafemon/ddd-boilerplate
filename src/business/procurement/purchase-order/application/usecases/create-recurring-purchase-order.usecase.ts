@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { CreateRecurringTemplateUseCase } from '@platform/recurring/usecases/create-recurring-template.usecase';
+import { RecurringTemplatePort } from '@platform/recurring/ports/recurring-template.port';
 import type {
   CreateRecurringTemplateInput,
   RecurringTemplateRecord,
@@ -46,7 +46,7 @@ export class CreateRecurringPurchaseOrderUseCase {
   constructor(
     private readonly vendorQueryPort: OrderableVendorPort,
     private readonly numbering: NumberingPort,
-    private readonly createRecurringTemplate: CreateRecurringTemplateUseCase,
+    private readonly createRecurringTemplate: RecurringTemplatePort,
   ) {}
 
   async execute(input: CreateRecurringPurchaseOrderInput): Promise<RecurringTemplateRecord> {
@@ -61,7 +61,7 @@ export class CreateRecurringPurchaseOrderUseCase {
 
     const templateNo = await this.numbering.nextNumber(TEMPLATE_SEQUENCE, { prefix: 'REC-PO-' });
 
-    return this.createRecurringTemplate.execute({
+    return this.createRecurringTemplate.create({
       tenantId: input.tenantId,
       templateNo,
       name: input.name,

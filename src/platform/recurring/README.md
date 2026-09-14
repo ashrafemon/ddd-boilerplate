@@ -10,11 +10,11 @@ business module listens and creates the document.
 
 ## Two tables, one job
 
-| Table | Role |
-|-------|------|
-| `recurring_templates` | Series config: party, `targetEntityType`, TIME/EVENT, lines, conditions |
-| `scheduled_jobs` | Opaque wake-up for TIME only (`jobType=Recurring`, `aggregateId=template.id`) |
-| `recurring_executions` | Per-firing idempotency + generated document snapshot |
+| Table                  | Role                                                                          |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `recurring_templates`  | Series config: party, `targetEntityType`, TIME/EVENT, lines, conditions       |
+| `scheduled_jobs`       | Opaque wake-up for TIME only (`jobType=Recurring`, `aggregateId=template.id`) |
+| `recurring_executions` | Per-firing idempotency + generated document snapshot                          |
 
 ## TIME flow
 

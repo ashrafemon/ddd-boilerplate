@@ -293,8 +293,15 @@ then:       InvoiceCreated itself fans out rabbit+kafka+sqs per FAN_OUT_EVENTS f
             /scheduled-jobs/:id/dispatch-log, /scheduler/health.
 ```
 
-PurchaseOrder recurring would be the **same platform path** — the module only needs its own
-listener + `GenerateRecurring…UseCase` (see deferred plans).
+PurchaseOrder lives on this same platform path today: `procurement/purchase-order` owns its
+listener (`recurring-occurrence.purchase-order.erp`) + `GenerateRecurringPurchaseOrderUseCase`
+(create → add lines → snapshot → `RecurringExecutionPort.complete` → optional auto-submit), and
+offers two template-entry use cases — both creating templates through the platform's
+`RecurringTemplatePort` (cross-module public boundary): `CreateRecurringPurchaseOrderUseCase`
+(manual) and `CreateRecurringFromPurchaseOrderUseCase` (`POST /purchase-orders/:id/recurring`
+snapshots an existing PO's vendor/currency/lines into a template tagged with
+`originDocumentType/Id`). Adding recurring to another aggregate = copy that trio; the platform
+needs no changes.
 
 ## 8. Opt-in registrations (who plugs into whom)
 

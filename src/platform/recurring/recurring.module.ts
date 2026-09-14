@@ -8,6 +8,7 @@ import { DomainEventDispatcher } from './domain-event.dispatcher';
 import { RecurringGenerationHandler } from './recurring-generation.handler';
 import { RecurringGeneratorRegistry } from './recurring-generator.registry';
 import { RecurringExecutionPort } from './ports/recurring-execution.port';
+import { RecurringTemplatePort } from './ports/recurring-template.port';
 import { RecurringExecutionRepositoryPort } from './ports/recurring-execution-repository.port';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';
 import { CancelRecurringTemplateUseCase } from './usecases/cancel-recurring-template.usecase';
@@ -16,6 +17,7 @@ import { GetRecurringTemplateUseCase } from './usecases/get-recurring-template.u
 import { ListRecurringTemplatesUseCase } from './usecases/list-recurring-templates.usecase';
 import { PauseRecurringTemplateUseCase } from './usecases/pause-recurring-template.usecase';
 import { RecurringExecutionAdapter } from './adapters/recurring-execution.adapter';
+import { RecurringTemplateAdapter } from './adapters/recurring-template.adapter';
 import { ResumeRecurringTemplateUseCase } from './usecases/resume-recurring-template.usecase';
 import { PrismaRecurringExecutionRepository } from './adapters/prisma-recurring-execution.repository';
 import { PrismaRecurringTemplateRepository } from './adapters/prisma-recurring-template.repository';
@@ -46,6 +48,8 @@ import './events/recurring.registry';
     RecurringGenerationHandler,
     RecurringExecutionAdapter,
     { provide: RecurringExecutionPort, useExisting: RecurringExecutionAdapter },
+    RecurringTemplateAdapter,
+    { provide: RecurringTemplatePort, useExisting: RecurringTemplateAdapter },
     DomainEventDispatcher,
     CreateRecurringTemplateUseCase,
     PauseRecurringTemplateUseCase,
@@ -54,7 +58,7 @@ import './events/recurring.registry';
     GetRecurringTemplateUseCase,
     ListRecurringTemplatesUseCase,
   ],
-  exports: [RecurringGeneratorRegistry, RecurringExecutionPort, CreateRecurringTemplateUseCase],
+  exports: [RecurringGeneratorRegistry, RecurringExecutionPort, RecurringTemplatePort],
 })
 export class RecurringModule implements OnApplicationBootstrap {
   constructor(
