@@ -7,7 +7,7 @@ import {
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { ScheduledJobEditLogRepositoryPort } from '../ports/scheduled-job-edit-log-repository.port';
 import { UpdateScheduledJobInput, ScheduleMode } from '../scheduler.types';
-import { computeNextRunAt } from '../cron-calculator';
+import { CronCalculator } from '../cron-calculator';
 
 @Injectable()
 export class UpdateScheduledJobUseCase {
@@ -33,7 +33,7 @@ export class UpdateScheduledJobUseCase {
           'Invalid cron expression: cronExpression only valid for CRON schedule mode',
         );
       }
-      nextRunAt = computeNextRunAt(input.cronExpression, new Date());
+      nextRunAt = CronCalculator.nextRunAt(input.cronExpression, new Date());
       cronExpression = input.cronExpression;
       changedFields.cronExpression = input.cronExpression;
       changedFields.nextRunAt = nextRunAt.toISOString();

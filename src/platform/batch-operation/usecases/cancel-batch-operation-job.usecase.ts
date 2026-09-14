@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
-import { BatchOperationJobRecord, isTerminalBatchOperationStatus } from '../batch-operation.types';
+import { BatchOperationJobRecord, BatchOperationStatusRules } from '../batch-operation.types';
 
 /**
  * PHASE 7. Sets cancel_requested — the worker checks it between row claims and
@@ -19,7 +19,7 @@ export class CancelBatchOperationJobUseCase {
     if (!job) {
       throw new NotFoundException(`BatchOperationJob '${jobId}' not found`);
     }
-    if (isTerminalBatchOperationStatus(job.status)) {
+    if (BatchOperationStatusRules.isTerminal(job.status)) {
       throw new ConflictException(
         `BatchOperationJob '${jobId}' is ${job.status} and can no longer be cancelled`,
       );

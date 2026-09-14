@@ -1,3 +1,4 @@
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { Injectable } from '@nestjs/common';
 import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
@@ -36,22 +37,13 @@ export class OutboxWriter implements OutboxWriterPort {
   }
 
   private toPayload(event: DomainEvent): Record<string, unknown> {
-    const {
-      eventId: _eventId,
-      occurredAt: _occurredAt,
-      version: _version,
-      correlationId: _c,
-      causationId: _c2,
-      ...rest
-    } = event as unknown as Record<string, unknown>;
-    void _eventId;
-    void _occurredAt;
-    void _version;
-    void _c;
-    void _c2;
-    return {
-      ...rest,
-      occurredAt: (event as unknown as { occurredAt: Date }).occurredAt.toISOString(),
-    };
+    const { eventId, version, correlationId, causationId, headers, ...rest } =
+      PrismaJson.snapshot(event);
+    void eventId;
+    void version;
+    void correlationId;
+    void causationId;
+    void headers;
+    return { ...rest, occurredAt: event.occurredAt.toISOString() };
   }
 }

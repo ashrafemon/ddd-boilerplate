@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { RegisterScheduledJobInput, JobScope, ScheduleMode } from '../scheduler.types';
-import { computeNextRunAt } from '../cron-calculator';
+import { CronCalculator } from '../cron-calculator';
 
 @Injectable()
 export class RegisterScheduledJobUseCase {
@@ -19,7 +19,7 @@ export class RegisterScheduledJobUseCase {
           'Invalid cron expression: cronExpression is required in CRON schedule mode',
         );
       }
-      nextRunAt = computeNextRunAt(input.cronExpression, new Date());
+      nextRunAt = CronCalculator.nextRunAt(input.cronExpression, new Date());
     }
     if (!nextRunAt) {
       throw new BadRequestException('nextRunAt is required for EXTERNAL schedule mode');

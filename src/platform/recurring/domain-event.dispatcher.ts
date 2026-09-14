@@ -1,6 +1,10 @@
+import { JsonObject } from '@shared-kernel/types/json-value.type';
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
+import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { ScheduledJobHandlerRegistry } from '@platform/scheduler/scheduled-job-handler.registry';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';
 import { RecurringTemplateRecord } from './recurring-template.types';
@@ -38,17 +42,20 @@ export class DomainEventDispatcher implements OnModuleInit {
 
   onModuleInit(): void {
     this.eventEmitter.onAny((eventName, event: unknown) => {
-      void this.onEvent(String(eventName), event);
+      void this.onEvent(
+        String(eventName),
+        event !== null && typeof event === 'object' ? event : null,
+      );
     });
   }
 
-  private async onEvent(eventName: string, event: unknown): Promise<void> {
+  private async onEvent(eventName: string, event: object | null): Promise<void> {
     let templates: RecurringTemplateRecord[];
     try {
       templates = await this.templateRepository.findActiveByEventName(eventName);
     } catch (err) {
       this.logger.error(
-        `Failed to look up EVENT-triggered templates for '${eventName}': ${(err as Error).message}`,
+        `Failed to look up EVENT-triggered templates for '${eventName}': ${FailureMessage.of(err)}`,
       );
       return;
     }
@@ -57,8 +64,8 @@ export class DomainEventDispatcher implements OnModuleInit {
     }
 
     const handler = this.handlerRegistry.resolveHandler('Recurring');
-    const sourceEventId = extractEventId(event);
-    const eventPayload = toPlainObject(event);
+    const sourceEventId = DispatcherEventReader.eventId(event);
+    const eventPayload = DispatcherEventReader.snapshot(event);
 
     for (const template of templates) {
       try {
@@ -73,28 +80,20 @@ export class DomainEventDispatcher implements OnModuleInit {
         });
       } catch (err) {
         this.logger.error(
-          `EVENT-triggered dispatch failed for template ${template.id}: ${(err as Error).message}`,
+          `EVENT-triggered dispatch failed for template ${template.id}: ${FailureMessage.of(err)}`,
         );
       }
     }
   }
 }
 
-function extractEventId(event: unknown): string {
-  if (
-    event &&
-    typeof event === 'object' &&
-    'eventId' in event &&
-    typeof event.eventId === 'string'
-  ) {
-    return event.eventId;
+/** One audited read of unknown bus payloads (domain-event envelope). */
+class DispatcherEventReader {
+  static eventId(event: object | null): string {
+    return event instanceof DomainEvent ? event.eventId : randomUUID();
   }
-  return randomUUID();
-}
 
-function toPlainObject(event: unknown): Record<string, unknown> {
-  if (event && typeof event === 'object') {
-    return JSON.parse(JSON.stringify(event)) as Record<string, unknown>;
+  static snapshot(event: object | null): JsonObject {
+    return event ? PrismaJson.snapshot(event) : {};
   }
-  return {};
 }

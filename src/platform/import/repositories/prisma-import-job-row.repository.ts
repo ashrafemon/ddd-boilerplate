@@ -1,7 +1,8 @@
+import { Prisma } from '../../../generated/client';
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { toPrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { ImportJobRowRepositoryPort } from '../ports/import-job-row-repository.port';
 import {
   ImportJobRowRecord,
@@ -30,8 +31,8 @@ export class PrismaImportJobRowRepository implements ImportJobRowRepositoryPort 
         tenantId: r.tenantId ?? null,
         importJobId: r.importJobId,
         rowNumber: r.rowNumber,
-        rawPayload: toPrismaJson(r.rawPayload ?? {}),
-        mappedPayload: toPrismaJson(r.mappedPayload ?? {}),
+        rawPayload: PrismaJson.toInput(r.rawPayload ?? {}),
+        mappedPayload: PrismaJson.toInput(r.mappedPayload ?? {}),
       })),
       skipDuplicates: true,
     });
@@ -56,7 +57,7 @@ export class PrismaImportJobRowRepository implements ImportJobRowRepositoryPort 
         take: pageSize,
       }),
     ]);
-    return { rows: rows.map(mapRow), total };
+    return { rows: rows.map(row => ImportJobRowMapper.toRecord(row)), total };
   }
 
   async listPendingValidation(jobId: string, limit: number): Promise<ImportJobRowRecord[]> {
@@ -65,7 +66,7 @@ export class PrismaImportJobRowRepository implements ImportJobRowRepositoryPort 
       orderBy: { rowNumber: 'asc' },
       take: limit,
     });
-    return rows.map(mapRow);
+    return rows.map(row => ImportJobRowMapper.toRecord(row));
   }
 
   async listPendingExecution(jobId: string, limit: number): Promise<ImportJobRowRecord[]> {
@@ -78,7 +79,7 @@ export class PrismaImportJobRowRepository implements ImportJobRowRepositoryPort 
       orderBy: { rowNumber: 'asc' },
       take: limit,
     });
-    return rows.map(mapRow);
+    return rows.map(row => ImportJobRowMapper.toRecord(row));
   }
 
   async claimForExecution(jobId: string, limit: number): Promise<ImportJobRowRecord[]> {
@@ -88,14 +89,14 @@ export class PrismaImportJobRowRepository implements ImportJobRowRepositoryPort 
         tenantId: string | null;
         importJobId: string;
         rowNumber: number;
-        rawPayload: unknown;
-        mappedPayload: unknown;
+        rawPayload: Prisma.JsonValue | null;
+        mappedPayload: Prisma.JsonValue | null;
         validationStatus: ImportRowValidationStatus;
         executionStatus: ImportRowExecutionStatus;
-        validationErrors: unknown;
+        validationErrors: Prisma.JsonValue | null;
         errorMessage: string | null;
         entityId: string | null;
-        secondaryEntityIds: unknown;
+        secondaryEntityIds: Prisma.JsonValue | null;
         createdAt: Date;
         updatedAt: Date;
         processedAt: Date | null;
@@ -114,7 +115,7 @@ export class PrismaImportJobRowRepository implements ImportJobRowRepositoryPort 
       )
       RETURNING *
     `;
-    return claimed.map(mapRow);
+    return claimed.map(row => ImportJobRowMapper.toRecord(row));
   }
 
   async applyValidationVerdicts(jobId: string, verdicts: RowVerdict[]): Promise<void> {
@@ -204,38 +205,40 @@ export class PrismaImportJobRowRepository implements ImportJobRowRepositoryPort 
   }
 }
 
-function mapRow(row: {
-  id: string;
-  tenantId: string | null;
-  importJobId: string;
-  rowNumber: number;
-  rawPayload: unknown;
-  mappedPayload: unknown;
-  validationStatus: ImportRowValidationStatus;
-  executionStatus: ImportRowExecutionStatus;
-  validationErrors: unknown;
-  errorMessage: string | null;
-  entityId: string | null;
-  secondaryEntityIds: unknown;
-  createdAt: Date;
-  updatedAt: Date;
-  processedAt: Date | null;
-}): ImportJobRowRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId ?? undefined,
-    importJobId: row.importJobId,
-    rowNumber: row.rowNumber,
-    rawPayload: (row.rawPayload as Record<string, unknown>) ?? undefined,
-    mappedPayload: (row.mappedPayload as Record<string, unknown>) ?? undefined,
-    validationStatus: row.validationStatus,
-    executionStatus: row.executionStatus,
-    validationErrors: (row.validationErrors as string[]) ?? undefined,
-    errorMessage: row.errorMessage ?? undefined,
-    entityId: row.entityId ?? undefined,
-    secondaryEntityIds: (row.secondaryEntityIds as string[]) ?? undefined,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    processedAt: row.processedAt ?? undefined,
-  };
+export class ImportJobRowMapper {
+  static toRecord(row: {
+    id: string;
+    tenantId: string | null;
+    importJobId: string;
+    rowNumber: number;
+    rawPayload: Prisma.JsonValue | null;
+    mappedPayload: Prisma.JsonValue | null;
+    validationStatus: ImportRowValidationStatus;
+    executionStatus: ImportRowExecutionStatus;
+    validationErrors: Prisma.JsonValue | null;
+    errorMessage: string | null;
+    entityId: string | null;
+    secondaryEntityIds: Prisma.JsonValue | null;
+    createdAt: Date;
+    updatedAt: Date;
+    processedAt: Date | null;
+  }): ImportJobRowRecord {
+    return {
+      id: row.id,
+      tenantId: row.tenantId ?? undefined,
+      importJobId: row.importJobId,
+      rowNumber: row.rowNumber,
+      rawPayload: PrismaJson.as<Record<string, string>>(row.rawPayload) ?? undefined,
+      mappedPayload: PrismaJson.as<Record<string, string>>(row.mappedPayload) ?? undefined,
+      validationStatus: row.validationStatus,
+      executionStatus: row.executionStatus,
+      validationErrors: PrismaJson.as<string[]>(row.validationErrors) ?? undefined,
+      errorMessage: row.errorMessage ?? undefined,
+      entityId: row.entityId ?? undefined,
+      secondaryEntityIds: PrismaJson.as<string[]>(row.secondaryEntityIds) ?? undefined,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      processedAt: row.processedAt ?? undefined,
+    };
+  }
 }

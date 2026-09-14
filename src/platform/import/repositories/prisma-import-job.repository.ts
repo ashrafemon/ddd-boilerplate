@@ -1,8 +1,9 @@
+import { Prisma } from '../../../generated/client';
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { PageResult, buildPageResult } from '@shared-kernel/types/pagination';
-import { toPrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';
 import {
   ColumnMapping,
@@ -22,9 +23,9 @@ type JobRow = {
   entityKey: string;
   status: ImportJobStatus;
   descriptorVersion: number;
-  descriptorSnapshot: unknown;
-  columnMapping: unknown;
-  statusHistory: unknown;
+  descriptorSnapshot: Prisma.JsonValue | null;
+  columnMapping: Prisma.JsonValue | null;
+  statusHistory: Prisma.JsonValue | null;
   totalRows: number;
   validRows: number;
   invalidRows: number;
@@ -33,7 +34,7 @@ type JobRow = {
   cancelRequested: boolean;
   sourceStorageObjectId: string | null;
   errorReportStorageObjectId: string | null;
-  options: unknown;
+  options: Prisma.JsonValue | null;
   requestedBy: string | null;
   traceId: string | null;
   buildSha: string | null;
@@ -65,21 +66,21 @@ export class PrismaImportJobRepository implements ImportJobRepositoryPort {
         entityKey: job.entityKey,
         status: 'UPLOADED',
         descriptorVersion: job.descriptorVersion,
-        descriptorSnapshot: toPrismaJson(job.descriptorSnapshot) as object,
-        statusHistory: toPrismaJson(history) as object,
+        descriptorSnapshot: PrismaJson.toInput(job.descriptorSnapshot) as object,
+        statusHistory: PrismaJson.toInput(history) as object,
         sourceStorageObjectId: job.sourceStorageObjectId,
-        options: toPrismaJson(job.options ?? {}) as object,
+        options: PrismaJson.toInput(job.options ?? {}) as object,
         requestedBy: job.requestedBy ?? null,
         traceId: job.traceId ?? null,
         buildSha: job.buildSha ?? null,
       },
     });
-    return mapJob(created);
+    return ImportJobMapper.toRecord(created);
   }
 
   async findById(jobId: string): Promise<ImportJobRecord | null> {
     const row = await this.txHost.tx.importJob.findUnique({ where: { id: jobId } });
-    return row ? mapJob(row) : null;
+    return row ? ImportJobMapper.toRecord(row) : null;
   }
 
   async list(query: ImportJobListQuery): Promise<PageResult<ImportJobRecord>> {
@@ -98,7 +99,7 @@ export class PrismaImportJobRepository implements ImportJobRepositoryPort {
       }),
     ]);
     return buildPageResult(
-      rows.map(r => mapJob(r as JobRow)),
+      rows.map(r => ImportJobMapper.toRecord(r as JobRow)),
       total,
       { page: query.page, pageSize: query.pageSize },
     );
@@ -126,31 +127,31 @@ export class PrismaImportJobRepository implements ImportJobRepositoryPort {
     }
     const job = await this.txHost.tx.importJob.findUniqueOrThrow({ where: { id: jobId } });
     const historyList = [
-      ...((job.statusHistory as unknown as StatusHistoryEntry[]) ?? []),
+      ...(PrismaJson.as<StatusHistoryEntry[]>(job.statusHistory) ?? []),
       history,
     ];
     const saved = await this.txHost.tx.importJob.update({
       where: { id: jobId },
       data: {
-        statusHistory: toPrismaJson(historyList),
+        statusHistory: PrismaJson.toInput(historyList),
         version: { increment: 1 },
         ...(to === 'PARSING' || to === 'VALIDATING' || to === 'EXECUTING'
           ? { heartbeatAt: new Date() }
           : {}),
       },
     });
-    return mapJob(saved);
+    return ImportJobMapper.toRecord(saved);
   }
 
   async setColumnMapping(jobId: string, mapping: ColumnMapping): Promise<ImportJobRecord> {
     const saved = await this.txHost.tx.importJob.update({
       where: { id: jobId },
       data: {
-        columnMapping: toPrismaJson(mapping),
+        columnMapping: PrismaJson.toInput(mapping),
         version: { increment: 1 },
       },
     });
-    return mapJob(saved);
+    return ImportJobMapper.toRecord(saved);
   }
 
   async updateCounters(
@@ -196,21 +197,21 @@ export class PrismaImportJobRepository implements ImportJobRepositoryPort {
   ): Promise<ImportJobRecord> {
     const job = await this.txHost.tx.importJob.findUniqueOrThrow({ where: { id: jobId } });
     const historyList = [
-      ...((job.statusHistory as unknown as StatusHistoryEntry[]) ?? []),
+      ...(PrismaJson.as<StatusHistoryEntry[]>(job.statusHistory) ?? []),
       history,
     ];
     const saved = await this.txHost.tx.importJob.update({
       where: { id: jobId },
       data: {
         status,
-        statusHistory: toPrismaJson(historyList),
+        statusHistory: PrismaJson.toInput(historyList),
         completedAt: new Date(),
         lockedUntil: null,
         lockedBy: null,
         version: { increment: 1 },
       },
     });
-    return mapJob(saved);
+    return ImportJobMapper.toRecord(saved);
   }
 
   async findStaleJobs(olderThan: Date): Promise<ImportJobRecord[]> {
@@ -220,7 +221,7 @@ export class PrismaImportJobRepository implements ImportJobRepositoryPort {
         OR: [{ heartbeatAt: { lt: olderThan } }, { heartbeatAt: null }],
       },
     });
-    return rows.map(r => mapJob(r as JobRow));
+    return rows.map(r => ImportJobMapper.toRecord(r as JobRow));
   }
 
   async attachErrorReport(jobId: string, errorReportStorageObjectId: string): Promise<void> {
@@ -231,33 +232,35 @@ export class PrismaImportJobRepository implements ImportJobRepositoryPort {
   }
 }
 
-function mapJob(row: JobRow): ImportJobRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId ?? undefined,
-    jobNo: row.jobNo,
-    entityKey: row.entityKey,
-    status: row.status,
-    descriptorVersion: row.descriptorVersion,
-    descriptorSnapshot: row.descriptorSnapshot as ImportDescriptor,
-    columnMapping: (row.columnMapping as ColumnMapping) ?? undefined,
-    statusHistory: (row.statusHistory as StatusHistoryEntry[]) ?? [],
-    totalRows: row.totalRows,
-    validRows: row.validRows,
-    invalidRows: row.invalidRows,
-    appliedRows: row.appliedRows,
-    failedRows: row.failedRows,
-    cancelRequested: row.cancelRequested,
-    sourceStorageObjectId: row.sourceStorageObjectId ?? undefined,
-    errorReportStorageObjectId: row.errorReportStorageObjectId ?? undefined,
-    options: (row.options as ImportOptions) ?? undefined,
-    requestedBy: row.requestedBy ?? undefined,
-    traceId: row.traceId ?? undefined,
-    buildSha: row.buildSha ?? undefined,
-    heartbeatAt: row.heartbeatAt ?? undefined,
-    version: row.version,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    completedAt: row.completedAt ?? undefined,
-  };
+export class ImportJobMapper {
+  static toRecord(row: JobRow): ImportJobRecord {
+    return {
+      id: row.id,
+      tenantId: row.tenantId ?? undefined,
+      jobNo: row.jobNo,
+      entityKey: row.entityKey,
+      status: row.status,
+      descriptorVersion: row.descriptorVersion,
+      descriptorSnapshot: PrismaJson.as<ImportDescriptor>(row.descriptorSnapshot)!,
+      columnMapping: PrismaJson.as<ColumnMapping>(row.columnMapping) ?? undefined,
+      statusHistory: PrismaJson.as<StatusHistoryEntry[]>(row.statusHistory) ?? [],
+      totalRows: row.totalRows,
+      validRows: row.validRows,
+      invalidRows: row.invalidRows,
+      appliedRows: row.appliedRows,
+      failedRows: row.failedRows,
+      cancelRequested: row.cancelRequested,
+      sourceStorageObjectId: row.sourceStorageObjectId ?? undefined,
+      errorReportStorageObjectId: row.errorReportStorageObjectId ?? undefined,
+      options: PrismaJson.as<ImportOptions>(row.options) ?? undefined,
+      requestedBy: row.requestedBy ?? undefined,
+      traceId: row.traceId ?? undefined,
+      buildSha: row.buildSha ?? undefined,
+      heartbeatAt: row.heartbeatAt ?? undefined,
+      version: row.version,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      completedAt: row.completedAt ?? undefined,
+    };
+  }
 }

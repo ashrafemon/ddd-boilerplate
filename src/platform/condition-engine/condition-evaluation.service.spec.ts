@@ -1,11 +1,11 @@
 import { ConditionEvaluationService } from './condition-evaluation.service';
 import { FieldResolverRegistry } from './field-resolver.registry';
-import { EvaluationContext, FieldResolver } from './ports/field-resolver.port';
+import { ConditionValue, EvaluationContext, FieldResolver } from './ports/field-resolver.port';
 
 class FakeFieldResolver implements FieldResolver {
-  constructor(private readonly values: Record<string, unknown>) {}
+  constructor(private readonly values: Record<string, ConditionValue>) {}
 
-  resolve(field: string): Promise<unknown> {
+  resolve(field: string): Promise<ConditionValue> {
     return Promise.resolve(this.values[field]);
   }
 }

@@ -1,8 +1,9 @@
+import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Prisma } from '../../../generated/client';
-import { toPrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import {
   RecurringTemplateRepositoryPort,
   RecurringTemplateUpdate,
@@ -18,7 +19,7 @@ export class PrismaRecurringTemplateRepository implements RecurringTemplateRepos
   async create(input: CreateRecurringTemplateInput): Promise<RecurringTemplateRecord> {
     try {
       const row = await this.createRow(input);
-      return toRecord(row);
+      return RecurringTemplateMapper.toRecord(row);
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -56,9 +57,9 @@ export class PrismaRecurringTemplateRepository implements RecurringTemplateRepos
         autoPost: input.autoPost ?? false,
         autoEmail: input.autoEmail ?? false,
         autoApprove: input.autoApprove ?? false,
-        headerOverrides: toPrismaJson(input.headerOverrides),
-        generationCondition: toPrismaJson(input.generationCondition),
-        lines: toPrismaJson(input.lines) as object,
+        headerOverrides: PrismaJson.toInput(input.headerOverrides),
+        generationCondition: PrismaJson.toInput(input.generationCondition),
+        lines: PrismaJson.toInput(input.lines) as object,
         createdBy: input.createdBy,
       },
     });
@@ -68,7 +69,7 @@ export class PrismaRecurringTemplateRepository implements RecurringTemplateRepos
     const row = await this.txHost.tx.recurringTemplate.findFirst({
       where: { id, isDeleted: false },
     });
-    return row ? toRecord(row) : null;
+    return row ? RecurringTemplateMapper.toRecord(row) : null;
   }
 
   async update(id: string, patch: RecurringTemplateUpdate): Promise<RecurringTemplateRecord> {
@@ -82,7 +83,7 @@ export class PrismaRecurringTemplateRepository implements RecurringTemplateRepos
         modifiedAt: new Date(),
       },
     });
-    return toRecord(row);
+    return RecurringTemplateMapper.toRecord(row);
   }
 
   async list(filter: {
@@ -93,7 +94,7 @@ export class PrismaRecurringTemplateRepository implements RecurringTemplateRepos
       where: { tenantId: filter.tenantId, status: filter.status, isDeleted: false },
       orderBy: { createdAt: 'desc' },
     });
-    return rows.map(toRecord);
+    return rows.map(row => RecurringTemplateMapper.toRecord(row));
   }
 
   async findActiveByEventName(
@@ -103,7 +104,7 @@ export class PrismaRecurringTemplateRepository implements RecurringTemplateRepos
     const rows = await this.txHost.tx.recurringTemplate.findMany({
       where: { eventName, status: 'ACTIVE', isDeleted: false, tenantId },
     });
-    return rows.map(toRecord);
+    return rows.map(row => RecurringTemplateMapper.toRecord(row));
   }
 }
 
@@ -132,39 +133,41 @@ interface TemplateRow {
   autoPost: boolean;
   autoEmail: boolean;
   autoApprove: boolean;
-  headerOverrides: unknown;
-  generationCondition: unknown;
-  lines: unknown;
+  headerOverrides: Prisma.JsonValue | null;
+  generationCondition: Prisma.JsonValue | null;
+  lines: Prisma.JsonValue | null;
 }
 
-function toRecord(row: TemplateRow): RecurringTemplateRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    templateNo: row.templateNo,
-    name: row.name,
-    status: row.status as RecurringTemplateRecord['status'],
-    targetEntityType: row.targetEntityType,
-    targetEntityId: row.targetEntityId,
-    originDocumentType: row.originDocumentType,
-    originDocumentId: row.originDocumentId,
-    partyId: row.partyId,
-    partyType: row.partyType as RecurringTemplateRecord['partyType'],
-    currency: row.currency,
-    triggerType: row.triggerType as RecurringTemplateRecord['triggerType'],
-    eventName: row.eventName,
-    frequency: row.frequency as RecurringTemplateRecord['frequency'],
-    interval: row.interval,
-    startDate: row.startDate,
-    endDate: row.endDate,
-    nextRunDate: row.nextRunDate,
-    lastRunDate: row.lastRunDate,
-    timeZone: row.timeZone,
-    autoPost: row.autoPost,
-    autoEmail: row.autoEmail,
-    autoApprove: row.autoApprove,
-    headerOverrides: (row.headerOverrides as Record<string, unknown> | null) ?? null,
-    generationCondition: (row.generationCondition as Record<string, unknown> | null) ?? null,
-    lines: (row.lines as unknown[]) ?? [],
-  };
+export class RecurringTemplateMapper {
+  static toRecord(row: TemplateRow): RecurringTemplateRecord {
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      templateNo: row.templateNo,
+      name: row.name,
+      status: row.status as RecurringTemplateRecord['status'],
+      targetEntityType: row.targetEntityType,
+      targetEntityId: row.targetEntityId,
+      originDocumentType: row.originDocumentType,
+      originDocumentId: row.originDocumentId,
+      partyId: row.partyId,
+      partyType: row.partyType as RecurringTemplateRecord['partyType'],
+      currency: row.currency,
+      triggerType: row.triggerType as RecurringTemplateRecord['triggerType'],
+      eventName: row.eventName,
+      frequency: row.frequency as RecurringTemplateRecord['frequency'],
+      interval: row.interval,
+      startDate: row.startDate,
+      endDate: row.endDate,
+      nextRunDate: row.nextRunDate,
+      lastRunDate: row.lastRunDate,
+      timeZone: row.timeZone,
+      autoPost: row.autoPost,
+      autoEmail: row.autoEmail,
+      autoApprove: row.autoApprove,
+      headerOverrides: PrismaJson.as<JsonObject>(row.headerOverrides),
+      generationCondition: PrismaJson.as<JsonObject>(row.generationCondition),
+      lines: PrismaJson.as<JsonValue[]>(row.lines) ?? [],
+    };
+  }
 }

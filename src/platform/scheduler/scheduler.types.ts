@@ -1,3 +1,4 @@
+import { JsonObject } from '@shared-kernel/types/json-value.type';
 /** Shared scheduler enums / DTOs — framework-free. */
 
 export enum JobType {
@@ -40,7 +41,7 @@ export interface ScheduledJobRecord {
   cronExpression: string | null;
   aggregateType: string | null;
   aggregateId: string | null;
-  payload: Record<string, unknown> | null;
+  payload: JsonObject | null;
   nextRunAt: Date;
   lastRunAt: Date | null;
   status: JobStatus;
@@ -61,7 +62,7 @@ export interface ClaimedJob {
   cronExpression: string | null;
   aggregateType: string | null;
   aggregateId: string | null;
-  payload: Record<string, unknown> | null;
+  payload: JsonObject | null;
   nextRunAt: Date;
   retryCount: number;
   version: number;

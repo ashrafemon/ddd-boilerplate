@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { DistributedLockPort } from '../ports/distributed-lock.port';
 import { ScheduleMode } from '../scheduler.types';
-import { computeNextRunAt } from '../cron-calculator';
+import { CronCalculator } from '../cron-calculator';
 
 /**
  * Stale CLAIMED rows (Redis lock gone) + missed-fire policy:
@@ -33,7 +33,7 @@ export class ReconcileMissedJobsUseCase {
       }
       // Only adjust if still pending and overdue — Cron skip-to-next avoids burst.
       if (job.scheduleMode === ScheduleMode.CRON && job.cronExpression) {
-        const next = computeNextRunAt(job.cronExpression, new Date());
+        const next = CronCalculator.nextRunAt(job.cronExpression, new Date());
         await this.jobs.markPendingWithNextRun(job.id, next);
         adjusted += 1;
       }

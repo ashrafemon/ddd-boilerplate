@@ -1,4 +1,5 @@
 import { ConfigService } from '@config/config.service';
+import { SchedulerTickHeartbeat } from '../scheduler-tick.heartbeat';
 import { DispatchDueJobsUseCase } from './dispatch-due-jobs.usecase';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { DistributedLockPort } from '../ports/distributed-lock.port';
@@ -57,7 +58,14 @@ function makeUseCase(rows: ClaimedJob[]) {
     }),
   } as unknown as ConfigService;
 
-  const usecase = new DispatchDueJobsUseCase(jobs, lock, queue, dispatchLogs, configService);
+  const usecase = new DispatchDueJobsUseCase(
+    jobs,
+    lock,
+    queue,
+    dispatchLogs,
+    configService,
+    new SchedulerTickHeartbeat(),
+  );
 
   return {
     usecase,

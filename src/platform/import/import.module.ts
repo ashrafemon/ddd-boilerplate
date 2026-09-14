@@ -34,6 +34,7 @@ import { IMPORT_QUEUE_NAME } from './import.constants';
 import { BullMqImportQueueAdapter } from './adapters/bullmq-import-queue.adapter';
 import { BullMqImportWorker } from './adapters/bullmq-import.worker';
 import { ImportController } from './http/import.controller';
+import { ImportFileParser } from './import-file.parser';
 
 /**
  * Platform import — upload → parse → mapping → validation → execution, with
@@ -55,6 +56,7 @@ import { ImportController } from './http/import.controller';
   controllers: [ImportController],
   providers: [
     ImportHandlerRegistry,
+    ImportFileParser,
     PrismaStorageObjectRepository,
     { provide: StorageObjectRepositoryPort, useExisting: PrismaStorageObjectRepository },
     PrismaImportJobRepository,

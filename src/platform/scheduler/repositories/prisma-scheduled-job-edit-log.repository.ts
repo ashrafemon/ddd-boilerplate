@@ -1,3 +1,4 @@
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
@@ -17,7 +18,7 @@ export class PrismaScheduledJobEditLogRepository implements ScheduledJobEditLogR
         id: randomUUID(),
         scheduledJobId: input.scheduledJobId,
         editedBy: input.editedBy ?? null,
-        changedFields: JSON.parse(JSON.stringify(input.changedFields)) as object,
+        changedFields: PrismaJson.toInputRequired(input.changedFields),
       },
     });
   }

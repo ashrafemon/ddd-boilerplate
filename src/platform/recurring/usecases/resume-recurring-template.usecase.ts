@@ -3,7 +3,7 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
 import { RecurringTemplateRepositoryPort } from '../ports/recurring-template-repository.port';
 import { RecurringTemplateRecord } from '../recurring-template.types';
-import { computeNextRunDate } from '../recurrence-engine';
+import { RecurrenceEngine } from '../recurrence-engine';
 
 @Injectable()
 export class ResumeRecurringTemplateUseCase {
@@ -26,7 +26,7 @@ export class ResumeRecurringTemplateUseCase {
       throw new ConflictException('RecurringTemplate is missing TIME trigger fields');
     }
 
-    const nextRunDate = computeNextRunDate(
+    const nextRunDate = RecurrenceEngine.nextRunDate(
       template.frequency,
       template.interval,
       new Date(),

@@ -1,9 +1,10 @@
+import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
 import { RecurringContext, ResolvedHeader } from '../recurring-context.types';
 
 export interface RecurringGenerationResult {
   documentId: string;
   documentType: string;
-  snapshot: Record<string, unknown>;
+  snapshot: JsonObject;
   /**
    * When true the generator enqueued work (outbox → broker). The handler
    * must not complete the execution or autoPost; the consumer does that.
@@ -21,13 +22,13 @@ export interface RecurringGenerator {
   resolveHeader(
     partyId: string,
     partyType: string,
-    overrides: Record<string, unknown> | null,
+    overrides: JsonObject | null,
     context: RecurringContext,
   ): Promise<ResolvedHeader>;
 
   generate(
     header: ResolvedHeader,
-    lines: unknown[],
+    lines: JsonValue[],
     context: RecurringContext,
   ): Promise<RecurringGenerationResult>;
 

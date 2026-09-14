@@ -845,6 +845,8 @@ flowchart LR
     GetImportPreviewUseCase -->|injects| ImportJobRepositoryPort
     GetImportPreviewUseCase -->|injects| ImportJobRowRepositoryPort
     GetImportPreviewUseCase -->|injects via ConfigModule| ConfigService
+    ImportFileParser["ImportFileParser"]
+    GetImportPreviewUseCase -->|injects| ImportFileParser
     UpdateImportMappingUseCase -->|injects| ImportJobRepositoryPort
     UpdateImportMappingUseCase -->|injects| ImportQueuePublisherPort
     ValidateImportJobUseCase -->|injects| ImportHandlerRegistry
@@ -852,12 +854,14 @@ flowchart LR
     ValidateImportJobUseCase -->|injects| ImportJobRepositoryPort
     ValidateImportJobUseCase -->|injects| ImportJobRowRepositoryPort
     ValidateImportJobUseCase -->|injects| ImportJobOutboxWriterPort
+    ValidateImportJobUseCase -->|injects| ImportFileParser
     ParseImportJobUseCase -->|injects via ConfigModule| ConfigService
     ParseImportJobUseCase -->|injects via StorageModule| FileStoragePort
     ParseImportJobUseCase -->|injects| ImportJobRepositoryPort
     ParseImportJobUseCase -->|injects| ImportJobRowRepositoryPort
     ParseImportJobUseCase -->|injects| StorageObjectRepositoryPort
     ParseImportJobUseCase -->|injects| ImportJobOutboxWriterPort
+    ParseImportJobUseCase -->|injects| ImportFileParser
     ExecuteImportJobUseCase -->|injects| ImportJobRepositoryPort
     ExecuteImportJobUseCase -->|injects| ImportQueuePublisherPort
     CancelImportJobUseCase -->|injects| ImportJobRepositoryPort
@@ -1027,6 +1031,8 @@ flowchart LR
     DispatchDueJobsUseCase -->|injects| SchedulerJobQueuePort
     DispatchDueJobsUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
     DispatchDueJobsUseCase -->|injects via ConfigModule| ConfigService
+    SchedulerTickHeartbeat["SchedulerTickHeartbeat"]
+    DispatchDueJobsUseCase -->|injects| SchedulerTickHeartbeat
     ReconcileMissedJobsUseCase["ReconcileMissedJobsUseCase"]
     ReconcileMissedJobsUseCase -->|injects| ScheduledJobRepositoryPort
     ReconcileMissedJobsUseCase -->|injects| DistributedLockPort
@@ -1034,6 +1040,7 @@ flowchart LR
     ListScheduledJobDispatchLogUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
     GetSchedulerHealthMetricsUseCase -->|injects| ScheduledJobRepositoryPort
     GetSchedulerHealthMetricsUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
+    GetSchedulerHealthMetricsUseCase -->|injects| SchedulerTickHeartbeat
     SchedulerAdapter -->|injects| RegisterScheduledJobUseCase
     SchedulerAdapter -->|injects| CancelScheduledJobUseCase
     SchedulerAdapter -->|injects| RescheduleExternalJobUseCase

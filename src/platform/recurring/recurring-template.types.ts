@@ -1,3 +1,4 @@
+import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
 export type RecurringTemplateStatus = 'ACTIVE' | 'PAUSED' | 'CANCELLED' | 'COMPLETED';
 export type RecurringTriggerType = 'TIME' | 'EVENT';
 export type RecurringFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
@@ -29,9 +30,9 @@ export interface RecurringTemplateRecord {
   autoPost: boolean;
   autoEmail: boolean;
   autoApprove: boolean;
-  headerOverrides: Record<string, unknown> | null;
-  generationCondition: Record<string, unknown> | null;
-  lines: unknown[];
+  headerOverrides: JsonObject | null;
+  generationCondition: JsonObject | null;
+  lines: JsonValue[];
 }
 
 export interface CreateRecurringTemplateInput {
@@ -55,9 +56,9 @@ export interface CreateRecurringTemplateInput {
   autoPost?: boolean;
   autoEmail?: boolean;
   autoApprove?: boolean;
-  headerOverrides?: Record<string, unknown>;
-  generationCondition?: Record<string, unknown>;
-  lines: unknown[];
+  headerOverrides?: JsonObject;
+  generationCondition?: JsonObject;
+  lines: JsonValue[];
   createdBy?: string;
 }
 

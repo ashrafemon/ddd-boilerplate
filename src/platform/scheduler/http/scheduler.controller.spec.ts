@@ -6,6 +6,7 @@ import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.po
 import { JobScope, JobStatus, ScheduledJobRecord, ScheduleMode } from '../scheduler.types';
 import { GetScheduledJobStatusUseCase } from '../usecases/get-scheduled-job-status.usecase';
 import { GetSchedulerHealthMetricsUseCase } from '../usecases/get-scheduler-health-metrics.usecase';
+import { SchedulerTickHeartbeat } from '../scheduler-tick.heartbeat';
 import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
 import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
 import { SchedulerController, SchedulerHealthController } from './scheduler.controller';
@@ -108,7 +109,11 @@ describe('SchedulerController', () => {
 describe('SchedulerHealthController', () => {
   it('returns health metrics', async () => {
     const controller = new SchedulerHealthController(
-      new GetSchedulerHealthMetricsUseCase(makeJobs(), makeDispatchLogs()),
+      new GetSchedulerHealthMetricsUseCase(
+        makeJobs(),
+        makeDispatchLogs(),
+        new SchedulerTickHeartbeat(),
+      ),
     );
     const result = await controller.healthMetrics();
     expect(result.data.overdueCount).toBe(0);

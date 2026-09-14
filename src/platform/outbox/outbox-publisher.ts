@@ -1,3 +1,5 @@
+import { Chunker } from '@shared-kernel/utils/chunker.util';
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import {
@@ -40,7 +42,7 @@ export class OutboxPublisher {
       const batchSize = this.config.batchSize;
       const messages = await this.outboxRepository.claimBatch(batchSize);
 
-      for (const chunk of chunkArray(messages, PARALLEL_PUBLISH_LIMIT)) {
+      for (const chunk of Chunker.split(messages, PARALLEL_PUBLISH_LIMIT)) {
         await Promise.all(chunk.map(record => this.publishOne(record)));
       }
 
@@ -82,9 +84,9 @@ export class OutboxPublisher {
       await this.outboxRepository.markPublished(record.id);
     } catch (err) {
       this.logger.error(
-        `Failed to publish outbox message ${record.id} (${record.eventType}): ${(err as Error).message}`,
+        `Failed to publish outbox message ${record.id} (${record.eventType}): ${FailureMessage.of(err)}`,
       );
-      await this.outboxRepository.markFailed(record.id, (err as Error).message);
+      await this.outboxRepository.markFailed(record.id, FailureMessage.of(err));
     }
   }
 
@@ -109,12 +111,4 @@ export class OutboxPublisher {
   private get config() {
     return this.configService.getOutbox();
   }
-}
-
-function chunkArray<T>(items: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
 }

@@ -1,3 +1,4 @@
+import { JsonObject } from '@shared-kernel/types/json-value.type';
 export interface SchedulerJobDueEvent {
   jobId: string;
   jobType: string;
@@ -5,7 +6,7 @@ export interface SchedulerJobDueEvent {
   scope: string;
   aggregateType?: string | null;
   aggregateId?: string | null;
-  payload?: Record<string, unknown> | null;
+  payload?: JsonObject | null;
   idempotencyKey: string;
   priority?: 'low' | 'normal' | 'high';
 }

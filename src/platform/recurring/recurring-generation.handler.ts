@@ -1,9 +1,8 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import {
-  ConditionEvaluator,
-  GenerationCondition,
-} from '@platform/condition-engine/ports/condition-evaluator.port';
+import { ConditionEvaluator } from '@platform/condition-engine/ports/condition-evaluator.port';
+import { GenerationConditionParser } from '@platform/condition-engine/generation-condition.parser';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
 import {
@@ -15,7 +14,7 @@ import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repo
 import { RecurringExecutionRepositoryPort } from './ports/recurring-execution-repository.port';
 import { RecurringContext } from './recurring-context.types';
 import { RecurringTemplateRecord } from './recurring-template.types';
-import { computeNextRunDate } from './recurrence-engine';
+import { RecurrenceEngine } from './recurrence-engine';
 import './events/recurring.registry';
 
 /**
@@ -80,11 +79,9 @@ export class RecurringGenerationHandler implements ScheduledJobFireHandler {
     }
 
     try {
-      if (template.generationCondition) {
-        const result = await this.conditionEvaluator.evaluate(
-          template.generationCondition as unknown as GenerationCondition,
-          context,
-        );
+      const condition = GenerationConditionParser.parse(template.generationCondition);
+      if (condition) {
+        const result = await this.conditionEvaluator.evaluate(condition, context);
         if (!result.passed) {
           await this.executionRepository.skip(
             execution.id,
@@ -120,7 +117,7 @@ export class RecurringGenerationHandler implements ScheduledJobFireHandler {
         `Outbox RecurringOccurrenceRequested for ${template.targetEntityType} execution ${execution.id}`,
       );
     } catch (err) {
-      const message = (err as Error).message;
+      const message = FailureMessage.of(err);
       await this.executionRepository.fail(execution.id, message);
     }
 
@@ -133,7 +130,12 @@ export class RecurringGenerationHandler implements ScheduledJobFireHandler {
     }
 
     const from = template.nextRunDate ?? template.startDate ?? new Date();
-    const next = computeNextRunDate(template.frequency, template.interval, from, template.timeZone);
+    const next = RecurrenceEngine.nextRunDate(
+      template.frequency,
+      template.interval,
+      from,
+      template.timeZone,
+    );
 
     if (template.endDate && next > template.endDate) {
       await this.templateRepository.update(template.id, { status: 'COMPLETED', lastRunDate: from });

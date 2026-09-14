@@ -1,3 +1,4 @@
+import { JsonObject } from '@shared-kernel/types/json-value.type';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { RecurringTemplatePort } from '@platform/recurring/ports/recurring-template.port';
 import type {
@@ -23,7 +24,7 @@ export interface CreateRecurringFromPurchaseOrderInput {
   autoPost?: boolean;
   autoEmail?: boolean;
   autoApprove?: boolean;
-  generationCondition?: Record<string, unknown>;
+  generationCondition?: JsonObject;
   createdBy?: string;
 }
 

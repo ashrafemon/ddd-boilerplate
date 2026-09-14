@@ -1,3 +1,4 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
@@ -41,7 +42,7 @@ export class ValidateBatchOperationUseCase {
         items.push({
           entityId,
           canProceed: false,
-          reason: err instanceof Error ? err.message : String(err),
+          reason: FailureMessage.of(err),
         });
       }
     }

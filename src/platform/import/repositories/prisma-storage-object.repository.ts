@@ -26,12 +26,12 @@ export class PrismaStorageObjectRepository implements StorageObjectRepositoryPor
         scanStatus: input.scanStatus ?? 'PENDING',
       },
     });
-    return mapStorage(row);
+    return StorageObjectMapper.toRecord(row);
   }
 
   async findById(id: string): Promise<StorageObjectRecord | null> {
     const row = await this.txHost.tx.storageObject.findUnique({ where: { id } });
-    return row ? mapStorage(row) : null;
+    return row ? StorageObjectMapper.toRecord(row) : null;
   }
 
   async markVerified(
@@ -52,34 +52,36 @@ export class PrismaStorageObjectRepository implements StorageObjectRepositoryPor
         scanStatus: input.scanStatus,
       },
     });
-    return mapStorage(row);
+    return StorageObjectMapper.toRecord(row);
   }
 }
 
-function mapStorage(row: {
-  id: string;
-  tenantId: string | null;
-  storageKey: string;
-  purpose: StorageObjectPurpose;
-  contentType: string | null;
-  sizeBytes: number | null;
-  checksum: string | null;
-  scanStatus: StorageScanStatus;
-  expiresAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}): StorageObjectRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId ?? undefined,
-    storageKey: row.storageKey,
-    purpose: row.purpose,
-    contentType: row.contentType ?? undefined,
-    sizeBytes: row.sizeBytes ?? undefined,
-    checksum: row.checksum ?? undefined,
-    scanStatus: row.scanStatus,
-    expiresAt: row.expiresAt ?? undefined,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
+export class StorageObjectMapper {
+  static toRecord(row: {
+    id: string;
+    tenantId: string | null;
+    storageKey: string;
+    purpose: StorageObjectPurpose;
+    contentType: string | null;
+    sizeBytes: number | null;
+    checksum: string | null;
+    scanStatus: StorageScanStatus;
+    expiresAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): StorageObjectRecord {
+    return {
+      id: row.id,
+      tenantId: row.tenantId ?? undefined,
+      storageKey: row.storageKey,
+      purpose: row.purpose,
+      contentType: row.contentType ?? undefined,
+      sizeBytes: row.sizeBytes ?? undefined,
+      checksum: row.checksum ?? undefined,
+      scanStatus: row.scanStatus,
+      expiresAt: row.expiresAt ?? undefined,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
 }

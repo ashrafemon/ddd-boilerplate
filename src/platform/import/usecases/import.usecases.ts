@@ -1,3 +1,4 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import {
   BadRequestException,
   ConflictException,
@@ -11,12 +12,7 @@ import { NumberingPort } from '@platform/numbering/ports/numbering.port';
 import { FileStoragePort } from '@platform/storage/ports/file-storage.port';
 import { PageResult } from '@shared-kernel/types/pagination';
 import { ImportHandlerRegistry } from '../import-handler.registry';
-import {
-  applyMapping,
-  parseImportFile,
-  structuralValidateRow,
-  suggestMapping,
-} from '../import-file.parser';
+import { ImportFileParser } from '../import-file.parser';
 import { ImportJobOutboxWriterPort } from '../ports/import-job-outbox-writer.port';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';
 import { ImportJobRowRepositoryPort } from '../ports/import-job-row-repository.port';
@@ -33,11 +29,13 @@ import {
 } from '../import.types';
 
 /** Shared by the parse/validate/execute stages — a job built by an older deploy must not resume mid-pipeline under a changed build. */
-function assertImportBuildSha(job: ImportJobRecord, currentBuildSha: string): void {
-  if (job.buildSha && job.buildSha !== currentBuildSha) {
-    throw new ConflictException(
-      `ImportJob '${job.id}' was parsed by build ${job.buildSha} but this instance runs ${currentBuildSha}`,
-    );
+class ImportBuildGuard {
+  static assert(job: ImportJobRecord, currentBuildSha: string): void {
+    if (job.buildSha && job.buildSha !== currentBuildSha) {
+      throw new ConflictException(
+        `ImportJob '${job.id}' was parsed by build ${job.buildSha} but this instance runs ${currentBuildSha}`,
+      );
+    }
   }
 }
 
@@ -303,6 +301,7 @@ export class GetImportPreviewUseCase {
     @Inject(ImportJobRepositoryPort) private readonly jobs: ImportJobRepositoryPort,
     @Inject(ImportJobRowRepositoryPort) private readonly rows: ImportJobRowRepositoryPort,
     private readonly config: ConfigService,
+    private readonly parser: ImportFileParser,
   ) {}
 
   async execute(input: { jobId: string; tenantId?: string }) {
@@ -314,7 +313,7 @@ export class GetImportPreviewUseCase {
     const { rows } = await this.rows.listByJob(job.id, { page: 1, pageSize: previewLimit });
     const sourceColumns = rows[0]?.rawPayload ? Object.keys(rows[0].rawPayload) : [];
     const suggestedMapping =
-      job.columnMapping ?? suggestMapping(sourceColumns, job.descriptorSnapshot);
+      job.columnMapping ?? this.parser.suggestMapping(sourceColumns, job.descriptorSnapshot);
     return {
       job,
       sheets: ['Sheet1'],
@@ -398,12 +397,13 @@ export class ParseImportJobUseCase {
     @Inject(StorageObjectRepositoryPort)
     private readonly storageObjects: StorageObjectRepositoryPort,
     @Inject(ImportJobOutboxWriterPort) private readonly outbox: ImportJobOutboxWriterPort,
+    private readonly parser: ImportFileParser,
   ) {}
 
   async execute(jobId: string): Promise<void> {
     const job = await this.jobs.findById(jobId);
     if (!job) throw new NotFoundException(`ImportJob '${jobId}' not found`);
-    assertImportBuildSha(job, this.config.getImport().buildSha);
+    ImportBuildGuard.assert(job, this.config.getImport().buildSha);
 
     if (job.status === 'MAPPED' || job.status === 'VALIDATING' || job.status === 'VALIDATED') {
       return;
@@ -427,7 +427,7 @@ export class ParseImportJobUseCase {
       if (!obj) throw new NotFoundException(`Import source file is missing for '${job.id}'`);
       const downloaded = await this.storage.download(obj.storageKey);
       const maxRows = Math.min(job.descriptorSnapshot.maxRows, this.config.getImport().maxRows);
-      const parsed = parseImportFile(
+      const parsed = this.parser.parseFile(
         downloaded.body,
         obj.contentType ?? downloaded.contentType,
         obj.storageKey,
@@ -440,7 +440,7 @@ export class ParseImportJobUseCase {
       }
 
       await this.rows.deleteByJob(job.id);
-      const mapping = suggestMapping(parsed.headers, job.descriptorSnapshot);
+      const mapping = this.parser.suggestMapping(parsed.headers, job.descriptorSnapshot);
       const chunk: Parameters<ImportJobRowRepositoryPort['bulkInsert']>[0] = [];
       for (const row of parsed.rows) {
         chunk.push({
@@ -448,7 +448,7 @@ export class ParseImportJobUseCase {
           importJobId: job.id,
           rowNumber: row.rowNumber,
           rawPayload: row.values,
-          mappedPayload: applyMapping(row.values, mapping),
+          mappedPayload: this.parser.applyMapping(row.values, mapping),
         });
         if (chunk.length >= 500) {
           await this.rows.bulkInsert(chunk);
@@ -470,7 +470,7 @@ export class ParseImportJobUseCase {
         from: 'PARSING',
         to: 'FAILED',
         at: new Date(),
-        detail: err instanceof Error ? err.message : String(err),
+        detail: FailureMessage.of(err),
       });
       await this.outbox.writeFailedEvent(failed);
       throw err;
@@ -486,12 +486,13 @@ export class ValidateImportJobUseCase {
     @Inject(ImportJobRepositoryPort) private readonly jobs: ImportJobRepositoryPort,
     @Inject(ImportJobRowRepositoryPort) private readonly rows: ImportJobRowRepositoryPort,
     @Inject(ImportJobOutboxWriterPort) private readonly outbox: ImportJobOutboxWriterPort,
+    private readonly parser: ImportFileParser,
   ) {}
 
   async execute(jobId: string): Promise<void> {
     const job = await this.jobs.findById(jobId);
     if (!job) throw new NotFoundException(`ImportJob '${jobId}' not found`);
-    assertImportBuildSha(job, this.config.getImport().buildSha);
+    ImportBuildGuard.assert(job, this.config.getImport().buildSha);
     if (job.status === 'VALIDATED' || job.status === 'EXECUTING') return;
     if (job.status !== 'VALIDATING' && job.status !== 'MAPPED') {
       throw new ConflictException(
@@ -534,7 +535,7 @@ export class ValidateImportJobUseCase {
         const domainCandidates: ImportJobRowRecord[] = [];
         for (const row of pending) {
           const mapped = row.mappedPayload ?? {};
-          const errors = structuralValidateRow(mapped, job.descriptorSnapshot);
+          const errors = this.parser.structuralValidateRow(mapped, job.descriptorSnapshot);
           if (errors.length) {
             structural.push({ rowNumber: row.rowNumber, status: 'INVALID', errors });
           } else {
@@ -575,7 +576,7 @@ export class ValidateImportJobUseCase {
         from: 'VALIDATING',
         to: 'FAILED',
         at: new Date(),
-        detail: err instanceof Error ? err.message : String(err),
+        detail: FailureMessage.of(err),
       });
       await this.outbox.writeFailedEvent(failed);
       throw err;
@@ -596,7 +597,7 @@ export class RunImportExecutionUseCase {
   async execute(jobId: string): Promise<void> {
     const job = await this.jobs.findById(jobId);
     if (!job) throw new NotFoundException(`ImportJob '${jobId}' not found`);
-    assertImportBuildSha(job, this.config.getImport().buildSha);
+    ImportBuildGuard.assert(job, this.config.getImport().buildSha);
     if (['COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED', 'CANCELLED'].includes(job.status)) {
       return;
     }
@@ -685,7 +686,7 @@ export class RunImportExecutionUseCase {
         from: 'EXECUTING',
         to: 'FAILED',
         at: new Date(),
-        detail: err instanceof Error ? err.message : String(err),
+        detail: FailureMessage.of(err),
       });
       await this.outbox.writeFailedEvent(failed);
       throw err;

@@ -1,3 +1,4 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
@@ -6,8 +7,8 @@ import { DistributedLockPort } from '../ports/distributed-lock.port';
 import { SchedulerJobQueuePort } from '../ports/scheduler-job-queue.port';
 import { ScheduledJobDispatchLogRepositoryPort } from '../ports/scheduled-job-dispatch-log-repository.port';
 import { ClaimedJob, DispatchStatus, ScheduleMode } from '../scheduler.types';
-import { computeNextRunAt } from '../cron-calculator';
-import { markSchedulerTickSuccess } from './get-scheduler-health-metrics.usecase';
+import { CronCalculator } from '../cron-calculator';
+import { SchedulerTickHeartbeat } from '../scheduler-tick.heartbeat';
 
 const DEFAULT_TIME_BUDGET_MS = 25_000;
 
@@ -22,6 +23,7 @@ export class DispatchDueJobsUseCase {
 
     private readonly dispatchLogs: ScheduledJobDispatchLogRepositoryPort,
     private readonly configService: ConfigService,
+    private readonly heartbeat: SchedulerTickHeartbeat,
   ) {}
 
   async execute(options?: { batchSize?: number; timeBudgetMs?: number }): Promise<number> {
@@ -46,7 +48,7 @@ export class DispatchDueJobsUseCase {
       }
     }
 
-    markSchedulerTickSuccess();
+    this.heartbeat.mark();
     return total;
   }
 
@@ -87,14 +89,14 @@ export class DispatchDueJobsUseCase {
       });
 
       if (job.scheduleMode === ScheduleMode.CRON && job.cronExpression) {
-        const next = computeNextRunAt(job.cronExpression, new Date());
+        const next = CronCalculator.nextRunAt(job.cronExpression, new Date());
         await this.jobs.markPendingWithNextRun(job.id, next, new Date());
       } else {
         // External: stay CLAIMED until the async handler calls reschedule-external-job.
         await this.jobs.touchLastRunAt(job.id);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = FailureMessage.of(err);
       this.logger.error(`Dispatch failed for job ${job.id}: ${message}`);
       try {
         await this.dispatchLogs.insert({

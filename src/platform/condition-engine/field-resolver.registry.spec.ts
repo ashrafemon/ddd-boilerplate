@@ -1,9 +1,9 @@
 import { FieldResolverRegistry } from './field-resolver.registry';
-import { EvaluationContext, FieldResolver } from './ports/field-resolver.port';
+import { ConditionValue, EvaluationContext, FieldResolver } from './ports/field-resolver.port';
 
 class FakeFieldResolver implements FieldResolver {
-  resolve(field: string, context: EvaluationContext): Promise<unknown> {
-    return Promise.resolve(`${field}@${context.tenantId}`);
+  resolve(field: string, context: EvaluationContext): Promise<ConditionValue> {
+    return Promise.resolve(`${field}@${context.tenantId ?? ''}`);
   }
 }
 

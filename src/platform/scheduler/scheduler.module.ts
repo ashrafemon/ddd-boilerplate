@@ -5,6 +5,7 @@ import { Module } from '@nestjs/common';
 import { ScheduledJobHandlerRegistry } from './scheduled-job-handler.registry';
 import { ScheduledJobProcessor } from './scheduled-job.processor';
 import { SchedulerTicker } from './scheduler.ticker';
+import { SchedulerTickHeartbeat } from './scheduler-tick.heartbeat';
 import { SchedulerPort } from './ports/scheduler.port';
 import { DistributedLockPort } from './ports/distributed-lock.port';
 import { ScheduledJobDispatchLogRepositoryPort } from './ports/scheduled-job-dispatch-log-repository.port';
@@ -82,6 +83,7 @@ import { SchedulerController, SchedulerHealthController } from './http/scheduler
     SchedulerAdapter,
     { provide: SchedulerPort, useExisting: SchedulerAdapter },
     SchedulerTicker,
+    SchedulerTickHeartbeat,
   ],
   exports: [SchedulerPort, ScheduledJobHandlerRegistry],
 })

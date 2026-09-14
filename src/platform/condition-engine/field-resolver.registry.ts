@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { KeyedRegistryBase } from '@shared-kernel/utils/keyed-registry.base';
-import { EvaluationContext, FieldResolver } from './ports/field-resolver.port';
+import { ConditionValue, EvaluationContext, FieldResolver } from './ports/field-resolver.port';
 
 /**
  * Keyed by field prefix (e.g. 'stock_balance' for 'stock_balance.qtyOnHand').
@@ -18,7 +18,7 @@ export class FieldResolverRegistry extends KeyedRegistryBase<FieldResolver> {
     );
   }
 
-  resolve(field: string, context: EvaluationContext): Promise<unknown> {
+  resolve(field: string, context: EvaluationContext): Promise<ConditionValue> {
     const [prefix] = field.split('.');
     const resolver = this.getEntry(prefix);
     if (!resolver) {

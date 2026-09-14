@@ -1,7 +1,8 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { LoggerPort } from '@platform/observability/ports/logger.port';
 import { RecurringExecutionPort } from '@platform/recurring/ports/recurring-execution.port';
-import { asInvoiceLines } from '../integrations/recurring-invoice.mapper';
+import { RecurringInvoiceLineMapper } from '../integrations/recurring-invoice.mapper';
 import { RecurringOccurrenceRequestedPayload } from '../integrations/recurring-occurrence.types';
 import { CreateInvoiceUseCase } from './create-invoice.usecase';
 import { GetInvoiceUseCase } from './get-invoice.usecase';
@@ -49,7 +50,7 @@ export class GenerateRecurringInvoiceUseCase {
 
     const startedAt = Date.now();
     try {
-      const lines = asInvoiceLines(command.lines);
+      const lines = RecurringInvoiceLineMapper.toLines(command.lines);
       const invoiceId = await this.createInvoice.execute({
         customerId: command.partyId,
         currency: command.currency,
@@ -76,7 +77,7 @@ export class GenerateRecurringInvoiceUseCase {
         }
       }
     } catch (err) {
-      const message = (err as Error).message;
+      const message = FailureMessage.of(err);
       await this.recurringExecution.fail(command.executionId, message);
       this.logger.error(
         `Recurring invoice generation failed for execution ${command.executionId}: ${message}`,

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { PageResult } from '@shared-kernel/types/pagination';
-import { toPrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
 import {
@@ -37,7 +37,7 @@ export class PrismaBatchOperationJobRepository
           jobNo: job.jobNo,
           aggregateType: job.aggregateType,
           operationCode: job.operationCode,
-          operationParams: toPrismaJson(job.operationParams),
+          operationParams: PrismaJson.toInput(job.operationParams),
           mode: job.mode,
           status: job.status,
           totalRecords: entityIds.length,
@@ -218,7 +218,7 @@ export class PrismaBatchOperationJobRepository
       where: { id: rowId },
       data: {
         status: 'SUCCESS',
-        resultSnapshot: toPrismaJson(resultSnapshot),
+        resultSnapshot: PrismaJson.toInput(resultSnapshot),
         processingTimeMs,
         processedAt: new Date(),
       },

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { toPrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
 import { OutboxMessageRecord, OutboxRepository } from '../ports/outbox-repository.port';
 
@@ -17,8 +17,8 @@ export class PrismaOutboxRepository extends OutboxRepository {
         eventType: message.eventType,
         aggregateType: message.aggregateType,
         aggregateId: message.aggregateId,
-        payload: toPrismaJson(message.payload) as object,
-        headers: message.headers ? toPrismaJson(message.headers) : undefined,
+        payload: PrismaJson.toInput(message.payload) as object,
+        headers: message.headers ? PrismaJson.toInput(message.headers) : undefined,
         occurredAt: message.occurredAt,
         status: 'PENDING',
       },

@@ -1,3 +1,4 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { RedisService } from '@infrastructure/cache/redis/redis.service';
 import { DistributedLockPort } from '../ports/distributed-lock.port';
@@ -23,7 +24,7 @@ export class RedisDistributedLockAdapter implements DistributedLockPort {
       const result = await client.set(KEY_PREFIX + jobId, '1', 'PX', ttlMs, 'NX');
       return result === 'OK';
     } catch (err) {
-      this.logger.error(`Redis lock acquire error: ${(err as Error).message}`);
+      this.logger.error(`Redis lock acquire error: ${FailureMessage.of(err)}`);
       return false;
     }
   }
@@ -42,7 +43,7 @@ export class RedisDistributedLockAdapter implements DistributedLockPort {
       await client.pexpire(key, ttlMs);
       return true;
     } catch (err) {
-      this.logger.error(`Redis lock renew error: ${(err as Error).message}`);
+      this.logger.error(`Redis lock renew error: ${FailureMessage.of(err)}`);
       return false;
     }
   }
@@ -55,7 +56,7 @@ export class RedisDistributedLockAdapter implements DistributedLockPort {
     try {
       await client.del(KEY_PREFIX + jobId);
     } catch (err) {
-      this.logger.error(`Redis lock release error: ${(err as Error).message}`);
+      this.logger.error(`Redis lock release error: ${FailureMessage.of(err)}`);
     }
   }
 

@@ -1,3 +1,4 @@
+import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { RecurringTemplatePort } from '@platform/recurring/ports/recurring-template.port';
 import type {
@@ -10,6 +11,7 @@ import { NumberingPort } from '../outbound-ports/numbering.port';
 const TEMPLATE_SEQUENCE = 'RecurringTemplate:PurchaseOrder';
 
 export interface CreateRecurringPurchaseOrderLineInput {
+  [key: string]: JsonValue;
   productId: string;
   quantity: number;
   unitPrice: number;
@@ -31,7 +33,7 @@ export interface CreateRecurringPurchaseOrderInput {
   autoPost?: boolean;
   autoEmail?: boolean;
   autoApprove?: boolean;
-  generationCondition?: Record<string, unknown>;
+  generationCondition?: JsonObject;
   createdBy?: string;
 }
 

@@ -1,8 +1,10 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ConfigService } from '@config/config.service';
 import { BatchOperationQueuePublisherPort } from '../ports/batch-operation-queue-publisher.port';
+import { Chunker } from '@shared-kernel/utils/chunker.util';
 import { BatchOperationDispatch } from '../batch-operation.types';
 import {
   BATCH_OPERATION_CHUNK_JOB_NAME,
@@ -25,7 +27,7 @@ export class BullMqBatchOperationQueueAdapter implements BatchOperationQueuePubl
 
   async dispatchChunks(dispatch: BatchOperationDispatch): Promise<void> {
     const { chunkSize, chunkAttempts } = this.configService.getBatchOperation();
-    const chunks = partition(dispatch.rowIds, chunkSize);
+    const chunks = Chunker.split(dispatch.rowIds, chunkSize);
 
     for (let i = 0; i < chunks.length; i++) {
       const rowIds = chunks[i];
@@ -44,20 +46,10 @@ export class BullMqBatchOperationQueueAdapter implements BatchOperationQueuePubl
         );
       } catch (err) {
         this.logger.error(
-          `Failed to enqueue chunk ${i} for batch job ${dispatch.jobId}: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
+          `Failed to enqueue chunk ${i} for batch job ${dispatch.jobId}: ${FailureMessage.of(err)}`,
         );
         throw err;
       }
     }
   }
-}
-
-function partition<T>(items: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    out.push(items.slice(i, i + size));
-  }
-  return out;
 }

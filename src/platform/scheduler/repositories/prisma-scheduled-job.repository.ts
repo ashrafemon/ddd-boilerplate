@@ -1,8 +1,10 @@
+import { Prisma, ScheduledJobStatus } from '../../../generated/client';
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { ConfigService } from '@config/config.service';
-import { toPrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { JsonObject } from '@shared-kernel/types/json-value.type';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import {
   CreateScheduledJobData,
   ScheduledJobRepositoryPort,
@@ -39,7 +41,7 @@ export class PrismaScheduledJobRepository implements ScheduledJobRepositoryPort 
         tenantId: data.tenantId ?? null,
         aggregateType: data.aggregateType ?? null,
         aggregateId: data.aggregateId ?? null,
-        payload: toPrismaJson(data.payload),
+        payload: PrismaJson.toInput(data.payload),
         status: 'PENDING',
       },
     });
@@ -48,7 +50,7 @@ export class PrismaScheduledJobRepository implements ScheduledJobRepositoryPort 
 
   async findById(jobId: string): Promise<ScheduledJobRecord | null> {
     const row = await this.tx.scheduledJob.findUnique({ where: { id: jobId } });
-    return row ? mapJob(row) : null;
+    return row ? ScheduledJobMapper.toRecord(row) : null;
   }
 
   async list(options?: {
@@ -60,13 +62,13 @@ export class PrismaScheduledJobRepository implements ScheduledJobRepositoryPort 
     const rows = await this.tx.scheduledJob.findMany({
       where: {
         jobType: options?.jobType,
-        status: options?.status as never,
+        status: options?.status ? DB_JOB_STATUS[options.status] : undefined,
       },
       take: options?.limit ?? 50,
       skip: options?.offset ?? 0,
       orderBy: { nextRunAt: 'asc' },
     });
-    return rows.map(mapJob);
+    return rows.map(row => ScheduledJobMapper.toRecord(row));
   }
 
   async cancel(jobId: string): Promise<void> {
@@ -117,7 +119,7 @@ export class PrismaScheduledJobRepository implements ScheduledJobRepositoryPort 
           cronExpression: string | null;
           aggregateType: string | null;
           aggregateId: string | null;
-          payload: unknown;
+          payload: Prisma.JsonValue | null;
           nextRunAt: Date;
           retryCount: number;
           version: number;
@@ -150,7 +152,7 @@ export class PrismaScheduledJobRepository implements ScheduledJobRepositoryPort 
         cronExpression: r.cronExpression,
         aggregateType: r.aggregateType,
         aggregateId: r.aggregateId,
-        payload: (r.payload as Record<string, unknown> | null) ?? null,
+        payload: PrismaJson.as<JsonObject>(r.payload),
         nextRunAt: r.nextRunAt,
         retryCount: r.retryCount,
         version: r.version,
@@ -230,44 +232,50 @@ export class PrismaScheduledJobRepository implements ScheduledJobRepositoryPort 
   }
 }
 
-function mapJob(row: {
-  id: string;
-  tenantId: string | null;
-  jobType: string;
-  scope: string;
-  scheduleMode: string;
-  cronExpression: string | null;
-  aggregateType: string | null;
-  aggregateId: string | null;
-  payload: unknown;
-  nextRunAt: Date;
-  lastRunAt: Date | null;
-  status: string;
-  retryCount: number;
-  version: number;
-  lockedUntil: Date | null;
-  lockedBy: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}): ScheduledJobRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    jobType: row.jobType,
-    scope: row.scope as JobScope,
-    scheduleMode: row.scheduleMode as ScheduleMode,
-    cronExpression: row.cronExpression,
-    aggregateType: row.aggregateType,
-    aggregateId: row.aggregateId,
-    payload: (row.payload as Record<string, unknown> | null) ?? null,
-    nextRunAt: row.nextRunAt,
-    lastRunAt: row.lastRunAt,
-    status: row.status as JobStatus,
-    retryCount: row.retryCount,
-    version: row.version,
-    lockedUntil: row.lockedUntil,
-    lockedBy: row.lockedBy,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
+export class ScheduledJobMapper {
+  static toRecord(row: {
+    id: string;
+    tenantId: string | null;
+    jobType: string;
+    scope: string;
+    scheduleMode: string;
+    cronExpression: string | null;
+    aggregateType: string | null;
+    aggregateId: string | null;
+    payload: Prisma.JsonValue | null;
+    nextRunAt: Date;
+    lastRunAt: Date | null;
+    status: string;
+    retryCount: number;
+    version: number;
+    lockedUntil: Date | null;
+    lockedBy: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): ScheduledJobRecord {
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      jobType: row.jobType,
+      scope: row.scope as JobScope,
+      scheduleMode: row.scheduleMode as ScheduleMode,
+      cronExpression: row.cronExpression,
+      aggregateType: row.aggregateType,
+      aggregateId: row.aggregateId,
+      payload: PrismaJson.as<JsonObject>(row.payload),
+      nextRunAt: row.nextRunAt,
+      lastRunAt: row.lastRunAt,
+      status: row.status as JobStatus,
+      retryCount: row.retryCount,
+      version: row.version,
+      lockedUntil: row.lockedUntil,
+      lockedBy: row.lockedBy,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
 }
+
+/** DB enum guard: unknown status strings simply do not match any row. */
+const DB_JOB_STATUS: Record<string, (typeof ScheduledJobStatus)[keyof typeof ScheduledJobStatus]> =
+  Object.fromEntries(Object.values(ScheduledJobStatus).map(v => [v, v]));

@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import { jsonValueSchema } from '@shared-kernel/validation/json-value.schema';
 
 const TRIGGER_TYPES = ['TIME', 'EVENT'] as const;
 const FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const;
@@ -29,9 +30,9 @@ const baseSchema = z
     autoPost: z.boolean().optional(),
     autoEmail: z.boolean().optional(),
     autoApprove: z.boolean().optional(),
-    headerOverrides: z.record(z.string(), z.unknown()).optional(),
-    generationCondition: z.record(z.string(), z.unknown()).optional(),
-    lines: z.array(z.unknown()).min(1),
+    headerOverrides: z.record(z.string(), jsonValueSchema).optional(),
+    generationCondition: z.record(z.string(), jsonValueSchema).optional(),
+    lines: z.array(jsonValueSchema).min(1),
   })
   .superRefine((dto, ctx) => {
     if (dto.triggerType === 'EVENT' && !dto.eventName) {

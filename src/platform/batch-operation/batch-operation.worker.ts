@@ -1,9 +1,10 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { BatchOperationJobRepositoryPort } from './ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from './ports/batch-operation-job-row-repository.port';
 import { BatchOperationJobOutboxWriterPort } from './ports/batch-operation-job-outbox-writer.port';
 import { ProcessBatchOperationRowUseCase } from './usecases/process-batch-operation-row.usecase';
-import { BatchOperationDispatch, isTerminalBatchOperationStatus } from './batch-operation.types';
+import { BatchOperationDispatch, BatchOperationStatusRules } from './batch-operation.types';
 
 /**
  * Thin driving adapter: consumes a chunk (Async via BullMQ, or Sync in-process),
@@ -36,7 +37,7 @@ export class BatchOperationWorker {
 
   private async finaliseIfComplete(jobId: string): Promise<void> {
     const job = await this.jobs.findJob(jobId);
-    if (!job || isTerminalBatchOperationStatus(job.status)) {
+    if (!job || BatchOperationStatusRules.isTerminal(job.status)) {
       return;
     }
 
@@ -57,11 +58,7 @@ export class BatchOperationWorker {
       try {
         await this.outboxWriter.writeJobCompletedEvent(finalised);
       } catch (err) {
-        this.logger.warn(
-          `Outbox write failed for batch job ${jobId}: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        );
+        this.logger.warn(`Outbox write failed for batch job ${jobId}: ${FailureMessage.of(err)}`);
       }
     }
   }

@@ -132,8 +132,8 @@ export interface ImportJobRowRecord {
   tenantId?: string;
   importJobId: string;
   rowNumber: number;
-  rawPayload?: Record<string, unknown>;
-  mappedPayload?: Record<string, unknown>;
+  rawPayload?: Record<string, string>;
+  mappedPayload?: Record<string, string>;
   validationStatus: ImportRowValidationStatus;
   executionStatus: ImportRowExecutionStatus;
   validationErrors?: string[];
@@ -189,8 +189,8 @@ export interface NewImportJob {
 /** A row as first written by the parser — mapped payload only once a mapping exists. */
 export interface NewImportJobRow {
   rowNumber: number;
-  rawPayload?: Record<string, unknown>;
-  mappedPayload?: Record<string, unknown>;
+  rawPayload?: Record<string, string>;
+  mappedPayload?: Record<string, string>;
   tenantId?: string;
 }
 

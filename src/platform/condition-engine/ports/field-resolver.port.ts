@@ -1,3 +1,6 @@
+/** A concrete, JSON-safe value a FieldResolver can produce. */
+export type ConditionValue = string | number | boolean | null;
+
 /**
  * Minimal, generic evaluation context. Deliberately structural rather than
  * importing anything from `platform/recurring` — RecurringContext (defined
@@ -8,7 +11,6 @@
 export interface EvaluationContext {
   tenantId?: string;
   traceId: string;
-  [key: string]: unknown;
 }
 
 /**
@@ -18,5 +20,5 @@ export interface EvaluationContext {
  * by the module that owns the data — never by ConditionEngineModule itself.
  */
 export interface FieldResolver {
-  resolve(field: string, context: EvaluationContext): Promise<unknown>;
+  resolve(field: string, context: EvaluationContext): Promise<ConditionValue>;
 }

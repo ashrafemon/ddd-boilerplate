@@ -1,5 +1,19 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
+
+/** Recursive JSON schema so stored conditions stay typed (no unknown). */
+const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonValueSchema),
+    z.record(z.string(), jsonValueSchema),
+  ]),
+);
+const jsonObjectSchema: z.ZodType<JsonObject> = z.record(z.string(), jsonValueSchema);
 
 const TRIGGER_TYPES = ['TIME', 'EVENT'] as const;
 const FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const;
@@ -15,7 +29,7 @@ const scheduleSchema = z.object({
   autoPost: z.boolean().optional(),
   autoEmail: z.boolean().optional(),
   autoApprove: z.boolean().optional(),
-  generationCondition: z.record(z.string(), z.unknown()).optional(),
+  generationCondition: jsonObjectSchema.optional(),
 });
 
 function requireScheduleFields(dto: z.infer<typeof scheduleSchema>, ctx: z.RefinementCtx): void {

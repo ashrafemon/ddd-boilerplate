@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Prisma } from '../../../generated/client';
-import { toPrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import {
   CompleteExecutionInput,
   RecurringExecutionRepositoryPort,
@@ -35,7 +35,7 @@ export class PrismaRecurringExecutionRepository implements RecurringExecutionRep
           status: 'IN_PROGRESS',
         },
       });
-      return toRecord(row);
+      return RecurringExecutionMapper.toRecord(row);
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -49,7 +49,7 @@ export class PrismaRecurringExecutionRepository implements RecurringExecutionRep
 
   async findById(id: string): Promise<RecurringExecutionRecord | null> {
     const row = await this.txHost.tx.recurringExecution.findUnique({ where: { id } });
-    return row ? toRecord(row) : null;
+    return row ? RecurringExecutionMapper.toRecord(row) : null;
   }
 
   async complete(id: string, input: CompleteExecutionInput): Promise<void> {
@@ -58,8 +58,8 @@ export class PrismaRecurringExecutionRepository implements RecurringExecutionRep
       data: {
         status: 'SUCCESS',
         generatedDocumentId: input.generatedDocumentId,
-        generatedSnapshot: toPrismaJson(input.generatedSnapshot),
-        conditionEvaluation: toPrismaJson(input.conditionEvaluation),
+        generatedSnapshot: PrismaJson.toInput(input.generatedSnapshot),
+        conditionEvaluation: PrismaJson.toInput(input.conditionEvaluation),
         executionTimeMs: input.executionTimeMs,
       },
     });
@@ -82,7 +82,7 @@ export class PrismaRecurringExecutionRepository implements RecurringExecutionRep
       data: {
         status: 'SKIPPED',
         skipReason,
-        conditionEvaluation: toPrismaJson(conditionEvaluation),
+        conditionEvaluation: PrismaJson.toInput(conditionEvaluation),
       },
     });
   }
@@ -97,27 +97,29 @@ interface ExecutionRow {
   triggerKey: string;
   generatedDocumentType: string;
   generatedDocumentId: string | null;
-  generatedSnapshot: unknown;
-  conditionEvaluation: unknown;
+  generatedSnapshot: Prisma.JsonValue | null;
+  conditionEvaluation: Prisma.JsonValue | null;
   status: string;
   skipReason: string | null;
   errorMessage: string | null;
 }
 
-function toRecord(row: ExecutionRow): RecurringExecutionRecord {
-  return {
-    id: row.id,
-    recurringTemplateId: row.recurringTemplateId,
-    scheduleJobId: row.scheduleJobId,
-    runDate: row.runDate,
-    sourceEventId: row.sourceEventId,
-    triggerKey: row.triggerKey,
-    generatedDocumentType: row.generatedDocumentType,
-    generatedDocumentId: row.generatedDocumentId,
-    generatedSnapshot: (row.generatedSnapshot as Record<string, unknown> | null) ?? null,
-    conditionEvaluation: (row.conditionEvaluation as Record<string, unknown> | null) ?? null,
-    status: row.status as RecurringExecutionRecord['status'],
-    skipReason: row.skipReason,
-    errorMessage: row.errorMessage,
-  };
+export class RecurringExecutionMapper {
+  static toRecord(row: ExecutionRow): RecurringExecutionRecord {
+    return {
+      id: row.id,
+      recurringTemplateId: row.recurringTemplateId,
+      scheduleJobId: row.scheduleJobId,
+      runDate: row.runDate,
+      sourceEventId: row.sourceEventId,
+      triggerKey: row.triggerKey,
+      generatedDocumentType: row.generatedDocumentType,
+      generatedDocumentId: row.generatedDocumentId,
+      generatedSnapshot: PrismaJson.asRecord(row.generatedSnapshot),
+      conditionEvaluation: PrismaJson.asRecord(row.conditionEvaluation),
+      status: row.status as RecurringExecutionRecord['status'],
+      skipReason: row.skipReason,
+      errorMessage: row.errorMessage,
+    };
+  }
 }

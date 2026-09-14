@@ -151,11 +151,13 @@ export interface BatchOperationListQuery {
 }
 
 /** True once a job can no longer be cancelled or resumed. */
-export function isTerminalBatchOperationStatus(status: BatchOperationJobStatus): boolean {
-  return (
-    status === 'COMPLETED' ||
-    status === 'COMPLETED_WITH_ERRORS' ||
-    status === 'FAILED' ||
-    status === 'CANCELLED'
-  );
+export class BatchOperationStatusRules {
+  static isTerminal(status: BatchOperationJobStatus): boolean {
+    return (
+      status === 'COMPLETED' ||
+      status === 'COMPLETED_WITH_ERRORS' ||
+      status === 'FAILED' ||
+      status === 'CANCELLED'
+    );
+  }
 }

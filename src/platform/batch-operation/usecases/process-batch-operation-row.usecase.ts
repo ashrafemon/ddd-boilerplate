@@ -1,3 +1,4 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
@@ -64,7 +65,7 @@ export class ProcessBatchOperationRowUseCase {
       if (!verdict.canProceed) {
         await this.rows.markRowSkipped(
           claimed.id,
-          normaliseSkipReason(verdict.reason),
+          ProcessBatchOperationRowUseCase.normaliseSkipReason(verdict.reason),
           Date.now() - startedAt,
         );
         await this.jobs.incrementProgress(dispatch.jobId, 'SKIPPED');
@@ -80,13 +81,16 @@ export class ProcessBatchOperationRowUseCase {
 
       await this.rows.markRowSuccess(
         claimed.id,
-        capSnapshot(result.resultSnapshot ?? null, resultSnapshotMaxBytes),
+        ProcessBatchOperationRowUseCase.capSnapshot(
+          result.resultSnapshot ?? null,
+          resultSnapshotMaxBytes,
+        ),
         Date.now() - startedAt,
       );
       await this.jobs.incrementProgress(dispatch.jobId, 'SUCCESS');
       return 'PROCESSED';
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = FailureMessage.of(err);
       this.logger.warn(
         `Batch row ${claimed.id} (${dispatch.aggregateType}/${dispatch.operationCode}) failed: ${message}`,
       );
@@ -95,25 +99,24 @@ export class ProcessBatchOperationRowUseCase {
       return 'PROCESSED';
     }
   }
-}
+  private static normaliseSkipReason(reason: string | undefined): string {
+    if (reason && (KNOWN_SKIP_REASONS as readonly string[]).includes(reason)) {
+      return reason;
+    }
+    return reason ? `VALIDATION_FAILED: ${reason}`.slice(0, 200) : 'VALIDATION_FAILED';
+  }
 
-function normaliseSkipReason(reason: string | undefined): string {
-  if (reason && (KNOWN_SKIP_REASONS as readonly string[]).includes(reason)) {
-    return reason;
+  private static capSnapshot(
+    snapshot: Record<string, unknown> | null,
+    maxBytes: number,
+  ): Record<string, unknown> | null {
+    if (!snapshot) {
+      return null;
+    }
+    const size = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
+    if (size <= maxBytes) {
+      return snapshot;
+    }
+    return { _truncated: true, _originalBytes: size };
   }
-  return reason ? `VALIDATION_FAILED: ${reason}`.slice(0, 200) : 'VALIDATION_FAILED';
-}
-
-function capSnapshot(
-  snapshot: Record<string, unknown> | null,
-  maxBytes: number,
-): Record<string, unknown> | null {
-  if (!snapshot) {
-    return null;
-  }
-  const size = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
-  if (size <= maxBytes) {
-    return snapshot;
-  }
-  return { _truncated: true, _originalBytes: size };
 }

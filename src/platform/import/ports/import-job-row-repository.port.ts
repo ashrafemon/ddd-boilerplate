@@ -12,8 +12,8 @@ export abstract class ImportJobRowRepositoryPort {
       tenantId?: string;
       importJobId: string;
       rowNumber: number;
-      rawPayload?: Record<string, unknown>;
-      mappedPayload?: Record<string, unknown>;
+      rawPayload?: Record<string, string>;
+      mappedPayload?: Record<string, string>;
     }>,
   ): Promise<void>;
 
