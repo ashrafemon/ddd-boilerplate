@@ -99,6 +99,7 @@ flowchart LR
     RecurringModule -->|SchedulerPort, ScheduledJobHandlerRegistry| SchedulerModule
     ConditionEngineModule["ConditionEngineModule"]
     RecurringModule -->|ConditionEvaluator| ConditionEngineModule
+    SchedulerModule -->|RequestContextPort| ContextModule__src_platform_context__2
     SchedulerModule -->|ConfigService| ConfigModule
     CacheModule__src_infrastructure_cache_["CacheModule (src/infrastructure/cache)"]
     CacheModule__src_infrastructure_cache__2["CacheModule__src_infrastructure_cache_"]
@@ -951,7 +952,7 @@ flowchart LR
 
 #### SchedulerModule — `src/platform/scheduler/scheduler.module.ts`
 
-imports: MessagingModule, BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }) · exports: SchedulerPort, ScheduledJobHandlerRegistry
+imports: ContextModule, MessagingModule, BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }) · exports: SchedulerPort, ScheduledJobHandlerRegistry
 
 ```mermaid
 flowchart LR
@@ -983,7 +984,10 @@ flowchart LR
     SchedulerController -->|injects| ListScheduledJobDispatchLogUseCase
     UpdateScheduledJobUseCase["UpdateScheduledJobUseCase"]
     SchedulerController -->|injects| UpdateScheduledJobUseCase
-    SchedulerController -->|injects| SchedulerPort
+    CancelScheduledJobUseCase["CancelScheduledJobUseCase"]
+    SchedulerController -->|injects| CancelScheduledJobUseCase
+    RequestContextPort["RequestContextPort"]
+    SchedulerController -->|injects via ContextModule| RequestContextPort
     SchedulerHealthController["SchedulerHealthController"]
     GetSchedulerHealthMetricsUseCase["GetSchedulerHealthMetricsUseCase"]
     SchedulerHealthController -->|injects| GetSchedulerHealthMetricsUseCase
@@ -1019,7 +1023,6 @@ flowchart LR
     BullMqSchedulerJobWorker -->|injects| ScheduledJobDispatchLogRepositoryPort
     RegisterScheduledJobUseCase["RegisterScheduledJobUseCase"]
     RegisterScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
-    CancelScheduledJobUseCase["CancelScheduledJobUseCase"]
     CancelScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
     RescheduleExternalJobUseCase["RescheduleExternalJobUseCase"]
     RescheduleExternalJobUseCase -->|injects| ScheduledJobRepositoryPort
@@ -1038,6 +1041,7 @@ flowchart LR
     ReconcileMissedJobsUseCase -->|injects| DistributedLockPort
     GetScheduledJobStatusUseCase -->|injects| ScheduledJobRepositoryPort
     ListScheduledJobDispatchLogUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
+    ListScheduledJobDispatchLogUseCase -->|injects| ScheduledJobRepositoryPort
     GetSchedulerHealthMetricsUseCase -->|injects| ScheduledJobRepositoryPort
     GetSchedulerHealthMetricsUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
     GetSchedulerHealthMetricsUseCase -->|injects| SchedulerTickHeartbeat
@@ -1059,13 +1063,22 @@ flowchart LR
 
 #### AppModule — `src/app.module.ts`
 
-imports: ConfigModule, InfrastructureModule, PlatformModule, BusinessModule · exports: —
+imports: ConfigModule, ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const { ttlMs, limit } = config.getThrottler();
+        return { throttlers: [{ ttl: ttlMs, limit }] };
+      },
+    }), InfrastructureModule, PlatformModule, BusinessModule · exports: —
 
 ```mermaid
 flowchart LR
     APP_INTERCEPTOR["APP_INTERCEPTOR"]
     ResponseInterceptor["ResponseInterceptor"]
     APP_INTERCEPTOR -.->|useClass| ResponseInterceptor
+    APP_GUARD["APP_GUARD"]
+    ThrottlerGuard["ThrottlerGuard"]
+    APP_GUARD -.->|useClass| ThrottlerGuard
     APP_FILTER["APP_FILTER"]
     HttpExceptionsFilter["HttpExceptionsFilter"]
     APP_FILTER -.->|useClass| HttpExceptionsFilter

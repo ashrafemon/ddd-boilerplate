@@ -64,9 +64,10 @@ src/
 ├── bootstrap/               # app bootstrap steps (sentry, security, cors, http, swagger, ...)
 ├── infrastructure/          # third-party client init ONLY (Prisma, brokers, cache, AWS, CLS)
 ├── platform/                # services built on those clients, exposed as ports
-│                            # (outbox, events, messaging, database, context, cache, audit,
-│                            #  numbering, configuration, notification, observability, storage,
-│                            #  condition-engine, scheduler, recurring, batch-operation, import)
+│                            # (outbox, events, messaging, context (incl. PrismaReadPort),
+│                            #  cache, audit, numbering, configuration, notification,
+│                            #  observability, storage, condition-engine, scheduler,
+│                            #  recurring, batch-operation, import)
 ├── generated/               # Prisma-generated client (DO NOT EDIT; `@prisma/client` alias)
 └── business/
     ├── shared-business/     # framework-independent domain primitives + registries
@@ -591,8 +592,8 @@ platform/
 │                    DefaultMessageRoutingPolicy (MessageRoutingPolicy)
 ├── messaging/       MessagingModule — binds RabbitMqPublisher/KafkaPublisher/SqsPublisher
 │                    tokens to MessagePublisher adapters over the infra clients
-├── database/        DatabaseModule — PrismaReadPort (backed by PrismaReadService)
-├── context/         ContextModule — ClsRequestContextService (RequestContextPort);
+├── context/         ContextModule — ClsRequestContextService (RequestContextPort) and
+│                    PrismaReadPort (bound to the infrastructure PrismaReadService);
 │                    ports also define RequestContext, Clock/SystemClock, UnitOfWork
 ├── cache/           CacheModule — Redis or Memcached CachePort adapter, chosen by the same
 │                    resolveCacheDriver() the infrastructure layer uses (exactly one client)
@@ -827,11 +828,18 @@ call use case → wrap `{ data, message }`.
 
 - Helmet (with production CSP) + response compression at the Fastify level.
 - Strict CORS from config; empty `CORS_ORIGINS` aborts production boot.
-- Throttler settings exposed through config (`THROTTLE_TTL_MS`/`THROTTLE_LIMIT`).
+- **Rate limiting**: global `ThrottlerGuard` wired in `AppModule` from config
+  (`THROTTLE_TTL_MS`/`THROTTLE_LIMIT`) with stricter per-route overrides
+  (`@Throttle`) on expensive endpoints — batch submit (20/min), import uploads and
+  job creation (30/min).
 - JWT/auth packages present (`auth.config.ts`, `@nestjs/jwt`, `passport-jwt`, `jwks-rsa`,
   `bcrypt`); guards are opt-in per controller (`@ApiBearerAuth()` is already on controllers).
-- Multi-tenancy groundwork: `x-tenant-id`/`x-organization-id` flow into CLS `RequestContext`
-  and are stamped onto audit + outbox metadata.
+- Multi-tenancy: `x-tenant-id`/`x-organization-id` flow into CLS `RequestContext` and are
+  stamped onto audit + outbox metadata. Platform reads/mutations pass the request tenant into
+  their use cases, which enforce visibility through `TenantScope` (shared-kernel): a
+  foreign-tenant row surfaces as `NotFoundException` — no existence leak. Rows without a
+  tenant are platform-owned; requests without a tenant header (single-tenant deployments)
+  see everything.
 - UUID identifiers everywhere; aggregates carry `version` for optimistic concurrency.
 - Secrets only via env (`requiredInProduction` fail-fast); 5 MB request body limit.
 - API versioning via URI (`/api/v1`), Swagger disabled in production.

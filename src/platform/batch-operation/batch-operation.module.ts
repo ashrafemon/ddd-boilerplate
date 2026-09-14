@@ -25,10 +25,28 @@ import { BullMqBatchOperationWorker } from './adapters/bullmq-batch-operation.wo
 import { BatchOperationController } from './http/batch-operation.controller';
 
 /**
- * Platform batch-operation — Sync/Async bulk transitions for opted-in
- * aggregates. Aggregates register a handler with
- * the registry directly (onApplicationBootstrap) from their own module;
- * the pipeline never interprets operationCode itself.
+ * Platform batch-operation — Sync/Async bulk transitions for opted-in aggregates.
+ *
+ * Tables owned: batch_operation_jobs, batch_operation_job_rows.
+ *
+ * Lifecycle:
+ *  1. ValidateBatchOperationUseCase — dry-run preview via the registered
+ *     BatchOperationHandler (same validate() the real run uses).
+ *  2. CreateBatchOperationJobUseCase — assert handler+operation, dedupe/cap ids,
+ *     decide SYNC (<= syncThreshold) or ASYNC, write header + one PENDING row
+ *     per entity in ONE transaction.
+ *  3. SYNC runs BatchOperationWorker.processChunk in-process (full result in the
+ *     HTTP response); ASYNC fans out fixed chunks through BullMQ (202 accepted).
+ *  4. Per row: claim (UPDATE ... WHERE status='PENDING') -> handler.validate ->
+ *     handler.execute -> row outcome + header counters. Handlers delegate to the
+ *     aggregate's own single-record use cases — batch moves are indistinguishable
+ *     from manual ones.
+ *  5. Terminal counters -> finaliseJob -> outbox BatchOperationJobCompleted.
+ *     Reconciliation cron resets stuck rows and re-dispatches orphans.
+ *
+ * No inbound ports: the controller/worker inject these use cases directly;
+ * BatchOperationHandlerRegistry is the plugin boundary (owner modules register
+ * in onApplicationBootstrap). Reads are tenant-scoped.
  */
 @Module({
   imports: [

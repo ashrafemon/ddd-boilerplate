@@ -37,13 +37,24 @@ import { ImportController } from './http/import.controller';
 import { ImportFileParser } from './import-file.parser';
 
 /**
- * Platform import — upload → parse → mapping → validation → execution, with
- * S3-backed storage objects, BullMQ fan-out and per-entityKey handlers
- * registered on ImportHandlerRegistry by the owning module at bootstrap.
+ * Platform import — upload -> parse -> mapping -> validation -> execution.
  *
- * Internal consumers (controller, worker) inject the use cases directly;
- * ports remain only for genuine outbound boundaries (repositories, queue,
- * outbox writer) and the plugin contract (ImportHandler).
+ * Tables owned: storage_objects, import_jobs, import_job_rows.
+ *
+ * Lifecycle:
+ *  1. CreateImportUploadUseCase — presigned S3 slot + StorageObject row.
+ *  2. CreateImportJobUseCase    — [TX] import job snapshotting the registered
+ *     ImportHandler descriptor; BullMQ parse stage.
+ *  3. Parse    — ImportFileParser (xlsx/CSV) -> suggested ColumnMapping -> preview.
+ *  4. Mapping  — user confirms/overrides; validation chunks run generic
+ *     structural checks + handler.validateBatch (per-row verdicts, never aborts).
+ *  5. Execute  — handler.executeBatch per chunk: claim -> ONE domain txn per row
+ *     -> APPLIED/FAILED/SKIPPED; counters + progress; cancel flag honored.
+ *  6. Terminal events go to the outbox; an error report becomes a StorageObject;
+ *     the reconciliation cron fails stale-heartbeat jobs.
+ *
+ * Controller/worker inject use cases directly (no inbound ports);
+ * ImportHandlerRegistry is the plugin boundary; jobs are tenant-scoped.
  */
 @Module({
   imports: [

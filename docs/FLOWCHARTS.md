@@ -59,7 +59,7 @@ flowchart TD
         SCH[scheduler] --- REC[recurring] --- COND[condition-engine]
         BATCH[batch-operation] --- IMP[import]
         NUM[numbering] --- AUD[audit] --- CFG[configuration] --- NOTIF[notification]
-        CTX[context CLS] --- DB[database] --- CACHE[cache] --- STORAGE[storage] --- OBS[observability]
+        CTX[context CLS + PrismaReadPort] --- CACHE[cache] --- STORAGE[storage] --- OBS[observability]
     end
     PLAT --> INFRA["INFRASTRUCTURE (clients only: Prisma, RabbitMQ, Kafka, SQS, Redis, S3, SES/SNS, CLS, BullMQ)"]
     INFRA --> EXT["PostgreSQL | Redis | RabbitMQ | Kafka | SQS | S3"]
@@ -320,12 +320,13 @@ throw at boot.
 
 ## 9. Mental-model cheat sheet
 
-| Question                                       | Answer in this system                                                                                                                                                                           |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Who talks to the database?                     | Adapters only: `*CommandRepository` on `TransactionHost` (write TX) and `*QueryRepository` on `PrismaReadPort` (replica). Use cases never see Prisma.                                           |
-| Who publishes events?                          | Nobody inside a transaction. Use cases append to the outbox; `OutboxScheduler` publishes.                                                                                                       |
-| How does a use case get another module's data? | Own `outbound-ports/` port → `adapters/module/` adapter → producer's `public/` port → producer's facade → producer's query use case.                                                            |
-| How does a use case get a platform capability? | Own `outbound-ports/` port (CompanyConfig, Numbering) → `adapters/platform/` adapter → platform port; or inject a platform port directly (OutboxWriterPort, SchedulerPort, ConditionEvaluator). |
-| How does the platform trigger business work?   | It never calls business code directly — it emits (outbox→broker) or fires a registered handler; business owns what happens next.                                                                |
-| Where do responses differ per device?          | Controller `@DeviceResponse(MobileDto, WebDto)` + `DeviceResponseInterceptor`, selected by `x-device-type`.                                                                                     |
-| Where are the rules enforced?                  | `eslint.config.mjs` (`no-restricted-imports`) — run `npm run lint:check`.                                                                                                                       |
+| Question                                       | Answer in this system                                                                                                                                                                                                                   |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Who talks to the database?                     | Adapters only: `*CommandRepository` on `TransactionHost` (write TX) and `*QueryRepository` on `PrismaReadPort` (replica). Use cases never see Prisma.                                                                                   |
+| Who publishes events?                          | Nobody inside a transaction. Use cases append to the outbox; `OutboxScheduler` publishes.                                                                                                                                               |
+| How does a use case get another module's data? | Own `outbound-ports/` port → `adapters/module/` adapter → producer's `public/` port → producer's facade → producer's query use case.                                                                                                    |
+| How does a use case get a platform capability? | Own `outbound-ports/` port (CompanyConfig, Numbering) → `adapters/platform/` adapter → platform port; or inject a platform port directly (OutboxWriterPort, SchedulerPort, ConditionEvaluator).                                         |
+| How does the platform trigger business work?   | It never calls business code directly — it emits (outbox→broker) or fires a registered handler; business owns what happens next.                                                                                                        |
+| How is tenant isolation enforced?              | Controllers read `tenantId` from `RequestContextPort` and pass it into use cases, which call `TenantScope.assertVisible(...)` — foreign-tenant rows are 404, platform-owned (null) rows and header-less single-tenant requests see all. |
+| Where do responses differ per device?          | Controller `@DeviceResponse(MobileDto, WebDto)` + `DeviceResponseInterceptor`, selected by `x-device-type`.                                                                                                                             |
+| Where are the rules enforced?                  | `eslint.config.mjs` (`no-restricted-imports`) — run `npm run lint:check`.                                                                                                                                                               |

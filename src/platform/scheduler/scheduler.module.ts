@@ -35,10 +35,27 @@ import { SchedulerAdapter } from './adapters/scheduler.adapter';
 import { SchedulerController, SchedulerHealthController } from './http/scheduler.controller';
 
 /**
- * Platform scheduler — DB-backed job table polled by SchedulerTicker, async
- * execution through BullMQ, Redis locks, and per-jobType fire handlers
- * registered opt-in on ScheduledJobHandlerRegistry by the owning module. Business code
- * injects the inbound port abstract classes only.
+ * Platform scheduler — durable job timing for the whole monolith.
+ *
+ * Tables owned: scheduled_jobs, scheduled_job_dispatch_log, scheduled_job_edit_log.
+ *
+ * Lifecycle (numbered flow):
+ *  1. Register  — services/business call SchedulerPort.schedule(...) (or the
+ *     update/dispatch ops ports; thin adapters delegate to use cases).
+ *  2. Poll      — SchedulerTicker (interval, SCHEDULER_POLL_INTERVAL_MS) runs
+ *     DispatchDueJobsUseCase: claimDue (FOR UPDATE SKIP LOCKED) -> Redis
+ *     distributed lock -> enqueue BullMQ job (idempotencyKey as BullMQ jobId).
+ *  3. Execute   — BullMqSchedulerJobWorker -> ScheduledJobProcessor:
+ *     registered jobType handler fires in-process, otherwise the job is
+ *     published to RabbitMQ as scheduler.job.<jobType> for external consumers.
+ *  4. Reschedule— CRON jobs compute nextRunAt via CronCalculator; EXTERNAL jobs
+ *     stay claimed until the owner calls rescheduleExternal.
+ *  5. Reconcile — ReconcileMissedJobsUseCase releases stale claims and applies
+ *     missed-fire policy; edit log + dispatch log audit every change.
+ *
+ * Inbound surface: SchedulerPort (cross-module facade), ops ports bound through
+ * thin adapters; ScheduledJobHandlerRegistry is the plugin boundary business
+ * modules register into from onApplicationBootstrap. Reads are tenant-scoped.
  */
 @Module({
   imports: [
