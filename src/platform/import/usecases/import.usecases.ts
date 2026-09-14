@@ -5,12 +5,14 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
 import { NumberingPort } from '@platform/numbering/ports/numbering.port';
 import { FileStoragePort } from '@platform/storage/ports/file-storage.port';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { PageResult } from '@shared-kernel/types/pagination';
 import { ImportHandlerRegistry } from '../import-handler.registry';
 import { ImportFileParser } from '../import-file.parser';
@@ -19,12 +21,14 @@ import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';
 import { ImportJobRowRepositoryPort } from '../ports/import-job-row-repository.port';
 import { ImportQueuePublisherPort } from '../ports/import-queue-publisher.port';
 import { StorageObjectRepositoryPort } from '../ports/storage-object-repository.port';
+import { AuditPort } from '@platform/audit/ports/audit.port';
 import {
   ColumnMapping,
   ImportContext,
   ImportJobRecord,
   ImportJobRowRecord,
   ImportOptions,
+  RowExecutionSettlement,
   RowResult,
   RowVerdict,
 } from '../import.types';
@@ -35,6 +39,25 @@ class ImportBuildGuard {
     if (job.buildSha && job.buildSha !== currentBuildSha) {
       throw new ConflictException(
         `ImportJob '${job.id}' was parsed by build ${job.buildSha} but this instance runs ${currentBuildSha}`,
+      );
+    }
+  }
+
+  /**
+   * Behaviour-affecting descriptor changes (fields, required-ness, chunking)
+   * must bump descriptor.version; a job may only continue on the shape it was
+   * created with, otherwise validation would run on the snapshot while
+   * execution uses a different live contract.
+   */
+  static assertDescriptorCurrent(
+    job: ImportJobRecord,
+    currentVersion: number,
+    entityKey: string,
+  ): void {
+    if (job.descriptorVersion !== currentVersion) {
+      throw new ConflictException(
+        `Import handler '${entityKey}' is at descriptor v${currentVersion} but ` +
+          `ImportJob '${job.id}' was created against v${job.descriptorVersion}; create a new job`,
       );
     }
   }
@@ -135,7 +158,12 @@ export class CreateImportJobUseCase {
     const descriptor = this.registry.resolveDescriptor(input.entityKey);
     const cfg = this.config.getImport();
     const obj = await this.storageObjects.findById(input.storageObjectId);
-    if (!obj) {
+    if (
+      !obj ||
+      obj.purpose !== 'IMPORT_SOURCE' ||
+      // Cross-tenant object references are indistinguishable from missing ones.
+      (input.tenantId && obj.tenantId && obj.tenantId !== input.tenantId)
+    ) {
       throw new NotFoundException(`StorageObject '${input.storageObjectId}' not found`);
     }
     const meta = await this.storage.getMetadata(obj.storageKey);
@@ -163,6 +191,12 @@ export class CreateImportJobUseCase {
       contentType: meta.contentType ?? obj.contentType,
       scanStatus: 'CLEAN',
     });
+    // The upload-slot TTL must not expire the source while the job references
+    // it: the consumed object lives for the configured retention window.
+    await this.storageObjects.markConsumed(
+      obj.id,
+      new Date(Date.now() + cfg.sourceRetentionDays * 24 * 60 * 60 * 1000),
+    );
 
     const jobNo = await this.numbering.nextNumber('import-job', { prefix: 'IMP-', padding: 6 });
     const job = await this.jobs.create({
@@ -221,6 +255,7 @@ export class CancelImportJobUseCase {
   constructor(
     @Inject(ImportJobRepositoryPort) private readonly jobs: ImportJobRepositoryPort,
     @Inject(ImportJobOutboxWriterPort) private readonly outbox: ImportJobOutboxWriterPort,
+    @Inject(AuditPort) private readonly audit: AuditPort,
   ) {}
 
   async execute(input: {
@@ -228,10 +263,7 @@ export class CancelImportJobUseCase {
     tenantId?: string;
     actor?: string;
   }): Promise<ImportJobRecord> {
-    const job = await this.jobs.findById(input.jobId);
-    if (!job || (input.tenantId && job.tenantId && job.tenantId !== input.tenantId)) {
-      throw new NotFoundException(`ImportJob '${input.jobId}' not found`);
-    }
+    const job = await requireVisibleJob(this.jobs, input.jobId, input.tenantId);
     const terminal = ['COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED', 'CANCELLED'];
     if (terminal.includes(job.status)) {
       return job;
@@ -244,8 +276,16 @@ export class CancelImportJobUseCase {
         at: new Date(),
         actor: input.actor,
       });
-      await this.outbox.writeCancelledEvent(cancelled);
-      return cancelled;
+      if (cancelled) {
+        await this.outbox.writeCancelledEvent(cancelled);
+        await this.audit.record({
+          action: 'import.cancelled',
+          entityType: 'ImportJob',
+          entityId: job.id,
+          changes: { status: 'CANCELLED', entityKey: job.entityKey },
+        });
+        return cancelled;
+      }
     }
     return (await this.jobs.findById(job.id))!;
   }
@@ -264,10 +304,7 @@ export class UpdateImportMappingUseCase {
     tenantId?: string;
     actor?: string;
   }): Promise<ImportJobRecord> {
-    const job = await this.jobs.findById(input.jobId);
-    if (!job || (input.tenantId && job.tenantId && job.tenantId !== input.tenantId)) {
-      throw new NotFoundException(`ImportJob '${input.jobId}' not found`);
-    }
+    const job = await requireVisibleJob(this.jobs, input.jobId, input.tenantId);
     if (job.status !== 'MAPPED' && job.status !== 'UPLOADED' && job.status !== 'PARSING') {
       // allow mapping update when MAPPED (re-map before validate)
     }
@@ -307,10 +344,7 @@ export class GetImportPreviewUseCase {
   ) {}
 
   async execute(input: { jobId: string; tenantId?: string }) {
-    const job = await this.jobs.findById(input.jobId);
-    if (!job || (input.tenantId && job.tenantId && job.tenantId !== input.tenantId)) {
-      throw new NotFoundException(`ImportJob '${input.jobId}' not found`);
-    }
+    const job = await requireVisibleJob(this.jobs, input.jobId, input.tenantId);
     const previewLimit = this.config.getImport().previewRows;
     const { rows } = await this.rows.listByJob(job.id, { page: 1, pageSize: previewLimit });
     const sourceColumns = rows[0]?.rawPayload ? Object.keys(rows[0].rawPayload) : [];
@@ -335,10 +369,7 @@ export class GetImportReportUseCase {
   ) {}
 
   async execute(input: { jobId: string; tenantId?: string; page: number; pageSize: number }) {
-    const job = await this.jobs.findById(input.jobId);
-    if (!job || (input.tenantId && job.tenantId && job.tenantId !== input.tenantId)) {
-      throw new NotFoundException(`ImportJob '${input.jobId}' not found`);
-    }
+    const job = await requireVisibleJob(this.jobs, input.jobId, input.tenantId);
     const { rows, total } = await this.rows.listByJob(job.id, {
       page: input.page,
       pageSize: input.pageSize,
@@ -362,6 +393,7 @@ export class ExecuteImportJobUseCase {
   constructor(
     @Inject(ImportJobRepositoryPort) private readonly jobs: ImportJobRepositoryPort,
     @Inject(ImportQueuePublisherPort) private readonly queue: ImportQueuePublisherPort,
+    @Inject(AuditPort) private readonly audit: AuditPort,
   ) {}
 
   async execute(input: {
@@ -369,10 +401,7 @@ export class ExecuteImportJobUseCase {
     tenantId?: string;
     actor?: string;
   }): Promise<ImportJobRecord> {
-    const job = await this.jobs.findById(input.jobId);
-    if (!job || (input.tenantId && job.tenantId && job.tenantId !== input.tenantId)) {
-      throw new NotFoundException(`ImportJob '${input.jobId}' not found`);
-    }
+    const job = await requireVisibleJob(this.jobs, input.jobId, input.tenantId);
     if (job.status !== 'VALIDATED') {
       throw new ConflictException(
         `ImportJob '${job.id}' is ${job.status}; expected one of: VALIDATED`,
@@ -385,12 +414,42 @@ export class ExecuteImportJobUseCase {
       actor: input.actor,
     });
     await this.queue.enqueueExecute(job.id);
+    await this.audit.record({
+      action: 'import.execute-requested',
+      entityType: 'ImportJob',
+      entityId: job.id,
+      changes: { status: 'EXECUTING', entityKey: job.entityKey },
+    });
     return updated;
+  }
+}
+/** Renewing stage lock: acquire once, heartbeat while the phase runs, release at the end. */
+class StageLock {
+  static async acquire(
+    jobs: ImportJobRepositoryPort,
+    jobId: string,
+    stage: string,
+    ttlMs: number,
+    renewMs: number,
+  ): Promise<(() => Promise<void>) | null> {
+    const owner = `${stage}:${randomUUID()}`;
+    if (!(await jobs.tryAcquireLock(jobId, owner, new Date(Date.now() + ttlMs)))) {
+      return null;
+    }
+    const timer = setInterval(() => {
+      void jobs.heartbeat(jobId, owner, new Date(Date.now() + ttlMs)).catch(() => undefined);
+    }, renewMs);
+    return async () => {
+      clearInterval(timer);
+      await jobs.releaseLock(jobId, owner).catch(() => undefined);
+    };
   }
 }
 
 @Injectable()
 export class ParseImportJobUseCase {
+  private readonly logger = new Logger(ParseImportJobUseCase.name);
+
   constructor(
     private readonly config: ConfigService,
     private readonly storage: FileStoragePort,
@@ -399,13 +458,35 @@ export class ParseImportJobUseCase {
     @Inject(StorageObjectRepositoryPort)
     private readonly storageObjects: StorageObjectRepositoryPort,
     @Inject(ImportJobOutboxWriterPort) private readonly outbox: ImportJobOutboxWriterPort,
+    @Inject(RequestContextPort) private readonly requestContext: RequestContextPort,
     private readonly parser: ImportFileParser,
   ) {}
 
   async execute(jobId: string): Promise<void> {
     const job = await this.jobs.findById(jobId);
+    if (!job) return;
+    await this.requestContext.run({ tenantId: job.tenantId, correlationId: job.traceId }, () =>
+      this.runParse(jobId),
+    );
+  }
+
+  private async runParse(jobId: string): Promise<void> {
+    const cfg = this.config.getImport();
+    const release = await StageLock.acquire(
+      this.jobs,
+      jobId,
+      'parse',
+      cfg.reconciliationWindowMs,
+      cfg.lockRenewalMs,
+    );
+    if (!release) {
+      this.logger.debug(`Parse skipped for import job ${jobId}: locked by a live worker`);
+      return;
+    }
+
+    const job = await this.jobs.findById(jobId);
     if (!job) throw new NotFoundException(`ImportJob '${jobId}' not found`);
-    ImportBuildGuard.assert(job, this.config.getImport().buildSha);
+    ImportBuildGuard.assert(job, cfg.buildSha);
 
     if (job.status === 'MAPPED' || job.status === 'VALIDATING' || job.status === 'VALIDATED') {
       return;
@@ -428,7 +509,7 @@ export class ParseImportJobUseCase {
         : null;
       if (!obj) throw new NotFoundException(`Import source file is missing for '${job.id}'`);
       const downloaded = await this.storage.download(obj.storageKey);
-      const maxRows = Math.min(job.descriptorSnapshot.maxRows, this.config.getImport().maxRows);
+      const maxRows = Math.min(job.descriptorSnapshot.maxRows, cfg.maxRows);
       const parsed = this.parser.parseFile(
         downloaded.body,
         obj.contentType ?? downloaded.contentType,
@@ -474,27 +555,61 @@ export class ParseImportJobUseCase {
         at: new Date(),
         detail: FailureMessage.of(err),
       });
-      await this.outbox.writeFailedEvent(failed);
+      if (failed) {
+        await this.outbox.writeFailedEvent(failed);
+      }
       throw err;
+    } finally {
+      await release();
     }
   }
 }
 
 @Injectable()
 export class ValidateImportJobUseCase {
+  private readonly logger = new Logger(ValidateImportJobUseCase.name);
+
   constructor(
     private readonly registry: ImportHandlerRegistry,
     private readonly config: ConfigService,
     @Inject(ImportJobRepositoryPort) private readonly jobs: ImportJobRepositoryPort,
     @Inject(ImportJobRowRepositoryPort) private readonly rows: ImportJobRowRepositoryPort,
     @Inject(ImportJobOutboxWriterPort) private readonly outbox: ImportJobOutboxWriterPort,
+    @Inject(RequestContextPort) private readonly requestContext: RequestContextPort,
     private readonly parser: ImportFileParser,
   ) {}
 
   async execute(jobId: string): Promise<void> {
     const job = await this.jobs.findById(jobId);
+    if (!job) return;
+    await this.requestContext.run({ tenantId: job.tenantId, correlationId: job.traceId }, () =>
+      this.runValidate(jobId),
+    );
+  }
+
+  private async runValidate(jobId: string): Promise<void> {
+    const cfg = this.config.getImport();
+    const release = await StageLock.acquire(
+      this.jobs,
+      jobId,
+      'validate',
+      cfg.reconciliationWindowMs,
+      cfg.lockRenewalMs,
+    );
+    if (!release) {
+      this.logger.debug(`Validate skipped for import job ${jobId}: locked by a live worker`);
+      return;
+    }
+
+    const job = await this.jobs.findById(jobId);
     if (!job) throw new NotFoundException(`ImportJob '${jobId}' not found`);
-    ImportBuildGuard.assert(job, this.config.getImport().buildSha);
+    ImportBuildGuard.assert(job, cfg.buildSha);
+    const handler = this.registry.resolveHandler(job.entityKey);
+    ImportBuildGuard.assertDescriptorCurrent(
+      job,
+      this.registry.resolveDescriptor(job.entityKey).version,
+      job.entityKey,
+    );
     if (job.status === 'VALIDATED' || job.status === 'EXECUTING') return;
     if (job.status !== 'VALIDATING' && job.status !== 'MAPPED') {
       throw new ConflictException(
@@ -509,8 +624,6 @@ export class ValidateImportJobUseCase {
       });
     }
 
-    const handler = this.registry.resolveHandler(job.entityKey);
-    const cfg = this.config.getImport();
     const ctx: ImportContext = {
       tenantId: job.tenantId,
       userId: job.requestedBy,
@@ -527,7 +640,9 @@ export class ValidateImportJobUseCase {
             to: 'CANCELLED',
             at: new Date(),
           });
-          await this.outbox.writeCancelledEvent(cancelled);
+          if (cancelled) {
+            await this.outbox.writeCancelledEvent(cancelled);
+          }
           return;
         }
         const pending = await this.rows.listPendingValidation(job.id, cfg.validationChunkSize);
@@ -554,20 +669,22 @@ export class ValidateImportJobUseCase {
           }));
           const refs = await handler.preloadReferences(payloads, ctx);
           const verdicts = await handler.validateBatch(payloads, refs, ctx);
-          await this.rows.applyValidationVerdicts(job.id, verdicts);
+          // Termination contract: every candidate must leave PENDING, so a
+          // handler that omits a verdict gets an explicit INVALID instead of
+          // pinning the loop (and the worker slot) forever.
+          const returned = new Set(verdicts.map(v => v.rowNumber));
+          const missing: RowVerdict[] = domainCandidates
+            .filter(r => !returned.has(r.rowNumber))
+            .map(r => ({
+              rowNumber: r.rowNumber,
+              status: 'INVALID' as const,
+              errors: ['handler returned no validation verdict'],
+            }));
+          await this.rows.applyValidationVerdicts(job.id, [...verdicts, ...missing]);
         }
-        const counts = await this.rows.countByValidationStatus(job.id);
-        await this.jobs.updateCounters(job.id, {
-          validRows: counts.VALID,
-          invalidRows: counts.INVALID + counts.DUPLICATE,
-        });
+        await this.jobs.recountCounters(job.id);
       }
 
-      const counts = await this.rows.countByValidationStatus(job.id);
-      await this.jobs.updateCounters(job.id, {
-        validRows: counts.VALID,
-        invalidRows: counts.INVALID + counts.DUPLICATE,
-      });
       await this.jobs.transitionStatus(job.id, 'VALIDATING', 'VALIDATED', {
         from: 'VALIDATING',
         to: 'VALIDATED',
@@ -580,26 +697,60 @@ export class ValidateImportJobUseCase {
         at: new Date(),
         detail: FailureMessage.of(err),
       });
-      await this.outbox.writeFailedEvent(failed);
+      if (failed) {
+        await this.outbox.writeFailedEvent(failed);
+      }
       throw err;
+    } finally {
+      await release();
     }
   }
 }
 
 @Injectable()
 export class RunImportExecutionUseCase {
+  private readonly logger = new Logger(RunImportExecutionUseCase.name);
+
   constructor(
     private readonly registry: ImportHandlerRegistry,
     private readonly config: ConfigService,
     @Inject(ImportJobRepositoryPort) private readonly jobs: ImportJobRepositoryPort,
     @Inject(ImportJobRowRepositoryPort) private readonly rows: ImportJobRowRepositoryPort,
     @Inject(ImportJobOutboxWriterPort) private readonly outbox: ImportJobOutboxWriterPort,
+    @Inject(RequestContextPort) private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(jobId: string): Promise<void> {
     const job = await this.jobs.findById(jobId);
+    if (!job) return;
+    await this.requestContext.run({ tenantId: job.tenantId, correlationId: job.traceId }, () =>
+      this.runExecute(jobId),
+    );
+  }
+
+  private async runExecute(jobId: string): Promise<void> {
+    const cfg = this.config.getImport();
+    const release = await StageLock.acquire(
+      this.jobs,
+      jobId,
+      'execute',
+      cfg.reconciliationWindowMs,
+      cfg.lockRenewalMs,
+    );
+    if (!release) {
+      this.logger.debug(`Execute skipped for import job ${jobId}: locked by a live worker`);
+      return;
+    }
+
+    const job = await this.jobs.findById(jobId);
     if (!job) throw new NotFoundException(`ImportJob '${jobId}' not found`);
-    ImportBuildGuard.assert(job, this.config.getImport().buildSha);
+    ImportBuildGuard.assert(job, cfg.buildSha);
+    const handler = this.registry.resolveHandler(job.entityKey);
+    ImportBuildGuard.assertDescriptorCurrent(
+      job,
+      this.registry.resolveDescriptor(job.entityKey).version,
+      job.entityKey,
+    );
     if (['COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED', 'CANCELLED'].includes(job.status)) {
       return;
     }
@@ -609,8 +760,6 @@ export class RunImportExecutionUseCase {
       );
     }
 
-    const handler = this.registry.resolveHandler(job.entityKey);
-    const cfg = this.config.getImport();
     const chunkSize = job.descriptorSnapshot.executionChunkSize || cfg.executionChunkSize;
     const ctx: ImportContext = {
       tenantId: job.tenantId,
@@ -628,14 +777,24 @@ export class RunImportExecutionUseCase {
             to: 'CANCELLED',
             at: new Date(),
           });
-          await this.outbox.writeCancelledEvent(cancelled);
+          if (cancelled) {
+            await this.outbox.writeCancelledEvent(cancelled);
+          }
           return;
         }
-        const pending = await this.rows.claimForExecution(job.id, chunkSize);
-        if (pending.length === 0) break;
+        const claimed = await this.rows.claimForExecution(job.id, chunkSize);
+        if (claimed.length === 0) break;
+
+        const tokens = new Map(
+          claimed.map(r => [r.rowNumber, r.executionClaimToken ?? -1] as const),
+        );
+        const settle = (rowNumber: number, result: RowResult): RowExecutionSettlement => ({
+          ...result,
+          executionClaimToken: tokens.get(rowNumber) ?? -1,
+        });
 
         // Re-validate inside execution chunk (staleness guard).
-        const payloads = pending.map(r => ({
+        const payloads = claimed.map(r => ({
           rowNumber: r.rowNumber,
           ...(r.mappedPayload ?? {}),
         }));
@@ -644,45 +803,80 @@ export class RunImportExecutionUseCase {
         const stillValid = new Set(
           verdicts.filter(v => v.status === 'VALID').map(v => v.rowNumber),
         );
-        const skipResults: RowResult[] = verdicts
+        const skipResults: RowExecutionSettlement[] = verdicts
           .filter(v => v.status !== 'VALID')
-          .map(v => ({
-            rowNumber: v.rowNumber,
-            status: 'SKIPPED' as const,
-            errorMessage: (v.errors ?? ['re-validation failed']).join('; '),
-          }));
+          .map(v =>
+            settle(v.rowNumber, {
+              rowNumber: v.rowNumber,
+              status: 'SKIPPED' as const,
+              errorMessage: (v.errors ?? ['re-validation failed']).join('; '),
+            }),
+          );
         if (skipResults.length) {
           await this.rows.applyExecutionResults(job.id, skipResults);
         }
 
         const toExecute = payloads.filter(p => stillValid.has(p.rowNumber));
         if (toExecute.length) {
-          const results = await handler.executeBatch(toExecute, ctx);
-          await this.rows.applyExecutionResults(job.id, results);
+          const executingRows = claimed
+            .filter(r => stillValid.has(r.rowNumber))
+            .map(r => r.rowNumber);
+          try {
+            const results = await handler.executeBatch(toExecute, ctx);
+            await this.rows.applyExecutionResults(
+              job.id,
+              results.map(r => settle(r.rowNumber, r)),
+            );
+            // Results missing from the handler response (crash-free contract
+            // breach) must not leave PROCESSING rows pinning the loop.
+            const answered = new Set(results.map(r => r.rowNumber));
+            const unanswered: RowExecutionSettlement[] = executingRows
+              .filter(rowNumber => !answered.has(rowNumber))
+              .map(rowNumber =>
+                settle(rowNumber, {
+                  rowNumber,
+                  status: 'FAILED' as const,
+                  errorMessage: 'handler returned no execution result',
+                }),
+              );
+            if (unanswered.length) {
+              await this.rows.applyExecutionResults(job.id, unanswered);
+            }
+          } catch (err) {
+            // Chunk-level failure: the domain commits inside the handler are
+            // opaque from here, so mark the whole claimed chunk FAILED for
+            // operator review and keep the pipeline moving instead of
+            // terminalising the job on one bad batch.
+            const message = FailureMessage.of(err);
+            this.logger.error(
+              `Import execution chunk failed for job ${job.id}: ${message} — ${toExecute.length} rows marked FAILED`,
+            );
+            await this.rows.applyExecutionResults(
+              job.id,
+              executingRows.map(rowNumber =>
+                settle(rowNumber, {
+                  rowNumber,
+                  status: 'FAILED' as const,
+                  errorMessage: message,
+                }),
+              ),
+            );
+          }
         }
-
-        const execCounts = await this.rows.countByExecutionStatus(job.id);
-        await this.jobs.updateCounters(job.id, {
-          appliedRows: execCounts.APPLIED,
-          failedRows: execCounts.FAILED + execCounts.SKIPPED,
-        });
+        await this.jobs.recountCounters(job.id);
       }
 
-      const execCounts = await this.rows.countByExecutionStatus(job.id);
-      const status =
-        execCounts.FAILED + execCounts.SKIPPED > 0 || job.invalidRows > 0
-          ? 'COMPLETED_WITH_ERRORS'
-          : 'COMPLETED';
+      const fresh = await this.jobs.recountCounters(job.id);
+      const hasErrors = fresh !== null && (fresh.failedRows > 0 || fresh.invalidRows > 0);
+      const status = hasErrors ? 'COMPLETED_WITH_ERRORS' : 'COMPLETED';
       const completed = await this.jobs.markTerminal(job.id, status, {
         from: 'EXECUTING',
         to: status,
         at: new Date(),
       });
-      await this.jobs.updateCounters(job.id, {
-        appliedRows: execCounts.APPLIED,
-        failedRows: execCounts.FAILED + execCounts.SKIPPED,
-      });
-      await this.outbox.writeCompletedEvent(completed);
+      if (completed) {
+        await this.outbox.writeCompletedEvent(completed);
+      }
     } catch (err) {
       const failed = await this.jobs.markTerminal(job.id, 'FAILED', {
         from: 'EXECUTING',
@@ -690,8 +884,25 @@ export class RunImportExecutionUseCase {
         at: new Date(),
         detail: FailureMessage.of(err),
       });
-      await this.outbox.writeFailedEvent(failed);
+      if (failed) {
+        await this.outbox.writeFailedEvent(failed);
+      }
       throw err;
+    } finally {
+      await release();
     }
   }
+}
+
+async function requireVisibleJob(
+  jobs: ImportJobRepositoryPort,
+  jobId: string,
+  tenantId?: string,
+): Promise<ImportJobRecord> {
+  const job = await jobs.findById(jobId);
+  if (!job) {
+    throw new NotFoundException(`ImportJob '${jobId}' not found`);
+  }
+  TenantScope.assertVisible(job.tenantId ?? null, tenantId);
+  return job;
 }

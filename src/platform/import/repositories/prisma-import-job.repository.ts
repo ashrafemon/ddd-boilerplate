@@ -112,35 +112,34 @@ export class PrismaImportJobRepository implements ImportJobRepositoryPort {
     history: StatusHistoryEntry,
   ): Promise<ImportJobRecord> {
     const allowed = Array.isArray(from) ? from : [from];
-    const updated = await this.txHost.tx.importJob.updateMany({
-      where: { id: jobId, status: { in: allowed } },
-      data: {
-        status: to,
-        statusHistory: undefined as never,
-      },
+    const updated = await this.txHost.tx.$transaction(async tx => {
+      const flip = await tx.importJob.updateMany({
+        where: { id: jobId, status: { in: allowed } },
+        data: {
+          status: to,
+          version: { increment: 1 },
+          ...(to === 'PARSING' || to === 'VALIDATING' || to === 'EXECUTING'
+            ? { heartbeatAt: new Date() }
+            : {}),
+        },
+      });
+      if (flip.count === 0) {
+        const current = await tx.importJob.findUnique({ where: { id: jobId } });
+        throw new Error(
+          `Failed to transition import job ${jobId} to ${to} from ${allowed.join('|')} (current=${current?.status})`,
+        );
+      }
+      const job = await tx.importJob.findUniqueOrThrow({ where: { id: jobId } });
+      const historyList = [
+        ...(PrismaJson.as<StatusHistoryEntry[]>(job.statusHistory) ?? []),
+        history,
+      ];
+      return tx.importJob.update({
+        where: { id: jobId },
+        data: { statusHistory: PrismaJson.toInput(historyList) },
+      });
     });
-    if (updated.count === 0) {
-      const current = await this.findById(jobId);
-      throw new Error(
-        `Failed to transition import job ${jobId} to ${to} from ${allowed.join('|')} (current=${current?.status})`,
-      );
-    }
-    const job = await this.txHost.tx.importJob.findUniqueOrThrow({ where: { id: jobId } });
-    const historyList = [
-      ...(PrismaJson.as<StatusHistoryEntry[]>(job.statusHistory) ?? []),
-      history,
-    ];
-    const saved = await this.txHost.tx.importJob.update({
-      where: { id: jobId },
-      data: {
-        statusHistory: PrismaJson.toInput(historyList),
-        version: { increment: 1 },
-        ...(to === 'PARSING' || to === 'VALIDATING' || to === 'EXECUTING'
-          ? { heartbeatAt: new Date() }
-          : {}),
-      },
-    });
-    return ImportJobMapper.toRecord(saved);
+    return ImportJobMapper.toRecord(updated);
   }
 
   async setColumnMapping(jobId: string, mapping: ColumnMapping): Promise<ImportJobRecord> {
@@ -194,24 +193,39 @@ export class PrismaImportJobRepository implements ImportJobRepositoryPort {
       'COMPLETED' | 'COMPLETED_WITH_ERRORS' | 'FAILED' | 'CANCELLED'
     >,
     history: StatusHistoryEntry,
-  ): Promise<ImportJobRecord> {
-    const job = await this.txHost.tx.importJob.findUniqueOrThrow({ where: { id: jobId } });
-    const historyList = [
-      ...(PrismaJson.as<StatusHistoryEntry[]>(job.statusHistory) ?? []),
-      history,
+  ): Promise<ImportJobRecord | null> {
+    const TERMINAL: ImportJobStatus[] = [
+      'COMPLETED',
+      'COMPLETED_WITH_ERRORS',
+      'FAILED',
+      'CANCELLED',
     ];
-    const saved = await this.txHost.tx.importJob.update({
-      where: { id: jobId },
-      data: {
-        status,
-        statusHistory: PrismaJson.toInput(historyList),
-        completedAt: new Date(),
-        lockedUntil: null,
-        lockedBy: null,
-        version: { increment: 1 },
-      },
+    return this.txHost.tx.$transaction(async tx => {
+      const flip = await tx.importJob.updateMany({
+        where: { id: jobId, status: { notIn: TERMINAL } },
+        data: {
+          status,
+          completedAt: new Date(),
+          lockedUntil: null,
+          lockedBy: null,
+          version: { increment: 1 },
+        },
+      });
+      if (flip.count === 0) {
+        // Already terminalised by a racing finaliser — write exactly one event (none here).
+        return null;
+      }
+      const job = await tx.importJob.findUniqueOrThrow({ where: { id: jobId } });
+      const historyList = [
+        ...(PrismaJson.as<StatusHistoryEntry[]>(job.statusHistory) ?? []),
+        history,
+      ];
+      const saved = await tx.importJob.update({
+        where: { id: jobId },
+        data: { statusHistory: PrismaJson.toInput(historyList) },
+      });
+      return ImportJobMapper.toRecord(saved);
     });
-    return ImportJobMapper.toRecord(saved);
   }
 
   async findStaleJobs(olderThan: Date): Promise<ImportJobRecord[]> {
@@ -229,6 +243,68 @@ export class PrismaImportJobRepository implements ImportJobRepositoryPort {
       where: { id: jobId },
       data: { errorReportStorageObjectId },
     });
+  }
+
+  private static readonly NON_TERMINAL: ImportJobStatus[] = [
+    'PENDING_UPLOAD',
+    'UPLOADED',
+    'PARSING',
+    'MAPPED',
+    'VALIDATING',
+    'VALIDATED',
+    'EXECUTING',
+  ];
+
+  async tryAcquireLock(jobId: string, lockedBy: string, lockedUntil: Date): Promise<boolean> {
+    const result = await this.txHost.tx.importJob.updateMany({
+      where: {
+        id: jobId,
+        status: { in: PrismaImportJobRepository.NON_TERMINAL },
+        OR: [{ lockedUntil: null }, { lockedUntil: { lt: new Date() } }, { lockedBy }],
+      },
+      data: { lockedBy, lockedUntil, heartbeatAt: new Date() },
+    });
+    return result.count === 1;
+  }
+
+  async heartbeat(jobId: string, lockedBy: string, lockedUntil: Date): Promise<boolean> {
+    const result = await this.txHost.tx.importJob.updateMany({
+      where: { id: jobId, lockedBy, status: { in: PrismaImportJobRepository.NON_TERMINAL } },
+      data: { lockedUntil, heartbeatAt: new Date() },
+    });
+    return result.count === 1;
+  }
+
+  async releaseLock(jobId: string, lockedBy: string): Promise<void> {
+    await this.txHost.tx.importJob.updateMany({
+      where: { id: jobId, lockedBy },
+      data: { lockedBy: null, lockedUntil: null },
+    });
+  }
+
+  async recountCounters(jobId: string): Promise<ImportJobRecord | null> {
+    await this.txHost.tx.$executeRaw`
+      UPDATE import_jobs j
+      SET "totalRows"   = s.total,
+          "validRows"   = s.valid,
+          "invalidRows" = s.invalid,
+          "appliedRows" = s.applied,
+          "failedRows"  = s.failed,
+          "heartbeatAt" = now()
+      FROM (
+        SELECT "importJobId" AS job_id,
+               count(*)::int AS total,
+               count(*) FILTER (WHERE "validationStatus" = 'VALID')::int AS valid,
+               count(*) FILTER (WHERE "validationStatus" IN ('INVALID','DUPLICATE'))::int AS invalid,
+               count(*) FILTER (WHERE "executionStatus" = 'APPLIED')::int AS applied,
+               count(*) FILTER (WHERE "executionStatus" IN ('FAILED','SKIPPED'))::int AS failed
+        FROM import_job_rows
+        WHERE "importJobId" = ${jobId}::uuid
+        GROUP BY "importJobId"
+      ) s
+      WHERE j.id = s.job_id`;
+    const row = await this.txHost.tx.importJob.findUnique({ where: { id: jobId } });
+    return row ? ImportJobMapper.toRecord(row) : null;
   }
 }
 

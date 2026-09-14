@@ -7,8 +7,11 @@ import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { RecurringExecutionRepositoryPort } from './ports/recurring-execution-repository.port';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';
 import { RecurringTemplateRecord } from './recurring-template.types';
+import { initNoopTransactionHost } from '@test/utils/noop-transaction-host';
 
 describe('RecurringGenerationHandler', () => {
+  beforeAll(() => initNoopTransactionHost());
+
   const findById = jest.fn();
   const templateUpdate = jest.fn();
   const templateRepository: RecurringTemplateRepositoryPort = {
@@ -26,6 +29,8 @@ describe('RecurringGenerationHandler', () => {
   const executionRepository: RecurringExecutionRepositoryPort = {
     claim,
     findById: jest.fn(),
+    findByTemplateAndTrigger: jest.fn().mockResolvedValue(null),
+    failStale: jest.fn().mockResolvedValue(0),
     complete,
     fail,
     skip,

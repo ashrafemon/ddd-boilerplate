@@ -1,5 +1,6 @@
 import { INFRA_CACHE_MODULE } from '@infrastructure/cache/cache.module';
 import { ContextModule } from '@platform/context/context.module';
+import { AuditModule } from '@platform/audit/audit.module';
 import { MessagingModule } from '@platform/messaging/messaging.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
@@ -62,6 +63,7 @@ import { SchedulerController, SchedulerHealthController } from './http/scheduler
 @Module({
   imports: [
     ContextModule,
+    AuditModule,
     INFRA_CACHE_MODULE,
     MessagingModule,
     BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }),

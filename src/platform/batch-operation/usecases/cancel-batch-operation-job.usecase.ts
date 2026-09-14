@@ -1,5 +1,6 @@
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { AuditPort } from '@platform/audit/ports/audit.port';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
 import { BatchOperationJobRecord, BatchOperationStatusRules } from '../batch-operation.types';
@@ -13,6 +14,7 @@ export class CancelBatchOperationJobUseCase {
   constructor(
     private readonly jobs: BatchOperationJobRepositoryPort,
     private readonly rows: BatchOperationJobRowRepositoryPort,
+    private readonly audit: AuditPort,
   ) {}
 
   async execute(jobId: string, tenantId?: string): Promise<BatchOperationJobRecord> {
@@ -28,10 +30,19 @@ export class CancelBatchOperationJobUseCase {
     }
 
     await this.jobs.setCancelRequested(jobId);
+    await this.audit.record({
+      action: 'batch.cancel-requested',
+      entityType: 'BatchOperationJob',
+      entityId: jobId,
+      changes: { status: job.status, aggregateType: job.aggregateType },
+    });
 
     const pending = await this.rows.rowIds(jobId, 'PENDING');
     if (pending.length === 0) {
-      return this.jobs.finaliseCancelled(jobId);
+      const cancelled = await this.jobs.finaliseCancelled(jobId);
+      if (cancelled) {
+        return cancelled;
+      }
     }
     return (await this.jobs.findJob(jobId)) ?? job;
   }

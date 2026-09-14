@@ -8,7 +8,10 @@
 model RecurringTemplate {
   id                 String                  @id @default(uuid()) @db.Uuid
   tenantId           String?
-  templateNo         String                  @unique
+  // Per-tenant number space: templateNo is unique within a tenant (NULL =
+  // platform/single-tenant deployment), so tenants cannot probe each other's
+  // document numbers or collide on creation.
+  templateNo         String
   name               String
   status             RecurringTemplateStatus @default(ACTIVE)
   targetEntityType   String
@@ -49,6 +52,7 @@ model RecurringTemplate {
 
   executions RecurringExecution[]
 
+  @@unique([tenantId, templateNo])
   @@index([tenantId, status])
   @@index([tenantId, eventName, status])
   @@map("recurring_templates")

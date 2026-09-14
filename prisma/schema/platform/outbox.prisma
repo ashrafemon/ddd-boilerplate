@@ -1,20 +1,29 @@
 // Transactional Outbox persistence model. Written inside the same DB
 // transaction as the aggregate change and published by the outbox publisher.
+// Claim safety: rows move to PUBLISHING via FOR UPDATE SKIP LOCKED with
+// claimedAt as the lease timestamp; stale leases are reconciled back to
+// PENDING. attempts gates re-claim; nextRetryAt implements backoff;
+// DEAD_LETTER is the terminal failure state for expired poison messages.
 model OutboxMessage {
   id            String              @id @default(uuid()) @db.Uuid
   eventType     String
   aggregateType String
   aggregateId   String              @db.Uuid
+  tenantId      String?
   payload       Json
   headers       Json?
   occurredAt    DateTime
   publishedAt   DateTime?
+  claimedAt     DateTime?
+  nextRetryAt   DateTime?
   attempts      Int                 @default(0)
   lastError     String?
   status        OutboxMessageStatus @default(PENDING)
   createdAt     DateTime            @default(now())
 
-  @@index([status, publishedAt])
+  @@index([status, createdAt])
+  @@index([status, claimedAt])
+  @@index([tenantId, status, createdAt])
   @@index([createdAt])
   @@map("outbox_messages")
 }
@@ -24,4 +33,5 @@ enum OutboxMessageStatus {
   PUBLISHING
   PUBLISHED
   FAILED
+  DEAD_LETTER
 }

@@ -6,21 +6,28 @@ import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job
 import {
   BatchOperationJobRecord,
   BatchOperationListQuery,
-  BatchOperationRowOutcome,
   BatchOperationRowRecord,
+  BatchOperationRowSettlement,
   ClaimedBatchOperationRow,
   NewBatchOperationJob,
 } from '../batch-operation.types';
 
 /**
- * In-memory dual-port repository for unit tests. The claim is a synchronous
- * check-and-set on the row's status, mirroring the production conditional UPDATE.
+ * In-memory dual-port repository for unit tests. The claim/step mirrors
+ * production exactly: synchronous check-and-set on the row's status plus a
+ * fencing `claimToken` that terminal writes must present.
  */
+type InternalRow = BatchOperationRowRecord & {
+  jobId: string;
+  updatedAt: Date;
+  claimToken: number;
+};
+
 export class InMemoryBatchOperationJobRepository
   implements BatchOperationJobRepositoryPort, BatchOperationJobRowRepositoryPort
 {
   readonly jobs = new Map<string, BatchOperationJobRecord>();
-  readonly rows = new Map<string, BatchOperationRowRecord & { jobId: string; updatedAt: Date }>();
+  readonly rows = new Map<string, InternalRow>();
 
   async createJobWithRows(
     job: NewBatchOperationJob,
@@ -53,11 +60,12 @@ export class InMemoryBatchOperationJobRepository
     };
     const rowRecords = entityIds.map(entityId => {
       const rowId = randomUUID();
-      const row = {
+      const row: InternalRow = {
         id: rowId,
         jobId: id,
         entityId,
-        status: 'PENDING' as const,
+        status: 'PENDING',
+        claimToken: 0,
         skipReason: null,
         errorMessage: null,
         resultSnapshot: null,
@@ -88,40 +96,36 @@ export class InMemoryBatchOperationJobRepository
   async listJobs(query: BatchOperationListQuery): Promise<PageResult<BatchOperationJobRecord>> {
     const items = [...this.jobs.values()].filter(
       j =>
+        (!query.tenantId || j.tenantId === query.tenantId) &&
         (!query.status || j.status === query.status) &&
         (!query.aggregateType || j.aggregateType === query.aggregateType),
     );
+    const page = query.page || 1;
+    const pageSize = query.pageSize || 20;
     return {
-      items: items.map(j => clone({ ...j, rows: undefined })),
-      page: 1,
-      pageSize: 20,
+      items: items
+        .slice((page - 1) * pageSize, page * pageSize)
+        .map(j => clone({ ...j, rows: undefined })),
+      page,
+      pageSize,
       total: items.length,
-      totalPages: 1,
+      totalPages: Math.ceil(items.length / pageSize),
     };
   }
 
   async markJobRunning(jobId: string): Promise<void> {
     const job = this.jobs.get(jobId);
-    if (job && job.status === 'PENDING') {
+    if (job && job.status === 'PENDING' && !job.cancelRequested) {
       job.status = 'RUNNING';
       job.startedAt = new Date();
     }
   }
 
-  async incrementProgress(
-    jobId: string,
-    outcome: BatchOperationRowOutcome,
-  ): Promise<BatchOperationJobRecord> {
-    const job = this.jobs.get(jobId)!;
-    job.processedRecords += 1;
-    if (outcome === 'SUCCESS') job.successRecords += 1;
-    else if (outcome === 'FAILED') job.failedRecords += 1;
-    else job.skippedRecords += 1;
-    return clone({ ...job, rows: undefined });
-  }
-
-  async finaliseJob(jobId: string): Promise<BatchOperationJobRecord> {
-    const job = this.jobs.get(jobId)!;
+  async finaliseJob(jobId: string): Promise<BatchOperationJobRecord | null> {
+    const job = this.jobs.get(jobId);
+    if (!job || (job.status !== 'PENDING' && job.status !== 'RUNNING')) {
+      return null;
+    }
     job.status =
       job.failedRecords === 0
         ? 'COMPLETED'
@@ -132,11 +136,22 @@ export class InMemoryBatchOperationJobRepository
     return clone({ ...job, rows: undefined });
   }
 
-  async finaliseCancelled(jobId: string): Promise<BatchOperationJobRecord> {
-    const job = this.jobs.get(jobId)!;
+  async finaliseCancelled(jobId: string): Promise<BatchOperationJobRecord | null> {
+    const job = this.jobs.get(jobId);
+    if (!job || (job.status !== 'PENDING' && job.status !== 'RUNNING')) {
+      return null;
+    }
     job.status = 'CANCELLED';
     job.completedAt = new Date();
     return clone({ ...job, rows: undefined });
+  }
+
+  async markJobFailed(jobId: string): Promise<void> {
+    const job = this.jobs.get(jobId);
+    if (job && (job.status === 'PENDING' || job.status === 'RUNNING')) {
+      job.status = 'FAILED';
+      job.completedAt = new Date();
+    }
   }
 
   async setCancelRequested(jobId: string): Promise<void> {
@@ -153,8 +168,47 @@ export class InMemoryBatchOperationJobRepository
       .filter(
         j =>
           (j.status === 'PENDING' || j.status === 'RUNNING') &&
+          j.mode === 'ASYNC' &&
           !j.cancelRequested &&
           [...this.rows.values()].some(r => r.jobId === j.id && r.status === 'PENDING'),
+      )
+      .map(j => clone({ ...j, rows: undefined }));
+  }
+
+  async recountJobCounters(): Promise<number> {
+    let changed = 0;
+    for (const job of this.jobs.values()) {
+      if (job.status !== 'PENDING' && job.status !== 'RUNNING') continue;
+      const rows = [...this.rows.values()].filter(r => r.jobId === job.id);
+      const counts = {
+        processedRecords: rows.filter(r => r.status !== 'PENDING' && r.status !== 'PROCESSING')
+          .length,
+        successRecords: rows.filter(r => r.status === 'SUCCESS').length,
+        failedRecords: rows.filter(r => r.status === 'FAILED').length,
+        skippedRecords: rows.filter(r => r.status === 'SKIPPED').length,
+      };
+      if (
+        job.processedRecords !== counts.processedRecords ||
+        job.successRecords !== counts.successRecords ||
+        job.failedRecords !== counts.failedRecords ||
+        job.skippedRecords !== counts.skippedRecords
+      ) {
+        Object.assign(job, counts);
+        changed += 1;
+      }
+    }
+    return changed;
+  }
+
+  async findCompletableJobs(): Promise<BatchOperationJobRecord[]> {
+    return [...this.jobs.values()]
+      .filter(
+        j =>
+          (j.status === 'PENDING' || j.status === 'RUNNING') &&
+          j.mode === 'ASYNC' &&
+          ![...this.rows.values()].some(
+            r => r.jobId === j.id && (r.status === 'PENDING' || r.status === 'PROCESSING'),
+          ),
       )
       .map(j => clone({ ...j, rows: undefined }));
   }
@@ -172,52 +226,60 @@ export class InMemoryBatchOperationJobRepository
   async claimRow(rowId: string): Promise<ClaimedBatchOperationRow | null> {
     const row = this.rows.get(rowId);
     if (!row || row.status !== 'PENDING') return null;
+    row.claimToken += 1;
     row.status = 'PROCESSING';
     row.updatedAt = new Date();
-    return { id: row.id, entityId: row.entityId };
+    return { id: row.id, entityId: row.entityId, jobId: row.jobId, claimToken: row.claimToken };
   }
 
-  async markRowSuccess(
+  async settleRow(
     rowId: string,
-    snapshot: Record<string, unknown> | null,
-    ms: number,
-  ): Promise<void> {
-    this.terminal(rowId, 'SUCCESS', ms, { resultSnapshot: snapshot });
-  }
+    jobId: string,
+    claimToken: number,
+    settlement: BatchOperationRowSettlement,
+  ): Promise<boolean> {
+    const row = this.rows.get(rowId);
+    if (!row || row.status !== 'PROCESSING' || row.claimToken !== claimToken) {
+      return false;
+    }
+    row.status = settlement.outcome;
+    row.resultSnapshot = settlement.resultSnapshot ?? null;
+    row.errorMessage = settlement.errorMessage ?? null;
+    row.skipReason = settlement.skipReason ?? null;
+    row.processingTimeMs = settlement.processingTimeMs;
+    row.processedAt = new Date();
+    row.updatedAt = new Date();
 
-  async markRowFailed(rowId: string, error: string, ms: number): Promise<void> {
-    this.terminal(rowId, 'FAILED', ms, { errorMessage: error });
-  }
-
-  async markRowSkipped(rowId: string, reason: string, ms: number): Promise<void> {
-    this.terminal(rowId, 'SKIPPED', ms, { skipReason: reason });
+    const job = this.jobs.get(jobId);
+    if (job) {
+      job.processedRecords += 1;
+      if (settlement.outcome === 'SUCCESS') job.successRecords += 1;
+      else if (settlement.outcome === 'FAILED') job.failedRecords += 1;
+      else job.skippedRecords += 1;
+    }
+    return true;
   }
 
   async resetStuckRows(olderThanMs: number): Promise<number> {
     const cutoff = Date.now() - olderThanMs;
     let count = 0;
     for (const row of this.rows.values()) {
-      if (row.status === 'PROCESSING' && row.updatedAt.getTime() < cutoff) {
+      if (row.status !== 'PROCESSING' || row.updatedAt.getTime() >= cutoff) {
+        continue;
+      }
+      const job = this.jobs.get(row.jobId);
+      if (job && (job.status === 'PENDING' || job.status === 'RUNNING')) {
+        row.claimToken += 1;
         row.status = 'PENDING';
+        row.updatedAt = new Date();
         count += 1;
+      } else if (job) {
+        row.status = 'SKIPPED';
+        row.skipReason = 'ABANDONED_ON_TERMINAL_JOB';
+        row.updatedAt = new Date();
       }
     }
     return count;
-  }
-
-  private terminal(
-    rowId: string,
-    status: BatchOperationRowRecord['status'],
-    ms: number,
-    extra: Partial<BatchOperationRowRecord>,
-  ): void {
-    const row = this.rows.get(rowId);
-    if (!row) return;
-    row.status = status;
-    row.processingTimeMs = ms;
-    row.processedAt = new Date();
-    row.updatedAt = new Date();
-    Object.assign(row, extra);
   }
 
   private rowsForJob(jobId: string): BatchOperationRowRecord[] {
@@ -225,12 +287,11 @@ export class InMemoryBatchOperationJobRepository
   }
 }
 
-function stripInternal(
-  row: BatchOperationRowRecord & { jobId: string; updatedAt: Date },
-): BatchOperationRowRecord {
-  const { jobId: _jobId, updatedAt: _updatedAt, ...rest } = row;
+function stripInternal(row: InternalRow): BatchOperationRowRecord {
+  const { jobId: _jobId, updatedAt: _updatedAt, claimToken: _claimToken, ...rest } = row;
   void _jobId;
   void _updatedAt;
+  void _claimToken;
   return { ...rest };
 }
 

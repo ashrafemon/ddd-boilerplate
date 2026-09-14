@@ -43,6 +43,15 @@ export class ProcessBatchOperationRowUseCase {
     if (!claimed) {
       return 'SKIPPED_CLAIM';
     }
+    if (await this.jobs.isCancelRequested(dispatch.jobId)) {
+      // Claimed after cancel raced in: hand the row back unstalled.
+      await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+        outcome: 'SKIPPED',
+        skipReason: 'CANCELLED_BY_REQUEST',
+        processingTimeMs: 0,
+      });
+      return 'CANCELLED';
+    }
 
     const handler = this.registry.resolveHandler(dispatch.aggregateType);
     const context: BatchOperationContext = {
@@ -63,12 +72,11 @@ export class ProcessBatchOperationRowUseCase {
       );
 
       if (!verdict.canProceed) {
-        await this.rows.markRowSkipped(
-          claimed.id,
-          ProcessBatchOperationRowUseCase.normaliseSkipReason(verdict.reason),
-          Date.now() - startedAt,
-        );
-        await this.jobs.incrementProgress(dispatch.jobId, 'SKIPPED');
+        await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+          outcome: 'SKIPPED',
+          skipReason: ProcessBatchOperationRowUseCase.normaliseSkipReason(verdict.reason),
+          processingTimeMs: Date.now() - startedAt,
+        });
         return 'PROCESSED';
       }
 
@@ -79,23 +87,25 @@ export class ProcessBatchOperationRowUseCase {
         context,
       );
 
-      await this.rows.markRowSuccess(
-        claimed.id,
-        ProcessBatchOperationRowUseCase.capSnapshot(
+      await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+        outcome: 'SUCCESS',
+        resultSnapshot: ProcessBatchOperationRowUseCase.capSnapshot(
           result.resultSnapshot ?? null,
           resultSnapshotMaxBytes,
         ),
-        Date.now() - startedAt,
-      );
-      await this.jobs.incrementProgress(dispatch.jobId, 'SUCCESS');
+        processingTimeMs: Date.now() - startedAt,
+      });
       return 'PROCESSED';
     } catch (err) {
       const message = FailureMessage.of(err);
       this.logger.warn(
         `Batch row ${claimed.id} (${dispatch.aggregateType}/${dispatch.operationCode}) failed: ${message}`,
       );
-      await this.rows.markRowFailed(claimed.id, message, Date.now() - startedAt);
-      await this.jobs.incrementProgress(dispatch.jobId, 'FAILED');
+      await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+        outcome: 'FAILED',
+        errorMessage: message,
+        processingTimeMs: Date.now() - startedAt,
+      });
       return 'PROCESSED';
     }
   }

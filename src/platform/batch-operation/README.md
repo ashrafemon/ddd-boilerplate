@@ -17,7 +17,7 @@ root
   batch-operation.module.ts             DI wiring
   batch-operation-handler.registry.ts   Map<aggregateType, handler> + boot validation + health
   batch-operation.worker.ts             thin chunk loop → ProcessBatchOperationRowUseCase
-  batch-operation-reconciliation.consumer.ts   @Cron: reset stuck PROCESSING, re-enqueue PENDING
+  batch-operation-reconciliation.consumer.ts   @Cron: fence+reset stuck PROCESSING, recount counters, finalise settled jobs, re-enqueue PENDING
   batch-operation.types.ts · batch-operation.errors.ts · batch-operation.constants.ts
 usecases/    business logic only, one class per capability, injected directly
              by the controller/worker — no per-usecase port+adapter wrapper

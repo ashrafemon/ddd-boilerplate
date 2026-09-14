@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  Res,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
@@ -18,11 +28,9 @@ import {
   BatchOperationPreview,
   BatchOperationRowRecord,
 } from '../batch-operation.types';
-import {
-  BatchOperationQueryDto,
-  SubmitBatchOperationDto,
-  ValidateBatchOperationDto,
-} from './requests/batch-operation.request.dto';
+import { BatchOperationQueryDto } from './requests/batch-operation-query.request.dto';
+import { SubmitBatchOperationDto } from './requests/submit-batch-operation.request.dto';
+import { ValidateBatchOperationDto } from './requests/validate-batch-operation.request.dto';
 
 /**
  * Generic entry point for every batch-capable aggregate and every operation.
@@ -114,7 +122,9 @@ export class BatchOperationController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a batch operation job status (header + counters)' })
-  async get(@Param('id') id: string): Promise<ApiResponse<BatchOperationJobRecord>> {
+  async get(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<ApiResponse<BatchOperationJobRecord>> {
     const ctx = this.requestContext.get();
     const job = await this.getStatus.execute(id, ctx?.tenantId);
     return { data: job, message: 'Batch operation job fetched' };
@@ -122,7 +132,9 @@ export class BatchOperationController {
 
   @Get(':id/rows')
   @ApiOperation({ summary: 'List per-row outcomes for a batch operation job' })
-  async getRows(@Param('id') id: string): Promise<ApiResponse<BatchOperationRowRecord[]>> {
+  async getRows(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<ApiResponse<BatchOperationRowRecord[]>> {
     const ctx = this.requestContext.get();
     const rows = await this.listRows.execute(id, ctx?.tenantId);
     return { data: rows, message: 'Batch operation job rows fetched' };
@@ -130,7 +142,9 @@ export class BatchOperationController {
 
   @Post(':id/cancel')
   @ApiOperation({ summary: 'Request cancellation of a running batch operation job' })
-  async cancel(@Param('id') id: string): Promise<ApiResponse<BatchOperationJobRecord>> {
+  async cancel(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<ApiResponse<BatchOperationJobRecord>> {
     const ctx = this.requestContext.get();
     const job = await this.cancelJob.execute(id, ctx?.tenantId);
     return { data: job, message: 'Batch operation cancellation requested' };

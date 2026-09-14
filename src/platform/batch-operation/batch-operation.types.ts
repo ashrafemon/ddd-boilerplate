@@ -128,6 +128,18 @@ export interface NewBatchOperationJob {
 export interface ClaimedBatchOperationRow {
   id: string;
   entityId: string;
+  jobId: string;
+  /** Fencing token received at claim; terminal writes must present it. */
+  claimToken: number;
+}
+
+/** Terminal outcome for a claimed row, written together with its counter bump. */
+export interface BatchOperationRowSettlement {
+  outcome: BatchOperationRowOutcome;
+  resultSnapshot?: Record<string, unknown> | null;
+  errorMessage?: string;
+  skipReason?: string;
+  processingTimeMs: number;
 }
 
 /** Everything the worker needs to process a chunk without re-reading the job. */

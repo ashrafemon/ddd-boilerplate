@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AuditPort } from '@platform/audit/ports/audit.port';
 import { ScheduledJobDispatchLogRepositoryPort } from '../ports/scheduled-job-dispatch-log-repository.port';
 import { ScheduledJobEditLogRepositoryPort } from '../ports/scheduled-job-edit-log-repository.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
@@ -9,7 +10,7 @@ import { SchedulerTickHeartbeat } from '../scheduler-tick.heartbeat';
 import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
 import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { RequestContext } from '@platform/context/ports/request-context';
+import { RequestContext, RequestContextData } from '@platform/context/ports/request-context';
 import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
 import { RescheduleExternalJobUseCase } from '../usecases/reschedule-external-job.usecase';
 import { ConflictException, NotFoundException } from '@nestjs/common';
@@ -32,6 +33,10 @@ class StubRequestContextPort extends RequestContextPort {
     return this.get() as RequestContext;
   }
   set(): void {}
+  run<T>(patch: Partial<RequestContextData>, fn: () => T | Promise<T>): Promise<T> {
+    void patch;
+    return Promise.resolve(fn());
+  }
   getRequestId(): string | undefined {
     return 'r1';
   }
@@ -48,7 +53,10 @@ class StubRequestContextPort extends RequestContextPort {
     return undefined;
   }
 }
-import { UpdateScheduledJobDto, updateScheduledJobSchema } from './requests/scheduler.request.dto';
+import {
+  UpdateScheduledJobDto,
+  updateScheduledJobSchema,
+} from './requests/update-scheduled-job.request.dto';
 
 function aJob(): ScheduledJobRecord {
   return {
@@ -86,7 +94,8 @@ function makeJobs(overrides: Partial<ScheduledJobRepositoryPort> = {}): Schedule
     findOverdue: jest.fn().mockResolvedValue(0),
     markPendingWithNextRun: jest.fn(),
     touchLastRunAt: jest.fn(),
-    markFailed: jest.fn(),
+    markRunningExternal: jest.fn().mockResolvedValue(true),
+    recordFailure: jest.fn().mockResolvedValue('RETRYING'),
     releaseStaleClaims: jest.fn(),
     count: jest.fn().mockResolvedValue(1),
     updateWithVersionCheck: jest.fn().mockResolvedValue(true),
@@ -94,8 +103,11 @@ function makeJobs(overrides: Partial<ScheduledJobRepositoryPort> = {}): Schedule
   };
 }
 
+const auditStub: AuditPort = { record: jest.fn().mockResolvedValue(undefined) };
+
 const makeDispatchLogs = (): ScheduledJobDispatchLogRepositoryPort => ({
   insert: jest.fn(),
+  recordOutcome: jest.fn(),
   listByJobId: jest.fn().mockResolvedValue([]),
   countFailuresSince: jest.fn().mockResolvedValue(0),
 });
@@ -110,8 +122,8 @@ function makeController(jobs = makeJobs()) {
     getStatus,
     listDispatchLog,
     updateJob,
-    new CancelScheduledJobUseCase(jobs),
-    new RescheduleExternalJobUseCase(jobs),
+    new CancelScheduledJobUseCase(jobs, auditStub),
+    new RescheduleExternalJobUseCase(jobs, auditStub),
     new StubRequestContextPort(),
   );
 }

@@ -31,6 +31,11 @@ export class CreateBatchOperationJobUseCase {
   ) {}
 
   async execute(input: SubmitBatchOperationInput): Promise<BatchOperationJobRecord> {
+    if (this.configService.getSecurity().tenancy.mode === 'multi' && !input.tenantId) {
+      throw new BadRequestException(
+        'Batch operations require a tenant context in multi-tenant mode',
+      );
+    }
     this.registry.resolveHandler(input.aggregateType);
     this.registry.assertOperationSupported(input.aggregateType, input.operationCode);
 
@@ -88,7 +93,9 @@ export class CreateBatchOperationJobUseCase {
     try {
       await this.queuePublisher.dispatchChunks(dispatch);
     } catch (err) {
-      await this.repository.finaliseJob(job.id);
+      // Nothing reached the queue: fail the job (never COMPLETED from zeroed
+      // counters); already-created rows stay PENDING for a fresh submission.
+      await this.repository.markJobFailed(job.id);
       throw err;
     }
     return job;

@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Post,
+  Query,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import {
   CancelImportJobUseCase,
   CreateImportJobUseCase,
@@ -16,12 +26,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { normalizePageQuery } from '@shared-kernel/types/pagination';
 import { ImportHandlerRegistry } from '../import-handler.registry';
-import {
-  CreateJobDto,
-  CreateUploadDto,
-  ImportJobQueryDto,
-  UpdateMappingDto,
-} from './requests/import.request.dto';
+import { CreateJobDto } from './requests/create-import-job.request.dto';
+import { CreateUploadDto } from './requests/create-import-upload.request.dto';
+import { ImportJobQueryDto } from './requests/list-import-jobs.request.dto';
+import { UpdateMappingDto } from './requests/update-import-mapping.request.dto';
 
 @ApiTags('import')
 @ApiBearerAuth()
@@ -95,7 +103,7 @@ export class ImportController {
 
   @Get('jobs/:id')
   @ApiOperation({ summary: 'Get import job status' })
-  async status(@Param('id') id: string) {
+  async status(@Param('id', new ParseUUIDPipe()) id: string) {
     const ctx = this.requestContext.get();
     const data = await this.getStatus.execute({ jobId: id, tenantId: ctx?.tenantId });
     return { data, message: 'Import job' };
@@ -103,7 +111,7 @@ export class ImportController {
 
   @Get('jobs/:id/preview')
   @ApiOperation({ summary: 'Preview parsed rows and suggested mapping' })
-  async preview(@Param('id') id: string) {
+  async preview(@Param('id', new ParseUUIDPipe()) id: string) {
     const ctx = this.requestContext.get();
     const data = await this.getPreview.execute({ jobId: id, tenantId: ctx?.tenantId });
     return { data, message: 'Import preview' };
@@ -111,7 +119,7 @@ export class ImportController {
 
   @Patch('jobs/:id/mapping')
   @ApiOperation({ summary: 'Confirm column mapping and enqueue validation' })
-  async mapping(@Param('id') id: string, @Body() dto: UpdateMappingDto) {
+  async mapping(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateMappingDto) {
     const ctx = this.requestContext.get();
     const data = await this.updateMapping.execute({
       jobId: id,
@@ -125,7 +133,7 @@ export class ImportController {
   @Get('jobs/:id/report')
   @ApiOperation({ summary: 'Paginated invalid-row report' })
   async report(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
   ) {
@@ -142,7 +150,7 @@ export class ImportController {
 
   @Post('jobs/:id/execute')
   @ApiOperation({ summary: 'Execute a VALIDATED import job' })
-  async execute(@Param('id') id: string) {
+  async execute(@Param('id', new ParseUUIDPipe()) id: string) {
     const ctx = this.requestContext.get();
     const data = await this.executeJob.execute({
       jobId: id,
@@ -154,7 +162,7 @@ export class ImportController {
 
   @Post('jobs/:id/cancel')
   @ApiOperation({ summary: 'Request cancellation of an import job' })
-  async cancel(@Param('id') id: string) {
+  async cancel(@Param('id', new ParseUUIDPipe()) id: string) {
     const ctx = this.requestContext.get();
     const data = await this.cancelJob.execute({
       jobId: id,

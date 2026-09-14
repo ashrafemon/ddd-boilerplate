@@ -124,8 +124,12 @@ describe('BatchOperationWorker.processChunk', () => {
 
     const { dispatch } = await seed(repo, ['a', 'b']);
     for (const rowId of dispatch.rowIds) {
-      await repo.claimRow(rowId);
-      await repo.markRowSuccess(rowId, null, 1);
+      const claimed = await repo.claimRow(rowId);
+      expect(claimed).not.toBeNull();
+      await repo.settleRow(claimed!.id, claimed!.jobId, claimed!.claimToken, {
+        outcome: 'SUCCESS',
+        processingTimeMs: 1,
+      });
     }
 
     await worker.processChunk(dispatch);

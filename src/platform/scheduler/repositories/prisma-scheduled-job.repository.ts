@@ -90,23 +90,29 @@ export class PrismaScheduledJobRepository implements ScheduledJobRepositoryPort 
   }
 
   async cancel(jobId: string): Promise<void> {
-    await this.tx.scheduledJob.update({
-      where: { id: jobId },
-      data: { status: 'CANCELLED', lockedUntil: null, lockedBy: null },
+    await this.tx.scheduledJob.updateMany({
+      where: { id: jobId, status: { not: 'CANCELLED' } },
+      data: { status: 'CANCELLED', lockedUntil: null, lockedBy: null, version: { increment: 1 } },
     });
   }
 
   async cancelByAggregate(aggregateType: string, aggregateId: string): Promise<void> {
     await this.tx.scheduledJob.updateMany({
-      where: { aggregateType, aggregateId },
-      data: { status: 'CANCELLED', lockedUntil: null, lockedBy: null },
+      where: { aggregateType, aggregateId, status: { not: 'CANCELLED' } },
+      data: { status: 'CANCELLED', lockedUntil: null, lockedBy: null, version: { increment: 1 } },
     });
   }
 
   async reschedule(jobId: string, nextRunAt: Date): Promise<void> {
-    await this.tx.scheduledJob.update({
-      where: { id: jobId },
-      data: { nextRunAt, status: 'PENDING', lockedUntil: null, lockedBy: null },
+    await this.tx.scheduledJob.updateMany({
+      where: { id: jobId, status: { not: 'CANCELLED' } },
+      data: {
+        nextRunAt,
+        status: 'PENDING',
+        lockedUntil: null,
+        lockedBy: null,
+        version: { increment: 1 },
+      },
     });
   }
 
@@ -116,8 +122,14 @@ export class PrismaScheduledJobRepository implements ScheduledJobRepositoryPort 
     nextRunAt: Date,
   ): Promise<void> {
     await this.tx.scheduledJob.updateMany({
-      where: { aggregateType, aggregateId },
-      data: { nextRunAt, status: 'PENDING', lockedUntil: null, lockedBy: null },
+      where: { aggregateType, aggregateId, status: { not: 'CANCELLED' } },
+      data: {
+        nextRunAt,
+        status: 'PENDING',
+        lockedUntil: null,
+        lockedBy: null,
+        version: { increment: 1 },
+      },
     });
   }
 
@@ -189,41 +201,66 @@ export class PrismaScheduledJobRepository implements ScheduledJobRepositoryPort 
   }
 
   async markPendingWithNextRun(jobId: string, nextRunAt: Date, lastRunAt?: Date): Promise<void> {
-    await this.tx.scheduledJob.update({
-      where: { id: jobId },
+    await this.tx.scheduledJob.updateMany({
+      where: { id: jobId, status: { notIn: ['CANCELLED', 'SUSPENDED'] } },
       data: {
         status: 'PENDING',
         nextRunAt,
         lastRunAt: lastRunAt ?? undefined,
         lockedUntil: null,
         lockedBy: null,
+        version: { increment: 1 },
       },
     });
   }
 
   async touchLastRunAt(jobId: string): Promise<void> {
-    await this.tx.scheduledJob.update({
-      where: { id: jobId },
+    await this.tx.scheduledJob.updateMany({
+      where: { id: jobId, status: { in: ['CLAIMED', 'RUNNING'] } },
       data: { lastRunAt: new Date() },
     });
   }
 
-  async markFailed(jobId: string): Promise<void> {
+  async markRunningExternal(jobId: string, lockedUntil: Date): Promise<boolean> {
+    const result = await this.tx.scheduledJob.updateMany({
+      where: { id: jobId, status: 'CLAIMED' },
+      data: { status: 'RUNNING', lockedUntil },
+    });
+    return result.count === 1;
+  }
+
+  async recordFailure(
+    jobId: string,
+    retry: { maxRetries: number; backoffBaseMs: number },
+  ): Promise<'RETRYING' | 'SUSPENDED' | 'IGNORED'> {
+    const row = await this.tx.scheduledJob.findUnique({ where: { id: jobId } });
+    if (!row || row.status === 'CANCELLED' || row.status === 'SUSPENDED') {
+      return 'IGNORED';
+    }
+    const attempts = row.retryCount + 1;
+    const suspended = attempts >= retry.maxRetries;
+    // Never fire earlier than its (possibly already advanced) slot; add
+    // exponential backoff on top of "now" for immediate retries.
+    const backoffAt = new Date(Date.now() + retry.backoffBaseMs * 2 ** (attempts - 1));
+    const nextRunAt = row.nextRunAt > backoffAt ? row.nextRunAt : backoffAt;
     await this.tx.scheduledJob.update({
       where: { id: jobId },
       data: {
-        status: 'FAILED',
-        retryCount: { increment: 1 },
+        status: suspended ? 'SUSPENDED' : 'PENDING',
+        retryCount: attempts,
+        nextRunAt,
         lockedUntil: null,
         lockedBy: null,
+        version: { increment: 1 },
       },
     });
+    return suspended ? 'SUSPENDED' : 'RETRYING';
   }
 
   async releaseStaleClaims(): Promise<number> {
     const result = await this.tx.scheduledJob.updateMany({
-      where: { status: 'CLAIMED', lockedUntil: { lt: new Date() } },
-      data: { status: 'PENDING', lockedUntil: null, lockedBy: null },
+      where: { status: { in: ['CLAIMED', 'RUNNING'] }, lockedUntil: { lt: new Date() } },
+      data: { status: 'PENDING', lockedUntil: null, lockedBy: null, version: { increment: 1 } },
     });
     return result.count;
   }

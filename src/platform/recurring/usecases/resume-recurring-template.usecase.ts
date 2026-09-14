@@ -2,6 +2,7 @@ import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
+import { AuditPort } from '@platform/audit/ports/audit.port';
 import { RecurringTemplateRepositoryPort } from '../ports/recurring-template-repository.port';
 import { RecurringTemplateRecord } from '../recurring-template.types';
 import { RecurrenceEngine } from '../recurrence-engine';
@@ -11,6 +12,7 @@ export class ResumeRecurringTemplateUseCase {
   constructor(
     private readonly templateRepository: RecurringTemplateRepositoryPort,
     private readonly schedulerPort: SchedulerPort,
+    private readonly audit: AuditPort,
   ) {}
 
   @Transactional()
@@ -26,6 +28,12 @@ export class ResumeRecurringTemplateUseCase {
     TenantScope.assertVisible(template.tenantId ?? null, tenantId);
     if (template.triggerType !== 'TIME') {
       // EVENT templates only ever flip status — nothing scheduled to recompute.
+      await this.audit.record({
+        action: 'recurring.template.resume',
+        entityType: 'RecurringTemplate',
+        entityId: id,
+        changes: { status: 'ACTIVE' },
+      });
       return this.templateRepository.update(id, { status: 'ACTIVE', modifiedBy });
     }
     if (!template.frequency || !template.interval) {
@@ -45,6 +53,12 @@ export class ResumeRecurringTemplateUseCase {
       modifiedBy,
     });
     await this.schedulerPort.rescheduleByAggregate('RecurringTemplate', template.id, nextRunDate);
+    await this.audit.record({
+      action: 'recurring.template.resume',
+      entityType: 'RecurringTemplate',
+      entityId: id,
+      changes: { status: 'ACTIVE', nextRunDate: nextRunDate.toISOString() },
+    });
     return updated;
   }
 }

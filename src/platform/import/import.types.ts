@@ -82,6 +82,14 @@ export interface RowResult {
   errorMessage?: string;
 }
 
+/**
+ * A RowResult plus the fencing token received from claimForExecution: results
+ * only apply while the row is PROCESSING under THAT claim, so a worker whose
+ * rows were reset (heartbeat gap / reconcile takeover) can no longer overwrite
+ * outcomes written by the current owner.
+ */
+export type RowExecutionSettlement = RowResult & { executionClaimToken: number };
+
 export interface StatusHistoryEntry {
   from: string;
   to: string;
@@ -140,6 +148,8 @@ export interface ImportJobRowRecord {
   errorMessage?: string;
   entityId?: string;
   secondaryEntityIds?: string[];
+  /** Set only by claimForExecution: fencing token for the settlement write. */
+  executionClaimToken?: number;
   createdAt: Date;
   updatedAt: Date;
   processedAt?: Date;

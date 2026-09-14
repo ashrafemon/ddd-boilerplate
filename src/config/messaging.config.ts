@@ -33,7 +33,9 @@ export default registerAs('messaging', () => ({
     registerHandlers: booleanEnv('RABBITMQ_REGISTER_HANDLERS', true),
   },
   kafka: {
-    brokers: (process.env.KAFKA_BROKERS ?? 'localhost:9092')
+    // Opt-in: unset KAFKA_BROKERS disables Kafka instead of pointing at a
+    // non-existent localhost broker (fan-out events would fail-publish there).
+    brokers: (process.env.KAFKA_BROKERS ?? '')
       .split(',')
       .map(broker => broker.trim())
       .filter(Boolean),

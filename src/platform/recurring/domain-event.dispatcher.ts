@@ -7,7 +7,6 @@ import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { ScheduledJobHandlerRegistry } from '@platform/scheduler/scheduled-job-handler.registry';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';
-import { RecurringTemplateRecord } from './recurring-template.types';
 
 /**
  * EVENT-trigger path (doc §7 Phase 3B). Matches `recurring_templates` on
@@ -19,16 +18,10 @@ import { RecurringTemplateRecord } from './recurring-template.types';
  * publishes (`emitter.emit(event.constructor.name, event)`), so listening
  * with `onAny` needs no wildcard pattern of its own.
  *
- * Redelivery caveat: doc's failure matrix wants `triggerKey = sourceEventId`
- * stable across an at-least-once redelivery of "the same" event. In this
- * codebase every domain event is rehydrated from the outbox before it
- * reaches the in-process bus (see OutboxPublisher), and DomainEvent's
- * `eventId` field is randomised on construction with no way to carry the
- * original value through rehydration — so today `eventId` is only a
- * best-effort identifier, not a guaranteed-stable one across a genuine
- * outbox retry. Fixing that needs the event bus itself to expose a stable
- * message id (doc §11 open decision #14, event bus integration) — out of
- * scope until a concrete EVENT-triggered use case needs it for real.
+ * Redelivery stability: in-process dispatch is fed by the outbox publisher,
+ * which restores the persisted envelope (`eventId` included) on rehydration —
+ * so `triggerKey = sourceEventId` survives an outbox retry and the claim
+ * insert collapses the duplicate EVENT generation.
  */
 @Injectable()
 export class DomainEventDispatcher implements OnModuleInit {
@@ -50,39 +43,37 @@ export class DomainEventDispatcher implements OnModuleInit {
   }
 
   private async onEvent(eventName: string, event: object | null): Promise<void> {
-    let templates: RecurringTemplateRecord[];
     try {
-      templates = await this.templateRepository.findActiveByEventName(eventName);
+      const templates = await this.templateRepository.findActiveByEventName(eventName);
+      if (templates.length === 0) {
+        return;
+      }
+
+      const handler = this.handlerRegistry.resolveHandler('Recurring');
+      const sourceEventId = DispatcherEventReader.eventId(event);
+      const eventPayload = DispatcherEventReader.snapshot(event);
+
+      for (const template of templates) {
+        try {
+          await handler.handle({
+            jobId: null,
+            jobType: 'Recurring',
+            tenantId: template.tenantId ?? undefined,
+            aggregateType: 'RecurringTemplate',
+            aggregateId: template.id,
+            sourceEventId,
+            eventPayload,
+          });
+        } catch (err) {
+          this.logger.error(
+            `EVENT-triggered dispatch failed for template ${template.id}: ${FailureMessage.of(err)}`,
+          );
+        }
+      }
     } catch (err) {
       this.logger.error(
-        `Failed to look up EVENT-triggered templates for '${eventName}': ${FailureMessage.of(err)}`,
+        `EVENT dispatch pipeline failed for '${eventName}': ${FailureMessage.of(err)}`,
       );
-      return;
-    }
-    if (templates.length === 0) {
-      return;
-    }
-
-    const handler = this.handlerRegistry.resolveHandler('Recurring');
-    const sourceEventId = DispatcherEventReader.eventId(event);
-    const eventPayload = DispatcherEventReader.snapshot(event);
-
-    for (const template of templates) {
-      try {
-        await handler.handle({
-          jobId: null,
-          jobType: 'Recurring',
-          tenantId: template.tenantId ?? undefined,
-          aggregateType: 'RecurringTemplate',
-          aggregateId: template.id,
-          sourceEventId,
-          eventPayload,
-        });
-      } catch (err) {
-        this.logger.error(
-          `EVENT-triggered dispatch failed for template ${template.id}: ${FailureMessage.of(err)}`,
-        );
-      }
     }
   }
 }

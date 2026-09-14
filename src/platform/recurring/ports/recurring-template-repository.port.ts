@@ -21,6 +21,8 @@ export abstract class RecurringTemplateRepositoryPort {
   abstract list(filter: {
     tenantId?: string;
     status?: RecurringTemplateRecord['status'];
+    limit?: number;
+    offset?: number;
   }): Promise<RecurringTemplateRecord[]>;
   /** Active EVENT templates matching an event name — DomainEventDispatcher's lookup. */
   abstract findActiveByEventName(

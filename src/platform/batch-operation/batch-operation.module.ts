@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/context/context.module';
+import { AuditModule } from '@platform/audit/audit.module';
 import { NumberingModule } from '@platform/numbering/numbering.module';
 import { OutboxModule } from '@platform/outbox/outbox.module';
 import { BatchOperationHandlerRegistry } from './batch-operation-handler.registry';
@@ -51,6 +52,7 @@ import { BatchOperationController } from './http/batch-operation.controller';
 @Module({
   imports: [
     ContextModule,
+    AuditModule,
     NumberingModule,
     OutboxModule,
     BullModule.registerQueue({ name: BATCH_OPERATION_QUEUE_NAME }),

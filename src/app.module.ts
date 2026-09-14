@@ -12,6 +12,7 @@ import { LoggingInterceptor } from './shared-kernel/interceptors/logging.interce
 import { RequestIdInterceptor } from './shared-kernel/interceptors/request-id.interceptor';
 import { ResponseInterceptor } from './shared-kernel/interceptors/response.interceptor';
 import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
+import { TenancyAuthGuard } from '@platform/context/guards/tenancy-auth.guard';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: TenancyAuthGuard },
     { provide: APP_FILTER, useClass: HttpExceptionsFilter },
     { provide: APP_PIPE, useClass: AppValidationPipe },
     { provide: APP_INTERCEPTOR, useClass: RequestIdInterceptor },

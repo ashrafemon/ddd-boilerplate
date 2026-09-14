@@ -14,8 +14,11 @@ export class OutboxWriter implements OutboxWriterPort {
   ) {}
 
   async append(event: DomainEvent, aggregateType: string, aggregateId: string): Promise<void> {
-    const correlationId = this.requestContext.getCorrelationId() ?? event.correlationId;
-    const requestId = this.requestContext.getRequestId();
+    const context = this.requestContext.get();
+    const correlationId = context?.correlationId ?? event.correlationId;
+    const requestId = context?.requestId;
+    const tenantId = context?.tenantId;
+    const organizationId = context?.organizationId;
 
     const message: IntegrationMessage = {
       eventType: event.constructor.name,
@@ -26,23 +29,28 @@ export class OutboxWriter implements OutboxWriterPort {
         'event-id': event.eventId,
         ...(requestId ? { 'request-id': requestId } : {}),
         ...(correlationId ? { 'correlation-id': correlationId } : {}),
+        ...(event.causationId ? { 'causation-id': event.causationId } : {}),
+        ...(tenantId ? { 'tenant-id': tenantId } : {}),
+        ...(organizationId ? { 'organization-id': organizationId } : {}),
         ...event.headers,
       },
       occurredAt: event.occurredAt,
       correlationId,
       causationId: event.causationId,
+      tenantId,
     };
 
     await this.outboxRepository.save(message);
   }
 
   private toPayload(event: DomainEvent): Record<string, unknown> {
-    const { eventId, version, correlationId, causationId, headers, ...rest } =
+    const { eventId, version, correlationId, causationId, occurredAt, headers, ...rest } =
       PrismaJson.snapshot(event);
     void eventId;
     void version;
     void correlationId;
     void causationId;
+    void occurredAt;
     void headers;
     return { ...rest, occurredAt: event.occurredAt.toISOString() };
   }

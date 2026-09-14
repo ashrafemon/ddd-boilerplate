@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, ParseUUIDPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { CreateRecurringTemplateUseCase } from '../usecases/create-recurring-template.usecase';
@@ -7,10 +7,8 @@ import { ResumeRecurringTemplateUseCase } from '../usecases/resume-recurring-tem
 import { CancelRecurringTemplateUseCase } from '../usecases/cancel-recurring-template.usecase';
 import { GetRecurringTemplateUseCase } from '../usecases/get-recurring-template.usecase';
 import { ListRecurringTemplatesUseCase } from '../usecases/list-recurring-templates.usecase';
-import {
-  CreateRecurringTemplateDto,
-  RecurringTemplateQueryDto,
-} from './requests/recurring-template.request.dto';
+import { CreateRecurringTemplateDto } from './requests/create-recurring-template.request.dto';
+import { RecurringTemplateQueryDto } from './requests/list-recurring-templates.request.dto';
 
 @ApiTags('recurring-templates')
 @ApiBearerAuth()
@@ -45,16 +43,19 @@ export class RecurringTemplateController {
   @ApiOperation({ summary: 'List recurring templates' })
   async list(@Query() query: RecurringTemplateQueryDto) {
     const ctx = this.requestContext.get();
+    const pageSize = query.pageSize ?? 50;
     const templates = await this.listUseCase.execute({
       tenantId: ctx?.tenantId,
       status: query.status,
+      limit: pageSize,
+      offset: (query.page ?? 1) > 1 ? ((query.page ?? 1) - 1) * pageSize : 0,
     });
     return { data: templates, message: 'Recurring templates fetched' };
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a recurring template by id' })
-  async get(@Param('id') id: string) {
+  async get(@Param('id', new ParseUUIDPipe()) id: string) {
     const ctx = this.requestContext.get();
     const template = await this.getUseCase.execute(id, ctx?.tenantId);
     return { data: template, message: 'Recurring template fetched' };
@@ -62,7 +63,7 @@ export class RecurringTemplateController {
 
   @Post(':id/pause')
   @ApiOperation({ summary: 'Pause a recurring template' })
-  async pause(@Param('id') id: string) {
+  async pause(@Param('id', new ParseUUIDPipe()) id: string) {
     const ctx = this.requestContext.get();
     const template = await this.pauseUseCase.execute(id, ctx?.userId, ctx?.tenantId);
     return { data: template, message: 'Recurring template paused' };
@@ -70,7 +71,7 @@ export class RecurringTemplateController {
 
   @Post(':id/resume')
   @ApiOperation({ summary: 'Resume a recurring template' })
-  async resume(@Param('id') id: string) {
+  async resume(@Param('id', new ParseUUIDPipe()) id: string) {
     const ctx = this.requestContext.get();
     const template = await this.resumeUseCase.execute(id, ctx?.userId, ctx?.tenantId);
     return { data: template, message: 'Recurring template resumed' };
@@ -78,7 +79,7 @@ export class RecurringTemplateController {
 
   @Post(':id/cancel')
   @ApiOperation({ summary: 'Cancel a recurring template' })
-  async cancel(@Param('id') id: string) {
+  async cancel(@Param('id', new ParseUUIDPipe()) id: string) {
     const ctx = this.requestContext.get();
     const template = await this.cancelUseCase.execute(id, ctx?.userId, ctx?.tenantId);
     return { data: template, message: 'Recurring template cancelled' };

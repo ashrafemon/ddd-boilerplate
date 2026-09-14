@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import * as XLSX from 'xlsx';
 import { ColumnMapping, ImportDescriptor } from './import.types';
 
@@ -35,6 +35,22 @@ export class ImportFileParser {
     const sheets = workbook.SheetNames;
     const activeSheet = sheets[0] ?? 'Sheet1';
     const sheet = workbook.Sheets[activeSheet];
+    // Cell budget BEFORE sheet_to_json: a small compressed workbook can
+    // declare enormous !ref dimensions (zip bomb) and `sheet_to_json` would
+    // materialise all of it into memory before the row cap ever applies.
+    const ref = sheet?.['!ref'];
+    if (ref) {
+      const range = XLSX.utils.decode_range(ref);
+      const declaredRows = range.e.r + 1;
+      const declaredCols = range.e.c + 1;
+      const maxCols = 256;
+      if (declaredRows > maxRows + 2 || declaredCols > maxCols) {
+        throw new BadRequestException(
+          `Spreadsheet declares a ${declaredRows}x${declaredCols} cell range, above the ` +
+            `${maxRows + 2}x${maxCols} processing budget for this import`,
+        );
+      }
+    }
     const matrix = this.toTextMatrix(
       XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '', raw: false }),
     );

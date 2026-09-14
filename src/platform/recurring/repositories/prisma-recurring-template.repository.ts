@@ -89,10 +89,14 @@ export class PrismaRecurringTemplateRepository implements RecurringTemplateRepos
   async list(filter: {
     tenantId?: string;
     status?: RecurringTemplateRecord['status'];
+    limit?: number;
+    offset?: number;
   }): Promise<RecurringTemplateRecord[]> {
     const rows = await this.txHost.tx.recurringTemplate.findMany({
       where: { tenantId: filter.tenantId, status: filter.status, isDeleted: false },
       orderBy: { createdAt: 'desc' },
+      take: filter.limit ?? 50,
+      skip: filter.offset ?? 0,
     });
     return rows.map(row => RecurringTemplateMapper.toRecord(row));
   }

@@ -6,6 +6,8 @@ export type IOutboxConfig = {
   batchSize: number;
   maxAttempts: number;
   retryBackoffBaseMs: number;
+  /** Claim lease: PUBLISHING rows older than this are reconciled to PENDING. */
+  claimLeaseMs: number;
   cleanupOlderThanHours: number;
 };
 
@@ -17,5 +19,6 @@ export default registerAs('outbox', () => ({
   batchSize: numericEnv('OUTBOX_BATCH_SIZE', 50),
   maxAttempts: numericEnv('OUTBOX_MAX_ATTEMPTS', 10),
   retryBackoffBaseMs: numericEnv('OUTBOX_RETRY_BACKOFF_BASE_MS', 1_000),
+  claimLeaseMs: numericEnv('OUTBOX_CLAIM_LEASE_MS', 120_000),
   cleanupOlderThanHours: numericEnv('OUTBOX_CLEANUP_OLDER_THAN_HOURS', 24),
 }));

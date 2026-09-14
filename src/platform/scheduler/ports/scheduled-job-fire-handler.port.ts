@@ -8,6 +8,8 @@ export interface ScheduledJobPayload {
   aggregateType?: string | null;
   aggregateId?: string | null;
   payload?: JsonObject | null;
+  /** 1-based BullMQ attempt counter for the current execution (queue path only). */
+  attempt?: number;
   /** Present only when dispatched via DomainEventDispatcher. */
   sourceEventId?: string;
   eventPayload?: JsonObject;

@@ -3,6 +3,7 @@ import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { BatchOperationHandlerRegistry } from './batch-operation-handler.registry';
 import { BatchOperationWorker } from './batch-operation.worker';
+import { AuditPort } from '@platform/audit/ports/audit.port';
 import { BatchOperationJobRepositoryPort } from './ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from './ports/batch-operation-job-row-repository.port';
 import { BatchOperationQueuePublisherPort } from './ports/batch-operation-queue-publisher.port';
@@ -28,6 +29,7 @@ const configStub = {
     reconciliationWindowMs: 300_000,
     resultSnapshotMaxBytes: 65_536,
   }),
+  getSecurity: () => ({ tenancy: { mode: 'single' as const } }),
 };
 
 /**
@@ -41,6 +43,8 @@ describe('batch-operation DI wiring', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [BatchOperationController],
       providers: [
+        { provide: AuditPort, useValue: { record: jest.fn().mockResolvedValue(undefined) } },
+
         { provide: BatchOperationJobRepositoryPort, useValue: repo },
         { provide: BatchOperationJobRowRepositoryPort, useValue: repo },
         {

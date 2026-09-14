@@ -511,17 +511,25 @@ Flow details:
 
 - `OutboxWriter.append(event, aggregateType, aggregateId)` builds an `IntegrationMessage`
   (`eventType` = domain event class name, JSON payload minus envelope fields, headers with
-  `event-id`/`request-id`/`correlation-id` from `RequestContextPort`) and saves it via
-  `PrismaOutboxRepository` on the caller's `TransactionHost`.
-- `OutboxPublisher.publishPendingBatch()` (guarded against overlap, chunks of 10 in
-  parallel): `claimBatch(batchSize)` atomically flips `PENDING|FAILED → PUBLISHING`, publishes
-  to each broker target, re-dispatches the rehydrated domain event in-process, then
-  `markPublished` (or `markFailed`, incrementing `attempts`).
-- `OutboxScheduler` (`@nestjs/schedule` cron):
-  - every 10 s — publish pending batch;
-  - every minute — `retryFailed()` re-queues `FAILED` rows under `maxAttempts`;
-  - every hour — `cleanup()` deletes `PUBLISHED` rows older than `cleanupOlderThanHours`.
-- `OutboxMessageStatus`: `PENDING → PUBLISHING → PUBLISHED | FAILED`.
+  `event-id`/`request-id`/`correlation-id`/`causation-id`/`tenant-id`/`organization-id` from
+  `RequestContextPort`) and saves it — with a `tenantId` column — via `PrismaOutboxRepository`
+  on the caller's `TransactionHost`.
+- `OutboxPublisher.publishPendingBatch()` (guarded against overlap): `claimBatch(batchSize,
+  maxAttempts)` runs a single `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` so
+  concurrent replicas claim disjoint rows; the claim flips `PENDING|FAILED → PUBLISHING`,
+  stamps `claimedAt` (lease) and increments `attempts` (backoff gating uses `nextRetryAt` on
+  FAILED rows). Events are grouped per aggregate and each group is published sequentially
+  (parallel across groups of 10) to preserve per-aggregate FIFO. Re-dispatch restores the
+  persisted envelope (`eventId`, `occurredAt`, correlation, causation) so consumer idempotency
+  and recurring EVENT-trigger dedupe see stable identities, and runs under a restored tenant
+  CLS context.
+- `OutboxScheduler`: publishes on `OUTBOX_POLL_INTERVAL_MS`; every minute a reconcile step
+  returns `PUBLISHING` rows whose lease (`OUTBOX_CLAIM_LEASE_MS`) expired to `PENDING`
+  (crashed publisher); every hour `cleanup()` deletes `PUBLISHED` rows older than
+  `cleanupOlderThanHours`. Retry cadence is data-driven (`nextRetryAt` + `attempts`), not cron-driven.
+- `OutboxMessageStatus`: `PENDING → PUBLISHING → PUBLISHED | FAILED | DEAD_LETTER`. A message
+  that fails `OUTBOX_MAX_ATTEMPTS` times becomes `DEAD_LETTER` (terminal, alertable) instead
+  of looping forever. Delivery is at-least-once; consumers dedupe on the stable `event-id`.
 - Publishing is **never** inside the business transaction. Business code only writes; the
   scheduler owns delivery. Brokers degrade gracefully: Kafka disabled without `KAFKA_BROKERS`,
   SQS disabled without `SQS_URL`.
@@ -832,15 +840,28 @@ call use case → wrap `{ data, message }`.
   (`THROTTLE_TTL_MS`/`THROTTLE_LIMIT`) with stricter per-route overrides
   (`@Throttle`) on expensive endpoints — batch submit (20/min), import uploads and
   job creation (30/min).
-- JWT/auth packages present (`auth.config.ts`, `@nestjs/jwt`, `passport-jwt`, `jwks-rsa`,
-  `bcrypt`); guards are opt-in per controller (`@ApiBearerAuth()` is already on controllers).
-- Multi-tenancy: `x-tenant-id`/`x-organization-id` flow into CLS `RequestContext` and are
-  stamped onto audit + outbox metadata. Platform reads/mutations pass the request tenant into
+- JWT/auth packages (`auth.config.ts`, `@nestjs/jwt`); the global **`TenancyAuthGuard`**
+  enforces the trust boundary per `TENANCY_MODE`: `single` (default) trusts the identity
+  headers behind a verified gateway; `multi` requires a bearer JWT signed with
+  `JWT_ACCESS_SECRET` carrying a `tenantId` claim — every other request is rejected and raw
+  identity headers are ignored. Health/scrape routes opt out via `@SkipTenancy()`
+  (Prometheus is exposed at `GET /api/v1/metrics`).
+- Multi-tenancy: identity flows into CLS `RequestContext` and is stamped onto audit rows,
+  outbox messages and numbering sequence keys (per-tenant/company number streams). Company
+  configuration resolves from the authenticated organization (hard failure in multi mode if
+  the company has no config row). Platform reads/mutations pass the request tenant into
   their use cases, which enforce visibility through `TenantScope` (shared-kernel): a
   foreign-tenant row surfaces as `NotFoundException` — no existence leak. Rows without a
   tenant are platform-owned; requests without a tenant header (single-tenant deployments)
-  see everything.
-- UUID identifiers everywhere; aggregates carry `version` for optimistic concurrency.
+  see everything. Background executions (BullMQ workers, outbox re-dispatch) restore the
+  same tenant/correlation context before running business handlers.
+- State-changing platform operations (schedule cancel/dispatch-now, batch cancel, import
+  cancel/execute, recurring pause/resume/cancel) write `AuditPort` trail rows
+  (actor/tenant auto-attributed from context, sensitive keys redacted).
+- UUID identifiers everywhere; `version` columns exist on aggregates, and the scheduler's
+  PATCH enforces it (`expectedVersion`). Enforcing aggregate-level optimistic concurrency
+  in the business write repositories is open work tied to per-tenant business-table
+  migration (business schema is not yet tenant-scoped — platform tables only).
 - Secrets only via env (`requiredInProduction` fail-fast); 5 MB request body limit.
 - API versioning via URI (`/api/v1`), Swagger disabled in production.
 

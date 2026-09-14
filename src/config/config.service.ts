@@ -149,6 +149,7 @@ export class ConfigService {
       batchSize: 50,
       maxAttempts: 10,
       retryBackoffBaseMs: 1_000,
+      claimLeaseMs: 120_000,
       cleanupOlderThanHours: 24,
     });
   }
@@ -162,6 +163,8 @@ export class ConfigService {
       reconciliationIntervalMs: 300_000,
       workerConcurrency: 5,
       jobAttempts: 3,
+      maxRetries: 5,
+      retryBackoffBaseMs: 60_000,
     });
   }
 
@@ -214,6 +217,21 @@ export class ConfigService {
       settingsEncryptionKey: '',
       tenantHeader: 'x-tenant-id',
       organizationHeader: 'x-organization-id',
+      tenancy: { mode: 'single' },
+    });
+  }
+
+  /** Auth Environment Variables */
+  public getAuth(): {
+    jwt: { accessSecret: string; refreshSecret: string; accessTtl: string; refreshTtl: string };
+  } {
+    return this.config.get('auth', {
+      jwt: {
+        accessSecret: 'dev-access-secret-change-me',
+        refreshSecret: 'dev-refresh-secret-change-me',
+        accessTtl: '15m',
+        refreshTtl: '30d',
+      },
     });
   }
 }

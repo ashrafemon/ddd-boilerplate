@@ -1,11 +1,15 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { AuditPort } from '@platform/audit/ports/audit.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { JobStatus, ScheduledJobRecord } from '../scheduler.types';
 
 @Injectable()
 export class RescheduleExternalJobUseCase {
-  constructor(private readonly jobs: ScheduledJobRepositoryPort) {}
+  constructor(
+    private readonly jobs: ScheduledJobRepositoryPort,
+    private readonly audit: AuditPort,
+  ) {}
 
   execute(jobId: string, nextRunAt: Date): Promise<void> {
     return this.jobs.reschedule(jobId, nextRunAt);
@@ -30,11 +34,22 @@ export class RescheduleExternalJobUseCase {
     if (job.status === JobStatus.CANCELLED) {
       throw new ConflictException(`Scheduled job '${jobId}' is cancelled and cannot be re-fired`);
     }
+    if (job.status === JobStatus.CLAIMED || job.status === JobStatus.RUNNING) {
+      throw new ConflictException(
+        `Scheduled job '${jobId}' is currently in flight; wait for it to settle before re-firing`,
+      );
+    }
     await this.jobs.reschedule(jobId, new Date());
     const updated = await this.jobs.findById(jobId);
     if (!updated) {
       throw new NotFoundException(`Scheduled job '${jobId}' not found`);
     }
+    await this.audit.record({
+      action: 'scheduler.job.dispatch-now',
+      entityType: 'ScheduledJob',
+      entityId: jobId,
+      changes: { jobType: job.jobType, previousStatus: job.status },
+    });
     return updated;
   }
 }

@@ -18,6 +18,9 @@ appear. Blocks are validated for mermaid-safe syntax at generation time.
 
 ```mermaid
 flowchart LR
+    AppModule["AppModule"]
+    ConfigModule["ConfigModule"]
+    AppModule -->|ConfigService| ConfigModule
     VendorModule["VendorModule"]
     ContextModule__src_platform_context_["ContextModule (src/platform/context)"]
     ContextModule__src_platform_context__2["ContextModule__src_platform_context_"]
@@ -55,7 +58,6 @@ flowchart LR
     InvoiceModule -->|CompanyConfigPort| ConfigurationModule
     InvoiceModule -->|NumberingPort| NumberingModule
     PrismaModule["PrismaModule"]
-    ConfigModule["ConfigModule"]
     PrismaModule -->|ConfigService| ConfigModule
     MessagingModule__src_infrastructure_messaging_["MessagingModule (src/infrastructure/messaging)"]
     MessagingModule__src_infrastructure_messaging__2["MessagingModule__src_infrastructure_messaging_"]
@@ -70,7 +72,9 @@ flowchart LR
     BatchOperationModule -->|OutboxWriterPort| OutboxModule
     BatchOperationModule -->|ConfigService| ConfigModule
     BatchOperationModule -->|NumberingPort| NumberingModule
+    BatchOperationModule -->|AuditPort| AuditModule
     ConfigurationModule -->|ConfigService| ConfigModule
+    ConfigurationModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ContextModule__src_platform_context__2 -->|ConfigService| ConfigModule
     ContextModule__src_platform_context__2 -->|PrismaWriteService| PrismaModule
     ImportModule["ImportModule"]
@@ -81,12 +85,14 @@ flowchart LR
     StorageModule__src_platform_storage__2["StorageModule__src_platform_storage_"]
     ImportModule -->|FileStoragePort| StorageModule__src_platform_storage__2
     ImportModule -->|NumberingPort| NumberingModule
+    ImportModule -->|AuditPort| AuditModule
     MessagingModule__src_platform_messaging_["MessagingModule (src/platform/messaging)"]
     MessagingModule__src_platform_messaging__2["MessagingModule__src_platform_messaging_"]
     MessagingModule__src_platform_messaging__2 -->|ConfigService| ConfigModule
     NotificationModule__src_platform_notification_["NotificationModule (src/platform/notification)"]
     NotificationModule__src_platform_notification__2["NotificationModule__src_platform_notification_"]
     NotificationModule__src_platform_notification__2 -->|LoggerPort| ObservabilityModule
+    NumberingModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ObservabilityModule -->|ConfigService| ConfigModule
     OutboxModule -->|RequestContextPort| ContextModule__src_platform_context__2
     EventsModule["EventsModule"]
@@ -99,12 +105,14 @@ flowchart LR
     RecurringModule -->|SchedulerPort, ScheduledJobHandlerRegistry| SchedulerModule
     ConditionEngineModule["ConditionEngineModule"]
     RecurringModule -->|ConditionEvaluator| ConditionEngineModule
+    RecurringModule -->|AuditPort| AuditModule
     SchedulerModule -->|RequestContextPort| ContextModule__src_platform_context__2
     SchedulerModule -->|ConfigService| ConfigModule
     CacheModule__src_infrastructure_cache_["CacheModule (src/infrastructure/cache)"]
     CacheModule__src_infrastructure_cache__2["CacheModule__src_infrastructure_cache_"]
     SchedulerModule -->|RedisService| CacheModule__src_infrastructure_cache__2
     SchedulerModule -->|RabbitMqPublisher| MessagingModule__src_platform_messaging__2
+    SchedulerModule -->|AuditPort| AuditModule
 ```
 
 ---
@@ -518,6 +526,7 @@ flowchart LR
     OutboxPublisher -->|injects via EventsModule| MessageRoutingPolicy
     InProcessEventBus["InProcessEventBus"]
     OutboxPublisher -->|injects via EventsModule| InProcessEventBus
+    OutboxPublisher -->|injects via ContextModule| RequestContextPort
     RabbitMqPublisher["RabbitMqPublisher"]
     OutboxPublisher -->|injects via MessagingModule| RabbitMqPublisher
     KafkaPublisher["KafkaPublisher"]
@@ -528,6 +537,7 @@ flowchart LR
     OutboxPublisher -->|injects via ConfigModule| ConfigService
     OutboxScheduler["OutboxScheduler"]
     OutboxScheduler -->|injects| OutboxPublisher
+    OutboxScheduler -->|injects via ConfigModule| ConfigService
     OutboxWriter -->|injects| OutboxRepository
     OutboxWriter -->|injects via ContextModule| RequestContextPort
 ```
@@ -564,7 +574,7 @@ flowchart LR
 
 #### ConfigurationModule — `src/platform/configuration/configuration.module.ts`
 
-imports: — · exports: CompanyConfigPort
+imports: ContextModule · exports: CompanyConfigPort
 
 ```mermaid
 flowchart LR
@@ -575,8 +585,11 @@ flowchart LR
     PrismaCompanyConfigRepository -->|injects| TransactionHost__library_
     ConfigService["ConfigService"]
     PrismaCompanyConfigRepository -->|injects via ConfigModule| ConfigService
+    RequestContextPort["RequestContextPort"]
+    PrismaCompanyConfigRepository -->|injects via ContextModule| RequestContextPort
     PrismaCompanyConfigRepository -->|injects| TransactionHost__library_
     PrismaCompanyConfigRepository -->|injects via ConfigModule| ConfigService
+    PrismaCompanyConfigRepository -->|injects via ContextModule| RequestContextPort
 ```
 
 #### NotificationModule (src/platform/notification) — `src/platform/notification/notification.module.ts`
@@ -587,10 +600,10 @@ imports: InfraNotificationModule, ObservabilityModule · exports: EmailPort, Not
 flowchart LR
     EmailPort["EmailPort"]
     SesEmailAdapter["SesEmailAdapter"]
-    EmailPort -.->|useClass| SesEmailAdapter
+    EmailPort -.->|useExisting| SesEmailAdapter
     NotificationPort["NotificationPort"]
     SnsNotificationAdapter["SnsNotificationAdapter"]
-    NotificationPort -.->|useClass| SnsNotificationAdapter
+    NotificationPort -.->|useExisting| SnsNotificationAdapter
     NotificationDispatchPort["NotificationDispatchPort"]
     NotificationDispatchService["NotificationDispatchService"]
     NotificationDispatchPort -.->|useExisting| NotificationDispatchService
@@ -613,7 +626,7 @@ flowchart LR
 
 #### NumberingModule — `src/platform/numbering/numbering.module.ts`
 
-imports: — · exports: NumberingPort
+imports: ContextModule · exports: NumberingPort
 
 ```mermaid
 flowchart LR
@@ -622,7 +635,10 @@ flowchart LR
     NumberingPort -.->|useExisting| PrismaNumberingRepository
     TransactionHost__library_["TransactionHost (library)"]
     PrismaNumberingRepository -->|injects| TransactionHost__library_
+    RequestContextPort["RequestContextPort"]
+    PrismaNumberingRepository -->|injects via ContextModule| RequestContextPort
     PrismaNumberingRepository -->|injects| TransactionHost__library_
+    PrismaNumberingRepository -->|injects via ContextModule| RequestContextPort
 ```
 
 #### ObservabilityModule — `src/platform/observability/observability.module.ts`
@@ -640,6 +656,8 @@ flowchart LR
     ErrorTrackingPort["ErrorTrackingPort"]
     SentryErrorTrackingAdapter["SentryErrorTrackingAdapter"]
     ErrorTrackingPort -.->|useClass| SentryErrorTrackingAdapter
+    MetricsController["MetricsController"]
+    MetricsController -->|injects| MetricsPort
     ConfigService["ConfigService"]
     SentryErrorTrackingAdapter -->|injects via ConfigModule| ConfigService
 ```
@@ -662,7 +680,7 @@ flowchart LR
 
 #### BatchOperationModule — `src/platform/batch-operation/batch-operation.module.ts`
 
-imports: ContextModule, NumberingModule, OutboxModule, BullModule.registerQueue({ name: BATCH_OPERATION_QUEUE_NAME }) · exports: BatchOperationHandlerRegistry, CreateBatchOperationJobUseCase, ValidateBatchOperationUseCase, ProcessBatchOperationRowUseCase, GetBatchOperationJobStatusUseCase, ListBatchOperationJobsUseCase, ListBatchOperationJobRowsUseCase, CancelBatchOperationJobUseCase
+imports: ContextModule, AuditModule, NumberingModule, OutboxModule, BullModule.registerQueue({ name: BATCH_OPERATION_QUEUE_NAME }) · exports: BatchOperationHandlerRegistry, CreateBatchOperationJobUseCase, ValidateBatchOperationUseCase, ProcessBatchOperationRowUseCase, GetBatchOperationJobStatusUseCase, ListBatchOperationJobsUseCase, ListBatchOperationJobRowsUseCase, CancelBatchOperationJobUseCase
 
 ```mermaid
 flowchart LR
@@ -719,6 +737,7 @@ flowchart LR
     BatchOperationReconciliationConsumer -->|injects| BatchOperationJobRepositoryPort
     BatchOperationReconciliationConsumer -->|injects| BatchOperationJobRowRepositoryPort
     BatchOperationReconciliationConsumer -->|injects| BatchOperationQueuePublisherPort
+    BatchOperationReconciliationConsumer -->|injects| BatchOperationJobOutboxWriterPort
     BatchOperationReconciliationConsumer -->|injects via ConfigModule| ConfigService
     CreateBatchOperationJobUseCase -->|injects| BatchOperationJobRepositoryPort
     CreateBatchOperationJobUseCase -->|injects| BatchOperationHandlerRegistry
@@ -738,6 +757,8 @@ flowchart LR
     ListBatchOperationJobRowsUseCase -->|injects| BatchOperationJobRowRepositoryPort
     CancelBatchOperationJobUseCase -->|injects| BatchOperationJobRepositoryPort
     CancelBatchOperationJobUseCase -->|injects| BatchOperationJobRowRepositoryPort
+    AuditPort["AuditPort"]
+    CancelBatchOperationJobUseCase -->|injects via AuditModule| AuditPort
 ```
 
 #### ConditionEngineModule — `src/platform/condition-engine/condition-engine.module.ts`
@@ -756,7 +777,7 @@ flowchart LR
 
 #### ImportModule — `src/platform/import/import.module.ts`
 
-imports: ContextModule, NumberingModule, OutboxModule, StorageModule, BullModule.registerQueue({ name: IMPORT_QUEUE_NAME }) · exports: ImportHandlerRegistry
+imports: ContextModule, AuditModule, NumberingModule, OutboxModule, StorageModule, BullModule.registerQueue({ name: IMPORT_QUEUE_NAME }) · exports: ImportHandlerRegistry
 
 ```mermaid
 flowchart LR
@@ -827,12 +848,14 @@ flowchart LR
     ImportReconciliationConsumer -->|injects via ConfigModule| ConfigService
     ImportReconciliationConsumer -->|injects| ImportJobRepositoryPort
     ImportReconciliationConsumer -->|injects| ImportJobRowRepositoryPort
-    ImportReconciliationConsumer -->|injects| ImportJobOutboxWriterPort
+    ImportReconciliationConsumer -->|injects| ImportQueuePublisherPort
+    ImportReconciliationConsumer -->|injects| StorageObjectRepositoryPort
+    FileStoragePort["FileStoragePort"]
+    ImportReconciliationConsumer -->|injects via StorageModule| FileStoragePort
     InitImportUseCase -->|injects| ImportHandlerRegistry
     InitImportUseCase -->|injects| ImportJobRepositoryPort
     CreateImportUploadUseCase -->|injects| ImportHandlerRegistry
     CreateImportUploadUseCase -->|injects via ConfigModule| ConfigService
-    FileStoragePort["FileStoragePort"]
     CreateImportUploadUseCase -->|injects via StorageModule| FileStoragePort
     CreateImportUploadUseCase -->|injects| StorageObjectRepositoryPort
     CreateImportJobUseCase -->|injects| ImportHandlerRegistry
@@ -855,6 +878,7 @@ flowchart LR
     ValidateImportJobUseCase -->|injects| ImportJobRepositoryPort
     ValidateImportJobUseCase -->|injects| ImportJobRowRepositoryPort
     ValidateImportJobUseCase -->|injects| ImportJobOutboxWriterPort
+    ValidateImportJobUseCase -->|injects via ContextModule| RequestContextPort
     ValidateImportJobUseCase -->|injects| ImportFileParser
     ParseImportJobUseCase -->|injects via ConfigModule| ConfigService
     ParseImportJobUseCase -->|injects via StorageModule| FileStoragePort
@@ -862,11 +886,15 @@ flowchart LR
     ParseImportJobUseCase -->|injects| ImportJobRowRepositoryPort
     ParseImportJobUseCase -->|injects| StorageObjectRepositoryPort
     ParseImportJobUseCase -->|injects| ImportJobOutboxWriterPort
+    ParseImportJobUseCase -->|injects via ContextModule| RequestContextPort
     ParseImportJobUseCase -->|injects| ImportFileParser
     ExecuteImportJobUseCase -->|injects| ImportJobRepositoryPort
     ExecuteImportJobUseCase -->|injects| ImportQueuePublisherPort
+    AuditPort["AuditPort"]
+    ExecuteImportJobUseCase -->|injects via AuditModule| AuditPort
     CancelImportJobUseCase -->|injects| ImportJobRepositoryPort
     CancelImportJobUseCase -->|injects| ImportJobOutboxWriterPort
+    CancelImportJobUseCase -->|injects via AuditModule| AuditPort
     GetImportJobStatusUseCase -->|injects| ImportJobRepositoryPort
     ListImportJobsUseCase -->|injects| ImportJobRepositoryPort
     GetImportReportUseCase -->|injects| ImportJobRepositoryPort
@@ -876,11 +904,12 @@ flowchart LR
     RunImportExecutionUseCase -->|injects| ImportJobRepositoryPort
     RunImportExecutionUseCase -->|injects| ImportJobRowRepositoryPort
     RunImportExecutionUseCase -->|injects| ImportJobOutboxWriterPort
+    RunImportExecutionUseCase -->|injects via ContextModule| RequestContextPort
 ```
 
 #### RecurringModule — `src/platform/recurring/recurring.module.ts`
 
-imports: ContextModule, OutboxModule, SchedulerModule, ConditionEngineModule · exports: RecurringExecutionPort, RecurringTemplatePort
+imports: ContextModule, AuditModule, OutboxModule, SchedulerModule, ConditionEngineModule · exports: RecurringExecutionPort, RecurringTemplatePort
 
 ```mermaid
 flowchart LR
@@ -939,12 +968,18 @@ flowchart LR
     CreateRecurringTemplateUseCase -->|injects via SchedulerModule| SchedulerPort
     PauseRecurringTemplateUseCase -->|injects| RecurringTemplateRepositoryPort
     PauseRecurringTemplateUseCase -->|injects via SchedulerModule| SchedulerPort
+    AuditPort["AuditPort"]
+    PauseRecurringTemplateUseCase -->|injects via AuditModule| AuditPort
     ResumeRecurringTemplateUseCase -->|injects| RecurringTemplateRepositoryPort
     ResumeRecurringTemplateUseCase -->|injects via SchedulerModule| SchedulerPort
+    ResumeRecurringTemplateUseCase -->|injects via AuditModule| AuditPort
     CancelRecurringTemplateUseCase -->|injects| RecurringTemplateRepositoryPort
     CancelRecurringTemplateUseCase -->|injects via SchedulerModule| SchedulerPort
+    CancelRecurringTemplateUseCase -->|injects via AuditModule| AuditPort
     GetRecurringTemplateUseCase -->|injects| RecurringTemplateRepositoryPort
     ListRecurringTemplatesUseCase -->|injects| RecurringTemplateRepositoryPort
+    SweepStaleExecutionsUseCase["SweepStaleExecutionsUseCase"]
+    SweepStaleExecutionsUseCase -->|injects| RecurringExecutionRepositoryPort
     RecurringModule_bootstrap["RecurringModule bootstrap"]
     RecurringModule_bootstrap -->|registers or injects| ScheduledJobHandlerRegistry
     RecurringModule_bootstrap -->|registers or injects| RecurringGenerationHandler
@@ -952,7 +987,7 @@ flowchart LR
 
 #### SchedulerModule — `src/platform/scheduler/scheduler.module.ts`
 
-imports: ContextModule, MessagingModule, BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }) · exports: SchedulerPort, ScheduledJobHandlerRegistry
+imports: ContextModule, AuditModule, MessagingModule, BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }) · exports: SchedulerPort, ScheduledJobHandlerRegistry
 
 ```mermaid
 flowchart LR
@@ -1013,6 +1048,7 @@ flowchart LR
     ScheduledJobHandlerRegistry["ScheduledJobHandlerRegistry"]
     ScheduledJobProcessor -->|injects| ScheduledJobHandlerRegistry
     ScheduledJobProcessor -->|injects| SchedulerEventPublisherPort
+    ScheduledJobProcessor -->|injects| ScheduledJobRepositoryPort
     Queue__library_["Queue (library)"]
     BullMqSchedulerQueueAdapter -->|injects| Queue__library_
     BullMqSchedulerQueueAdapter -->|injects via ConfigModule| ConfigService
@@ -1023,10 +1059,14 @@ flowchart LR
     BullMqSchedulerJobWorker -->|injects via ConfigModule| ConfigService
     BullMqSchedulerJobWorker -->|injects| ScheduledJobRepositoryPort
     BullMqSchedulerJobWorker -->|injects| ScheduledJobDispatchLogRepositoryPort
+    BullMqSchedulerJobWorker -->|injects via ContextModule| RequestContextPort
     RegisterScheduledJobUseCase["RegisterScheduledJobUseCase"]
     RegisterScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
     CancelScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
+    AuditPort["AuditPort"]
+    CancelScheduledJobUseCase -->|injects via AuditModule| AuditPort
     RescheduleExternalJobUseCase -->|injects| ScheduledJobRepositoryPort
+    RescheduleExternalJobUseCase -->|injects via AuditModule| AuditPort
     UpdateScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
     UpdateScheduledJobUseCase -->|injects| ScheduledJobEditLogRepositoryPort
     DispatchDueJobsUseCase["DispatchDueJobsUseCase"]
@@ -1039,7 +1079,6 @@ flowchart LR
     DispatchDueJobsUseCase -->|injects| SchedulerTickHeartbeat
     ReconcileMissedJobsUseCase["ReconcileMissedJobsUseCase"]
     ReconcileMissedJobsUseCase -->|injects| ScheduledJobRepositoryPort
-    ReconcileMissedJobsUseCase -->|injects| DistributedLockPort
     GetScheduledJobStatusUseCase -->|injects| ScheduledJobRepositoryPort
     ListScheduledJobDispatchLogUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
     ListScheduledJobDispatchLogUseCase -->|injects| ScheduledJobRepositoryPort
@@ -1080,6 +1119,8 @@ flowchart LR
     APP_GUARD["APP_GUARD"]
     ThrottlerGuard["ThrottlerGuard"]
     APP_GUARD -.->|useClass| ThrottlerGuard
+    TenancyAuthGuard["TenancyAuthGuard"]
+    APP_GUARD -.->|useClass| TenancyAuthGuard
     APP_FILTER["APP_FILTER"]
     HttpExceptionsFilter["HttpExceptionsFilter"]
     APP_FILTER -.->|useClass| HttpExceptionsFilter
@@ -1092,8 +1133,13 @@ flowchart LR
     APP_INTERCEPTOR -.->|useClass| LoggingInterceptor
     DeviceResponseInterceptor["DeviceResponseInterceptor"]
     APP_INTERCEPTOR -.->|useClass| DeviceResponseInterceptor
+    ConfigService["ConfigService"]
+    TenancyAuthGuard -->|injects via ConfigModule| ConfigService
+    Reflector__library_["Reflector (library)"]
+    TenancyAuthGuard -->|injects| Reflector__library_
     ClsService__library_["ClsService (library)"]
     RequestIdInterceptor -->|injects| ClsService__library_
+    RequestIdInterceptor -->|injects via ConfigModule| ConfigService
     LoggingInterceptor -->|injects| ClsService__library_
     DeviceResponseInterceptor -->|injects| ClsService__library_
 ```

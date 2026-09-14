@@ -8,8 +8,8 @@ import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job
 import {
   BatchOperationJobRecord,
   BatchOperationListQuery,
-  BatchOperationRowOutcome,
   BatchOperationRowRecord,
+  BatchOperationRowSettlement,
   ClaimedBatchOperationRow,
   NewBatchOperationJob,
 } from '../batch-operation.types';
@@ -106,31 +106,16 @@ export class PrismaBatchOperationJobRepository
 
   async markJobRunning(jobId: string): Promise<void> {
     await this.txHost.tx.batchOperationJob.updateMany({
-      where: { id: jobId, status: 'PENDING' },
+      where: { id: jobId, status: 'PENDING', cancelRequested: false },
       data: { status: 'RUNNING', startedAt: new Date() },
     });
   }
 
-  async incrementProgress(
-    jobId: string,
-    outcome: BatchOperationRowOutcome,
-  ): Promise<BatchOperationJobRecord> {
-    const counter =
-      outcome === 'SUCCESS'
-        ? { successRecords: { increment: 1 } }
-        : outcome === 'FAILED'
-          ? { failedRecords: { increment: 1 } }
-          : { skippedRecords: { increment: 1 } };
-
-    const row = await this.txHost.tx.batchOperationJob.update({
-      where: { id: jobId },
-      data: { processedRecords: { increment: 1 }, ...counter },
-    });
-    return BatchOperationMapper.toJobRecord(row);
-  }
-
-  async finaliseJob(jobId: string): Promise<BatchOperationJobRecord> {
-    const job = await this.txHost.tx.batchOperationJob.findUniqueOrThrow({ where: { id: jobId } });
+  async finaliseJob(jobId: string): Promise<BatchOperationJobRecord | null> {
+    const job = await this.txHost.tx.batchOperationJob.findUnique({ where: { id: jobId } });
+    if (!job) {
+      return null;
+    }
     const status =
       job.failedRecords === 0
         ? 'COMPLETED'
@@ -138,19 +123,68 @@ export class PrismaBatchOperationJobRepository
           ? 'COMPLETED_WITH_ERRORS'
           : 'FAILED';
 
-    const row = await this.txHost.tx.batchOperationJob.update({
-      where: { id: jobId },
+    const updated = await this.txHost.tx.batchOperationJob.updateMany({
+      where: { id: jobId, status: { in: ['PENDING', 'RUNNING'] } },
       data: { status, completedAt: new Date() },
     });
-    return BatchOperationMapper.toJobRecord(row);
+    if (updated.count !== 1) {
+      return null;
+    }
+    return BatchOperationMapper.toJobRecord({ ...job, status, completedAt: new Date() });
   }
 
-  async finaliseCancelled(jobId: string): Promise<BatchOperationJobRecord> {
-    const row = await this.txHost.tx.batchOperationJob.update({
-      where: { id: jobId },
+  async finaliseCancelled(jobId: string): Promise<BatchOperationJobRecord | null> {
+    const updated = await this.txHost.tx.batchOperationJob.updateMany({
+      where: { id: jobId, status: { in: ['PENDING', 'RUNNING'] } },
       data: { status: 'CANCELLED', completedAt: new Date() },
     });
-    return BatchOperationMapper.toJobRecord(row);
+    if (updated.count !== 1) {
+      return null;
+    }
+    const job = await this.txHost.tx.batchOperationJob.findUnique({ where: { id: jobId } });
+    return job ? BatchOperationMapper.toJobRecord({ ...job, status: 'CANCELLED' }) : null;
+  }
+
+  async markJobFailed(jobId: string): Promise<void> {
+    await this.txHost.tx.batchOperationJob.updateMany({
+      where: { id: jobId, status: { in: ['PENDING', 'RUNNING'] } },
+      data: { status: 'FAILED', completedAt: new Date() },
+    });
+  }
+
+  async recountJobCounters(): Promise<number> {
+    return this.txHost.tx.$executeRaw`
+      UPDATE "batch_operation_jobs" j
+      SET "processedRecords" = s.processed,
+          "successRecords"   = s.success,
+          "failedRecords"    = s.failed,
+          "skippedRecords"   = s.skipped
+      FROM (
+        SELECT "batchOperationJobId" AS job_id,
+               count(*) FILTER (WHERE status IN ('SUCCESS','FAILED','SKIPPED'))::int AS processed,
+               count(*) FILTER (WHERE status = 'SUCCESS')::int  AS success,
+               count(*) FILTER (WHERE status = 'FAILED')::int   AS failed,
+               count(*) FILTER (WHERE status = 'SKIPPED')::int  AS skipped
+        FROM "batch_operation_job_rows"
+        GROUP BY "batchOperationJobId"
+      ) s
+      WHERE j.id = s.job_id AND j.status IN ('PENDING', 'RUNNING')
+        AND (j."processedRecords" <> s.processed
+             OR j."successRecords" <> s.success
+             OR j."failedRecords" <> s.failed
+             OR j."skippedRecords" <> s.skipped)`;
+  }
+
+  async findCompletableJobs(): Promise<BatchOperationJobRecord[]> {
+    const rows = await this.txHost.tx.batchOperationJob.findMany({
+      where: {
+        status: { in: ['PENDING', 'RUNNING'] },
+        mode: 'ASYNC',
+        rows: { none: { status: { in: ['PENDING', 'PROCESSING'] } } },
+      },
+      take: 100,
+    });
+    return rows.map(row => BatchOperationMapper.toJobRecord(row));
   }
 
   async setCancelRequested(jobId: string): Promise<void> {
@@ -172,6 +206,7 @@ export class PrismaBatchOperationJobRepository
     const rows = await this.txHost.tx.batchOperationJob.findMany({
       where: {
         status: { in: ['PENDING', 'RUNNING'] },
+        mode: 'ASYNC',
         cancelRequested: false,
         rows: { some: { status: 'PENDING' } },
       },
@@ -202,63 +237,73 @@ export class PrismaBatchOperationJobRepository
   async claimRow(rowId: string): Promise<ClaimedBatchOperationRow | null> {
     const claimed = await this.txHost.tx.$queryRaw<ClaimedBatchOperationRow[]>`
       UPDATE "batch_operation_job_rows"
-      SET status = 'PROCESSING', "updatedAt" = now()
+      SET status = 'PROCESSING', "claimToken" = "claimToken" + 1, "updatedAt" = now()
       WHERE id = ${rowId}::uuid AND status = 'PENDING'
-      RETURNING id, "entityId"
+      RETURNING id, "entityId", "batchOperationJobId" AS "jobId", "claimToken"
     `;
     return claimed[0] ?? null;
   }
 
-  async markRowSuccess(
+  async settleRow(
     rowId: string,
-    resultSnapshot: Record<string, unknown> | null,
-    processingTimeMs: number,
-  ): Promise<void> {
-    await this.txHost.tx.batchOperationJobRow.update({
-      where: { id: rowId },
-      data: {
-        status: 'SUCCESS',
-        resultSnapshot: PrismaJson.toInput(resultSnapshot),
-        processingTimeMs,
-        processedAt: new Date(),
-      },
-    });
-  }
-
-  async markRowFailed(
-    rowId: string,
-    errorMessage: string,
-    processingTimeMs: number,
-  ): Promise<void> {
-    await this.txHost.tx.batchOperationJobRow.update({
-      where: { id: rowId },
-      data: {
-        status: 'FAILED',
-        errorMessage: errorMessage.slice(0, 4000),
-        processingTimeMs,
-        processedAt: new Date(),
-      },
-    });
-  }
-
-  async markRowSkipped(rowId: string, skipReason: string, processingTimeMs: number): Promise<void> {
-    await this.txHost.tx.batchOperationJobRow.update({
-      where: { id: rowId },
-      data: {
-        status: 'SKIPPED',
-        skipReason: skipReason.slice(0, 200),
-        processingTimeMs,
-        processedAt: new Date(),
-      },
+    jobId: string,
+    claimToken: number,
+    settlement: BatchOperationRowSettlement,
+  ): Promise<boolean> {
+    const outcome = settlement.outcome;
+    return this.txHost.tx.$transaction(async tx => {
+      const settled = await tx.batchOperationJobRow.updateMany({
+        where: { id: rowId, status: 'PROCESSING', claimToken },
+        data: {
+          status: outcome,
+          resultSnapshot:
+            outcome === 'SUCCESS'
+              ? PrismaJson.toInput(settlement.resultSnapshot ?? null)
+              : undefined,
+          errorMessage:
+            outcome === 'FAILED' ? (settlement.errorMessage ?? '').slice(0, 4000) : undefined,
+          skipReason:
+            outcome === 'SKIPPED' ? (settlement.skipReason ?? '').slice(0, 200) : undefined,
+          processingTimeMs: settlement.processingTimeMs,
+          processedAt: new Date(),
+        },
+      });
+      if (settled.count !== 1) {
+        // Stale claim token: a re-claim won the row; this settlement is discarded.
+        return false;
+      }
+      await tx.batchOperationJob.update({
+        where: { id: jobId },
+        data: {
+          processedRecords: { increment: 1 },
+          ...(outcome === 'SUCCESS'
+            ? { successRecords: { increment: 1 } }
+            : outcome === 'FAILED'
+              ? { failedRecords: { increment: 1 } }
+              : { skippedRecords: { increment: 1 } }),
+        },
+      });
+      return true;
     });
   }
 
   async resetStuckRows(olderThanMs: number): Promise<number> {
     const cutoff = new Date(Date.now() - olderThanMs);
-    const result = await this.txHost.tx.batchOperationJobRow.updateMany({
-      where: { status: 'PROCESSING', updatedAt: { lt: cutoff } },
-      data: { status: 'PENDING' },
-    });
-    return result.count;
+    const reset = await this.txHost.tx.$executeRaw`
+      UPDATE "batch_operation_job_rows" r
+      SET status = 'PENDING', "claimToken" = r."claimToken" + 1, "updatedAt" = now()
+      FROM "batch_operation_jobs" j
+      WHERE r."batchOperationJobId" = j.id
+        AND j.status IN ('PENDING', 'RUNNING')
+        AND r.status = 'PROCESSING'
+        AND r."updatedAt" < ${cutoff}`;
+    await this.txHost.tx.$executeRaw`
+      UPDATE "batch_operation_job_rows" r
+      SET status = 'SKIPPED', "skipReason" = 'ABANDONED_ON_TERMINAL_JOB', "updatedAt" = now()
+      FROM "batch_operation_jobs" j
+      WHERE r."batchOperationJobId" = j.id
+        AND j.status NOT IN ('PENDING', 'RUNNING')
+        AND r.status = 'PROCESSING'`;
+    return reset;
   }
 }

@@ -29,6 +29,7 @@ function makeSut(overrides?: { syncThreshold?: number; maxRecordsPerJob?: number
       reconciliationWindowMs: 300_000,
       resultSnapshotMaxBytes: 65_536,
     }),
+    getSecurity: () => ({ tenancy: { mode: 'single' as const } }),
   } as unknown as ConfigService;
 
   const sut = new CreateBatchOperationJobUseCase(

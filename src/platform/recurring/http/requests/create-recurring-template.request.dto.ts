@@ -6,7 +6,16 @@ const TRIGGER_TYPES = ['TIME', 'EVENT'] as const;
 const FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const;
 const PARTY_TYPES = ['CUSTOMER', 'VENDOR', 'EMPLOYEE'] as const;
 
-const baseSchema = z
+function isValidTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export const createRecurringTemplateSchema = z
   .object({
     templateNo: z.string().min(1),
     name: z.string().min(1),
@@ -26,7 +35,11 @@ const baseSchema = z
     interval: z.coerce.number().int().min(1).optional(),
     startDate: z.string().date().optional(),
     endDate: z.string().date().optional(),
-    timeZone: z.string().min(1).optional(),
+    timeZone: z
+      .string()
+      .min(1)
+      .refine(isValidTimeZone, 'timeZone must be a valid IANA time zone')
+      .optional(),
     autoPost: z.boolean().optional(),
     autoEmail: z.boolean().optional(),
     autoApprove: z.boolean().optional(),
@@ -52,11 +65,20 @@ const baseSchema = z
         message: 'Required for TIME',
       });
     }
+    if (dto.triggerType === 'EVENT' && (dto.frequency || dto.startDate || dto.endDate)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['triggerType'],
+        message: 'TIME-only fields (frequency/interval/startDate) are not allowed for EVENT',
+      });
+    }
+    if (dto.startDate && dto.endDate && dto.endDate < dto.startDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endDate'],
+        message: 'endDate must not precede startDate',
+      });
+    }
   });
 
-export class CreateRecurringTemplateDto extends createZodDto(baseSchema) {}
-
-export const recurringTemplateQuerySchema = z.object({
-  status: z.enum(['ACTIVE', 'PAUSED', 'CANCELLED', 'COMPLETED']).optional(),
-});
-export class RecurringTemplateQueryDto extends createZodDto(recurringTemplateQuerySchema) {}
+export class CreateRecurringTemplateDto extends createZodDto(createRecurringTemplateSchema) {}

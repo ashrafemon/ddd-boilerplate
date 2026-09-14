@@ -31,8 +31,10 @@ export class BullMqBatchOperationQueueAdapter implements BatchOperationQueuePubl
 
     for (let i = 0; i < chunks.length; i++) {
       const rowIds = chunks[i];
-      // Include first row id so reconciliation re-partitions stay unique vs prior chunks.
-      const jobId = `${dispatch.jobId}:chunk:${i}:${rowIds[0]}`;
+      // Cycle-stamped id: re-dispatch after reconciliation must not collide
+      // with a retained failed chunk (row claims, not queue dedupe, provide
+      // the double-execution guard).
+      const jobId = `${dispatch.jobId}:chunk:${i}:${Date.now()}`;
       try {
         await this.queue.add(
           BATCH_OPERATION_CHUNK_JOB_NAME,
@@ -42,6 +44,7 @@ export class BullMqBatchOperationQueueAdapter implements BatchOperationQueuePubl
             attempts: chunkAttempts,
             backoff: { type: 'exponential', delay: 1_000 },
             removeOnComplete: true,
+            removeOnFail: { age: 24 * 60 * 60 * 1000 },
           },
         );
       } catch (err) {

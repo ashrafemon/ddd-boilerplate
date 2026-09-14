@@ -10,6 +10,20 @@ export type DomainEventRehydrator<T extends DomainEvent = DomainEvent> = (
 ) => T;
 
 /**
+ * Envelope fields persisted alongside the payload in the outbox. Applying
+ * them on rehydration keeps `eventId`, `occurredAt`, correlation and
+ * causation stable across the async hop — consumer idempotency and recurring
+ * EVENT-trigger dedup rely on exactly that stability.
+ */
+export interface DomainEventEnvelope {
+  eventId?: string;
+  occurredAt?: Date;
+  correlationId?: string;
+  causationId?: string;
+  headers?: Record<string, string>;
+}
+
+/**
  * Central registry mapping event types (constructor names) to rehydrators.
  * The outbox publisher uses it to rebuild domain events from outbox records
  * and publish them through the in-process event bus.
@@ -21,9 +35,26 @@ export class DomainEventRegistry {
     this.rehydrators.set(eventType, rehydrator);
   }
 
-  rehydrate(eventType: string, payload: Record<string, unknown>): DomainEvent | null {
+  rehydrate(
+    eventType: string,
+    payload: Record<string, unknown>,
+    envelope?: DomainEventEnvelope,
+  ): DomainEvent | null {
     const rehydrator = this.rehydrators.get(eventType);
-    return rehydrator ? rehydrator(payload) : null;
+    if (!rehydrator) return null;
+    const event = rehydrator(payload);
+    if (envelope) {
+      const restore: Record<string, unknown> = {};
+      if (envelope.eventId) restore.eventId = envelope.eventId;
+      if (envelope.occurredAt) restore.occurredAt = envelope.occurredAt;
+      if (envelope.correlationId) restore.correlationId = envelope.correlationId;
+      if (envelope.causationId) restore.causationId = envelope.causationId;
+      if (envelope.headers) restore.headers = envelope.headers;
+      // Domain event envelopes are restored by value; the fields are only
+      // `readonly` at compile time, so runtime assignment is safe.
+      if (Object.keys(restore).length > 0) Object.assign(event, restore);
+    }
+    return event;
   }
 
   has(eventType: string): boolean {

@@ -7,6 +7,8 @@ export interface IntegrationMessage {
   occurredAt: Date;
   correlationId?: string;
   causationId?: string;
+  /** Tenancy stamp captured at append time; carried on the outbox row. */
+  tenantId?: string;
 }
 
 export abstract class MessagePublisher {

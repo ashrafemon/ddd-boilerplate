@@ -3,6 +3,7 @@ import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import {
   InsertDispatchLogInput,
+  RecordDispatchOutcomeInput,
   ScheduledJobDispatchLogRepositoryPort,
 } from '../ports/scheduled-job-dispatch-log-repository.port';
 import { DispatchStatus, ScheduledJobDispatchLogRecord } from '../scheduler.types';
@@ -12,8 +13,9 @@ export class PrismaScheduledJobDispatchLogRepository implements ScheduledJobDisp
   constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
 
   async insert(input: InsertDispatchLogInput): Promise<void> {
-    await this.txHost.tx.scheduledJobDispatchLog.create({
-      data: {
+    await this.txHost.tx.scheduledJobDispatchLog.upsert({
+      where: { idempotencyKey: input.idempotencyKey },
+      create: {
         id: input.id,
         tenantId: input.tenantId ?? null,
         scheduledJobId: input.scheduledJobId,
@@ -24,6 +26,30 @@ export class PrismaScheduledJobDispatchLogRepository implements ScheduledJobDisp
         durationMs: input.durationMs ?? null,
         errorMessage: input.errorMessage ?? null,
         idempotencyKey: input.idempotencyKey,
+      },
+      update: {},
+    });
+  }
+
+  async recordOutcome(input: RecordDispatchOutcomeInput): Promise<void> {
+    await this.txHost.tx.scheduledJobDispatchLog.upsert({
+      where: { idempotencyKey: input.idempotencyKey },
+      create: {
+        tenantId: input.tenantId ?? null,
+        scheduledJobId: input.scheduledJobId,
+        jobType: input.jobType,
+        dispatchedAt: input.dispatchedAt,
+        completedAt: input.completedAt,
+        outcome: input.outcome,
+        durationMs: input.durationMs ?? null,
+        errorMessage: input.errorMessage ?? null,
+        idempotencyKey: input.idempotencyKey,
+      },
+      update: {
+        outcome: input.outcome,
+        completedAt: input.completedAt,
+        durationMs: input.durationMs ?? null,
+        errorMessage: input.errorMessage ?? null,
       },
     });
   }

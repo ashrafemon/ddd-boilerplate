@@ -52,9 +52,37 @@ export class PrismaRecurringExecutionRepository implements RecurringExecutionRep
     return row ? RecurringExecutionMapper.toRecord(row) : null;
   }
 
+  async findByTemplateAndTrigger(
+    recurringTemplateId: string,
+    triggerKey: string,
+  ): Promise<RecurringExecutionRecord | null> {
+    const row = await this.txHost.tx.recurringExecution.findUnique({
+      where: {
+        recurringTemplateId_triggerKey: { recurringTemplateId, triggerKey },
+      },
+    });
+    return row ? RecurringExecutionMapper.toRecord(row) : null;
+  }
+
+  async failStale(createdAtOlderThan: Date, limit: number): Promise<number> {
+    const stale = await this.txHost.tx.recurringExecution.findMany({
+      where: { status: 'IN_PROGRESS', createdAt: { lt: createdAtOlderThan } },
+      select: { id: true },
+      take: limit,
+    });
+    if (stale.length === 0) {
+      return 0;
+    }
+    const result = await this.txHost.tx.recurringExecution.updateMany({
+      where: { id: { in: stale.map(row => row.id) }, status: 'IN_PROGRESS' },
+      data: { status: 'FAILED', errorMessage: 'Consumer did not complete execution in time' },
+    });
+    return result.count;
+  }
+
   async complete(id: string, input: CompleteExecutionInput): Promise<void> {
-    await this.txHost.tx.recurringExecution.update({
-      where: { id },
+    await this.txHost.tx.recurringExecution.updateMany({
+      where: { id, status: 'IN_PROGRESS' },
       data: {
         status: 'SUCCESS',
         generatedDocumentId: input.generatedDocumentId,
@@ -66,8 +94,8 @@ export class PrismaRecurringExecutionRepository implements RecurringExecutionRep
   }
 
   async fail(id: string, errorMessage: string): Promise<void> {
-    await this.txHost.tx.recurringExecution.update({
-      where: { id },
+    await this.txHost.tx.recurringExecution.updateMany({
+      where: { id, status: 'IN_PROGRESS' },
       data: { status: 'FAILED', errorMessage },
     });
   }
@@ -77,8 +105,8 @@ export class PrismaRecurringExecutionRepository implements RecurringExecutionRep
     skipReason: string,
     conditionEvaluation?: Record<string, unknown>,
   ): Promise<void> {
-    await this.txHost.tx.recurringExecution.update({
-      where: { id },
+    await this.txHost.tx.recurringExecution.updateMany({
+      where: { id, status: 'IN_PROGRESS' },
       data: {
         status: 'SKIPPED',
         skipReason,

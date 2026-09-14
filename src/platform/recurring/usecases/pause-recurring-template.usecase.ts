@@ -2,6 +2,7 @@ import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
+import { AuditPort } from '@platform/audit/ports/audit.port';
 import { RecurringTemplateRepositoryPort } from '../ports/recurring-template-repository.port';
 import { RecurringTemplateRecord } from '../recurring-template.types';
 
@@ -16,6 +17,7 @@ export class PauseRecurringTemplateUseCase {
   constructor(
     private readonly templateRepository: RecurringTemplateRepositoryPort,
     private readonly schedulerPort: SchedulerPort,
+    private readonly audit: AuditPort,
   ) {}
 
   @Transactional()
@@ -34,6 +36,12 @@ export class PauseRecurringTemplateUseCase {
       await this.schedulerPort.cancelByAggregate('RecurringTemplate', template.id);
     }
 
+    await this.audit.record({
+      action: 'recurring.template.pause',
+      entityType: 'RecurringTemplate',
+      entityId: id,
+      changes: { status: 'PAUSED' },
+    });
     return this.templateRepository.update(id, { status: 'PAUSED', modifiedBy });
   }
 }

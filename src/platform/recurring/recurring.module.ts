@@ -1,6 +1,7 @@
 import { Module, OnApplicationBootstrap } from '@nestjs/common';
 import { ConditionEngineModule } from '@platform/condition-engine/condition-engine.module';
 import { ContextModule } from '@platform/context/context.module';
+import { AuditModule } from '@platform/audit/audit.module';
 import { OutboxModule } from '@platform/outbox/outbox.module';
 import { ScheduledJobHandlerRegistry } from '@platform/scheduler/scheduled-job-handler.registry';
 import { SchedulerModule } from '@platform/scheduler/scheduler.module';
@@ -18,6 +19,7 @@ import { PauseRecurringTemplateUseCase } from './usecases/pause-recurring-templa
 import { RecurringExecutionAdapter } from './adapters/recurring-execution.adapter';
 import { RecurringTemplateAdapter } from './adapters/recurring-template.adapter';
 import { ResumeRecurringTemplateUseCase } from './usecases/resume-recurring-template.usecase';
+import { SweepStaleExecutionsUseCase } from './usecases/sweep-stale-executions.usecase';
 import { PrismaRecurringExecutionRepository } from './repositories/prisma-recurring-execution.repository';
 import { PrismaRecurringTemplateRepository } from './repositories/prisma-recurring-template.repository';
 import { RecurringTemplateController } from './http/recurring-template.controller';
@@ -30,7 +32,7 @@ import './events/recurring.registry';
  * business generators register themselves the same direct way.
  */
 @Module({
-  imports: [ContextModule, OutboxModule, SchedulerModule, ConditionEngineModule],
+  imports: [ContextModule, AuditModule, OutboxModule, SchedulerModule, ConditionEngineModule],
   controllers: [RecurringTemplateController],
   providers: [
     PrismaRecurringTemplateRepository,
@@ -55,6 +57,7 @@ import './events/recurring.registry';
     CancelRecurringTemplateUseCase,
     GetRecurringTemplateUseCase,
     ListRecurringTemplatesUseCase,
+    SweepStaleExecutionsUseCase,
   ],
   exports: [RecurringExecutionPort, RecurringTemplatePort],
 })

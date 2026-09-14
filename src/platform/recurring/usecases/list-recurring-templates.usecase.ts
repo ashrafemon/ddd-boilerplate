@@ -9,6 +9,8 @@ export class ListRecurringTemplatesUseCase {
   execute(filter: {
     tenantId?: string;
     status?: RecurringTemplateRecord['status'];
+    limit?: number;
+    offset?: number;
   }): Promise<RecurringTemplateRecord[]> {
     return this.templateRepository.list(filter);
   }

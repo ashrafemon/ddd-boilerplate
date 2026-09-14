@@ -14,7 +14,7 @@ adapters/                          inbound port adapters (import-inbound.adapter
                                    storage repos + outbox writer, BullMQ publisher + @Processor
 events/                            ImportJobCompleted/Failed/Cancelled → outbox → RabbitMQ
 import-handler.registry.ts · import-file.parser.ts (header detection, alias mapping,
-structural checks) · import-reconciliation.consumer.ts (stale-job cron) ·
+structural checks) · import-reconciliation.consumer.ts (resumes orphaned stages via lock takeover; purges expired storage) ·
 import.types.ts · import.errors.ts · import.constants.ts
 http/                              generic /import routes + Zod request DTOs
 ```

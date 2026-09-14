@@ -42,10 +42,14 @@ export class BullMqImportQueueAdapter implements ImportQueuePublisherPort {
         name,
         { jobId },
         {
-          jobId: `${name}:${jobId}`,
+          // Cycle-stamped id so a reconciliation re-enqueue is never blocked by
+          // a retained failed message for the same stage (stage use cases carry
+          // their own status CAS + lock, making duplicates harmless).
+          jobId: `${name}:${jobId}:${Date.now()}`,
           attempts: jobAttempts,
           backoff: { type: 'exponential', delay: 1_000 },
           removeOnComplete: true,
+          removeOnFail: { age: 24 * 60 * 60 * 1000 },
         },
       );
     } catch (err) {

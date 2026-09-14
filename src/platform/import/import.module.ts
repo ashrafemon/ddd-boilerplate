@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/context/context.module';
+import { AuditModule } from '@platform/audit/audit.module';
 import { NumberingModule } from '@platform/numbering/numbering.module';
 import { OutboxModule } from '@platform/outbox/outbox.module';
 import { StorageModule } from '@platform/storage/storage.module';
@@ -59,6 +60,7 @@ import { ImportFileParser } from './import-file.parser';
 @Module({
   imports: [
     ContextModule,
+    AuditModule,
     NumberingModule,
     OutboxModule,
     StorageModule,

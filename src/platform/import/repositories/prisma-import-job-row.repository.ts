@@ -8,7 +8,7 @@ import {
   ImportJobRowRecord,
   ImportRowExecutionStatus,
   ImportRowValidationStatus,
-  RowResult,
+  RowExecutionSettlement,
   RowVerdict,
 } from '../import.types';
 
@@ -100,10 +100,13 @@ export class PrismaImportJobRowRepository implements ImportJobRowRepositoryPort 
         createdAt: Date;
         updatedAt: Date;
         processedAt: Date | null;
+        executionClaimToken: number;
       }>
     >`
       UPDATE import_job_rows
-      SET "executionStatus" = 'PROCESSING', "updatedAt" = now()
+      SET "executionStatus" = 'PROCESSING',
+          "executionClaimToken" = "executionClaimToken" + 1,
+          "updatedAt" = now()
       WHERE id IN (
         SELECT id FROM import_job_rows
         WHERE "importJobId" = ${jobId}::uuid
@@ -130,14 +133,17 @@ export class PrismaImportJobRowRepository implements ImportJobRowRepositoryPort 
     }
   }
 
-  async applyExecutionResults(jobId: string, results: RowResult[]): Promise<number> {
+  async applyExecutionResults(jobId: string, results: RowExecutionSettlement[]): Promise<number> {
     let applied = 0;
     for (const r of results) {
       const res = await this.txHost.tx.importJobRow.updateMany({
         where: {
           importJobId: jobId,
           rowNumber: r.rowNumber,
-          executionStatus: { in: ['PENDING', 'PROCESSING'] },
+          executionStatus: 'PROCESSING',
+          // Fencing: without the token the settlement came from this very
+          // claim, stale-worker writes land on rows they no longer own.
+          executionClaimToken: r.executionClaimToken,
         },
         data: {
           executionStatus: r.status,
@@ -194,14 +200,26 @@ export class PrismaImportJobRowRepository implements ImportJobRowRepositoryPort 
   }
 
   async resetStaleProcessing(olderThan: Date): Promise<number> {
-    const res = await this.txHost.tx.importJobRow.updateMany({
-      where: {
-        executionStatus: 'PROCESSING',
-        updatedAt: { lt: olderThan },
-      },
-      data: { executionStatus: 'PENDING' },
-    });
-    return res.count;
+    const reset = await this.txHost.tx.$executeRaw`
+      UPDATE import_job_rows r
+      SET "executionStatus" = 'PENDING',
+          "executionClaimToken" = r."executionClaimToken" + 1,
+          "updatedAt" = now()
+      FROM import_jobs j
+      WHERE r."importJobId" = j.id
+        AND j.status IN ('VALIDATED', 'EXECUTING')
+        AND r."executionStatus" = 'PROCESSING'
+        AND r."updatedAt" < ${olderThan}`;
+    await this.txHost.tx.$executeRaw`
+      UPDATE import_job_rows r
+      SET "executionStatus" = 'SKIPPED',
+          "errorMessage" = 'ABANDONED_ON_TERMINAL_JOB',
+          "updatedAt" = now()
+      FROM import_jobs j
+      WHERE r."importJobId" = j.id
+        AND j.status IN ('COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED', 'CANCELLED')
+        AND r."executionStatus" = 'PROCESSING'`;
+    return reset;
   }
 }
 
@@ -222,6 +240,7 @@ export class ImportJobRowMapper {
     createdAt: Date;
     updatedAt: Date;
     processedAt: Date | null;
+    executionClaimToken?: number;
   }): ImportJobRowRecord {
     return {
       id: row.id,
@@ -236,6 +255,7 @@ export class ImportJobRowMapper {
       errorMessage: row.errorMessage ?? undefined,
       entityId: row.entityId ?? undefined,
       secondaryEntityIds: PrismaJson.as<string[]>(row.secondaryEntityIds) ?? undefined,
+      executionClaimToken: row.executionClaimToken,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       processedAt: row.processedAt ?? undefined,
