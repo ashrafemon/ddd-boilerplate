@@ -52,6 +52,8 @@ import { SchedulerController, SchedulerHealthController } from './http/scheduler
  *     stay claimed until the owner calls rescheduleExternal.
  *  5. Reconcile — ReconcileMissedJobsUseCase releases stale claims and applies
  *     missed-fire policy; edit log + dispatch log audit every change.
+ *  Ops    — /scheduled-jobs (paged, tenant-scoped), PATCH (optimistic version),
+ *     cancel, and POST :id/dispatch-now to force a job due-now for backfills.
  *
  * Inbound surface: SchedulerPort (cross-module facade), ops ports bound through
  * thin adapters; ScheduledJobHandlerRegistry is the plugin boundary business

@@ -11,6 +11,8 @@ import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usec
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { RequestContext } from '@platform/context/ports/request-context';
 import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
+import { RescheduleExternalJobUseCase } from '../usecases/reschedule-external-job.usecase';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { SchedulerController, SchedulerHealthController } from './scheduler.controller';
 
 class StubRequestContextPort extends RequestContextPort {
@@ -109,6 +111,7 @@ function makeController(jobs = makeJobs()) {
     listDispatchLog,
     updateJob,
     new CancelScheduledJobUseCase(jobs),
+    new RescheduleExternalJobUseCase(jobs),
     new StubRequestContextPort(),
   );
 }
@@ -128,6 +131,32 @@ describe('SchedulerController', () => {
     const controller = makeController();
     const result = await controller.get('j1');
     expect(result.data.id).toBe('j1');
+  });
+
+  it('dispatch-now re-queues a job and returns the updated record', async () => {
+    const reschedule = jest.fn();
+    const controller = makeController(makeJobs({ reschedule }));
+
+    const result = await controller.dispatchNow('j1');
+
+    expect(reschedule).toHaveBeenCalledWith('j1', expect.any(Date));
+    expect(result.data.id).toBe('j1');
+  });
+
+  it('dispatch-now refuses cancelled jobs and hides foreign tenants', async () => {
+    const cancelled = makeJobs({
+      findById: jest.fn().mockResolvedValue({ ...aJob(), status: JobStatus.CANCELLED }),
+    });
+    await expect(makeController(cancelled).dispatchNow('j1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+
+    const foreign = makeJobs({
+      findById: jest.fn().mockResolvedValue({ ...aJob(), tenantId: 't9' }),
+    });
+    await expect(makeController(foreign).dispatchNow('j1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('updates a job and returns the fresh record', async () => {

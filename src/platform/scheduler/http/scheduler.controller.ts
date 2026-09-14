@@ -7,6 +7,7 @@ import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usec
 import { GetScheduledJobStatusUseCase } from '../usecases/get-scheduled-job-status.usecase';
 import { GetSchedulerHealthMetricsUseCase } from '../usecases/get-scheduler-health-metrics.usecase';
 import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
+import { RescheduleExternalJobUseCase } from '../usecases/reschedule-external-job.usecase';
 import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
 import { ScheduledJobDispatchLogRecord, ScheduledJobRecord } from '../scheduler.types';
 import { ListScheduledJobsDto, UpdateScheduledJobDto } from './requests/scheduler.request.dto';
@@ -20,6 +21,7 @@ export class SchedulerController {
     private readonly listDispatchLog: ListScheduledJobDispatchLogUseCase,
     private readonly updateJob: UpdateScheduledJobUseCase,
     private readonly cancelJob: CancelScheduledJobUseCase,
+    private readonly rescheduleJob: RescheduleExternalJobUseCase,
     private readonly requestContext: RequestContextPort,
   ) {}
 
@@ -77,6 +79,15 @@ export class SchedulerController {
     const ctx = this.requestContext.get();
     await this.cancelJob.execute(id, ctx?.tenantId);
     return { data: { id }, message: 'Scheduled job cancelled' };
+  }
+
+  @Post(':id/dispatch-now')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Force a job due-now (backfill / manual re-fire)' })
+  async dispatchNow(@Param('id') id: string): Promise<ApiResponse<ScheduledJobRecord>> {
+    const ctx = this.requestContext.get();
+    const data = await this.rescheduleJob.dispatchNow(id, ctx?.tenantId);
+    return { data, message: 'Scheduled job queued for immediate dispatch' };
   }
 }
 
