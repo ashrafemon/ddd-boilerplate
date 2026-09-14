@@ -3,7 +3,7 @@ import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { OutboxWriterPort } from './ports/outbox-writer.port';
-import { OutboxRepository } from './prisma-outbox-repository';
+import { OutboxRepository } from './ports/outbox-repository.port';
 
 @Injectable()
 export class OutboxWriter implements OutboxWriterPort {

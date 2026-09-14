@@ -17,10 +17,10 @@ import { ListBatchOperationJobRowsUseCase } from './usecases/list-batch-operatio
 import { ListBatchOperationJobsUseCase } from './usecases/list-batch-operation-jobs.usecase';
 import { ProcessBatchOperationRowUseCase } from './usecases/process-batch-operation-row.usecase';
 import { ValidateBatchOperationUseCase } from './usecases/validate-batch-operation.usecase';
-import { PrismaBatchOperationJobOutboxWriter } from './adapters/prisma-batch-operation-job-outbox.writer';
-import { PrismaBatchOperationJobRepository } from './adapters/prisma-batch-operation-job.repository';
+import { PrismaBatchOperationJobOutboxWriter } from './repositories/prisma-batch-operation-job-outbox.writer';
+import { PrismaBatchOperationJobRepository } from './repositories/prisma-batch-operation-job.repository';
 import { BATCH_OPERATION_QUEUE_NAME } from './batch-operation.constants';
-import { BullMqBatchOperationQueuePublisher } from './adapters/bullmq-batch-operation-queue.publisher';
+import { BullMqBatchOperationQueueAdapter } from './adapters/bullmq-batch-operation-queue.adapter';
 import { BullMqBatchOperationWorker } from './adapters/bullmq-batch-operation.worker';
 import { BatchOperationController } from './http/batch-operation.controller';
 
@@ -48,10 +48,10 @@ import { BatchOperationController } from './http/batch-operation.controller';
       provide: BatchOperationJobOutboxWriterPort,
       useExisting: PrismaBatchOperationJobOutboxWriter,
     },
-    BullMqBatchOperationQueuePublisher,
+    BullMqBatchOperationQueueAdapter,
     {
       provide: BatchOperationQueuePublisherPort,
-      useExisting: BullMqBatchOperationQueuePublisher,
+      useExisting: BullMqBatchOperationQueueAdapter,
     },
     BullMqBatchOperationWorker,
     BatchOperationWorker,

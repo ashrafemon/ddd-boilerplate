@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { AuditEntry, AuditPort } from './ports/audit.port';
+import { AuditEntry, AuditPort } from '../ports/audit.port';
 
 /**
  * Prisma-backed audit trail. All DB access goes through the TransactionHost
@@ -11,7 +11,7 @@ import { AuditEntry, AuditPort } from './ports/audit.port';
  * the caller does not provide them.
  */
 @Injectable()
-export class PrismaAuditService implements AuditPort {
+export class PrismaAuditRepository implements AuditPort {
   constructor(
     private readonly txHost: TransactionHost<TransactionalAdapterPrisma>,
     private readonly requestContext: RequestContextPort,

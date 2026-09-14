@@ -19,8 +19,8 @@ import { PauseRecurringTemplateUseCase } from './usecases/pause-recurring-templa
 import { RecurringExecutionAdapter } from './adapters/recurring-execution.adapter';
 import { RecurringTemplateAdapter } from './adapters/recurring-template.adapter';
 import { ResumeRecurringTemplateUseCase } from './usecases/resume-recurring-template.usecase';
-import { PrismaRecurringExecutionRepository } from './adapters/prisma-recurring-execution.repository';
-import { PrismaRecurringTemplateRepository } from './adapters/prisma-recurring-template.repository';
+import { PrismaRecurringExecutionRepository } from './repositories/prisma-recurring-execution.repository';
+import { PrismaRecurringTemplateRepository } from './repositories/prisma-recurring-template.repository';
 import { RecurringTemplateController } from './http/recurring-template.controller';
 import './events/recurring.registry';
 

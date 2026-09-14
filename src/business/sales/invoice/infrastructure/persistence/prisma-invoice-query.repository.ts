@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
-import { PrismaReadPort } from '@platform/database/ports/prisma-read.port';
+import { PrismaReadPort } from '@platform/context/ports/prisma-read.port';
 import { InvoiceQuery } from '../../application/queries/invoice.query';
 import { InvoiceQueryRecord } from '../../domain/types/invoice.types';
 import { PrismaInvoiceMapper } from './prisma-invoice.mapper';

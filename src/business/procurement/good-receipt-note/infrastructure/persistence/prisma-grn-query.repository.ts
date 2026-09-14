@@ -1,6 +1,6 @@
 import { GrnQueryRecord } from '@business/procurement/good-receipt-note/domain/types/grn.types';
 import { GrnQuery } from '@business/procurement/good-receipt-note/application/queries/grn.query';
-import { PrismaReadPort } from '@platform/database/ports/prisma-read.port';
+import { PrismaReadPort } from '@platform/context/ports/prisma-read.port';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { Injectable } from '@nestjs/common';
 import { PrismaGrnMapper } from './prisma-grn.mapper';

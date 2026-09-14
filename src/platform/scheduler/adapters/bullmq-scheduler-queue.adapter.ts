@@ -7,8 +7,8 @@ import { SCHEDULER_JOB_NAME, SCHEDULER_QUEUE_NAME } from '../scheduler.constants
 import { isDuplicateJobError } from '@infrastructure/queue/bullmq.helpers';
 
 @Injectable()
-export class BullMqSchedulerJobQueue implements SchedulerJobQueuePort {
-  private readonly logger = new Logger(BullMqSchedulerJobQueue.name);
+export class BullMqSchedulerQueueAdapter implements SchedulerJobQueuePort {
+  private readonly logger = new Logger(BullMqSchedulerQueueAdapter.name);
 
   constructor(
     @InjectQueue(SCHEDULER_QUEUE_NAME)

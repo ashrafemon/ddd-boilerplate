@@ -19,30 +19,28 @@ appear. Blocks are validated for mermaid-safe syntax at generation time.
 ```mermaid
 flowchart LR
     VendorModule["VendorModule"]
-    DatabaseModule["DatabaseModule"]
-    VendorModule -->|PrismaReadPort| DatabaseModule
+    ContextModule__src_platform_context_["ContextModule (src/platform/context)"]
+    ContextModule__src_platform_context__2["ContextModule__src_platform_context_"]
+    VendorModule -->|PrismaReadPort| ContextModule__src_platform_context__2
     OutboxModule["OutboxModule"]
     VendorModule -->|OutboxWriterPort| OutboxModule
     ConfigurationModule["ConfigurationModule"]
     VendorModule -->|CompanyConfigPort| ConfigurationModule
     GoodReceiptNoteModule["GoodReceiptNoteModule"]
-    GoodReceiptNoteModule -->|PrismaReadPort| DatabaseModule
+    GoodReceiptNoteModule -->|PrismaReadPort| ContextModule__src_platform_context__2
     GoodReceiptNoteModule -->|OutboxWriterPort| OutboxModule
     GoodReceiptNoteModule -->|CompanyConfigPort| ConfigurationModule
     PurchaseOrderModule["PurchaseOrderModule"]
     GoodReceiptNoteModule -->|PurchaseOrderForGrnPort| PurchaseOrderModule
     ProductModule["ProductModule"]
-    ProductModule -->|PrismaReadPort| DatabaseModule
+    ProductModule -->|PrismaReadPort| ContextModule__src_platform_context__2
     ProductModule -->|OutboxWriterPort| OutboxModule
     ProductModule -->|CompanyConfigPort| ConfigurationModule
-    ContextModule__src_platform_context_["ContextModule (src/platform/context)"]
-    ContextModule__src_platform_context__2["ContextModule__src_platform_context_"]
-    PurchaseOrderModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    PurchaseOrderModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
     RecurringModule["RecurringModule"]
     PurchaseOrderModule -->|RecurringTemplatePort, RecurringExecutionPort| RecurringModule
     ObservabilityModule["ObservabilityModule"]
     PurchaseOrderModule -->|LoggerPort| ObservabilityModule
-    PurchaseOrderModule -->|PrismaReadPort| DatabaseModule
     PurchaseOrderModule -->|OutboxWriterPort| OutboxModule
     PurchaseOrderModule -->|CompanyConfigPort| ConfigurationModule
     NumberingModule["NumberingModule"]
@@ -52,7 +50,7 @@ flowchart LR
     InvoiceModule["InvoiceModule"]
     InvoiceModule -->|RecurringExecutionPort| RecurringModule
     InvoiceModule -->|LoggerPort| ObservabilityModule
-    InvoiceModule -->|PrismaReadPort| DatabaseModule
+    InvoiceModule -->|PrismaReadPort| ContextModule__src_platform_context__2
     InvoiceModule -->|OutboxWriterPort| OutboxModule
     InvoiceModule -->|CompanyConfigPort| ConfigurationModule
     InvoiceModule -->|NumberingPort| NumberingModule
@@ -73,8 +71,8 @@ flowchart LR
     BatchOperationModule -->|ConfigService| ConfigModule
     BatchOperationModule -->|NumberingPort| NumberingModule
     ConfigurationModule -->|ConfigService| ConfigModule
-    DatabaseModule -->|ConfigService| ConfigModule
-    DatabaseModule -->|PrismaWriteService| PrismaModule
+    ContextModule__src_platform_context__2 -->|ConfigService| ConfigModule
+    ContextModule__src_platform_context__2 -->|PrismaWriteService| PrismaModule
     ImportModule["ImportModule"]
     ImportModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ImportModule -->|OutboxWriterPort| OutboxModule
@@ -166,7 +164,7 @@ flowchart LR
     TransactionHost__library_["TransactionHost (library)"]
     PrismaVendorCommandRepository -->|injects| TransactionHost__library_
     PrismaReadPort["PrismaReadPort"]
-    PrismaVendorQueryRepository -->|injects via DatabaseModule| PrismaReadPort
+    PrismaVendorQueryRepository -->|injects via ContextModule| PrismaReadPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
     CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
@@ -237,7 +235,7 @@ flowchart LR
     TransactionHost__library_["TransactionHost (library)"]
     PrismaGrnCommandRepository -->|injects| TransactionHost__library_
     PrismaReadPort["PrismaReadPort"]
-    PrismaGrnQueryRepository -->|injects via DatabaseModule| PrismaReadPort
+    PrismaGrnQueryRepository -->|injects via ContextModule| PrismaReadPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
     CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
@@ -340,7 +338,7 @@ flowchart LR
     TransactionHost__library_["TransactionHost (library)"]
     PrismaPurchaseOrderCommandRepository -->|injects| TransactionHost__library_
     PrismaReadPort["PrismaReadPort"]
-    PrismaPurchaseOrderQueryRepository -->|injects via DatabaseModule| PrismaReadPort
+    PrismaPurchaseOrderQueryRepository -->|injects via ContextModule| PrismaReadPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
     CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
@@ -413,7 +411,7 @@ flowchart LR
     TransactionHost__library_["TransactionHost (library)"]
     PrismaInvoiceCommandRepository -->|injects| TransactionHost__library_
     PrismaReadPort["PrismaReadPort"]
-    PrismaInvoiceQueryRepository -->|injects via DatabaseModule| PrismaReadPort
+    PrismaInvoiceQueryRepository -->|injects via ContextModule| PrismaReadPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
     CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
@@ -424,27 +422,19 @@ flowchart LR
 
 #### ContextModule (src/platform/context) — `src/platform/context/context.module.ts`
 
-imports: — · exports: RequestContextPort
+imports: InfrastructureModule · exports: RequestContextPort, PrismaReadPort
 
 ```mermaid
 flowchart LR
     RequestContextPort["RequestContextPort"]
     ClsRequestContextService["ClsRequestContextService"]
     RequestContextPort -.->|useClass| ClsRequestContextService
-    ClsService__library_["ClsService (library)"]
-    ClsRequestContextService -->|injects| ClsService__library_
-    ClsRequestContextService -->|injects| ClsService__library_
-```
-
-#### DatabaseModule — `src/platform/database/database.module.ts`
-
-imports: InfrastructureModule · exports: PrismaReadPort
-
-```mermaid
-flowchart LR
     PrismaReadPort["PrismaReadPort"]
     PrismaReadService["PrismaReadService"]
     PrismaReadPort -.->|useExisting| PrismaReadService
+    ClsService__library_["ClsService (library)"]
+    ClsRequestContextService -->|injects| ClsService__library_
+    ClsRequestContextService -->|injects| ClsService__library_
     ConfigService["ConfigService"]
     PrismaReadService -->|injects via ConfigModule| ConfigService
     PrismaWriteService["PrismaWriteService"]
@@ -550,14 +540,14 @@ imports: ContextModule · exports: AuditPort
 ```mermaid
 flowchart LR
     AuditPort["AuditPort"]
-    PrismaAuditService["PrismaAuditService"]
-    AuditPort -.->|useExisting| PrismaAuditService
+    PrismaAuditRepository["PrismaAuditRepository"]
+    AuditPort -.->|useExisting| PrismaAuditRepository
     TransactionHost__library_["TransactionHost (library)"]
-    PrismaAuditService -->|injects| TransactionHost__library_
+    PrismaAuditRepository -->|injects| TransactionHost__library_
     RequestContextPort["RequestContextPort"]
-    PrismaAuditService -->|injects via ContextModule| RequestContextPort
-    PrismaAuditService -->|injects| TransactionHost__library_
-    PrismaAuditService -->|injects via ContextModule| RequestContextPort
+    PrismaAuditRepository -->|injects via ContextModule| RequestContextPort
+    PrismaAuditRepository -->|injects| TransactionHost__library_
+    PrismaAuditRepository -->|injects via ContextModule| RequestContextPort
 ```
 
 #### CacheModule (src/platform/cache) — `src/platform/cache/cache.module.ts`
@@ -578,14 +568,14 @@ imports: — · exports: CompanyConfigPort
 ```mermaid
 flowchart LR
     CompanyConfigPort["CompanyConfigPort"]
-    PrismaCompanyConfigAdapter["PrismaCompanyConfigAdapter"]
-    CompanyConfigPort -.->|useExisting| PrismaCompanyConfigAdapter
+    PrismaCompanyConfigRepository["PrismaCompanyConfigRepository"]
+    CompanyConfigPort -.->|useExisting| PrismaCompanyConfigRepository
     TransactionHost__library_["TransactionHost (library)"]
-    PrismaCompanyConfigAdapter -->|injects| TransactionHost__library_
+    PrismaCompanyConfigRepository -->|injects| TransactionHost__library_
     ConfigService["ConfigService"]
-    PrismaCompanyConfigAdapter -->|injects via ConfigModule| ConfigService
-    PrismaCompanyConfigAdapter -->|injects| TransactionHost__library_
-    PrismaCompanyConfigAdapter -->|injects via ConfigModule| ConfigService
+    PrismaCompanyConfigRepository -->|injects via ConfigModule| ConfigService
+    PrismaCompanyConfigRepository -->|injects| TransactionHost__library_
+    PrismaCompanyConfigRepository -->|injects via ConfigModule| ConfigService
 ```
 
 #### NotificationModule (src/platform/notification) — `src/platform/notification/notification.module.ts`
@@ -627,11 +617,11 @@ imports: — · exports: NumberingPort
 ```mermaid
 flowchart LR
     NumberingPort["NumberingPort"]
-    PrismaNumberingService["PrismaNumberingService"]
-    NumberingPort -.->|useExisting| PrismaNumberingService
+    PrismaNumberingRepository["PrismaNumberingRepository"]
+    NumberingPort -.->|useExisting| PrismaNumberingRepository
     TransactionHost__library_["TransactionHost (library)"]
-    PrismaNumberingService -->|injects| TransactionHost__library_
-    PrismaNumberingService -->|injects| TransactionHost__library_
+    PrismaNumberingRepository -->|injects| TransactionHost__library_
+    PrismaNumberingRepository -->|injects| TransactionHost__library_
 ```
 
 #### ObservabilityModule — `src/platform/observability/observability.module.ts`
@@ -684,8 +674,8 @@ flowchart LR
     PrismaBatchOperationJobOutboxWriter["PrismaBatchOperationJobOutboxWriter"]
     BatchOperationJobOutboxWriterPort -.->|useExisting| PrismaBatchOperationJobOutboxWriter
     BatchOperationQueuePublisherPort["BatchOperationQueuePublisherPort"]
-    BullMqBatchOperationQueuePublisher["BullMqBatchOperationQueuePublisher"]
-    BatchOperationQueuePublisherPort -.->|useExisting| BullMqBatchOperationQueuePublisher
+    BullMqBatchOperationQueueAdapter["BullMqBatchOperationQueueAdapter"]
+    BatchOperationQueuePublisherPort -.->|useExisting| BullMqBatchOperationQueueAdapter
     BatchOperationController["BatchOperationController"]
     CreateBatchOperationJobUseCase["CreateBatchOperationJobUseCase"]
     BatchOperationController -->|injects| CreateBatchOperationJobUseCase
@@ -711,11 +701,11 @@ flowchart LR
     PrismaBatchOperationJobOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
     PrismaBatchOperationJobOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
     Queue__library_["Queue (library)"]
-    BullMqBatchOperationQueuePublisher -->|injects| Queue__library_
+    BullMqBatchOperationQueueAdapter -->|injects| Queue__library_
     ConfigService["ConfigService"]
-    BullMqBatchOperationQueuePublisher -->|injects via ConfigModule| ConfigService
-    BullMqBatchOperationQueuePublisher -->|injects| Queue__library_
-    BullMqBatchOperationQueuePublisher -->|injects via ConfigModule| ConfigService
+    BullMqBatchOperationQueueAdapter -->|injects via ConfigModule| ConfigService
+    BullMqBatchOperationQueueAdapter -->|injects| Queue__library_
+    BullMqBatchOperationQueueAdapter -->|injects via ConfigModule| ConfigService
     BullMqBatchOperationWorker["BullMqBatchOperationWorker"]
     BatchOperationWorker["BatchOperationWorker"]
     BullMqBatchOperationWorker -->|injects| BatchOperationWorker
@@ -782,8 +772,8 @@ flowchart LR
     PrismaImportJobOutboxWriter["PrismaImportJobOutboxWriter"]
     ImportJobOutboxWriterPort -.->|useExisting| PrismaImportJobOutboxWriter
     ImportQueuePublisherPort["ImportQueuePublisherPort"]
-    BullMqImportQueuePublisher["BullMqImportQueuePublisher"]
-    ImportQueuePublisherPort -.->|useExisting| BullMqImportQueuePublisher
+    BullMqImportQueueAdapter["BullMqImportQueueAdapter"]
+    ImportQueuePublisherPort -.->|useExisting| BullMqImportQueueAdapter
     InitImportPort["InitImportPort"]
     InitImportAdapter["InitImportAdapter"]
     InitImportPort -.->|useExisting| InitImportAdapter
@@ -849,11 +839,11 @@ flowchart LR
     PrismaImportJobOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
     PrismaImportJobOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
     Queue__library_["Queue (library)"]
-    BullMqImportQueuePublisher -->|injects| Queue__library_
+    BullMqImportQueueAdapter -->|injects| Queue__library_
     ConfigService["ConfigService"]
-    BullMqImportQueuePublisher -->|injects via ConfigModule| ConfigService
-    BullMqImportQueuePublisher -->|injects| Queue__library_
-    BullMqImportQueuePublisher -->|injects via ConfigModule| ConfigService
+    BullMqImportQueueAdapter -->|injects via ConfigModule| ConfigService
+    BullMqImportQueueAdapter -->|injects| Queue__library_
+    BullMqImportQueueAdapter -->|injects via ConfigModule| ConfigService
     BullMqImportWorker["BullMqImportWorker"]
     BullMqImportWorker -->|injects| ParseImportJobPort
     BullMqImportWorker -->|injects| ValidateImportJobPort
@@ -1042,8 +1032,8 @@ flowchart LR
     RabbitMqSchedulerEventPublisher["RabbitMqSchedulerEventPublisher"]
     SchedulerEventPublisherPort -.->|useExisting| RabbitMqSchedulerEventPublisher
     SchedulerJobQueuePort["SchedulerJobQueuePort"]
-    BullMqSchedulerJobQueue["BullMqSchedulerJobQueue"]
-    SchedulerJobQueuePort -.->|useExisting| BullMqSchedulerJobQueue
+    BullMqSchedulerQueueAdapter["BullMqSchedulerQueueAdapter"]
+    SchedulerJobQueuePort -.->|useExisting| BullMqSchedulerQueueAdapter
     UpdateScheduledJobPort["UpdateScheduledJobPort"]
     UpdateScheduledJobAdapter["UpdateScheduledJobAdapter"]
     UpdateScheduledJobPort -.->|useExisting| UpdateScheduledJobAdapter
@@ -1093,10 +1083,10 @@ flowchart LR
     ScheduledJobProcessor -->|injects| ScheduledJobHandlerRegistry
     ScheduledJobProcessor -->|injects| SchedulerEventPublisherPort
     Queue__library_["Queue (library)"]
-    BullMqSchedulerJobQueue -->|injects| Queue__library_
-    BullMqSchedulerJobQueue -->|injects via ConfigModule| ConfigService
-    BullMqSchedulerJobQueue -->|injects| Queue__library_
-    BullMqSchedulerJobQueue -->|injects via ConfigModule| ConfigService
+    BullMqSchedulerQueueAdapter -->|injects| Queue__library_
+    BullMqSchedulerQueueAdapter -->|injects via ConfigModule| ConfigService
+    BullMqSchedulerQueueAdapter -->|injects| Queue__library_
+    BullMqSchedulerQueueAdapter -->|injects via ConfigModule| ConfigService
     BullMqSchedulerJobWorker["BullMqSchedulerJobWorker"]
     BullMqSchedulerJobWorker -->|injects| ScheduledJobProcessor
     BullMqSchedulerJobWorker -->|injects via ConfigModule| ConfigService

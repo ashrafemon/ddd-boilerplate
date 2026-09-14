@@ -5,7 +5,7 @@ export type SchedulerQueuedJob = SchedulerJobDueEvent;
 
 /**
  * Hands a claimed due job to the async worker. Dispatch must not run handlers inline.
- * DI token (abstract class port). Implemented by BullMqSchedulerJobQueue.
+ * DI token (abstract class port). Implemented by BullMqSchedulerQueueAdapter.
  */
 export abstract class SchedulerJobQueuePort {
   abstract enqueue(job: SchedulerQueuedJob): Promise<void>;

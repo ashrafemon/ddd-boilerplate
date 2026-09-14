@@ -13,8 +13,8 @@ import {
 export type ImportQueuePayload = { jobId: string };
 
 @Injectable()
-export class BullMqImportQueuePublisher implements ImportQueuePublisherPort {
-  private readonly logger = new Logger(BullMqImportQueuePublisher.name);
+export class BullMqImportQueueAdapter implements ImportQueuePublisherPort {
+  private readonly logger = new Logger(BullMqImportQueueAdapter.name);
 
   constructor(
     @InjectQueue(IMPORT_QUEUE_NAME)

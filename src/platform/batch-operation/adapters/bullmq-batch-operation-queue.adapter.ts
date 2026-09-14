@@ -14,8 +14,8 @@ import {
  * and never overlap — avoids SKIP LOCKED contention.
  */
 @Injectable()
-export class BullMqBatchOperationQueuePublisher implements BatchOperationQueuePublisherPort {
-  private readonly logger = new Logger(BullMqBatchOperationQueuePublisher.name);
+export class BullMqBatchOperationQueueAdapter implements BatchOperationQueuePublisherPort {
+  private readonly logger = new Logger(BullMqBatchOperationQueueAdapter.name);
 
   constructor(
     @InjectQueue(BATCH_OPERATION_QUEUE_NAME)

@@ -41,12 +41,12 @@ import {
   UpdateImportMappingUseCase,
   ValidateImportJobUseCase,
 } from './usecases/import.usecases';
-import { PrismaImportJobOutboxWriter } from './adapters/prisma-import-job-outbox.writer';
-import { PrismaImportJobRepository } from './adapters/prisma-import-job.repository';
-import { PrismaImportJobRowRepository } from './adapters/prisma-import-job-row.repository';
-import { PrismaStorageObjectRepository } from './adapters/prisma-storage-object.repository';
+import { PrismaImportJobOutboxWriter } from './repositories/prisma-import-job-outbox.writer';
+import { PrismaImportJobRepository } from './repositories/prisma-import-job.repository';
+import { PrismaImportJobRowRepository } from './repositories/prisma-import-job-row.repository';
+import { PrismaStorageObjectRepository } from './repositories/prisma-storage-object.repository';
 import { IMPORT_QUEUE_NAME } from './import.constants';
-import { BullMqImportQueuePublisher } from './adapters/bullmq-import-queue.publisher';
+import { BullMqImportQueueAdapter } from './adapters/bullmq-import-queue.adapter';
 import { BullMqImportWorker } from './adapters/bullmq-import.worker';
 import { ImportController } from './http/import.controller';
 import {
@@ -89,8 +89,8 @@ import {
     { provide: ImportJobRowRepositoryPort, useExisting: PrismaImportJobRowRepository },
     PrismaImportJobOutboxWriter,
     { provide: ImportJobOutboxWriterPort, useExisting: PrismaImportJobOutboxWriter },
-    BullMqImportQueuePublisher,
-    { provide: ImportQueuePublisherPort, useExisting: BullMqImportQueuePublisher },
+    BullMqImportQueueAdapter,
+    { provide: ImportQueuePublisherPort, useExisting: BullMqImportQueueAdapter },
     BullMqImportWorker,
     ImportReconciliationConsumer,
     InitImportUseCase,

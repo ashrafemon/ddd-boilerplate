@@ -13,7 +13,7 @@ import {
   IMPORT_VALIDATE_JOB_NAME,
   IMPORT_WORKER_CONCURRENCY,
 } from '../import.constants';
-import { ImportQueuePayload } from './bullmq-import-queue.publisher';
+import { ImportQueuePayload } from './bullmq-import-queue.adapter';
 
 @Processor(IMPORT_QUEUE_NAME, { concurrency: IMPORT_WORKER_CONCURRENCY })
 export class BullMqImportWorker extends WorkerHost {

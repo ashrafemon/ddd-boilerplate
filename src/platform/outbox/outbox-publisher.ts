@@ -11,7 +11,7 @@ import {
 } from '@platform/messaging/message-publisher.tokens';
 import { InProcessEventBus } from '@platform/events/ports/event-bus.port';
 import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
-import { OutboxMessageRecord, OutboxRepository } from './prisma-outbox-repository';
+import { OutboxMessageRecord, OutboxRepository } from './ports/outbox-repository.port';
 import { MessageRoutingPolicy } from '../events/message-routing.policy';
 
 const PARALLEL_PUBLISH_LIMIT = 10;

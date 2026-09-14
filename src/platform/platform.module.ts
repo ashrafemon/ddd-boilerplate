@@ -7,7 +7,6 @@ import { CacheModule } from './cache/cache.module';
 import { ConditionEngineModule } from './condition-engine/condition-engine.module';
 import { ConfigurationModule } from './configuration/configuration.module';
 import { ContextModule } from './context/context.module';
-import { DatabaseModule } from './database/database.module';
 import { EventsModule } from './events/events.module';
 import { ImportModule } from './import/import.module';
 import { MessagingModule } from './messaging/messaging.module';
@@ -39,7 +38,6 @@ import { StorageModule } from './storage/storage.module';
     ObservabilityModule,
     CacheModule,
     ContextModule,
-    DatabaseModule,
     ConfigurationModule,
     AuditModule,
     NumberingModule,
@@ -58,7 +56,6 @@ import { StorageModule } from './storage/storage.module';
     ObservabilityModule,
     CacheModule,
     ContextModule,
-    DatabaseModule,
     ConfigurationModule,
     AuditModule,
     NumberingModule,

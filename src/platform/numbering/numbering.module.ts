@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { PrismaNumberingService } from './prisma-numbering.service';
+import { PrismaNumberingRepository } from './repositories/numbering.repository';
 import { NumberingPort } from './ports/numbering.port';
 
 @Module({
   providers: [
-    PrismaNumberingService,
-    { provide: NumberingPort, useExisting: PrismaNumberingService },
+    PrismaNumberingRepository,
+    { provide: NumberingPort, useExisting: PrismaNumberingRepository },
   ],
   exports: [NumberingPort],
 })

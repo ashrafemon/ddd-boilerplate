@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaReadPort } from '@platform/database/ports/prisma-read.port';
+import { PrismaReadPort } from '@platform/context/ports/prisma-read.port';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { PurchaseOrderQuery } from '@business/procurement/purchase-order/application/queries/purchase-order.query';
 import { PurchaseOrderQueryRecord } from '@business/procurement/purchase-order/domain/types/purchase-order.types';

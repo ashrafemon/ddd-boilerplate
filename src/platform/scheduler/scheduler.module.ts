@@ -27,11 +27,11 @@ import { ReconcileMissedJobsUseCase } from './usecases/reconcile-missed-jobs.use
 import { RegisterScheduledJobUseCase } from './usecases/register-scheduled-job.usecase';
 import { RescheduleExternalJobUseCase } from './usecases/reschedule-external-job.usecase';
 import { UpdateScheduledJobUseCase } from './usecases/update-scheduled-job.usecase';
-import { PrismaScheduledJobDispatchLogRepository } from './adapters/prisma-scheduled-job-dispatch-log.repository';
-import { PrismaScheduledJobEditLogRepository } from './adapters/prisma-scheduled-job-edit-log.repository';
-import { PrismaScheduledJobRepository } from './adapters/prisma-scheduled-job.repository';
+import { PrismaScheduledJobDispatchLogRepository } from './repositories/prisma-scheduled-job-dispatch-log.repository';
+import { PrismaScheduledJobEditLogRepository } from './repositories/prisma-scheduled-job-edit-log.repository';
+import { PrismaScheduledJobRepository } from './repositories/prisma-scheduled-job.repository';
 import { SCHEDULER_QUEUE_NAME } from './scheduler.constants';
-import { BullMqSchedulerJobQueue } from './adapters/bullmq-scheduler-job.queue';
+import { BullMqSchedulerQueueAdapter } from './adapters/bullmq-scheduler-queue.adapter';
 import { BullMqSchedulerJobWorker } from './adapters/bullmq-scheduler-job.worker';
 import { RabbitMqSchedulerEventPublisher } from './adapters/rabbitmq-scheduler-event.publisher';
 import { RedisDistributedLockAdapter } from './adapters/redis-distributed-lock.adapter';
@@ -77,8 +77,8 @@ import { SchedulerController, SchedulerHealthController } from './http/scheduler
     RabbitMqSchedulerEventPublisher,
     { provide: SchedulerEventPublisherPort, useExisting: RabbitMqSchedulerEventPublisher },
     ScheduledJobProcessor,
-    BullMqSchedulerJobQueue,
-    { provide: SchedulerJobQueuePort, useExisting: BullMqSchedulerJobQueue },
+    BullMqSchedulerQueueAdapter,
+    { provide: SchedulerJobQueuePort, useExisting: BullMqSchedulerQueueAdapter },
     BullMqSchedulerJobWorker,
 
     // use cases (business logic only) bound to their inbound ports via a thin adapter

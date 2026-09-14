@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { NextNumberOptions, NumberingPort } from './ports/numbering.port';
+import { NextNumberOptions, NumberingPort } from '../ports/numbering.port';
 
 /**
  * Sequence-backed document numbering. All DB access goes through the
@@ -9,7 +9,7 @@ import { NextNumberOptions, NumberingPort } from './ports/numbering.port';
  * (or the fallback client when called standalone).
  */
 @Injectable()
-export class PrismaNumberingService implements NumberingPort {
+export class PrismaNumberingRepository implements NumberingPort {
   constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
 
   public async nextNumber(sequenceKey: string, options: NextNumberOptions = {}): Promise<string> {

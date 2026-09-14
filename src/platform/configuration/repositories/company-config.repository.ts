@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { ConfigService } from '@config/config.service';
-import { CompanyConfig, CompanyConfigPort, DEFAULT_COMPANY_ID } from './ports/company-config.port';
+import { CompanyConfig, CompanyConfigPort, DEFAULT_COMPANY_ID } from '../ports/company-config.port';
 
 /**
  * Prisma-backed company configuration adapter. Reads the configured company
@@ -12,8 +12,8 @@ import { CompanyConfig, CompanyConfigPort, DEFAULT_COMPANY_ID } from './ports/co
  * and is propagated instead of being hidden behind defaults.
  */
 @Injectable()
-export class PrismaCompanyConfigAdapter implements CompanyConfigPort {
-  private readonly logger = new Logger(PrismaCompanyConfigAdapter.name);
+export class PrismaCompanyConfigRepository implements CompanyConfigPort {
+  private readonly logger = new Logger(PrismaCompanyConfigRepository.name);
 
   constructor(
     private readonly txHost: TransactionHost<TransactionalAdapterPrisma>,
