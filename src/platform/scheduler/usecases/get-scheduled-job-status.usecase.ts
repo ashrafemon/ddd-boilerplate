@@ -1,7 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { ScheduledJobRecord } from '../scheduler.types';
-import { JobNotFoundError } from '../scheduler.errors';
 
 @Injectable()
 export class GetScheduledJobStatusUseCase {
@@ -10,7 +9,7 @@ export class GetScheduledJobStatusUseCase {
   async execute(jobId: string): Promise<ScheduledJobRecord> {
     const job = await this.jobs.findById(jobId);
     if (!job) {
-      throw new JobNotFoundError(jobId);
+      throw new NotFoundException(`Scheduled job '${jobId}' not found`);
     }
     return job;
   }

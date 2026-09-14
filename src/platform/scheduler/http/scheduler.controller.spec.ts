@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { SchedulerPort } from '../ports/scheduler.port';
 import { ScheduledJobDispatchLogRepositoryPort } from '../ports/scheduled-job-dispatch-log-repository.port';
 import { ScheduledJobEditLogRepositoryPort } from '../ports/scheduled-job-edit-log-repository.port';
@@ -94,14 +95,11 @@ describe('SchedulerController', () => {
 
   it('updates a job and returns the fresh record', async () => {
     const controller = makeController();
-    const body = updateScheduledJobSchema.parse({
+    const body = {
       expectedVersion: 0,
       nextRunAt: '2026-01-02T00:00:00.000Z',
-    });
-    const result = await controller.update(
-      'j1',
-      Object.assign(Object.create(UpdateScheduledJobDto.prototype), body),
-    );
+    } satisfies z.infer<typeof updateScheduledJobSchema> as UpdateScheduledJobDto;
+    const result = await controller.update('j1', body);
     expect(result.data.id).toBe('j1');
     expect(result.message).toBe('Scheduled job updated');
   });

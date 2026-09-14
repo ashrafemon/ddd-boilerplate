@@ -1,5 +1,4 @@
 import { FieldResolverRegistry } from './field-resolver.registry';
-import { UnregisteredFieldError } from './errors/unregistered-field.error';
 import { EvaluationContext, FieldResolver } from './ports/field-resolver.port';
 
 class FakeFieldResolver implements FieldResolver {
@@ -22,9 +21,9 @@ describe('FieldResolverRegistry', () => {
     ).resolves.toBe('invoice.status@t1');
   });
 
-  it('throws the same UnregisteredFieldError for an unresolved prefix', () => {
+  it('throws the same /No FieldResolver registered/ for an unresolved prefix', () => {
     expect(() => registry.resolve('stock_balance.qty', { traceId: 'tr1' })).toThrow(
-      UnregisteredFieldError,
+      /No FieldResolver registered/,
     );
   });
 

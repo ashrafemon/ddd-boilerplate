@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { KeyedRegistryBase } from '@shared-kernel/utils/keyed-registry.base';
 import { EvaluationContext, FieldResolver } from './ports/field-resolver.port';
-import { UnregisteredFieldError } from './errors/unregistered-field.error';
 
 /**
  * Keyed by field prefix (e.g. 'stock_balance' for 'stock_balance.qtyOnHand').
@@ -23,7 +22,7 @@ export class FieldResolverRegistry extends KeyedRegistryBase<FieldResolver> {
     const [prefix] = field.split('.');
     const resolver = this.getEntry(prefix);
     if (!resolver) {
-      throw new UnregisteredFieldError(field);
+      throw new Error(`No FieldResolver registered for field '${field}'`);
     }
     return resolver.resolve(field, context);
   }

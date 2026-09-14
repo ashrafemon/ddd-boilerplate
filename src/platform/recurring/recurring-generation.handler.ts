@@ -4,7 +4,6 @@ import {
   ConditionEvaluator,
   GenerationCondition,
 } from '@platform/condition-engine/ports/condition-evaluator.port';
-import { UnregisteredFieldError } from '@platform/condition-engine/errors/unregistered-field.error';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
 import {
@@ -121,7 +120,7 @@ export class RecurringGenerationHandler implements ScheduledJobFireHandler {
         `Outbox RecurringOccurrenceRequested for ${template.targetEntityType} execution ${execution.id}`,
       );
     } catch (err) {
-      const message = err instanceof UnregisteredFieldError ? err.message : (err as Error).message;
+      const message = (err as Error).message;
       await this.executionRepository.fail(execution.id, message);
     }
 

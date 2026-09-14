@@ -1,6 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
-import { BatchOperationJobNotFoundError } from '../batch-operation.errors';
 import { BatchOperationJobRecord } from '../batch-operation.types';
 
 /** Job header + aggregated counters for progress polling. */
@@ -11,7 +10,7 @@ export class GetBatchOperationJobStatusUseCase {
   async execute(jobId: string): Promise<BatchOperationJobRecord> {
     const job = await this.repository.findJob(jobId);
     if (!job) {
-      throw new BatchOperationJobNotFoundError(jobId);
+      throw new NotFoundException(`BatchOperationJob '${jobId}' not found`);
     }
     return job;
   }

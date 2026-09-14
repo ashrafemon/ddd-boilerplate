@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Prisma } from '../../../generated/client';
@@ -8,7 +8,6 @@ import {
   RecurringTemplateUpdate,
 } from '../ports/recurring-template-repository.port';
 import { CreateRecurringTemplateInput, RecurringTemplateRecord } from '../recurring-template.types';
-import { DuplicateTemplateNoError } from '../recurring.errors';
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
@@ -25,7 +24,9 @@ export class PrismaRecurringTemplateRepository implements RecurringTemplateRepos
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === UNIQUE_CONSTRAINT_VIOLATION
       ) {
-        throw new DuplicateTemplateNoError(input.templateNo);
+        throw new ConflictException(
+          `RecurringTemplate.templateNo '${input.templateNo}' already exists`,
+        );
       }
       throw err;
     }

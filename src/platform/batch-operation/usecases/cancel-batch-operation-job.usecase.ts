@@ -1,10 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
-import {
-  BatchOperationJobNotFoundError,
-  BatchOperationNotCancellableError,
-} from '../batch-operation.errors';
 import { BatchOperationJobRecord, isTerminalBatchOperationStatus } from '../batch-operation.types';
 
 /**
@@ -21,10 +17,12 @@ export class CancelBatchOperationJobUseCase {
   async execute(jobId: string): Promise<BatchOperationJobRecord> {
     const job = await this.jobs.findJob(jobId);
     if (!job) {
-      throw new BatchOperationJobNotFoundError(jobId);
+      throw new NotFoundException(`BatchOperationJob '${jobId}' not found`);
     }
     if (isTerminalBatchOperationStatus(job.status)) {
-      throw new BatchOperationNotCancellableError(jobId, job.status);
+      throw new ConflictException(
+        `BatchOperationJob '${jobId}' is ${job.status} and can no longer be cancelled`,
+      );
     }
 
     await this.jobs.setCancelRequested(jobId);

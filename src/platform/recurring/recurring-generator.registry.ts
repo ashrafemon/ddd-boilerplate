@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { KeyedRegistryBase } from '@shared-kernel/utils/keyed-registry.base';
 import { RecurringGenerator } from './ports/recurring-generator.port';
-import {
-  DuplicateGeneratorRegistrationError,
-  UnregisteredGeneratorError,
-} from './recurring.errors';
 
 /**
  * Keyed by targetEntityType. Invisible outside RecurringModule —
@@ -17,14 +13,18 @@ export class RecurringGeneratorRegistry extends KeyedRegistryBase<RecurringGener
     this.registerEntry(
       targetEntityType,
       generator,
-      () => new DuplicateGeneratorRegistrationError(targetEntityType),
+      () =>
+        new Error(
+          `RecurringGenerator for targetEntityType '${targetEntityType}' already registered`,
+        ),
     );
   }
 
   resolve(targetEntityType: string): RecurringGenerator {
     return this.requireEntry(
       targetEntityType,
-      () => new UnregisteredGeneratorError(targetEntityType),
+      () =>
+        new Error(`No RecurringGenerator registered for targetEntityType '${targetEntityType}'`),
     );
   }
 }

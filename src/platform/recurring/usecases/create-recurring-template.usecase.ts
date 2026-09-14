@@ -1,9 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
 import { RecurringTemplateRepositoryPort } from '../ports/recurring-template-repository.port';
 import { CreateRecurringTemplateInput, RecurringTemplateRecord } from '../recurring-template.types';
-import { InvalidPartyTypeError, InvalidTriggerFieldsError } from '../recurring.errors';
 
 /**
  * partyType must correlate with targetEntityType — application-layer rule,
@@ -51,17 +50,19 @@ export class CreateRecurringTemplateUseCase {
     if (input.partyType) {
       const expected = PARTY_TYPE_BY_TARGET_ENTITY[input.targetEntityType];
       if (expected && input.partyType !== expected) {
-        throw new InvalidPartyTypeError(input.targetEntityType, input.partyType);
+        throw new BadRequestException(
+          `partyType '${input.partyType}' does not correlate with targetEntityType '${input.targetEntityType}'`,
+        );
       }
     }
 
     if (input.triggerType === 'TIME') {
       if (!input.frequency || !input.interval || !input.startDate) {
-        throw new InvalidTriggerFieldsError('TIME');
+        throw new BadRequestException("triggerType 'TIME' requires its matching fields to be set");
       }
     } else if (input.triggerType === 'EVENT') {
       if (!input.eventName) {
-        throw new InvalidTriggerFieldsError('EVENT');
+        throw new BadRequestException("triggerType 'EVENT' requires its matching fields to be set");
       }
     }
 

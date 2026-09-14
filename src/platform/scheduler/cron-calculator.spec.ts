@@ -1,5 +1,4 @@
 import { computeNextRunAt } from './cron-calculator';
-import { InvalidCronExpressionError } from './scheduler.errors';
 
 describe('computeNextRunAt', () => {
   it('returns a date after the from timestamp for a valid cron', () => {
@@ -9,6 +8,6 @@ describe('computeNextRunAt', () => {
   });
 
   it('throws InvalidCronExpressionError for garbage input', () => {
-    expect(() => computeNextRunAt('not-a-cron')).toThrow(InvalidCronExpressionError);
+    expect(() => computeNextRunAt('not-a-cron')).toThrow(/Invalid cron expression/);
   });
 });

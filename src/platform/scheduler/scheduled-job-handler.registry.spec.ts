@@ -1,5 +1,4 @@
 import { ScheduledJobHandlerRegistry } from './scheduled-job-handler.registry';
-import { DuplicateHandlerRegistrationError, UnregisteredHandlerError } from './scheduler.errors';
 import { ScheduledJobFireHandler } from './ports/scheduled-job-fire-handler.port';
 
 const fakeHandler: ScheduledJobFireHandler = { handle: () => Promise.resolve() };
@@ -16,15 +15,15 @@ describe('ScheduledJobHandlerRegistry', () => {
     const registry = new ScheduledJobHandlerRegistry();
     registry.register('Recurring', fakeHandler);
 
-    expect(() => registry.register('Recurring', fakeHandler)).toThrow(
-      DuplicateHandlerRegistrationError,
-    );
+    expect(() => registry.register('Recurring', fakeHandler)).toThrow(/already registered/);
   });
 
   it('throws UnregisteredHandlerError for a jobType with no handler', () => {
     const registry = new ScheduledJobHandlerRegistry();
 
-    expect(() => registry.resolveHandler('Unknown')).toThrow(UnregisteredHandlerError);
+    expect(() => registry.resolveHandler('Unknown')).toThrow(
+      /No ScheduledJobFireHandler registered/,
+    );
   });
 
   it('tryFire returns false when no handler is registered', async () => {

@@ -1,5 +1,5 @@
+import { BadRequestException } from '@nestjs/common';
 import { CronExpressionParser } from 'cron-parser';
-import { InvalidCronExpressionError } from './scheduler.errors';
 
 /**
  * Pure next-run calculator — not behind a port (no external I/O to swap).
@@ -12,9 +12,8 @@ export function computeNextRunAt(cronExpression: string, from: Date = new Date()
     });
     return expression.next().toDate();
   } catch (err) {
-    throw new InvalidCronExpressionError(
-      cronExpression,
-      err instanceof Error ? err.message : String(err),
+    throw new BadRequestException(
+      `Invalid cron expression '${cronExpression}': ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 }

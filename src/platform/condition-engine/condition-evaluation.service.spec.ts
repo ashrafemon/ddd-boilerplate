@@ -1,6 +1,5 @@
 import { ConditionEvaluationService } from './condition-evaluation.service';
 import { FieldResolverRegistry } from './field-resolver.registry';
-import { UnregisteredFieldError } from './errors/unregistered-field.error';
 import { EvaluationContext, FieldResolver } from './ports/field-resolver.port';
 
 class FakeFieldResolver implements FieldResolver {
@@ -100,6 +99,6 @@ describe('ConditionEvaluationService', () => {
         },
         makeContext(),
       ),
-    ).rejects.toBeInstanceOf(UnregisteredFieldError);
+    ).rejects.toThrow(/No FieldResolver registered/);
   });
 });

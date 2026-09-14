@@ -1,8 +1,4 @@
 import { RecurringGeneratorRegistry } from './recurring-generator.registry';
-import {
-  DuplicateGeneratorRegistrationError,
-  UnregisteredGeneratorError,
-} from './recurring.errors';
 import { RecurringGenerator } from './ports/recurring-generator.port';
 
 const generator = (): RecurringGenerator => ({
@@ -27,12 +23,10 @@ describe('RecurringGeneratorRegistry', () => {
 
   it('rejects duplicate registrations at boot', () => {
     registry.register('Invoice', generator());
-    expect(() => registry.register('Invoice', generator())).toThrow(
-      DuplicateGeneratorRegistrationError,
-    );
+    expect(() => registry.register('Invoice', generator())).toThrow(/already registered/);
   });
 
   it('throws for a targetEntityType without a generator', () => {
-    expect(() => registry.resolve('Bill')).toThrow(UnregisteredGeneratorError);
+    expect(() => registry.resolve('Bill')).toThrow(/No RecurringGenerator registered/);
   });
 });

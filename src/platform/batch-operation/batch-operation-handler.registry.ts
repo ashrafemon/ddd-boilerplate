@@ -1,12 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { KeyedRegistryBase } from '@shared-kernel/utils/keyed-registry.base';
 import { BatchOperationHandler } from './ports/batch-operation-handler.port';
-import {
-  BatchHandlerOperationMismatchError,
-  DuplicateBatchHandlerRegistrationError,
-  UnregisteredBatchHandlerError,
-  UnsupportedBatchOperationError,
-} from './batch-operation.errors';
 
 interface RegisteredEntry {
   aggregateType: string;
@@ -34,30 +28,38 @@ export class BatchOperationHandlerRegistry extends KeyedRegistryBase<RegisteredE
     handler: BatchOperationHandler,
   ): void {
     if (this.has(aggregateType)) {
-      throw new DuplicateBatchHandlerRegistrationError(aggregateType);
+      throw new Error(
+        `BatchOperationHandler for aggregateType '${aggregateType}' already registered`,
+      );
     }
 
     const reported = new Set(handler.supportedOperations());
     const missing = supportedOperations.filter(op => !reported.has(op));
     if (missing.length > 0) {
-      throw new BatchHandlerOperationMismatchError(aggregateType, missing);
+      throw new Error(
+        `BatchOperationHandler '${aggregateType}' was registered for operations it does not report: ${missing.join(', ')}`,
+      );
     }
 
     this.entries.set(aggregateType, { aggregateType, supportedOperations, handler });
   }
 
   resolveHandler(aggregateType: string): BatchOperationHandler {
-    return this.requireEntry(aggregateType, () => new UnregisteredBatchHandlerError(aggregateType))
-      .handler;
+    return this.requireEntry(
+      aggregateType,
+      () => new Error(`No BatchOperationHandler registered for aggregateType '${aggregateType}'`),
+    ).handler;
   }
 
   assertOperationSupported(aggregateType: string, operationCode: string): void {
     const entry = this.requireEntry(
       aggregateType,
-      () => new UnregisteredBatchHandlerError(aggregateType),
+      () => new Error(`No BatchOperationHandler registered for aggregateType '${aggregateType}'`),
     );
     if (!entry.supportedOperations.includes(operationCode)) {
-      throw new UnsupportedBatchOperationError(aggregateType, operationCode);
+      throw new BadRequestException(
+        `aggregateType '${aggregateType}' does not support operationCode '${operationCode}'`,
+      );
     }
   }
 

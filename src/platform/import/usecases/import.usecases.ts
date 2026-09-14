@@ -1,4 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
 import { NumberingPort } from '@platform/numbering/ports/numbering.port';
@@ -25,22 +31,13 @@ import {
   RowResult,
   RowVerdict,
 } from '../import.types';
-import {
-  ImportAvScanNotCleanError,
-  ImportBuildShaMismatchError,
-  ImportFileTooLargeError,
-  ImportJobNotFoundError,
-  ImportMappingIncompleteError,
-  ImportRowLimitExceededError,
-  ImportSourceFileMissingError,
-  InvalidImportJobStateError,
-  StorageObjectNotFoundError,
-} from '../import.errors';
 
 /** Shared by the parse/validate/execute stages — a job built by an older deploy must not resume mid-pipeline under a changed build. */
 function assertImportBuildSha(job: ImportJobRecord, currentBuildSha: string): void {
   if (job.buildSha && job.buildSha !== currentBuildSha) {
-    throw new ImportBuildShaMismatchError(job.id, job.buildSha, currentBuildSha);
+    throw new ConflictException(
+      `ImportJob '${job.id}' was parsed by build ${job.buildSha} but this instance runs ${currentBuildSha}`,
+    );
   }
 }
 
@@ -140,15 +137,17 @@ export class CreateImportJobUseCase {
     const cfg = this.config.getImport();
     const obj = await this.storageObjects.findById(input.storageObjectId);
     if (!obj) {
-      throw new StorageObjectNotFoundError(input.storageObjectId);
+      throw new NotFoundException(`StorageObject '${input.storageObjectId}' not found`);
     }
     const meta = await this.storage.getMetadata(obj.storageKey);
     if (!meta) {
-      throw new ImportSourceFileMissingError(input.storageObjectId);
+      throw new NotFoundException(`Import source file is missing for '${input.storageObjectId}'`);
     }
     const maxBytes = Math.min(descriptor.maxFileSizeBytes, cfg.maxFileSizeBytes);
     if (meta.size > maxBytes) {
-      throw new ImportFileTooLargeError(input.entityKey, meta.size, maxBytes);
+      throw new BadRequestException(
+        `Import file for '${input.entityKey}' is ${meta.size} bytes, above the ${maxBytes}-byte limit`,
+      );
     }
     const scanStatus = cfg.skipAvScan
       ? 'CLEAN'
@@ -156,7 +155,9 @@ export class CreateImportJobUseCase {
         ? 'CLEAN'
         : obj.scanStatus;
     if (scanStatus !== 'CLEAN') {
-      throw new ImportAvScanNotCleanError(obj.id, scanStatus);
+      throw new BadRequestException(
+        `Storage object '${obj.id}' did not pass AV scanning (status: ${scanStatus})`,
+      );
     }
     await this.storageObjects.markVerified(obj.id, {
       sizeBytes: meta.size,
@@ -194,7 +195,7 @@ export class GetImportJobStatusUseCase {
   private async requireJob(jobId: string, tenantId?: string) {
     const job = await this.jobs.findById(jobId);
     if (!job || (tenantId && job.tenantId && job.tenantId !== tenantId)) {
-      throw new ImportJobNotFoundError(jobId);
+      throw new NotFoundException(`ImportJob '${jobId}' not found`);
     }
     return job;
   }
@@ -229,7 +230,7 @@ export class CancelImportJobUseCase {
   }): Promise<ImportJobRecord> {
     const job = await this.jobs.findById(input.jobId);
     if (!job || (input.tenantId && job.tenantId && job.tenantId !== input.tenantId)) {
-      throw new ImportJobNotFoundError(input.jobId);
+      throw new NotFoundException(`ImportJob '${input.jobId}' not found`);
     }
     const terminal = ['COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED', 'CANCELLED'];
     if (terminal.includes(job.status)) {
@@ -265,19 +266,23 @@ export class UpdateImportMappingUseCase {
   }): Promise<ImportJobRecord> {
     const job = await this.jobs.findById(input.jobId);
     if (!job || (input.tenantId && job.tenantId && job.tenantId !== input.tenantId)) {
-      throw new ImportJobNotFoundError(input.jobId);
+      throw new NotFoundException(`ImportJob '${input.jobId}' not found`);
     }
     if (job.status !== 'MAPPED' && job.status !== 'UPLOADED' && job.status !== 'PARSING') {
       // allow mapping update when MAPPED (re-map before validate)
     }
     if (!['MAPPED'].includes(job.status)) {
-      throw new InvalidImportJobStateError(job.id, job.status, 'MAPPED');
+      throw new ConflictException(
+        `ImportJob '${job.id}' is ${job.status}; expected one of: MAPPED`,
+      );
     }
     const required = job.descriptorSnapshot.fields.filter(f => f.required).map(f => f.targetField);
     const mappedTargets = new Set(Object.values(input.mapping));
     const missing = required.filter(f => !mappedTargets.has(f));
     if (missing.length > 0) {
-      throw new ImportMappingIncompleteError(job.entityKey, missing);
+      throw new BadRequestException(
+        `Mapping for '${job.entityKey}' is incomplete; missing required fields: ${missing.join(', ')}`,
+      );
     }
     let updated = await this.jobs.setColumnMapping(job.id, input.mapping);
     updated = await this.jobs.transitionStatus(job.id, 'MAPPED', 'VALIDATING', {
@@ -303,7 +308,7 @@ export class GetImportPreviewUseCase {
   async execute(input: { jobId: string; tenantId?: string }) {
     const job = await this.jobs.findById(input.jobId);
     if (!job || (input.tenantId && job.tenantId && job.tenantId !== input.tenantId)) {
-      throw new ImportJobNotFoundError(input.jobId);
+      throw new NotFoundException(`ImportJob '${input.jobId}' not found`);
     }
     const previewLimit = this.config.getImport().previewRows;
     const { rows } = await this.rows.listByJob(job.id, { page: 1, pageSize: previewLimit });
@@ -331,7 +336,7 @@ export class GetImportReportUseCase {
   async execute(input: { jobId: string; tenantId?: string; page: number; pageSize: number }) {
     const job = await this.jobs.findById(input.jobId);
     if (!job || (input.tenantId && job.tenantId && job.tenantId !== input.tenantId)) {
-      throw new ImportJobNotFoundError(input.jobId);
+      throw new NotFoundException(`ImportJob '${input.jobId}' not found`);
     }
     const { rows, total } = await this.rows.listByJob(job.id, {
       page: input.page,
@@ -365,10 +370,12 @@ export class ExecuteImportJobUseCase {
   }): Promise<ImportJobRecord> {
     const job = await this.jobs.findById(input.jobId);
     if (!job || (input.tenantId && job.tenantId && job.tenantId !== input.tenantId)) {
-      throw new ImportJobNotFoundError(input.jobId);
+      throw new NotFoundException(`ImportJob '${input.jobId}' not found`);
     }
     if (job.status !== 'VALIDATED') {
-      throw new InvalidImportJobStateError(job.id, job.status, 'VALIDATED');
+      throw new ConflictException(
+        `ImportJob '${job.id}' is ${job.status}; expected one of: VALIDATED`,
+      );
     }
     const updated = await this.jobs.transitionStatus(job.id, 'VALIDATED', 'EXECUTING', {
       from: 'VALIDATED',
@@ -395,14 +402,16 @@ export class ParseImportJobUseCase {
 
   async execute(jobId: string): Promise<void> {
     const job = await this.jobs.findById(jobId);
-    if (!job) throw new ImportJobNotFoundError(jobId);
+    if (!job) throw new NotFoundException(`ImportJob '${jobId}' not found`);
     assertImportBuildSha(job, this.config.getImport().buildSha);
 
     if (job.status === 'MAPPED' || job.status === 'VALIDATING' || job.status === 'VALIDATED') {
       return;
     }
     if (job.status !== 'UPLOADED' && job.status !== 'PARSING') {
-      throw new InvalidImportJobStateError(job.id, job.status, ['UPLOADED', 'PARSING']);
+      throw new ConflictException(
+        `ImportJob '${job.id}' is ${job.status}; expected one of: ${['UPLOADED', 'PARSING'].join(', ')}`,
+      );
     }
 
     await this.jobs.transitionStatus(job.id, ['UPLOADED', 'PARSING'], 'PARSING', {
@@ -415,7 +424,7 @@ export class ParseImportJobUseCase {
       const obj = job.sourceStorageObjectId
         ? await this.storageObjects.findById(job.sourceStorageObjectId)
         : null;
-      if (!obj) throw new ImportSourceFileMissingError(job.id);
+      if (!obj) throw new NotFoundException(`Import source file is missing for '${job.id}'`);
       const downloaded = await this.storage.download(obj.storageKey);
       const maxRows = Math.min(job.descriptorSnapshot.maxRows, this.config.getImport().maxRows);
       const parsed = parseImportFile(
@@ -425,7 +434,9 @@ export class ParseImportJobUseCase {
         maxRows + 1,
       );
       if (parsed.rows.length > maxRows) {
-        throw new ImportRowLimitExceededError(job.entityKey, parsed.rows.length, maxRows);
+        throw new BadRequestException(
+          `Import file for '${job.entityKey}' has ${parsed.rows.length} rows, above the ${maxRows}-row limit`,
+        );
       }
 
       await this.rows.deleteByJob(job.id);
@@ -479,11 +490,13 @@ export class ValidateImportJobUseCase {
 
   async execute(jobId: string): Promise<void> {
     const job = await this.jobs.findById(jobId);
-    if (!job) throw new ImportJobNotFoundError(jobId);
+    if (!job) throw new NotFoundException(`ImportJob '${jobId}' not found`);
     assertImportBuildSha(job, this.config.getImport().buildSha);
     if (job.status === 'VALIDATED' || job.status === 'EXECUTING') return;
     if (job.status !== 'VALIDATING' && job.status !== 'MAPPED') {
-      throw new InvalidImportJobStateError(job.id, job.status, ['MAPPED', 'VALIDATING']);
+      throw new ConflictException(
+        `ImportJob '${job.id}' is ${job.status}; expected one of: ${['MAPPED', 'VALIDATING'].join(', ')}`,
+      );
     }
     if (job.status === 'MAPPED') {
       await this.jobs.transitionStatus(job.id, 'MAPPED', 'VALIDATING', {
@@ -582,13 +595,15 @@ export class RunImportExecutionUseCase {
 
   async execute(jobId: string): Promise<void> {
     const job = await this.jobs.findById(jobId);
-    if (!job) throw new ImportJobNotFoundError(jobId);
+    if (!job) throw new NotFoundException(`ImportJob '${jobId}' not found`);
     assertImportBuildSha(job, this.config.getImport().buildSha);
     if (['COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED', 'CANCELLED'].includes(job.status)) {
       return;
     }
     if (job.status !== 'EXECUTING') {
-      throw new InvalidImportJobStateError(job.id, job.status, 'EXECUTING');
+      throw new ConflictException(
+        `ImportJob '${job.id}' is ${job.status}; expected one of: EXECUTING`,
+      );
     }
 
     const handler = this.registry.resolveHandler(job.entityKey);

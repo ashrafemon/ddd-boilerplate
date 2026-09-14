@@ -1,11 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { NumberingPort } from '@platform/numbering/ports/numbering.port';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
 import { BatchOperationWorker } from '../batch-operation.worker';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationQueuePublisherPort } from '../ports/batch-operation-queue-publisher.port';
-import { BatchSelectionTooLargeError, EmptyBatchSelectionError } from '../batch-operation.errors';
 import {
   BatchOperationDispatch,
   BatchOperationJobRecord,
@@ -37,12 +36,14 @@ export class CreateBatchOperationJobUseCase {
 
     const entityIds = [...new Set(input.entityIds.filter(id => id && id.trim().length > 0))];
     if (entityIds.length === 0) {
-      throw new EmptyBatchSelectionError();
+      throw new BadRequestException('A batch operation must target at least one record');
     }
 
     const { maxRecordsPerJob, syncThreshold } = this.configService.getBatchOperation();
     if (entityIds.length > maxRecordsPerJob) {
-      throw new BatchSelectionTooLargeError(entityIds.length, maxRecordsPerJob);
+      throw new BadRequestException(
+        `Selection of ${entityIds.length} records exceeds the maximum of ${maxRecordsPerJob} per batch operation`,
+      );
     }
 
     const mode: BatchOperationMode = entityIds.length <= syncThreshold ? 'SYNC' : 'ASYNC';

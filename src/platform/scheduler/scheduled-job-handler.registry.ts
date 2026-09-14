@@ -4,7 +4,6 @@ import {
   ScheduledJobFireHandler,
   ScheduledJobPayload,
 } from './ports/scheduled-job-fire-handler.port';
-import { DuplicateHandlerRegistrationError, UnregisteredHandlerError } from './scheduler.errors';
 
 /**
  * Keyed by jobType. Dispatch checks here first; missing entry falls back to RabbitMQ.
@@ -12,11 +11,18 @@ import { DuplicateHandlerRegistrationError, UnregisteredHandlerError } from './s
 @Injectable()
 export class ScheduledJobHandlerRegistry extends KeyedRegistryBase<ScheduledJobFireHandler> {
   register(jobType: string, handler: ScheduledJobFireHandler): void {
-    this.registerEntry(jobType, handler, () => new DuplicateHandlerRegistrationError(jobType));
+    this.registerEntry(
+      jobType,
+      handler,
+      () => new Error(`ScheduledJobFireHandler for jobType '${jobType}' already registered`),
+    );
   }
 
   resolveHandler(jobType: string): ScheduledJobFireHandler {
-    return this.requireEntry(jobType, () => new UnregisteredHandlerError(jobType));
+    return this.requireEntry(
+      jobType,
+      () => new Error(`No ScheduledJobFireHandler registered for jobType '${jobType}'`),
+    );
   }
 
   /** Returns true if an in-process handler fired; false if none registered. */
