@@ -79,16 +79,16 @@ src/
 
 Module aliases (see `tsconfig.json` + Jest `moduleNameMapper` in `package.json`):
 
-| Alias | Path |
-|---|---|
-| `@config/*` | `src/config/*` |
-| `@shared-kernel/*` | `src/shared-kernel/*` |
-| `@bootstrap/*` | `src/bootstrap/*` |
-| `@infrastructure/*` | `src/infrastructure/*` |
-| `@platform/*` | `src/platform/*` |
-| `@business/*` | `src/business/*` |
-| `@test/*` | `test/*` |
-| `@prisma/client` | `src/generated/client.ts` |
+| Alias               | Path                      |
+| ------------------- | ------------------------- |
+| `@config/*`         | `src/config/*`            |
+| `@shared-kernel/*`  | `src/shared-kernel/*`     |
+| `@bootstrap/*`      | `src/bootstrap/*`         |
+| `@infrastructure/*` | `src/infrastructure/*`    |
+| `@platform/*`       | `src/platform/*`          |
+| `@business/*`       | `src/business/*`          |
+| `@test/*`           | `test/*`                  |
+| `@prisma/client`    | `src/generated/client.ts` |
 
 ---
 
@@ -311,12 +311,12 @@ class and the module binds the concrete adapter with `useClass`/`useExisting`.
 
 Per aggregate module there are four port families:
 
-| Port (token) | Defined in | Implemented by | Used for |
-|---|---|---|---|
-| `ProductCommandRepository` | `domain/repositories/` | `PrismaProductCommandRepository` (via `TransactionHost`) | reads/writes of the aggregate inside the `@Transactional` boundary |
-| `ProductQuery` | `application/queries/` | `PrismaProductQueryRepository` (via `PrismaReadPort`) | read-model queries (list/get/purchasable) |
-| `ProductIntegrationPort` | `application/integrations/publishes/` | `infrastructure/adapters/platform/OutboxAdapter` (wraps platform `OutboxWriterPort`) | append raised domain events to the outbox |
-| `CompanyConfigPort` (module-local) | `application/outbound-ports/` | `infrastructure/adapters/platform/CompanyConfigAdapter` (wraps platform `CompanyConfigPort`) | default currency / auto-approve threshold |
+| Port (token)                       | Defined in                            | Implemented by                                                                               | Used for                                                           |
+| ---------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `ProductCommandRepository`         | `domain/repositories/`                | `PrismaProductCommandRepository` (via `TransactionHost`)                                     | reads/writes of the aggregate inside the `@Transactional` boundary |
+| `ProductQuery`                     | `application/queries/`                | `PrismaProductQueryRepository` (via `PrismaReadPort`)                                        | read-model queries (list/get/purchasable)                          |
+| `ProductIntegrationPort`           | `application/integrations/publishes/` | `infrastructure/adapters/platform/OutboxAdapter` (wraps platform `OutboxWriterPort`)         | append raised domain events to the outbox                          |
+| `CompanyConfigPort` (module-local) | `application/outbound-ports/`         | `infrastructure/adapters/platform/CompanyConfigAdapter` (wraps platform `CompanyConfigPort`) | default currency / auto-approve threshold                          |
 
 Example binding (`product.module.ts`):
 
@@ -527,13 +527,13 @@ Flow details:
 
 ### 8.2 Domain events vs integration events
 
-| | Domain event | Integration event |
-|---|---|---|
-| Scope | In-process, same monolith | Across brokers/processes |
-| Transport | `InProcessEventBus` (EventEmitter2 adapter, wildcard) | RabbitMQ / Kafka / SQS |
-| Durability | Best effort | Transactional outbox (guaranteed at-least-once) |
-| Persisted | No | `outbox_messages` |
-| Example | `ProductCreated` → `@OnEvent` listener | Same event published as the full `IntegrationMessage` envelope |
+|            | Domain event                                          | Integration event                                              |
+| ---------- | ----------------------------------------------------- | -------------------------------------------------------------- |
+| Scope      | In-process, same monolith                             | Across brokers/processes                                       |
+| Transport  | `InProcessEventBus` (EventEmitter2 adapter, wildcard) | RabbitMQ / Kafka / SQS                                         |
+| Durability | Best effort                                           | Transactional outbox (guaranteed at-least-once)                |
+| Persisted  | No                                                    | `outbox_messages`                                              |
+| Example    | `ProductCreated` → `@OnEvent` listener                | Same event published as the full `IntegrationMessage` envelope |
 
 Each module's `integrations/publishes/*.integration-event.ts` files declare the typed wire
 shape per event (`eventType: 'product.created'`, etc.) as a publish contract; the outbox
@@ -615,7 +615,7 @@ platform/
 ├── scheduler/       SchedulerModule — DB-backed ScheduledJob table polled by SchedulerTicker,
 │                    BullMQ async execution, RedisDistributedLockAdapter, per-jobType fire
 │                    handlers via ScheduledJobHandlerRegistry, RabbitMqSchedulerEventPublisher;
-│                    inbound SchedulerPort facade + 9 granular ports; HTTP /scheduled-jobs
+│                    SchedulerPort facade + adapter-bound ops ports; HTTP /scheduled-jobs
 ├── recurring/       RecurringModule — RecurringTemplate/Execution (generic TIME+EVENT trigger
 │                    model), RecurringGenerationHandler (plugs into scheduler),
 │                    RecurringGeneratorRegistry, DomainEventDispatcher; HTTP /recurring-templates
@@ -629,6 +629,14 @@ platform/
 
 Business code injects the **port abstractions** and never imports concrete platform services
 or infrastructure clients.
+
+> **Port discipline (current convention).** An inbound port + thin adapter exists only where
+> there is a real public boundary — a cross-module API (`SchedulerPort`, `RecurringExecutionPort`,
+> public module ports). Where the sole consumer is the service's own controller/worker
+> (batch-operation job commands, recurring template CRUD), the controller injects the **use case
+> directly** and the module exports use cases — no one-implementation port+adapter pairs. Registries
+> (`KeyedRegistryBase` in `shared-kernel/utils`) are the plugin boundaries: handler ports stay, and
+> owner modules register into them in `onApplicationBootstrap`.
 
 ### 9.1 Opt-in registration (business → platform, dependency points inward)
 
@@ -713,24 +721,24 @@ persistence stays encapsulated with it.
   URL comes from `DATABASE_URL` via the config file (no `env()` in the schema).
 - Schema is **split per aggregate** under `prisma/schema/<context>/<module>.prisma`:
 
-| Model | Table | Notes |
-|---|---|---|
-| `Product` | `products` | unique `sku`, `status` enum, `unitPrice Decimal(18,2)`, `version` |
-| `Vendor` | `vendors` | unique `code`, `status` enum, `version` |
-| `PurchaseOrder` | `purchase_orders` | unique `orderNumber`, vendor by uuid id, totals, `version` |
-| `PurchaseOrderLine` | `purchase_order_lines` | `@@unique([purchaseOrderId, productId])`, cascade delete |
-| `GoodReceiptNote` | `good_receipt_notes` | unique `grnNumber`, purchaseOrderId + vendorId refs, `receivedAt` |
-| `GrnLine` | `grn_lines` | ordered/received quantities, `@@unique([grnId, productId])` |
-| `OutboxMessage` | `outbox_messages` | JSON payload/headers, status enum, `@@index([status, publishedAt])` |
-| `CompanyConfig` | `company_configs` | unique `companyId`, default currency, auto-approve threshold |
-| `NumberSequence` | `number_sequences` | unique `key`, BigInt `currentValue`, prefix/padding/step |
-| `AuditLog` | `audit_logs` | action/entity/actor, tenant/org/request/correlation ids |
-| `Invoice` | `invoices` | unique `invoiceNo`, `customerId`, `status` enum, `lines` JSON, `version` (sales demo) |
-| `ScheduledJob` | `scheduled_jobs` | jobType/scope/scheduleMode, `nextRunAt`, `status`, `version`, `lockedUntil/By` |
-| `ScheduledJobDispatchLog` / `ScheduledJobEditLog` | `scheduled_job_dispatch_log` / `scheduled_job_edit_log` | dispatch outcomes + cron/nextRun edits |
-| `RecurringTemplate` / `RecurringExecution` | `recurring_templates` / `recurring_executions` | TIME+EVENT trigger model; execution unique on `(templateId, triggerKey)` = idempotency |
-| `BatchOperationJob` / `BatchOperationJobRow` | `batch_operation_jobs` / `batch_operation_job_rows` | header counters + per-row claim/status/result_snapshot |
-| `StorageObject` / `ImportJob` / `ImportJobRow` | `storage_objects` / `import_jobs` / `import_job_rows` | upload + job (descriptor snapshot, statusHistory) + row outcomes |
+| Model                                             | Table                                                   | Notes                                                                                  |
+| ------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `Product`                                         | `products`                                              | unique `sku`, `status` enum, `unitPrice Decimal(18,2)`, `version`                      |
+| `Vendor`                                          | `vendors`                                               | unique `code`, `status` enum, `version`                                                |
+| `PurchaseOrder`                                   | `purchase_orders`                                       | unique `orderNumber`, vendor by uuid id, totals, `version`                             |
+| `PurchaseOrderLine`                               | `purchase_order_lines`                                  | `@@unique([purchaseOrderId, productId])`, cascade delete                               |
+| `GoodReceiptNote`                                 | `good_receipt_notes`                                    | unique `grnNumber`, purchaseOrderId + vendorId refs, `receivedAt`                      |
+| `GrnLine`                                         | `grn_lines`                                             | ordered/received quantities, `@@unique([grnId, productId])`                            |
+| `OutboxMessage`                                   | `outbox_messages`                                       | JSON payload/headers, status enum, `@@index([status, publishedAt])`                    |
+| `CompanyConfig`                                   | `company_configs`                                       | unique `companyId`, default currency, auto-approve threshold                           |
+| `NumberSequence`                                  | `number_sequences`                                      | unique `key`, BigInt `currentValue`, prefix/padding/step                               |
+| `AuditLog`                                        | `audit_logs`                                            | action/entity/actor, tenant/org/request/correlation ids                                |
+| `Invoice`                                         | `invoices`                                              | unique `invoiceNo`, `customerId`, `status` enum, `lines` JSON, `version` (sales demo)  |
+| `ScheduledJob`                                    | `scheduled_jobs`                                        | jobType/scope/scheduleMode, `nextRunAt`, `status`, `version`, `lockedUntil/By`         |
+| `ScheduledJobDispatchLog` / `ScheduledJobEditLog` | `scheduled_job_dispatch_log` / `scheduled_job_edit_log` | dispatch outcomes + cron/nextRun edits                                                 |
+| `RecurringTemplate` / `RecurringExecution`        | `recurring_templates` / `recurring_executions`          | TIME+EVENT trigger model; execution unique on `(templateId, triggerKey)` = idempotency |
+| `BatchOperationJob` / `BatchOperationJobRow`      | `batch_operation_jobs` / `batch_operation_job_rows`     | header counters + per-row claim/status/result_snapshot                                 |
+| `StorageObject` / `ImportJob` / `ImportJobRow`    | `storage_objects` / `import_jobs` / `import_job_rows`   | upload + job (descriptor snapshot, statusHistory) + row outcomes                       |
 
 All money columns are `Decimal(18,2)`; domain converts through `Money` (minor units).
 Migrations: `init`, `add_platform_numbering_audit`, `add_company_config`,
@@ -773,12 +781,12 @@ Request → RequestIdInterceptor → LoggingInterceptor → DeviceResponseInterc
 
 ### Error mapping (`HttpExceptionsFilter`)
 
-| Thrown | Response |
-|---|---|
-| `BadRequestException` with string[] messages (Zod validation) | `422 { status:'VALIDATE_ERROR', data: { field: msg } }` |
-| Nest `HttpException` (`NotFoundException` 404, `ConflictException` 409, ...) | `{ status:'ERROR', statusCode, message }` |
-| Plain `Error` carrying a numeric `statusCode` (invariant/policy/`Money` violations → 422) | `{ status:'ERROR', statusCode, message }` |
-| Anything else | `500 { status:'SERVER_ERROR', message:'Internal server error' }` — details never leak |
+| Thrown                                                                                    | Response                                                                              |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `BadRequestException` with string[] messages (Zod validation)                             | `422 { status:'VALIDATE_ERROR', data: { field: msg } }`                               |
+| Nest `HttpException` (`NotFoundException` 404, `ConflictException` 409, ...)              | `{ status:'ERROR', statusCode, message }`                                             |
+| Plain `Error` carrying a numeric `statusCode` (invariant/policy/`Money` violations → 422) | `{ status:'ERROR', statusCode, message }`                                             |
+| Anything else                                                                             | `500 { status:'SERVER_ERROR', message:'Internal server error' }` — details never leak |
 
 Domain code throws **framework-free** errors (`DomainException`/`InfrastructureException`
 classes exist in `shared-kernel/exceptions/`; registered invariants currently throw
@@ -787,17 +795,17 @@ call use case → wrap `{ data, message }`.
 
 ### REST surface (all under `/api/v1`)
 
-| Module | Endpoints |
-|---|---|
-| products | `POST /products`, `GET /products` (paged), `GET /products/:id`, `PATCH /products/:id`, `PATCH /products/:id/change-price`, `PATCH /products/:id/{activate,deactivate,discontinue}` |
-| vendors | `POST /vendors`, `GET /vendors` (paged), `GET /vendors/:id`, `PATCH /vendors/:id`, `PATCH /vendors/:id/{activate,deactivate,block}` |
-| purchase-orders | `POST /purchase-orders`, `GET /purchase-orders` (paged), `GET /purchase-orders/:id`, `POST /purchase-orders/:id/lines`, `DELETE /purchase-orders/:id/lines/:productId`, `PATCH /purchase-orders/:id/{submit,approve,reject,cancel,complete}` |
-| grn | `POST /grn`, `GET /grn` (paged), `GET /grn/:id`, `POST /grn/:id/lines`, `PATCH /grn/:id/{receive,complete}` |
-| invoices | `POST /invoices`, `GET /invoices/:id`, `POST /invoices/:id/post` (sales demo) |
-| scheduler | `GET /scheduled-jobs` (+`/:id`, `/:id/dispatch-log`), `PATCH /scheduled-jobs/:id`, `POST /scheduled-jobs/:id/cancel`, `GET /scheduler/health` |
-| recurring | `POST /recurring-templates`, `GET /recurring-templates` (+`/:id`), `POST /recurring-templates/:id/{pause,resume,cancel}` |
-| batch-operations | `GET /batch-operations/_registry`, `POST /batch-operations/validate`, `POST /batch-operations` (Sync 200 / Async 202), `GET /batch-operations` (+`/:id`, `/:id/rows`), `POST /batch-operations/:id/cancel` |
-| import | `GET /import/_registry`, `POST /import/uploads`, `POST /import/jobs`, `GET /import/jobs` (+`/:id`, `/:id/preview`, `/:id/report`), `PATCH /import/jobs/:id/mapping`, `POST /import/jobs/:id/{execute,cancel}`, `GET /import/:entityKey/init` |
+| Module           | Endpoints                                                                                                                                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| products         | `POST /products`, `GET /products` (paged), `GET /products/:id`, `PATCH /products/:id`, `PATCH /products/:id/change-price`, `PATCH /products/:id/{activate,deactivate,discontinue}`                                                           |
+| vendors          | `POST /vendors`, `GET /vendors` (paged), `GET /vendors/:id`, `PATCH /vendors/:id`, `PATCH /vendors/:id/{activate,deactivate,block}`                                                                                                          |
+| purchase-orders  | `POST /purchase-orders`, `GET /purchase-orders` (paged), `GET /purchase-orders/:id`, `POST /purchase-orders/:id/lines`, `DELETE /purchase-orders/:id/lines/:productId`, `PATCH /purchase-orders/:id/{submit,approve,reject,cancel,complete}` |
+| grn              | `POST /grn`, `GET /grn` (paged), `GET /grn/:id`, `POST /grn/:id/lines`, `PATCH /grn/:id/{receive,complete}`                                                                                                                                  |
+| invoices         | `POST /invoices`, `GET /invoices/:id`, `POST /invoices/:id/post` (sales demo)                                                                                                                                                                |
+| scheduler        | `GET /scheduled-jobs` (+`/:id`, `/:id/dispatch-log`), `PATCH /scheduled-jobs/:id`, `POST /scheduled-jobs/:id/cancel`, `GET /scheduler/health`                                                                                                |
+| recurring        | `POST /recurring-templates`, `GET /recurring-templates` (+`/:id`), `POST /recurring-templates/:id/{pause,resume,cancel}`                                                                                                                     |
+| batch-operations | `GET /batch-operations/_registry`, `POST /batch-operations/validate`, `POST /batch-operations` (Sync 200 / Async 202), `GET /batch-operations` (+`/:id`, `/:id/rows`), `POST /batch-operations/:id/cancel`                                   |
+| import           | `GET /import/_registry`, `POST /import/uploads`, `POST /import/jobs`, `GET /import/jobs` (+`/:id`, `/:id/preview`, `/:id/report`), `PATCH /import/jobs/:id/mapping`, `POST /import/jobs/:id/{execute,cancel}`, `GET /import/:entityKey/init` |
 
 ---
 
