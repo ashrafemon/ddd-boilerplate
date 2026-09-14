@@ -21,10 +21,3 @@ export interface RecurringContext {
    */
   eventPayload?: JsonObject;
 }
-
-export interface ResolvedHeader {
-  partyId: string;
-  partyType: string;
-  currency: string;
-  [key: string]: unknown;
-}

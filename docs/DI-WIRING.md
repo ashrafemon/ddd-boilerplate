@@ -880,7 +880,7 @@ flowchart LR
 
 #### RecurringModule — `src/platform/recurring/recurring.module.ts`
 
-imports: ContextModule, OutboxModule, SchedulerModule, ConditionEngineModule · exports: RecurringGeneratorRegistry, RecurringExecutionPort, RecurringTemplatePort
+imports: ContextModule, OutboxModule, SchedulerModule, ConditionEngineModule · exports: RecurringExecutionPort, RecurringTemplatePort
 
 ```mermaid
 flowchart LR
@@ -986,6 +986,8 @@ flowchart LR
     SchedulerController -->|injects| UpdateScheduledJobUseCase
     CancelScheduledJobUseCase["CancelScheduledJobUseCase"]
     SchedulerController -->|injects| CancelScheduledJobUseCase
+    RescheduleExternalJobUseCase["RescheduleExternalJobUseCase"]
+    SchedulerController -->|injects| RescheduleExternalJobUseCase
     RequestContextPort["RequestContextPort"]
     SchedulerController -->|injects via ContextModule| RequestContextPort
     SchedulerHealthController["SchedulerHealthController"]
@@ -1024,7 +1026,6 @@ flowchart LR
     RegisterScheduledJobUseCase["RegisterScheduledJobUseCase"]
     RegisterScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
     CancelScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
-    RescheduleExternalJobUseCase["RescheduleExternalJobUseCase"]
     RescheduleExternalJobUseCase -->|injects| ScheduledJobRepositoryPort
     UpdateScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
     UpdateScheduledJobUseCase -->|injects| ScheduledJobEditLogRepositoryPort

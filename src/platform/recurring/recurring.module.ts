@@ -6,7 +6,6 @@ import { ScheduledJobHandlerRegistry } from '@platform/scheduler/scheduled-job-h
 import { SchedulerModule } from '@platform/scheduler/scheduler.module';
 import { DomainEventDispatcher } from './domain-event.dispatcher';
 import { RecurringGenerationHandler } from './recurring-generation.handler';
-import { RecurringGeneratorRegistry } from './recurring-generator.registry';
 import { RecurringExecutionPort } from './ports/recurring-execution.port';
 import { RecurringTemplatePort } from './ports/recurring-template.port';
 import { RecurringExecutionRepositoryPort } from './ports/recurring-execution-repository.port';
@@ -34,7 +33,6 @@ import './events/recurring.registry';
   imports: [ContextModule, OutboxModule, SchedulerModule, ConditionEngineModule],
   controllers: [RecurringTemplateController],
   providers: [
-    RecurringGeneratorRegistry,
     PrismaRecurringTemplateRepository,
     {
       provide: RecurringTemplateRepositoryPort,
@@ -58,7 +56,7 @@ import './events/recurring.registry';
     GetRecurringTemplateUseCase,
     ListRecurringTemplatesUseCase,
   ],
-  exports: [RecurringGeneratorRegistry, RecurringExecutionPort, RecurringTemplatePort],
+  exports: [RecurringExecutionPort, RecurringTemplatePort],
 })
 export class RecurringModule implements OnApplicationBootstrap {
   constructor(

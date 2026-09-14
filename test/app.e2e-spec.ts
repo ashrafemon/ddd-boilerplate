@@ -9,7 +9,6 @@ import { OutboxWriterPort } from './../src/platform/outbox/ports/outbox-writer.p
 import { SchedulerPort } from '../src/platform/scheduler/ports/scheduler.port';
 import { ScheduledJobHandlerRegistry } from '../src/platform/scheduler/scheduled-job-handler.registry';
 import { RecurringExecutionPort } from '../src/platform/recurring/ports/recurring-execution.port';
-import { RecurringGeneratorRegistry } from '../src/platform/recurring/recurring-generator.registry';
 import { ConditionEvaluator } from './../src/platform/condition-engine/ports/condition-evaluator.port';
 import { BatchOperationHandlerRegistry } from '../src/platform/batch-operation/batch-operation-handler.registry';
 import { ImportHandlerRegistry } from '../src/platform/import/import-handler.registry';
@@ -43,7 +42,6 @@ describe('App (e2e)', () => {
 
     // opt-in registrations applied by the owning modules at bootstrap
     expect(app.get(ScheduledJobHandlerRegistry).has('Recurring')).toBe(true);
-    expect(app.get(RecurringGeneratorRegistry)).toBeDefined();
     expect(app.get(BatchOperationHandlerRegistry).health()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ aggregateType: 'PurchaseOrder' }),

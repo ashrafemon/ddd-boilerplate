@@ -594,7 +594,7 @@ platform/
 │                    tokens to MessagePublisher adapters over the infra clients
 ├── context/         ContextModule — ClsRequestContextService (RequestContextPort) and
 │                    PrismaReadPort (bound to the infrastructure PrismaReadService);
-│                    ports also define RequestContext, Clock/SystemClock, UnitOfWork
+│                    the ports folder also defines the immutable RequestContext snapshot type
 ├── cache/           CacheModule — Redis or Memcached CachePort adapter, chosen by the same
 │                    resolveCacheDriver() the infrastructure layer uses (exactly one client)
 ├── configuration/   ConfigurationModule — PrismaCompanyConfigAdapter (CompanyConfigPort),
@@ -619,7 +619,7 @@ platform/
 │                    SchedulerPort facade + adapter-bound ops ports; HTTP /scheduled-jobs
 ├── recurring/       RecurringModule — RecurringTemplate/Execution (generic TIME+EVENT trigger
 │                    model), RecurringGenerationHandler (plugs into scheduler),
-│                    RecurringGeneratorRegistry, DomainEventDispatcher; HTTP /recurring-templates
+│                    DomainEventDispatcher; HTTP /recurring-templates
 ├── batch-operation/ BatchOperationModule — Sync/Async bulk transitions, job+row tables,
 │                    BatchOperationHandlerRegistry (aggregate handlers opt in from their own
 │                    module), BullMQ chunk fan-out, reconciliation cron; HTTP /batch-operations
@@ -639,14 +639,14 @@ or infrastructure clients.
 > operation it is published behind a port (recurring template creation = `RecurringTemplatePort`;
 > the internal controller keeps using the use case directly). All five registries
 > (`BatchOperationHandler` / `ImportHandler` / `ScheduledJobFireHandler` / `FieldResolver` /
-> `RecurringGenerator`) share `KeyedRegistryBase` (`shared-kernel/utils`); owner modules register
+> `FieldResolver`) share `KeyedRegistryBase` (`shared-kernel/utils`); owner modules register
 > into them in `onApplicationBootstrap`.
 
 ### 9.1 Opt-in registration (business → platform, dependency points inward)
 
 The scheduler, recurring, batch-operation and import services each own a **registry**
-(`ScheduledJobHandlerRegistry`, `RecurringGeneratorRegistry`, `BatchOperationHandlerRegistry`,
-`ImportHandlerRegistry`). A platform service never imports a business module — instead the
+(`ScheduledJobHandlerRegistry`, `BatchOperationHandlerRegistry`, `ImportHandlerRegistry`,
+plus `FieldResolverRegistry` in condition-engine). A platform service never imports a business module — instead the
 **owning module** injects the registry (and its own handler) directly and calls
 `register(...)` in `onApplicationBootstrap`, once the whole container is built. Duplicates /
 supportedOperations mismatches throw at boot. The registry classes are exported through each
@@ -806,7 +806,7 @@ call use case → wrap `{ data, message }`.
 | purchase-orders  | `POST /purchase-orders`, `GET /purchase-orders` (paged), `GET /purchase-orders/:id`, `POST /purchase-orders/:id/lines`, `DELETE /purchase-orders/:id/lines/:productId`, `PATCH /purchase-orders/:id/{submit,approve,reject,cancel,complete}` |
 | grn              | `POST /grn`, `GET /grn` (paged), `GET /grn/:id`, `POST /grn/:id/lines`, `PATCH /grn/:id/{receive,complete}`                                                                                                                                  |
 | invoices         | `POST /invoices`, `GET /invoices/:id`, `POST /invoices/:id/post` (sales demo)                                                                                                                                                                |
-| scheduler        | `GET /scheduled-jobs` (+`/:id`, `/:id/dispatch-log`), `PATCH /scheduled-jobs/:id`, `POST /scheduled-jobs/:id/cancel`, `GET /scheduler/health`                                                                                                |
+| scheduler        | `GET /scheduled-jobs` (+`/:id`, `/:id/dispatch-log`), `PATCH /scheduled-jobs/:id`, `POST /scheduled-jobs/:id/cancel`, `POST /scheduled-jobs/:id/dispatch-now` (force due-now), `GET /scheduler/health`                                                                                                |
 | recurring        | `POST /recurring-templates`, `GET /recurring-templates` (+`/:id`), `POST /recurring-templates/:id/{pause,resume,cancel}`                                                                                                                     |
 | batch-operations | `GET /batch-operations/_registry`, `POST /batch-operations/validate`, `POST /batch-operations` (Sync 200 / Async 202), `GET /batch-operations` (+`/:id`, `/:id/rows`), `POST /batch-operations/:id/cancel`                                   |
 | import           | `GET /import/_registry`, `POST /import/uploads`, `POST /import/jobs`, `GET /import/jobs` (+`/:id`, `/:id/preview`, `/:id/report`), `PATCH /import/jobs/:id/mapping`, `POST /import/jobs/:id/{execute,cancel}`, `GET /import/:entityKey/init` |

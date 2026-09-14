@@ -191,7 +191,7 @@ BullMqSchedulerJobWorker ─▶ ScheduledJobProcessor:
   ├─ ScheduledJobHandlerRegistry.has(jobType)? ─▶ handler.handle(payload)   [in-process, opt-in]
   └─ else ─▶ SchedulerEventPublisherPort → RabbitMQ 'scheduler.job.<jobType>' [external subscriber]
 ReconcileMissedJobsUseCase (interval): releases stale CLAIMED rows; CRON skip-to-next; EXTERNAL catch-up
-ops:   /scheduled-jobs (list/get/dispatch-log/patch+version/cancel) · /scheduler/health
+ops:   /scheduled-jobs (list paged/get/dispatch-log/patch+version/cancel/dispatch-now) · /scheduler/health
 ```
 
 ### 6.3 Recurring
@@ -316,7 +316,6 @@ throw at boot.
 | VendorModule            | ImportHandlerRegistry         | `vendor`          | VendorImportHandler                                                      |
 | RecurringModule         | ScheduledJobHandlerRegistry   | `Recurring`       | RecurringGenerationHandler                                               |
 | data-owning modules     | FieldResolverRegistry         | field prefix      | FieldResolver                                                            |
-| document-owning modules | RecurringGeneratorRegistry    | targetEntityType  | RecurringGenerator                                                       |
 
 ## 9. Mental-model cheat sheet
 
