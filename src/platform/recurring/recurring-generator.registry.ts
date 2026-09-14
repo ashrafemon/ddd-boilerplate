@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { KeyedRegistryBase } from '@shared-kernel/utils/keyed-registry.base';
 import { RecurringGenerator } from './ports/recurring-generator.port';
 import {
   DuplicateGeneratorRegistrationError,
@@ -11,21 +12,19 @@ import {
  * owning business modules' bootstrap registrations.
  */
 @Injectable()
-export class RecurringGeneratorRegistry {
-  private readonly generators = new Map<string, RecurringGenerator>();
-
+export class RecurringGeneratorRegistry extends KeyedRegistryBase<RecurringGenerator> {
   register(targetEntityType: string, generator: RecurringGenerator): void {
-    if (this.generators.has(targetEntityType)) {
-      throw new DuplicateGeneratorRegistrationError(targetEntityType);
-    }
-    this.generators.set(targetEntityType, generator);
+    this.registerEntry(
+      targetEntityType,
+      generator,
+      () => new DuplicateGeneratorRegistrationError(targetEntityType),
+    );
   }
 
   resolve(targetEntityType: string): RecurringGenerator {
-    const generator = this.generators.get(targetEntityType);
-    if (!generator) {
-      throw new UnregisteredGeneratorError(targetEntityType);
-    }
-    return generator;
+    return this.requireEntry(
+      targetEntityType,
+      () => new UnregisteredGeneratorError(targetEntityType),
+    );
   }
 }

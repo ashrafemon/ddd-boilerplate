@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { KeyedRegistryBase } from '@shared-kernel/utils/keyed-registry.base';
 import { EvaluationContext, FieldResolver } from './ports/field-resolver.port';
 import { UnregisteredFieldError } from './errors/unregistered-field.error';
 
@@ -9,19 +10,18 @@ import { UnregisteredFieldError } from './errors/unregistered-field.error';
  * fails at evaluation time (see UnregisteredFieldError).
  */
 @Injectable()
-export class FieldResolverRegistry {
-  private readonly resolvers = new Map<string, FieldResolver>();
-
+export class FieldResolverRegistry extends KeyedRegistryBase<FieldResolver> {
   register(prefix: string, resolver: FieldResolver): void {
-    if (this.resolvers.has(prefix)) {
-      throw new Error(`FieldResolver for '${prefix}' already registered`);
-    }
-    this.resolvers.set(prefix, resolver);
+    this.registerEntry(
+      prefix,
+      resolver,
+      () => new Error(`FieldResolver for '${prefix}' already registered`),
+    );
   }
 
   resolve(field: string, context: EvaluationContext): Promise<unknown> {
     const [prefix] = field.split('.');
-    const resolver = this.resolvers.get(prefix);
+    const resolver = this.getEntry(prefix);
     if (!resolver) {
       throw new UnregisteredFieldError(field);
     }
