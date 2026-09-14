@@ -11,6 +11,7 @@ import {
   ListImportJobsUseCase,
   UpdateImportMappingUseCase,
 } from '../usecases/import.usecases';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { normalizePageQuery } from '@shared-kernel/types/pagination';
@@ -48,6 +49,7 @@ export class ImportController {
   }
 
   @Post('uploads')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({ summary: 'Create a presigned upload slot for an import source file' })
   async uploads(@Body() dto: CreateUploadDto, @Headers('idempotency-key') idempotencyKey?: string) {
     const ctx = this.requestContext.get();
@@ -61,6 +63,7 @@ export class ImportController {
   }
 
   @Post('jobs')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({ summary: 'Create an import job from a verified upload' })
   async create(@Body() dto: CreateJobDto) {
     const ctx = this.requestContext.get();

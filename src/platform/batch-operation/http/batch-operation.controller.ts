@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Res } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
@@ -67,6 +68,7 @@ export class BatchOperationController {
   }
 
   @Post()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Submit a batch operation (Sync 200 with result, Async 202 with job)',
   })
@@ -113,21 +115,24 @@ export class BatchOperationController {
   @Get(':id')
   @ApiOperation({ summary: 'Get a batch operation job status (header + counters)' })
   async get(@Param('id') id: string): Promise<ApiResponse<BatchOperationJobRecord>> {
-    const job = await this.getStatus.execute(id);
+    const ctx = this.requestContext.get();
+    const job = await this.getStatus.execute(id, ctx?.tenantId);
     return { data: job, message: 'Batch operation job fetched' };
   }
 
   @Get(':id/rows')
   @ApiOperation({ summary: 'List per-row outcomes for a batch operation job' })
   async getRows(@Param('id') id: string): Promise<ApiResponse<BatchOperationRowRecord[]>> {
-    const rows = await this.listRows.execute(id);
+    const ctx = this.requestContext.get();
+    const rows = await this.listRows.execute(id, ctx?.tenantId);
     return { data: rows, message: 'Batch operation job rows fetched' };
   }
 
   @Post(':id/cancel')
   @ApiOperation({ summary: 'Request cancellation of a running batch operation job' })
   async cancel(@Param('id') id: string): Promise<ApiResponse<BatchOperationJobRecord>> {
-    const job = await this.cancelJob.execute(id);
+    const ctx = this.requestContext.get();
+    const job = await this.cancelJob.execute(id, ctx?.tenantId);
     return { data: job, message: 'Batch operation cancellation requested' };
   }
 }

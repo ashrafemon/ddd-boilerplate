@@ -1,3 +1,4 @@
+import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
@@ -11,11 +12,12 @@ export class ListBatchOperationJobRowsUseCase {
     private readonly rows: BatchOperationJobRowRepositoryPort,
   ) {}
 
-  async execute(jobId: string): Promise<BatchOperationRowRecord[]> {
+  async execute(jobId: string, tenantId?: string): Promise<BatchOperationRowRecord[]> {
     const job = await this.jobs.findJob(jobId);
     if (!job) {
       throw new NotFoundException(`BatchOperationJob '${jobId}' not found`);
     }
+    TenantScope.assertVisible(job.tenantId ?? null, tenantId);
     return this.rows.findRowsByJobId(jobId);
   }
 }

@@ -56,19 +56,37 @@ export class PrismaScheduledJobRepository implements ScheduledJobRepositoryPort 
   async list(options?: {
     jobType?: string;
     status?: JobStatus | string;
+    tenantId?: string;
     limit?: number;
     offset?: number;
   }): Promise<ScheduledJobRecord[]> {
     const rows = await this.tx.scheduledJob.findMany({
-      where: {
-        jobType: options?.jobType,
-        status: options?.status ? DB_JOB_STATUS[options.status] : undefined,
-      },
+      where: this.listWhere(options),
       take: options?.limit ?? 50,
       skip: options?.offset ?? 0,
       orderBy: { nextRunAt: 'asc' },
     });
     return rows.map(row => ScheduledJobMapper.toRecord(row));
+  }
+
+  async count(options?: {
+    jobType?: string;
+    status?: JobStatus | string;
+    tenantId?: string;
+  }): Promise<number> {
+    return this.tx.scheduledJob.count({ where: this.listWhere(options) });
+  }
+
+  private listWhere(options?: {
+    jobType?: string;
+    status?: JobStatus | string;
+    tenantId?: string;
+  }) {
+    return {
+      jobType: options?.jobType,
+      status: options?.status ? DB_JOB_STATUS[options.status] : undefined,
+      tenantId: options?.tenantId,
+    };
   }
 
   async cancel(jobId: string): Promise<void> {

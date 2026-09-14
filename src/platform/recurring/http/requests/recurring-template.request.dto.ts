@@ -32,7 +32,7 @@ const baseSchema = z
     autoApprove: z.boolean().optional(),
     headerOverrides: z.record(z.string(), jsonValueSchema).optional(),
     generationCondition: z.record(z.string(), jsonValueSchema).optional(),
-    lines: z.array(jsonValueSchema).min(1),
+    lines: z.array(jsonValueSchema).min(1).max(2000),
   })
   .superRefine((dto, ctx) => {
     if (dto.triggerType === 'EVENT' && !dto.eventName) {

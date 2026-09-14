@@ -1,3 +1,4 @@
+import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import {
   BadRequestException,
@@ -192,9 +193,10 @@ export class GetImportJobStatusUseCase {
 
   private async requireJob(jobId: string, tenantId?: string) {
     const job = await this.jobs.findById(jobId);
-    if (!job || (tenantId && job.tenantId && job.tenantId !== tenantId)) {
+    if (!job) {
       throw new NotFoundException(`ImportJob '${jobId}' not found`);
     }
+    TenantScope.assertVisible(job.tenantId ?? null, tenantId);
     return job;
   }
 }

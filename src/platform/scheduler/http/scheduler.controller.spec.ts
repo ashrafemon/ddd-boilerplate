@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { SchedulerPort } from '../ports/scheduler.port';
 import { ScheduledJobDispatchLogRepositoryPort } from '../ports/scheduled-job-dispatch-log-repository.port';
 import { ScheduledJobEditLogRepositoryPort } from '../ports/scheduled-job-edit-log-repository.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
@@ -9,7 +8,44 @@ import { GetSchedulerHealthMetricsUseCase } from '../usecases/get-scheduler-heal
 import { SchedulerTickHeartbeat } from '../scheduler-tick.heartbeat';
 import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
 import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContext } from '@platform/context/ports/request-context';
+import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
 import { SchedulerController, SchedulerHealthController } from './scheduler.controller';
+
+class StubRequestContextPort extends RequestContextPort {
+  isAvailable(): boolean {
+    return true;
+  }
+  get(): RequestContext | null {
+    return RequestContext.create({
+      requestId: 'r1',
+      correlationId: 'c1',
+      tenantId: 't1',
+      roles: [],
+      locale: 'en',
+    });
+  }
+  require(): RequestContext {
+    return this.get() as RequestContext;
+  }
+  set(): void {}
+  getRequestId(): string | undefined {
+    return 'r1';
+  }
+  getCorrelationId(): string | undefined {
+    return 'c1';
+  }
+  getTenantId(): string | undefined {
+    return 't1';
+  }
+  getOrganizationId(): string | undefined {
+    return undefined;
+  }
+  getUserId(): string | undefined {
+    return undefined;
+  }
+}
 import { UpdateScheduledJobDto, updateScheduledJobSchema } from './requests/scheduler.request.dto';
 
 function aJob(): ScheduledJobRecord {
@@ -50,6 +86,7 @@ function makeJobs(overrides: Partial<ScheduledJobRepositoryPort> = {}): Schedule
     touchLastRunAt: jest.fn(),
     markFailed: jest.fn(),
     releaseStaleClaims: jest.fn(),
+    count: jest.fn().mockResolvedValue(1),
     updateWithVersionCheck: jest.fn().mockResolvedValue(true),
     ...overrides,
   };
@@ -61,21 +98,19 @@ const makeDispatchLogs = (): ScheduledJobDispatchLogRepositoryPort => ({
   countFailuresSince: jest.fn().mockResolvedValue(0),
 });
 
-const makeSchedulerPort = (): SchedulerPort => ({
-  schedule: jest.fn(),
-  reschedule: jest.fn(),
-  cancel: jest.fn(),
-  cancelByAggregate: jest.fn(),
-  rescheduleByAggregate: jest.fn(),
-});
-
 function makeController(jobs = makeJobs()) {
   const getStatus = new GetScheduledJobStatusUseCase(jobs);
-  const listDispatchLog = new ListScheduledJobDispatchLogUseCase(makeDispatchLogs());
+  const listDispatchLog = new ListScheduledJobDispatchLogUseCase(makeDispatchLogs(), jobs);
   const updateJob = new UpdateScheduledJobUseCase(jobs, {
     insert: jest.fn(),
   } satisfies ScheduledJobEditLogRepositoryPort);
-  return new SchedulerController(getStatus, listDispatchLog, updateJob, makeSchedulerPort());
+  return new SchedulerController(
+    getStatus,
+    listDispatchLog,
+    updateJob,
+    new CancelScheduledJobUseCase(jobs),
+    new StubRequestContextPort(),
+  );
 }
 
 describe('SchedulerController', () => {
@@ -83,8 +118,9 @@ describe('SchedulerController', () => {
     const list = jest.fn().mockResolvedValue([]);
     const controller = makeController(makeJobs({ list }));
 
-    const result = await controller.list({});
-    expect(result.data).toEqual([]);
+    const result = await controller.list({ page: 1, pageSize: 20 });
+    expect(result.data.items).toEqual([]);
+    expect(result.data.total).toBe(1);
     expect(list).toHaveBeenCalled();
   });
 

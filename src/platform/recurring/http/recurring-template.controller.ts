@@ -55,7 +55,8 @@ export class RecurringTemplateController {
   @Get(':id')
   @ApiOperation({ summary: 'Get a recurring template by id' })
   async get(@Param('id') id: string) {
-    const template = await this.getUseCase.execute(id);
+    const ctx = this.requestContext.get();
+    const template = await this.getUseCase.execute(id, ctx?.tenantId);
     return { data: template, message: 'Recurring template fetched' };
   }
 
@@ -63,7 +64,7 @@ export class RecurringTemplateController {
   @ApiOperation({ summary: 'Pause a recurring template' })
   async pause(@Param('id') id: string) {
     const ctx = this.requestContext.get();
-    const template = await this.pauseUseCase.execute(id, ctx?.userId);
+    const template = await this.pauseUseCase.execute(id, ctx?.userId, ctx?.tenantId);
     return { data: template, message: 'Recurring template paused' };
   }
 
@@ -71,7 +72,7 @@ export class RecurringTemplateController {
   @ApiOperation({ summary: 'Resume a recurring template' })
   async resume(@Param('id') id: string) {
     const ctx = this.requestContext.get();
-    const template = await this.resumeUseCase.execute(id, ctx?.userId);
+    const template = await this.resumeUseCase.execute(id, ctx?.userId, ctx?.tenantId);
     return { data: template, message: 'Recurring template resumed' };
   }
 
@@ -79,7 +80,7 @@ export class RecurringTemplateController {
   @ApiOperation({ summary: 'Cancel a recurring template' })
   async cancel(@Param('id') id: string) {
     const ctx = this.requestContext.get();
-    const template = await this.cancelUseCase.execute(id, ctx?.userId);
+    const template = await this.cancelUseCase.execute(id, ctx?.userId, ctx?.tenantId);
     return { data: template, message: 'Recurring template cancelled' };
   }
 }

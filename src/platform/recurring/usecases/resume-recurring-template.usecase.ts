@@ -1,3 +1,4 @@
+import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
@@ -13,11 +14,16 @@ export class ResumeRecurringTemplateUseCase {
   ) {}
 
   @Transactional()
-  async execute(id: string, modifiedBy?: string): Promise<RecurringTemplateRecord> {
+  async execute(
+    id: string,
+    modifiedBy?: string,
+    tenantId?: string,
+  ): Promise<RecurringTemplateRecord> {
     const template = await this.templateRepository.findById(id);
     if (!template) {
       throw new NotFoundException('RecurringTemplate not found');
     }
+    TenantScope.assertVisible(template.tenantId ?? null, tenantId);
     if (template.triggerType !== 'TIME') {
       // EVENT templates only ever flip status — nothing scheduled to recompute.
       return this.templateRepository.update(id, { status: 'ACTIVE', modifiedBy });

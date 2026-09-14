@@ -1,3 +1,4 @@
+import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
@@ -14,11 +15,12 @@ export class CancelBatchOperationJobUseCase {
     private readonly rows: BatchOperationJobRowRepositoryPort,
   ) {}
 
-  async execute(jobId: string): Promise<BatchOperationJobRecord> {
+  async execute(jobId: string, tenantId?: string): Promise<BatchOperationJobRecord> {
     const job = await this.jobs.findJob(jobId);
     if (!job) {
       throw new NotFoundException(`BatchOperationJob '${jobId}' not found`);
     }
+    TenantScope.assertVisible(job.tenantId ?? null, tenantId);
     if (BatchOperationStatusRules.isTerminal(job.status)) {
       throw new ConflictException(
         `BatchOperationJob '${jobId}' is ${job.status} and can no longer be cancelled`,

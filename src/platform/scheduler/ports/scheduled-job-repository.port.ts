@@ -17,9 +17,15 @@ export abstract class ScheduledJobRepositoryPort {
   abstract list(options?: {
     jobType?: string;
     status?: JobStatus | string;
+    tenantId?: string;
     limit?: number;
     offset?: number;
   }): Promise<ScheduledJobRecord[]>;
+  abstract count(options?: {
+    jobType?: string;
+    status?: JobStatus | string;
+    tenantId?: string;
+  }): Promise<number>;
   abstract cancel(jobId: string): Promise<void>;
   abstract cancelByAggregate(aggregateType: string, aggregateId: string): Promise<void>;
   abstract reschedule(jobId: string, nextRunAt: Date): Promise<void>;

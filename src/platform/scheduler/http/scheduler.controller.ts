@@ -1,15 +1,15 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
-import { ScheduledJobDispatchLogRecord } from '../scheduler.types';
-import { ScheduledJobRecord } from '../scheduler.types';
-import { SchedulerHealthMetrics } from '../scheduler.types';
-import { SchedulerPort } from '../ports/scheduler.port';
-import { ListScheduledJobsDto, UpdateScheduledJobDto } from './requests/scheduler.request.dto';
-import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
+import { PageResult } from '@shared-kernel/types/pagination';
+import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
 import { GetScheduledJobStatusUseCase } from '../usecases/get-scheduled-job-status.usecase';
-import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
 import { GetSchedulerHealthMetricsUseCase } from '../usecases/get-scheduler-health-metrics.usecase';
+import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
+import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
+import { ScheduledJobDispatchLogRecord, ScheduledJobRecord } from '../scheduler.types';
+import { ListScheduledJobsDto, UpdateScheduledJobDto } from './requests/scheduler.request.dto';
 
 @ApiTags('scheduler')
 @ApiBearerAuth()
@@ -19,20 +19,25 @@ export class SchedulerController {
     private readonly getStatus: GetScheduledJobStatusUseCase,
     private readonly listDispatchLog: ListScheduledJobDispatchLogUseCase,
     private readonly updateJob: UpdateScheduledJobUseCase,
-    private readonly scheduler: SchedulerPort,
+    private readonly cancelJob: CancelScheduledJobUseCase,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'List scheduled jobs' })
-  async list(@Query() query: ListScheduledJobsDto): Promise<ApiResponse<ScheduledJobRecord[]>> {
-    const data = await this.getStatus.list(query);
+  @ApiOperation({ summary: 'List scheduled jobs (paged, tenant-scoped)' })
+  async list(
+    @Query() query: ListScheduledJobsDto,
+  ): Promise<ApiResponse<PageResult<ScheduledJobRecord>>> {
+    const ctx = this.requestContext.get();
+    const data = await this.getStatus.list({ ...query, tenantId: ctx?.tenantId });
     return { data, message: 'Scheduled jobs' };
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get scheduled job status' })
   async get(@Param('id') id: string): Promise<ApiResponse<ScheduledJobRecord>> {
-    const data = await this.getStatus.execute(id);
+    const ctx = this.requestContext.get();
+    const data = await this.getStatus.execute(id, ctx?.tenantId);
     return { data, message: 'Scheduled job' };
   }
 
@@ -41,7 +46,8 @@ export class SchedulerController {
   async dispatchLog(
     @Param('id') id: string,
   ): Promise<ApiResponse<ScheduledJobDispatchLogRecord[]>> {
-    const data = await this.listDispatchLog.execute(id);
+    const ctx = this.requestContext.get();
+    const data = await this.listDispatchLog.execute(id, { tenantId: ctx?.tenantId });
     return { data, message: 'Dispatch log' };
   }
 
@@ -51,14 +57,16 @@ export class SchedulerController {
     @Param('id') id: string,
     @Body() body: UpdateScheduledJobDto,
   ): Promise<ApiResponse<ScheduledJobRecord>> {
+    const ctx = this.requestContext.get();
     await this.updateJob.execute({
       jobId: id,
       expectedVersion: body.expectedVersion,
       cronExpression: body.cronExpression,
       nextRunAt: body.nextRunAt ? new Date(body.nextRunAt) : undefined,
       editedBy: body.editedBy,
+      tenantId: ctx?.tenantId,
     });
-    const data = await this.getStatus.execute(id);
+    const data = await this.getStatus.execute(id, ctx?.tenantId);
     return { data, message: 'Scheduled job updated' };
   }
 
@@ -66,7 +74,8 @@ export class SchedulerController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Cancel a scheduled job' })
   async cancel(@Param('id') id: string): Promise<ApiResponse<{ id: string }>> {
-    await this.scheduler.cancel(id);
+    const ctx = this.requestContext.get();
+    await this.cancelJob.execute(id, ctx?.tenantId);
     return { data: { id }, message: 'Scheduled job cancelled' };
   }
 }
@@ -79,8 +88,10 @@ export class SchedulerHealthController {
 
   @Get('health')
   @ApiOperation({ summary: 'Scheduler health metrics' })
-  async healthMetrics(): Promise<ApiResponse<SchedulerHealthMetrics>> {
+  async healthMetrics(): Promise<ApiResponse<HealthMetricsData>> {
     const data = await this.health.execute();
     return { data, message: 'Scheduler health' };
   }
 }
+
+type HealthMetricsData = Awaited<ReturnType<GetSchedulerHealthMetricsUseCase['execute']>>;

@@ -1,3 +1,4 @@
+import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import {
   BadRequestException,
   ConflictException,
@@ -17,11 +18,12 @@ export class UpdateScheduledJobUseCase {
     private readonly editLogs: ScheduledJobEditLogRepositoryPort,
   ) {}
 
-  async execute(input: UpdateScheduledJobInput): Promise<void> {
+  async execute(input: UpdateScheduledJobInput & { tenantId?: string }): Promise<void> {
     const existing = await this.jobs.findById(input.jobId);
     if (!existing) {
       throw new NotFoundException(`Scheduled job '${input.jobId}' not found`);
     }
+    TenantScope.assertVisible(existing.tenantId ?? null, input.tenantId);
 
     const changedFields: Record<string, unknown> = {};
     let cronExpression = existing.cronExpression;
