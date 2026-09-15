@@ -1,6 +1,6 @@
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { OutboxEvent } from '@platform/events/bases/outbox-event.base';
 
 export abstract class InProcessEventBus {
-  abstract publish(event: DomainEvent): void;
-  abstract publishAll(events: readonly DomainEvent[]): void;
+  abstract publish(event: OutboxEvent): void;
+  abstract publishAll(events: readonly OutboxEvent[]): void;
 }

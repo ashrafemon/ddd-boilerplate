@@ -1,5 +1,5 @@
 import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { OutboxEventBase } from '@platform/events/bases/outbox-event.base';
 
 /**
  * Raised by RecurringGenerationHandler after a claimed, eligible occurrence.
@@ -22,7 +22,7 @@ export interface RecurringOccurrenceRequestedPayload {
   eventPayload?: JsonObject;
 }
 
-export class RecurringOccurrenceRequested extends DomainEvent {
+export class RecurringOccurrenceRequested extends OutboxEventBase {
   constructor(
     public readonly executionId: string,
     public readonly recurringTemplateId: string,

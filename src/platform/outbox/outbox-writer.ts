@@ -1,6 +1,6 @@
 import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { Injectable } from '@nestjs/common';
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { OutboxEvent } from '@platform/events/bases/outbox-event.base';
 import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { OutboxWriterPort } from './ports/outbox-writer.port';
@@ -13,7 +13,7 @@ export class OutboxWriter implements OutboxWriterPort {
     private readonly requestContext: RequestContextPort,
   ) {}
 
-  async append(event: DomainEvent, aggregateType: string, aggregateId: string): Promise<void> {
+  async append(event: OutboxEvent, aggregateType: string, aggregateId: string): Promise<void> {
     const context = this.requestContext.get();
     const correlationId = context?.correlationId ?? event.correlationId;
     const requestId = context?.requestId;
@@ -43,7 +43,7 @@ export class OutboxWriter implements OutboxWriterPort {
     await this.outboxRepository.save(message);
   }
 
-  private toPayload(event: DomainEvent): Record<string, unknown> {
+  private toPayload(event: OutboxEvent): Record<string, unknown> {
     const { eventId, version, correlationId, causationId, occurredAt, headers, ...rest } =
       PrismaJson.snapshot(event);
     void eventId;

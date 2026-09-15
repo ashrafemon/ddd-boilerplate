@@ -51,6 +51,21 @@ process boundary solely via `OutboxWriterPort`; every mutating path is
 tenant-stamped and read via `TenantScope` (404 for foreign rows); every state
 write is CAS/claim-token guarded so redelivery can never double-apply.
 
+> **Platform is independent of business (lint-enforced).** No file under
+> `src/platform/**` may import `@business/**` (or a relative `business/**`) — a
+> single ESLint regex bans it. Platform owns its OWN event contract:
+> `@platform/events/bases/outbox-event.base.ts` (`OutboxEvent` structural
+> interface + `OutboxEventBase` for platform events) and
+> `…/registries/outbox-event.registry.ts` (`outboxEventRegistry`). Business
+> aggregates still define their own `DomainEvent`s (in `@business/shared-business`,
+> which is NOT platform-adjacent) — those flow to the outbox as plain `IntegrationMessage`/`OutboxEvent`-shaped
+> values; to re-dispatch them in-process the composition root
+> (`src/bootstrap/configure-event-rehydration.ts`) attaches the business
+> `domainEventRegistry` as a read-only **delegate** of `outboxEventRegistry`,
+> so the lookup works without platform importing business. Importantly, platform's OWN completion/cancel events
+> (`ImportJobCompleted`, `BatchOperationJobCompleted`, `RecurringOccurrenceRequested`)
+> extend `OutboxEventBase` directly — no shared-kernel type, no business coupling.
+
 ## Adding a new platform service (checklist)
 
 1. Create the directory above and its `README.md` from the template

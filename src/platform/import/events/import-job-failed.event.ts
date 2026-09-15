@@ -1,4 +1,4 @@
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { OutboxEventBase } from '@platform/events/bases/outbox-event.base';
 import { ImportJobStatus } from '../import.types';
 
 /**
@@ -6,7 +6,7 @@ import { ImportJobStatus } from '../import.types';
  * exhausted retries). Per-row failures do NOT raise this — they end the job
  * COMPLETED_WITH_ERRORS.
  */
-export class ImportJobFailedEvent extends DomainEvent {
+export class ImportJobFailedEvent extends OutboxEventBase {
   constructor(
     public readonly jobId: string,
     public readonly jobNo: string,

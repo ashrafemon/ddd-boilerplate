@@ -3,7 +3,6 @@ import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
 import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { ScheduledJobHandlerRegistry } from '@platform/scheduler/scheduled-job-handler.registry';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';
@@ -80,8 +79,14 @@ export class DomainEventDispatcher implements OnModuleInit {
 
 /** One audited read of unknown bus payloads (domain-event envelope). */
 class DispatcherEventReader {
+  /**
+   * Envelope read is STRUCTURAL (any event carrying `eventId` — a business
+   * DomainEvent or a platform OutboxEvent) so the dispatcher keeps zero
+   * compile-time dependency on the business kernel.
+   */
   static eventId(event: object | null): string {
-    return event instanceof DomainEvent ? event.eventId : randomUUID();
+    const candidate = (event as { eventId?: unknown } | null)?.eventId;
+    return typeof candidate === 'string' && candidate.length > 0 ? candidate : randomUUID();
   }
 
   static snapshot(event: object | null): JsonObject {

@@ -1,11 +1,11 @@
 import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
 import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
-import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
+import { outboxEventRegistry } from '@platform/events/registries/outbox-event.registry';
 import { RecurringOccurrenceRequested } from './recurring-occurrence-requested.event';
 
 class RecurringOccurrenceRehydrator {
   static register(): void {
-    domainEventRegistry.register(
+    outboxEventRegistry.register(
       'RecurringOccurrenceRequested',
       payload =>
         new RecurringOccurrenceRequested(

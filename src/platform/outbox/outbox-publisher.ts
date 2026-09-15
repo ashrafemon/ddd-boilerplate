@@ -12,7 +12,7 @@ import {
   SqsPublisher,
 } from '@platform/messaging/message-publisher.tokens';
 import { InProcessEventBus } from '@platform/events/ports/event-bus.port';
-import { domainEventRegistry } from '@business/shared-business/domain/registries/domain-event.registry';
+import { outboxEventRegistry } from '@platform/events/registries/outbox-event.registry';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { OutboxMessageRecord, OutboxRepository } from './ports/outbox-repository.port';
 import { MessageRoutingPolicy } from '../events/message-routing.policy';
@@ -122,7 +122,7 @@ export class OutboxPublisher {
    * FAILED and re-publish duplicate broker traffic; surface via the log.
    */
   private async publishInProcess(record: OutboxMessageRecord): Promise<void> {
-    const event = domainEventRegistry.rehydrate(record.eventType, record.payload, {
+    const event = outboxEventRegistry.rehydrate(record.eventType, record.payload, {
       eventId: record.headers?.['event-id'],
       occurredAt: record.occurredAt,
       correlationId: record.headers?.['correlation-id'],

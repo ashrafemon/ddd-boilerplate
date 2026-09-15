@@ -7,6 +7,7 @@ import { configureCors } from './configure-cors';
 import { configureHttp } from './configure-http';
 import { configureSecurity } from './configure-security';
 import { configureSentry } from './configure-sentry';
+import { configureEventRehydration } from './configure-event-rehydration';
 import { configureServer } from './configure-server';
 import { configureShutdown } from './configure-shutdown';
 import { configureSwagger } from './configure-swagger';
@@ -18,6 +19,7 @@ import { configureSwagger } from './configure-swagger';
  */
 export async function bootstrap(): Promise<void> {
   configureSentry();
+  configureEventRehydration();
 
   const logger = new Logger('Bootstrap');
 

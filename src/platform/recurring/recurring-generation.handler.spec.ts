@@ -3,7 +3,7 @@ import { ConditionEvaluator } from '@platform/condition-engine/ports/condition-e
 import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
 import { RecurringGenerationHandler } from './recurring-generation.handler';
 import { RecurringOccurrenceRequested } from './events/recurring-occurrence-requested.event';
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { OutboxEvent } from '@platform/events/bases/outbox-event.base';
 import { RecurringExecutionRepositoryPort } from './ports/recurring-execution-repository.port';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';
 import { RecurringTemplateRecord } from './recurring-template.types';
@@ -37,7 +37,7 @@ describe('RecurringGenerationHandler', () => {
   };
 
   const append = jest
-    .fn<Promise<void>, [DomainEvent, string, string]>()
+    .fn<Promise<void>, [OutboxEvent, string, string]>()
     .mockResolvedValue(undefined);
   const outboxWriter: OutboxWriterPort = { append };
 

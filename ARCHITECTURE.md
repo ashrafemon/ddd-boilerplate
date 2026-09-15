@@ -280,7 +280,8 @@ Rules (enforced in `eslint.config.mjs`):
 ```text
 Allowed:
   infrastructure   third-party clients + config + shared-kernel exceptions only
-  platform         infrastructure clients + shared-business primitives, exposed as ports
+  platform         infrastructure clients ONLY (exposed as ports) — zero @business/**
+                   imports; see the OutboxEvent contract below
   business module  its own internals, @platform ports, shared-business, shared-kernel types,
                    ANOTHER module's public/** or application/outbound-ports/** contract
 Forbidden:
@@ -290,6 +291,17 @@ Forbidden:
                   application/usecases/**, application/integrations/**,
                   application/facades/**, infrastructure/**
   shared-business → @platform/**, @infrastructure/**, any concrete module (@business/*/*/**)
+  platform → @business/** (ANY, including shared-business) — a single ESLint
+          regex bans it. Platform defines its OWN event contract
+          (`@platform/events/bases/outbox-event.base.ts` → `OutboxEvent`
+          structural interface + `OutboxEventBase`, and
+          `outbox-event.registry.ts` → `outboxEventRegistry`). A business
+          `DomainEvent` satisfies `OutboxEvent` STRUCTURALLY (same envelope),
+          so the outbox pipes it with no shared type. The business rehydrator
+          registry is attached as a read-only DELEGATE by the composition
+          root (`src/bootstrap/configure-event-rehydration.ts`), not imported
+          by platform — control is inverted, business registration flows one
+          way only
   raw client libs (Prisma, @prisma/adapter-pg, amqplib, kafkajs, ioredis/redis,
   @golevelup/nestjs-rabbitmq, @ssut/nestjs-sqs) → infrastructure/config/bootstrap/platform only
   @nestjs/schedule → platform only (the outbox scheduler owns cron)
@@ -422,8 +434,8 @@ domain/common/value-objects/  Money (minor-units integer math, currency guards,
                     fromDecimal/toDecimal), VendorId
 domain/registries/  invariantRegistry  — keyed Invariant list, enforce() throws on violation
                     policyRegistry     — keyed Policy list, evaluate()/enforce()
-                    domainEventRegistry — event-type-name → rehydrator, used by the outbox
-                    publisher to rebuild domain events for in-process re-dispatch
+                    domainEventRegistry — event-type-name → rehydrator for domain events;
+                    bridged into the platform outboxEventRegistry as a delegate at bootstrap
 ```
 
 Aggregates register invariants/policies by importing side-effect files
@@ -507,7 +519,7 @@ flowchart LR
     ROUTE --> RMQ[RabbitMQ]
     ROUTE --> KAFKA[Kafka]
     ROUTE --> SQS[SQS]
-    PUB --> BUS[In-process re-dispatch<br/>via domainEventRegistry]
+    PUB --> BUS[In-process re-dispatch<br/>via outboxEventRegistry (+ business delegate)]
 ```
 
 Flow details:

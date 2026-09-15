@@ -18,8 +18,9 @@
    `PUBLISHING` + `claimedAt` lease and bumping `attempts` in one statement.
    Broker fan-out is decided per event by `MessageRoutingPolicy`; events are
    grouped per aggregate so each aggregate's stream keeps FIFO order.
-3. **In-process re-dispatch** — rehydrates the domain event through
-   `domainEventRegistry`, restoring the persisted envelope (stable `eventId`,
+3. **In-process re-dispatch** — rehydrates the event through the
+   platform-owned `outboxEventRegistry` (business rehydrators attached as a
+   composition-root delegate), restoring the persisted envelope (stable `eventId`,
    `occurredAt`, correlation/causation) and running listeners under the
    tenant's restored CLS context.
 4. **Reconcile** — `PUBLISHING` rows whose lease (`OUTBOX_CLAIM_LEASE_MS`)

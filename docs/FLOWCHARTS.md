@@ -104,7 +104,7 @@ OutboxScheduler (cron 10s) → OutboxPublisher.publishPendingBatch
   → claimBatch (PENDING|FAILED → PUBLISHING)
   → MessageRoutingPolicy.resolve(eventType) → RabbitMQ / Kafka / SQS envelope
     (headers: event-id · request-id · correlation-id)
-  → domainEventRegistry rehydrate → InProcessEventBus.emit('PurchaseOrderCreated')
+  → outboxEventRegistry rehydrate (business registry delegated) → InProcessEventBus.emit('PurchaseOrderCreated')
   → PUBLISHED · FAILED retried 1/min ≤ maxAttempts · cleanup hourly
   → module listeners (application/integrations/listeners/*) react:
     @OnEvent / @RabbitSubscribe / @KafkaEvent / @SqsMessageHandler — delegate to use cases only
