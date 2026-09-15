@@ -10,7 +10,6 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 import { PageResult } from '@shared-kernel/types/pagination';
 import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
@@ -33,7 +32,6 @@ export class SchedulerController {
     private readonly updateJob: UpdateScheduledJobUseCase,
     private readonly cancelJob: CancelScheduledJobUseCase,
     private readonly rescheduleJob: RescheduleExternalJobUseCase,
-    private readonly requestContext: RequestContextPort,
   ) {}
 
   @Get()
@@ -41,8 +39,7 @@ export class SchedulerController {
   async list(
     @Query() query: ListScheduledJobsDto,
   ): Promise<ApiResponse<PageResult<ScheduledJobRecord>>> {
-    const ctx = this.requestContext.get();
-    const data = await this.getStatus.list({ ...query, tenantId: ctx?.tenantId });
+    const data = await this.getStatus.list({ ...query });
     return { data, message: 'Scheduled jobs' };
   }
 
@@ -51,8 +48,7 @@ export class SchedulerController {
   async get(
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<ScheduledJobRecord>> {
-    const ctx = this.requestContext.get();
-    const data = await this.getStatus.execute(id, ctx?.tenantId);
+    const data = await this.getStatus.execute(id);
     return { data, message: 'Scheduled job' };
   }
 
@@ -61,8 +57,7 @@ export class SchedulerController {
   async dispatchLog(
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<ScheduledJobDispatchLogRecord[]>> {
-    const ctx = this.requestContext.get();
-    const data = await this.listDispatchLog.execute(id, { tenantId: ctx?.tenantId });
+    const data = await this.listDispatchLog.execute(id);
     return { data, message: 'Dispatch log' };
   }
 
@@ -72,16 +67,14 @@ export class SchedulerController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() body: UpdateScheduledJobDto,
   ): Promise<ApiResponse<ScheduledJobRecord>> {
-    const ctx = this.requestContext.get();
     await this.updateJob.execute({
       jobId: id,
       expectedVersion: body.expectedVersion,
       cronExpression: body.cronExpression,
       nextRunAt: body.nextRunAt ? new Date(body.nextRunAt) : undefined,
       editedBy: body.editedBy,
-      tenantId: ctx?.tenantId,
     });
-    const data = await this.getStatus.execute(id, ctx?.tenantId);
+    const data = await this.getStatus.execute(id);
     return { data, message: 'Scheduled job updated' };
   }
 
@@ -89,8 +82,7 @@ export class SchedulerController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Cancel a scheduled job' })
   async cancel(@Param('id', new ParseUUIDPipe()) id: string): Promise<ApiResponse<{ id: string }>> {
-    const ctx = this.requestContext.get();
-    await this.cancelJob.execute(id, ctx?.tenantId);
+    await this.cancelJob.execute(id);
     return { data: { id }, message: 'Scheduled job cancelled' };
   }
 
@@ -100,8 +92,7 @@ export class SchedulerController {
   async dispatchNow(
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<ScheduledJobRecord>> {
-    const ctx = this.requestContext.get();
-    const data = await this.rescheduleJob.dispatchNow(id, ctx?.tenantId);
+    const data = await this.rescheduleJob.dispatchNow(id);
     return { data, message: 'Scheduled job queued for immediate dispatch' };
   }
 }

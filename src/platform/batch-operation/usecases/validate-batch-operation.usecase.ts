@@ -1,6 +1,7 @@
 import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
 import {
   BatchOperationContext,
@@ -16,7 +17,10 @@ import {
  */
 @Injectable()
 export class ValidateBatchOperationUseCase {
-  constructor(private readonly registry: BatchOperationHandlerRegistry) {}
+  constructor(
+    private readonly registry: BatchOperationHandlerRegistry,
+    private readonly requestContext: RequestContextPort,
+  ) {}
 
   async execute(input: ValidateBatchOperationInput): Promise<BatchOperationPreview> {
     const handler = this.registry.resolveHandler(input.aggregateType);
@@ -24,7 +28,7 @@ export class ValidateBatchOperationUseCase {
 
     const entityIds = [...new Set(input.entityIds.filter(id => id && id.trim().length > 0))];
     const context: BatchOperationContext = {
-      tenantId: input.tenantId,
+      tenantId: input.tenantId ?? this.requestContext.getTenantId(),
       batchOperationJobId: `preview-${randomUUID()}`,
     };
 

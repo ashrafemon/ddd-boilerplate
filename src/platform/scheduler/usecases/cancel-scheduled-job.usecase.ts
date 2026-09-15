@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 
@@ -8,9 +9,11 @@ export class CancelScheduledJobUseCase {
   constructor(
     private readonly jobs: ScheduledJobRepositoryPort,
     private readonly audit: AuditPort,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(jobId: string, tenantId?: string): Promise<void> {
+    tenantId = tenantId ?? this.requestContext.getTenantId();
     const job = await this.jobs.findById(jobId);
     if (!job) {
       throw new NotFoundException(`Scheduled job '${jobId}' not found`);

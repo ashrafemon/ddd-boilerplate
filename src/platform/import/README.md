@@ -1,8 +1,9 @@
 # import (`platform/import`)
 
 Bulk spreadsheet/CSV import into any domain aggregate via a shared hexagonal
-pipeline. Domains opt in by registering on `ImportHandlerRegistry` from their own
-module's `onApplicationBootstrap` — the pipeline never imports domain types.
+pipeline. Domains opt in by shipping a pure `ImportHandler` + descriptor that the
+composition root (`src/bootstrap/configure-imports.ts`) registers on
+`ImportHandlerRegistry` — the pipeline never imports domain types.
 
 ## Layout
 
@@ -29,21 +30,24 @@ http/                              generic /import routes + Zod request DTOs
 ## Onboarding
 
 ```ts
-@Module({ imports: [PlatformModule], providers: [VendorImportHandler] })
-export class VendorModule implements OnApplicationBootstrap {
-  constructor(
-    private readonly importHandlers: ImportHandlerRegistry,
-    private readonly vendorImportHandler: VendorImportHandler,
-  ) {}
+// business/party/vendor/vendor.module.ts — PURE: no lifecycle, no registry import
+@Module({ imports: [PlatformModule], providers: [VendorImportHandler, …] })
+export class VendorModule {}
 
-  onApplicationBootstrap(): void {
-    this.importHandlers.register('vendor', VENDOR_IMPORT_DESCRIPTOR, this.vendorImportHandler);
-  }
-}
+// src/bootstrap/configure-imports.ts — the bridge (same precedent as configure-batch-operations.ts)
+export const IMPORT_ENTITIES: readonly ImportEntityOptIn[] = [
+  {
+    entityKey: 'vendor',
+    descriptor: VENDOR_IMPORT_DESCRIPTOR,
+    ownerModule: VendorModule,
+    importHandler: VendorImportHandler,
+  },
+];
 ```
 
-The handler is provided (and registered) inside the domain module — its deps
-resolve there; no `ModuleRef` lookup anywhere.
+The handler is provided inside the domain module (its deps resolve there), but
+registration happens in the composition root via strict `app.select(module).get(handler)`.
+Adding an importable entity = one row in `IMPORT_ENTITIES`.
 
 ## HTTP
 

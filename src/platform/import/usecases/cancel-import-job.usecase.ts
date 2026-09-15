@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { ImportJobOutboxWriterPort } from '../ports/import-job-outbox-writer.port';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
@@ -11,6 +12,7 @@ export class CancelImportJobUseCase {
     @Inject(ImportJobRepositoryPort) private readonly jobs: ImportJobRepositoryPort,
     @Inject(ImportJobOutboxWriterPort) private readonly outbox: ImportJobOutboxWriterPort,
     @Inject(AuditPort) private readonly audit: AuditPort,
+    @Inject(RequestContextPort) private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(input: {
@@ -18,6 +20,11 @@ export class CancelImportJobUseCase {
     tenantId?: string;
     actor?: string;
   }): Promise<ImportJobRecord> {
+    input = {
+      ...input,
+      tenantId: input.tenantId ?? this.requestContext.getTenantId(),
+      actor: input.actor ?? this.requestContext.getUserId(),
+    };
     const job = await requireVisibleJob(this.jobs, input.jobId, input.tenantId);
     const terminal = ['COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED', 'CANCELLED'];
     if (terminal.includes(job.status)) {

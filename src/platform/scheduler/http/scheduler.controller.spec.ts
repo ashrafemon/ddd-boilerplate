@@ -9,50 +9,12 @@ import { GetSchedulerHealthMetricsUseCase } from '../usecases/get-scheduler-heal
 import { SchedulerTickHeartbeat } from '../scheduler-tick.heartbeat';
 import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
 import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { RequestContext, RequestContextData } from '@platform/context/ports/request-context';
+import { InMemoryRequestContextService } from '@platform/context/__testing__/in-memory-request-context';
 import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
 import { RescheduleExternalJobUseCase } from '../usecases/reschedule-external-job.usecase';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { SchedulerController, SchedulerHealthController } from './scheduler.controller';
 
-class StubRequestContextPort extends RequestContextPort {
-  isAvailable(): boolean {
-    return true;
-  }
-  get(): RequestContext | null {
-    return RequestContext.create({
-      requestId: 'r1',
-      correlationId: 'c1',
-      tenantId: 't1',
-      roles: [],
-      locale: 'en',
-    });
-  }
-  require(): RequestContext {
-    return this.get() as RequestContext;
-  }
-  set(): void {}
-  run<T>(patch: Partial<RequestContextData>, fn: () => T | Promise<T>): Promise<T> {
-    void patch;
-    return Promise.resolve(fn());
-  }
-  getRequestId(): string | undefined {
-    return 'r1';
-  }
-  getCorrelationId(): string | undefined {
-    return 'c1';
-  }
-  getTenantId(): string | undefined {
-    return 't1';
-  }
-  getOrganizationId(): string | undefined {
-    return undefined;
-  }
-  getUserId(): string | undefined {
-    return undefined;
-  }
-}
 import {
   UpdateScheduledJobDto,
   updateScheduledJobSchema,
@@ -113,18 +75,26 @@ const makeDispatchLogs = (): ScheduledJobDispatchLogRepositoryPort => ({
 });
 
 function makeController(jobs = makeJobs()) {
-  const getStatus = new GetScheduledJobStatusUseCase(jobs);
-  const listDispatchLog = new ListScheduledJobDispatchLogUseCase(makeDispatchLogs(), jobs);
-  const updateJob = new UpdateScheduledJobUseCase(jobs, {
-    insert: jest.fn(),
-  } satisfies ScheduledJobEditLogRepositoryPort);
+  const requestContext = new InMemoryRequestContextService({ tenantId: 't1' });
+  const getStatus = new GetScheduledJobStatusUseCase(jobs, requestContext);
+  const listDispatchLog = new ListScheduledJobDispatchLogUseCase(
+    makeDispatchLogs(),
+    jobs,
+    requestContext,
+  );
+  const updateJob = new UpdateScheduledJobUseCase(
+    jobs,
+    {
+      insert: jest.fn(),
+    } satisfies ScheduledJobEditLogRepositoryPort,
+    requestContext,
+  );
   return new SchedulerController(
     getStatus,
     listDispatchLog,
     updateJob,
-    new CancelScheduledJobUseCase(jobs, auditStub),
-    new RescheduleExternalJobUseCase(jobs, auditStub),
-    new StubRequestContextPort(),
+    new CancelScheduledJobUseCase(jobs, auditStub, requestContext),
+    new RescheduleExternalJobUseCase(jobs, auditStub, requestContext),
   );
 }
 

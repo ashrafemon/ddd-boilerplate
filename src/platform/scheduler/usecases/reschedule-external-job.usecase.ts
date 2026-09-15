@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { JobStatus, ScheduledJobRecord } from '../scheduler.types';
@@ -9,6 +10,7 @@ export class RescheduleExternalJobUseCase {
   constructor(
     private readonly jobs: ScheduledJobRepositoryPort,
     private readonly audit: AuditPort,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   execute(jobId: string, nextRunAt: Date): Promise<void> {
@@ -26,6 +28,7 @@ export class RescheduleExternalJobUseCase {
    * (e.g. the recurring claim) if a run was already in flight.
    */
   async dispatchNow(jobId: string, tenantId?: string): Promise<ScheduledJobRecord> {
+    tenantId = tenantId ?? this.requestContext.getTenantId();
     const job = await this.jobs.findById(jobId);
     if (!job) {
       throw new NotFoundException(`Scheduled job '${jobId}' not found`);

@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { ConfigService } from '@config/config.service';
 import { NumberingPort } from '@platform/numbering/ports/numbering.port';
 import { FileStoragePort } from '@platform/storage/ports/file-storage.port';
@@ -19,6 +20,7 @@ export class CreateImportJobUseCase {
     private readonly storageObjects: StorageObjectRepositoryPort,
     @Inject(ImportJobRepositoryPort) private readonly jobs: ImportJobRepositoryPort,
     @Inject(ImportQueuePublisherPort) private readonly queue: ImportQueuePublisherPort,
+    @Inject(RequestContextPort) private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(input: {
@@ -29,6 +31,12 @@ export class CreateImportJobUseCase {
     traceId?: string;
     options?: ImportOptions;
   }): Promise<ImportJobRecord> {
+    input = {
+      ...input,
+      tenantId: input.tenantId ?? this.requestContext.getTenantId(),
+      requestedBy: input.requestedBy ?? this.requestContext.getUserId(),
+      traceId: input.traceId ?? this.requestContext.getCorrelationId(),
+    };
     const descriptor = this.registry.resolveDescriptor(input.entityKey);
     const cfg = this.config.getImport();
     const obj = await this.storageObjects.findById(input.storageObjectId);

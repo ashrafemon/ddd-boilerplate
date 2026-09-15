@@ -1,4 +1,5 @@
 import { ConfigService } from '@config/config.service';
+import { InMemoryRequestContextService } from '@platform/context/__testing__/in-memory-request-context';
 import { NumberingPort } from '@platform/numbering/ports/numbering.port';
 import { CreateBatchOperationJobUseCase } from './create-batch-operation-job.usecase';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
@@ -40,6 +41,7 @@ function makeSut(overrides?: { syncThreshold?: number; maxRecordsPerJob?: number
     queuePublisher,
     numbering,
     config,
+    new InMemoryRequestContextService(),
   );
   return { sut, repo, processChunk, dispatchChunks };
 }

@@ -1,4 +1,5 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';
 import { ImportQueuePublisherPort } from '../ports/import-queue-publisher.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
@@ -11,6 +12,7 @@ export class ExecuteImportJobUseCase {
     @Inject(ImportJobRepositoryPort) private readonly jobs: ImportJobRepositoryPort,
     @Inject(ImportQueuePublisherPort) private readonly queue: ImportQueuePublisherPort,
     @Inject(AuditPort) private readonly audit: AuditPort,
+    @Inject(RequestContextPort) private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(input: {
@@ -18,6 +20,11 @@ export class ExecuteImportJobUseCase {
     tenantId?: string;
     actor?: string;
   }): Promise<ImportJobRecord> {
+    input = {
+      ...input,
+      tenantId: input.tenantId ?? this.requestContext.getTenantId(),
+      actor: input.actor ?? this.requestContext.getUserId(),
+    };
     const job = await requireVisibleJob(this.jobs, input.jobId, input.tenantId);
     if (job.status !== 'VALIDATED') {
       throw new ConflictException(

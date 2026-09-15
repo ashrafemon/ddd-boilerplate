@@ -13,6 +13,7 @@ import { ConditionEvaluator } from './../src/platform/condition-engine/ports/con
 import { BatchOperationHandlerRegistry } from '../src/platform/batch-operation/batch-operation-handler.registry';
 import { ImportHandlerRegistry } from '../src/platform/import/import-handler.registry';
 import { configureBatchOperations } from '../src/bootstrap/configure-batch-operations';
+import { configureImports } from '../src/bootstrap/configure-imports';
 import { GenerateRecurringInvoiceUseCase } from './../src/business/sales/invoice/application/usecases/generate-recurring-invoice.usecase';
 
 describe('App (e2e)', () => {
@@ -28,6 +29,7 @@ describe('App (e2e)', () => {
     // composition-root bridge: business batch handlers -> platform registry
     // (mirrors bootstrap(); the registry would otherwise stay empty)
     configureBatchOperations(app);
+    configureImports(app);
   }, 30_000);
 
   it('registers all business use cases and shared ports', () => {

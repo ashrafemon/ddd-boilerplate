@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
 import { RecurringTemplateRepositoryPort } from '../ports/recurring-template-repository.port';
 import { CreateRecurringTemplateInput, RecurringTemplateRecord } from '../recurring-template.types';
@@ -21,13 +22,19 @@ export class CreateRecurringTemplateUseCase {
   constructor(
     private readonly templateRepository: RecurringTemplateRepositoryPort,
     private readonly schedulerPort: SchedulerPort,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   @Transactional()
   async execute(input: CreateRecurringTemplateInput): Promise<RecurringTemplateRecord> {
-    this.validate(input);
+    const scoped: CreateRecurringTemplateInput = {
+      ...input,
+      tenantId: input.tenantId ?? this.requestContext.getTenantId(),
+      createdBy: input.createdBy ?? this.requestContext.getUserId(),
+    };
+    this.validate(scoped);
 
-    const template = await this.templateRepository.create(input);
+    const template = await this.templateRepository.create(scoped);
 
     // TIME templates get their first scheduled_jobs row written in the same
     // transaction as the template (doc §7 Phase 1). EVENT templates write

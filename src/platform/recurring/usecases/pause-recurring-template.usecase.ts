@@ -2,6 +2,7 @@ import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
 import { RecurringTemplateRepositoryPort } from '../ports/recurring-template-repository.port';
 import { RecurringTemplateRecord } from '../recurring-template.types';
@@ -18,6 +19,7 @@ export class PauseRecurringTemplateUseCase {
     private readonly templateRepository: RecurringTemplateRepositoryPort,
     private readonly schedulerPort: SchedulerPort,
     private readonly audit: AuditPort,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   @Transactional()
@@ -26,6 +28,8 @@ export class PauseRecurringTemplateUseCase {
     modifiedBy?: string,
     tenantId?: string,
   ): Promise<RecurringTemplateRecord> {
+    modifiedBy = modifiedBy ?? this.requestContext.getUserId();
+    tenantId = tenantId ?? this.requestContext.getTenantId();
     const template = await this.templateRepository.findById(id);
     if (!template) {
       throw new NotFoundException('RecurringTemplate not found');

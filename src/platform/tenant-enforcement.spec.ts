@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { InMemoryRequestContextService } from '@platform/context/__testing__/in-memory-request-context';
 import { GetBatchOperationJobStatusUseCase } from './batch-operation/usecases/get-batch-operation-job-status.usecase';
 import { BatchOperationJobRepositoryPort } from './batch-operation/ports/batch-operation-job-repository.port';
 import { GetRecurringTemplateUseCase } from './recurring/usecases/get-recurring-template.usecase';
@@ -15,7 +16,7 @@ describe('platform tenant enforcement', () => {
     const jobs = {
       findJob: jest.fn().mockResolvedValue({ id: 'j1', tenantId: 't2' }),
     } as unknown as BatchOperationJobRepositoryPort;
-    const sut = new GetBatchOperationJobStatusUseCase(jobs);
+    const sut = new GetBatchOperationJobStatusUseCase(jobs, new InMemoryRequestContextService());
     await expect(sut.execute('j1', 't1')).rejects.toBeInstanceOf(NotFoundException);
     await expect(sut.execute('j1', 't2')).resolves.toMatchObject({ id: 'j1' });
   });
@@ -24,7 +25,7 @@ describe('platform tenant enforcement', () => {
     const repo = {
       findById: jest.fn().mockResolvedValue({ id: 'r1', tenantId: 't2' }),
     } as unknown as RecurringTemplateRepositoryPort;
-    const sut = new GetRecurringTemplateUseCase(repo);
+    const sut = new GetRecurringTemplateUseCase(repo, new InMemoryRequestContextService());
     await expect(sut.execute('r1', 't1')).rejects.toBeInstanceOf(NotFoundException);
     await expect(sut.execute('r1', 't2')).resolves.toMatchObject({ id: 'r1' });
   });
@@ -33,7 +34,7 @@ describe('platform tenant enforcement', () => {
     const repo = {
       findById: jest.fn().mockResolvedValue({ id: 's1', tenantId: 't2' }),
     } as unknown as ScheduledJobRepositoryPort;
-    const sut = new GetScheduledJobStatusUseCase(repo);
+    const sut = new GetScheduledJobStatusUseCase(repo, new InMemoryRequestContextService());
     await expect(sut.execute('s1', 't1')).rejects.toBeInstanceOf(NotFoundException);
     await expect(sut.execute('s1', 't2')).resolves.toMatchObject({ id: 's1' });
   });

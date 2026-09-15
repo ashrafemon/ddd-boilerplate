@@ -5,6 +5,7 @@ import 'reflect-metadata';
 import { AppModule } from '../app.module';
 import { configureCors } from './configure-cors';
 import { configureBatchOperations } from './configure-batch-operations';
+import { configureImports } from './configure-imports';
 import { configureHttp } from './configure-http';
 import { configureSecurity } from './configure-security';
 import { configureSentry } from './configure-sentry';
@@ -52,6 +53,7 @@ export async function bootstrap(): Promise<void> {
     // inside init() from configureServer, and the HTTP listener starts with
     // it, so handlers are registered before anything can resolve them.
     configureBatchOperations(app);
+    configureImports(app);
 
     await configureSecurity(app);
     configureCors(app);

@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { InMemoryRequestContextService } from '@platform/context/__testing__/in-memory-request-context';
 import { BatchOperationHandlerRegistry } from './batch-operation-handler.registry';
 import { BatchOperationHandler } from './ports/batch-operation-handler.port';
 import { BatchOperationWorker } from './batch-operation.worker';
@@ -94,7 +95,7 @@ describe('batch-operation DI wiring', () => {
         { provide: ConfigService, useValue: configStub },
         {
           provide: RequestContextPort,
-          useValue: { get: () => ({ tenantId: 't1', userId: 'u1' }) },
+          useValue: new InMemoryRequestContextService({ tenantId: 't1', userId: 'u1' }),
         },
         {
           provide: NumberingPort,

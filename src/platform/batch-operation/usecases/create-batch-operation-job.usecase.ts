@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { NumberingPort } from '@platform/numbering/ports/numbering.port';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
 import { BatchOperationWorker } from '../batch-operation.worker';
@@ -28,9 +29,16 @@ export class CreateBatchOperationJobUseCase {
     private readonly queuePublisher: BatchOperationQueuePublisherPort,
     private readonly numbering: NumberingPort,
     private readonly configService: ConfigService,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(input: SubmitBatchOperationInput): Promise<BatchOperationJobRecord> {
+    input = {
+      ...input,
+      tenantId: input.tenantId ?? this.requestContext.getTenantId(),
+      requestedBy: input.requestedBy ?? this.requestContext.getUserId(),
+      traceId: input.traceId ?? this.requestContext.getCorrelationId(),
+    };
     if (this.configService.getSecurity().tenancy.mode === 'multi' && !input.tenantId) {
       throw new BadRequestException(
         'Batch operations require a tenant context in multi-tenant mode',

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
 import { FileStoragePort } from '@platform/storage/ports/file-storage.port';
@@ -13,6 +14,7 @@ export class CreateImportUploadUseCase {
     private readonly storage: FileStoragePort,
     @Inject(StorageObjectRepositoryPort)
     private readonly storageObjects: StorageObjectRepositoryPort,
+    @Inject(RequestContextPort) private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(input: {
@@ -21,6 +23,7 @@ export class CreateImportUploadUseCase {
     contentType?: string;
     idempotencyKey?: string;
   }) {
+    input = { ...input, tenantId: input.tenantId ?? this.requestContext.getTenantId() };
     const descriptor = this.registry.resolveDescriptor(input.entityKey);
     const cfg = this.config.getImport();
     const maxBytes = Math.min(descriptor.maxFileSizeBytes, cfg.maxFileSizeBytes);

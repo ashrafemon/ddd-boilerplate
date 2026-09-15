@@ -1,5 +1,6 @@
 import { JsonObject } from '@shared-kernel/types/json-value.type';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { RecurringTemplatePort } from '@platform/recurring/ports/recurring-template.port';
 import type {
   CreateRecurringTemplateInput,
@@ -11,7 +12,6 @@ import { GetPurchaseOrderUseCase } from './get-purchase-order.usecase';
 const TEMPLATE_SEQUENCE = 'RecurringTemplate:PurchaseOrder';
 
 export interface CreateRecurringFromPurchaseOrderInput {
-  tenantId?: string;
   purchaseOrderId: string;
   name?: string;
   triggerType: CreateRecurringTemplateInput['triggerType'];
@@ -25,7 +25,6 @@ export interface CreateRecurringFromPurchaseOrderInput {
   autoEmail?: boolean;
   autoApprove?: boolean;
   generationCondition?: JsonObject;
-  createdBy?: string;
 }
 
 /**
@@ -40,6 +39,7 @@ export class CreateRecurringFromPurchaseOrderUseCase {
     private readonly getPurchaseOrder: GetPurchaseOrderUseCase,
     private readonly numbering: NumberingPort,
     private readonly createRecurringTemplate: RecurringTemplatePort,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(input: CreateRecurringFromPurchaseOrderInput): Promise<RecurringTemplateRecord> {
@@ -52,9 +52,11 @@ export class CreateRecurringFromPurchaseOrderUseCase {
     }
 
     const templateNo = await this.numbering.nextNumber(TEMPLATE_SEQUENCE, { prefix: 'REC-PO-' });
+    const tenantId = this.requestContext.getTenantId();
+    const createdBy = this.requestContext.getUserId();
 
     return this.createRecurringTemplate.create({
-      tenantId: input.tenantId,
+      tenantId,
       templateNo,
       name: input.name ?? `Recurring ${purchaseOrder.orderNumber}`,
       targetEntityType: 'PurchaseOrder',
@@ -79,7 +81,7 @@ export class CreateRecurringFromPurchaseOrderUseCase {
         quantity: line.quantity,
         unitPrice: line.unitPrice,
       })),
-      createdBy: input.createdBy,
+      createdBy,
     });
   }
 }

@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { ScheduledJobEditLogRepositoryPort } from '../ports/scheduled-job-edit-log-repository.port';
 import { UpdateScheduledJobInput, ScheduleMode } from '../scheduler.types';
@@ -16,6 +17,7 @@ export class UpdateScheduledJobUseCase {
     private readonly jobs: ScheduledJobRepositoryPort,
 
     private readonly editLogs: ScheduledJobEditLogRepositoryPort,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(input: UpdateScheduledJobInput & { tenantId?: string }): Promise<void> {
@@ -23,7 +25,8 @@ export class UpdateScheduledJobUseCase {
     if (!existing) {
       throw new NotFoundException(`Scheduled job '${input.jobId}' not found`);
     }
-    TenantScope.assertVisible(existing.tenantId ?? null, input.tenantId);
+    const tenantId = input.tenantId ?? this.requestContext.getTenantId();
+    TenantScope.assertVisible(existing.tenantId ?? null, tenantId);
 
     const changedFields: Record<string, unknown> = {};
     let cronExpression = existing.cronExpression;

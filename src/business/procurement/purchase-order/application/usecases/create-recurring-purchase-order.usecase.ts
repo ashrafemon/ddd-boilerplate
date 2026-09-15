@@ -1,5 +1,6 @@
 import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
 import { ConflictException, Injectable } from '@nestjs/common';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { RecurringTemplatePort } from '@platform/recurring/ports/recurring-template.port';
 import type {
   CreateRecurringTemplateInput,
@@ -18,7 +19,6 @@ export interface CreateRecurringPurchaseOrderLineInput {
 }
 
 export interface CreateRecurringPurchaseOrderInput {
-  tenantId?: string;
   name: string;
   vendorId: string;
   currency?: string;
@@ -34,7 +34,6 @@ export interface CreateRecurringPurchaseOrderInput {
   autoEmail?: boolean;
   autoApprove?: boolean;
   generationCondition?: JsonObject;
-  createdBy?: string;
 }
 
 /**
@@ -49,6 +48,7 @@ export class CreateRecurringPurchaseOrderUseCase {
     private readonly vendorQueryPort: OrderableVendorPort,
     private readonly numbering: NumberingPort,
     private readonly createRecurringTemplate: RecurringTemplatePort,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(input: CreateRecurringPurchaseOrderInput): Promise<RecurringTemplateRecord> {
@@ -62,9 +62,11 @@ export class CreateRecurringPurchaseOrderUseCase {
     }
 
     const templateNo = await this.numbering.nextNumber(TEMPLATE_SEQUENCE, { prefix: 'REC-PO-' });
+    const tenantId = this.requestContext.getTenantId();
+    const createdBy = this.requestContext.getUserId();
 
     return this.createRecurringTemplate.create({
-      tenantId: input.tenantId,
+      tenantId,
       templateNo,
       name: input.name,
       targetEntityType: 'PurchaseOrder',
@@ -83,7 +85,7 @@ export class CreateRecurringPurchaseOrderUseCase {
       autoApprove: input.autoApprove,
       generationCondition: input.generationCondition,
       lines: input.lines,
-      createdBy: input.createdBy,
+      createdBy,
     });
   }
 }

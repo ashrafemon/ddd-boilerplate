@@ -15,7 +15,6 @@ import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
 import type { FastifyReply } from 'fastify';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 import { normalizePageQuery } from '@shared-kernel/types/pagination';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
 import { CancelBatchOperationJobUseCase } from '../usecases/cancel-batch-operation-job.usecase';
 import { CreateBatchOperationJobUseCase } from '../usecases/create-batch-operation-job.usecase';
@@ -50,7 +49,6 @@ export class BatchOperationController {
     private readonly listRows: ListBatchOperationJobRowsUseCase,
     private readonly cancelJob: CancelBatchOperationJobUseCase,
     private readonly registry: BatchOperationHandlerRegistry,
-    private readonly requestContext: RequestContextPort,
   ) {}
 
   @Get('_registry')
@@ -65,13 +63,11 @@ export class BatchOperationController {
   async validate(
     @Body() dto: ValidateBatchOperationDto,
   ): Promise<ApiResponse<BatchOperationPreview>> {
-    const ctx = this.requestContext.get();
     const preview = await this.validatePreview.execute({
       aggregateType: dto.aggregateType,
       operationCode: dto.operationCode,
       entityIds: dto.entityIds,
       params: dto.params,
-      tenantId: ctx?.tenantId,
     });
     return { data: preview, message: 'Batch operation preview' };
   }
@@ -94,15 +90,11 @@ export class BatchOperationController {
     @Body() dto: SubmitBatchOperationDto,
     @Res({ passthrough: true }) res: FastifyReply,
   ): Promise<ApiResponse<BatchOperationJobRecord>> {
-    const ctx = this.requestContext.get();
     const job = await this.createJob.execute({
       aggregateType: dto.aggregateType,
       operationCode: dto.operationCode,
       entityIds: dto.entityIds,
       params: dto.params,
-      tenantId: ctx?.tenantId,
-      requestedBy: ctx?.userId,
-      traceId: ctx?.correlationId,
     });
     if (job.mode === 'ASYNC') {
       res.status(202);
@@ -118,10 +110,8 @@ export class BatchOperationController {
   async list(
     @Query() query: BatchOperationQueryDto,
   ): Promise<ApiResponse<PageResult<BatchOperationJobRecord>>> {
-    const ctx = this.requestContext.get();
     const page = normalizePageQuery({ page: query.page, pageSize: query.pageSize });
     const jobs = await this.listJobs.execute({
-      tenantId: ctx?.tenantId,
       status: query.status,
       aggregateType: query.aggregateType,
       page: page.page,
@@ -135,8 +125,7 @@ export class BatchOperationController {
   async get(
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<BatchOperationJobRecord>> {
-    const ctx = this.requestContext.get();
-    const job = await this.getStatus.execute(id, ctx?.tenantId);
+    const job = await this.getStatus.execute(id);
     return { data: job, message: 'Batch operation job fetched' };
   }
 
@@ -145,8 +134,7 @@ export class BatchOperationController {
   async getRows(
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<BatchOperationRowRecord[]>> {
-    const ctx = this.requestContext.get();
-    const rows = await this.listRows.execute(id, ctx?.tenantId);
+    const rows = await this.listRows.execute(id);
     return { data: rows, message: 'Batch operation job rows fetched' };
   }
 
@@ -155,8 +143,7 @@ export class BatchOperationController {
   async cancel(
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<BatchOperationJobRecord>> {
-    const ctx = this.requestContext.get();
-    const job = await this.cancelJob.execute(id, ctx?.tenantId);
+    const job = await this.cancelJob.execute(id);
     return { data: job, message: 'Batch operation cancellation requested' };
   }
 }

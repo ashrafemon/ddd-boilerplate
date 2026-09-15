@@ -679,8 +679,8 @@ or infrastructure clients.
 > share `KeyedRegistryBase` (`shared-kernel/utils`); for business-side handlers, registration
 > lives in the **composition root** — the handler is pure port data and
 > `src/bootstrap/configure-*.ts` plugs it into the platform registry (see 9.1 — the pattern
-> the generated business modules emit); legacy shapes (vendor's import opt-in) still register
-> from their owner module's `onApplicationBootstrap` until migrated. (Domain events reach the
+> the generated business modules emit; vendor's import opt-in has migrated to the bridge).
+> (Domain events reach the
 > in-process bus through a fifth, business-owned `DomainEventRegistry` rehydrator map,
 > populated via the owner module's side-effect import.)
 
@@ -723,10 +723,10 @@ The handler is its own registration metadata: `registry.register(handler)` reads
 operations from it, so there is no second source to drift from. Adding a batch-capable
 aggregate = one row in `BATCH_OPERATION_AGGREGATES` (what the module generator appends).
 
-Legacy shapes: (a) recurring→scheduler (platform→platform) injects registry + handler in its
-own module's `onApplicationBootstrap` — fine, platform may know platform; (b) vendor's import
-opt-in (business→platform) still registers from `VendorModule`'s class body — pre-pilot,
-migrate to the bridge when touched.
+Legacy shape: recurring→scheduler (platform→platform) injects registry + handler in its
+own module's `onApplicationBootstrap` — fine, platform may know platform. Business opt-ins
+(batch-operation, import) are bridged from `src/bootstrap/configure-batch-operations.ts` and
+`configure-imports.ts` respectively.
 
 ### 9.2 Canonical platform-service structure (mandatory for every NEW service)
 
@@ -895,7 +895,9 @@ Request → RequestIdInterceptor → LoggingInterceptor → DeviceResponseInterc
 Domain code throws **framework-free** errors (`DomainException`/`InfrastructureException`
 classes exist in `shared-kernel/exceptions/`; registered invariants currently throw
 `Error` + `statusCode: 422`, which the filter maps). Controllers stay thin: validate DTO →
-call use case → wrap `{ data, message }`.
+call use case → wrap `{ data, message }` — they never read `RequestContextPort`; the use
+case resolves tenant/actor from the injected port itself (explicit `tenantId`/actor inputs
+stay as overrides for background executions that restored a different context).
 
 ### REST surface (all under `/api/v1`)
 

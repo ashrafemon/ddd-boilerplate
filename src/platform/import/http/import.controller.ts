@@ -22,7 +22,6 @@ import { UpdateImportMappingUseCase } from '../usecases/update-import-mapping.us
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { normalizePageQuery } from '@shared-kernel/types/pagination';
 import { ImportHandlerRegistry } from '../import-handler.registry';
 import { CreateJobDto } from './requests/create-import-job.request.dto';
@@ -46,7 +45,6 @@ export class ImportController {
     private readonly getStatus: GetImportJobStatusUseCase,
     private readonly listJobs: ListImportJobsUseCase,
     private readonly registry: ImportHandlerRegistry,
-    private readonly requestContext: RequestContextPort,
   ) {}
 
   @Get('_registry')
@@ -59,11 +57,9 @@ export class ImportController {
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({ summary: 'Create a presigned upload slot for an import source file' })
   async uploads(@Body() dto: CreateUploadDto, @Headers('idempotency-key') idempotencyKey?: string) {
-    const ctx = this.requestContext.get();
     const data = await this.createUpload.execute({
       entityKey: dto.entityKey,
       contentType: dto.contentType,
-      tenantId: ctx?.tenantId,
       idempotencyKey,
     });
     return { data, message: 'Upload slot created' };
@@ -84,14 +80,10 @@ export class ImportController {
     required: true,
   })
   async create(@Body() dto: CreateJobDto) {
-    const ctx = this.requestContext.get();
     const data = await this.createJob.execute({
       entityKey: dto.entityKey,
       storageObjectId: dto.storageObjectId,
       options: dto.options,
-      tenantId: ctx?.tenantId,
-      requestedBy: ctx?.userId,
-      traceId: ctx?.correlationId,
     });
     return { data, message: 'Import job created' };
   }
@@ -99,10 +91,8 @@ export class ImportController {
   @Get('jobs')
   @ApiOperation({ summary: 'List import jobs' })
   async list(@Query() query: ImportJobQueryDto) {
-    const ctx = this.requestContext.get();
     const page = normalizePageQuery({ page: query.page, pageSize: query.pageSize });
     const data = await this.listJobs.execute({
-      tenantId: ctx?.tenantId,
       status: query.status,
       entityKey: query.entityKey,
       page: page.page,
@@ -114,28 +104,23 @@ export class ImportController {
   @Get('jobs/:id')
   @ApiOperation({ summary: 'Get import job status' })
   async status(@Param('id', new ParseUUIDPipe()) id: string) {
-    const ctx = this.requestContext.get();
-    const data = await this.getStatus.execute({ jobId: id, tenantId: ctx?.tenantId });
+    const data = await this.getStatus.execute({ jobId: id });
     return { data, message: 'Import job' };
   }
 
   @Get('jobs/:id/preview')
   @ApiOperation({ summary: 'Preview parsed rows and suggested mapping' })
   async preview(@Param('id', new ParseUUIDPipe()) id: string) {
-    const ctx = this.requestContext.get();
-    const data = await this.getPreview.execute({ jobId: id, tenantId: ctx?.tenantId });
+    const data = await this.getPreview.execute({ jobId: id });
     return { data, message: 'Import preview' };
   }
 
   @Patch('jobs/:id/mapping')
   @ApiOperation({ summary: 'Confirm column mapping and enqueue validation' })
   async mapping(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateMappingDto) {
-    const ctx = this.requestContext.get();
     const data = await this.updateMapping.execute({
       jobId: id,
       mapping: dto.mapping,
-      tenantId: ctx?.tenantId,
-      actor: ctx?.userId,
     });
     return { data, message: 'Mapping saved; validation queued' };
   }
@@ -147,11 +132,9 @@ export class ImportController {
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
   ) {
-    const ctx = this.requestContext.get();
     const p = normalizePageQuery({ page, pageSize });
     const data = await this.getReport.execute({
       jobId: id,
-      tenantId: ctx?.tenantId,
       page: p.page,
       pageSize: p.pageSize,
     });
@@ -161,32 +144,21 @@ export class ImportController {
   @Post('jobs/:id/execute')
   @ApiOperation({ summary: 'Execute a VALIDATED import job' })
   async execute(@Param('id', new ParseUUIDPipe()) id: string) {
-    const ctx = this.requestContext.get();
-    const data = await this.executeJob.execute({
-      jobId: id,
-      tenantId: ctx?.tenantId,
-      actor: ctx?.userId,
-    });
+    const data = await this.executeJob.execute({ jobId: id });
     return { data, message: 'Import execution queued' };
   }
 
   @Post('jobs/:id/cancel')
   @ApiOperation({ summary: 'Request cancellation of an import job' })
   async cancel(@Param('id', new ParseUUIDPipe()) id: string) {
-    const ctx = this.requestContext.get();
-    const data = await this.cancelJob.execute({
-      jobId: id,
-      tenantId: ctx?.tenantId,
-      actor: ctx?.userId,
-    });
+    const data = await this.cancelJob.execute({ jobId: id });
     return { data, message: 'Import cancel requested' };
   }
 
   @Get(':entityKey/init')
   @ApiOperation({ summary: 'Init import for an entityKey (descriptor, limits, recent jobs)' })
   async init(@Param('entityKey') entityKey: string) {
-    const ctx = this.requestContext.get();
-    const data = await this.initImport.execute({ entityKey, tenantId: ctx?.tenantId });
+    const data = await this.initImport.execute({ entityKey });
     return { data, message: 'Import init' };
   }
 }
