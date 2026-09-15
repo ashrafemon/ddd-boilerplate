@@ -8,10 +8,11 @@ aggregate-scoped `SchedulerPort`).
 
 ```
 ports/         inbound (dispatch, reconcile, update, queries, SchedulerPort) +
-               outbound (repositories, lock, event publisher, queue, fire handler)
+               outbound (repositories, event publisher, queue, fire handler;
+               the Redis lock lives in @platform/locking)
 usecases/      business logic only, one class per capability — implements no port
 adapters/      inbound port adapters (delegate to usecases) + Prisma repositories,
-               BullMQ queue + @Processor worker, Redis lock, RabbitMQ event publisher
+               BullMQ queue + @Processor worker, RabbitMQ event publisher
 cron-calculator.ts, scheduled-job-handler.registry.ts, scheduled-job.processor.ts,
 scheduler.ticker.ts, scheduler.types.ts, scheduler.errors.ts, scheduler.constants.ts
 http/          admin controllers + Zod request DTOs
@@ -21,9 +22,12 @@ http/          admin controllers + Zod request DTOs
 
 1. Ticker → `DispatchDueJobsUseCase`
 2. Postgres `FOR UPDATE SKIP LOCKED` claim → status `CLAIMED`
-3. Redis lock (`scheduler:lock:{jobId}`) — **fail closed** if acquire fails
+3. `DistributedLockPort` lease per job (`platform/locking`, Redis key
+   `platform:lock:{jobId}`, owner-token ticket) — **fail closed**: no ticket ⇒
+   row stays CLAIMED for reconciliation
 4. Enqueue via `@nestjs/bullmq` (`scheduler.jobs`, jobId = `idempotencyKey`) — handlers are **not** run inline
-5. Dispatch log (idempotency key = dispatch log id). No outbox row.
+5. Dispatch log upsert keyed by `sha256(jobId:slot)` — the same value is used
+   as the BullMQ jobId, so crash-re-fires of one slot dedupe. No outbox row.
 6. `@Processor` worker runs `ScheduledJobProcessor`: registry handler, else RabbitMQ `scheduler.job.{jobType}`
 7. Cron: recompute `nextRunAt`. External: producer must `reschedule` (handlers do this themselves)
 
@@ -63,3 +67,29 @@ onApplicationBootstrap(): void {
 ```
 
 Registry is keyed by **jobType** (not aggregateType).
+
+## Failure semantics
+
+Transient handler/dispatch failures back off (`retryCount`, exponential on
+`nextRunAt`) and the schedule returns to `PENDING`; after
+`SCHEDULER_MAX_RETRIES` the row parks as `SUSPENDED` and the dispatch log row
+flips to `DEAD_LETTERED`. Cancel/suspend are authoritative: in-flight
+executions check state before firing, terminal writes are guarded so a
+settled schedule is never resurrected.
+
+## Who calls it / how called
+
+| Caller | Surfaces used |
+| --- | --- |
+| `platform/recurring` | `SchedulerPort` (register/reschedule/cancel by aggregate) + registers the `Recurring` jobType handler at bootstrap |
+| business modules (via their platform adapters) | `SchedulerPort` only — never repositories |
+| ops | HTTP `/api/v1/scheduled-jobs` (+ `/scheduler/health` ticker heartbeat) |
+| `@nestjs/schedule` `SchedulerTicker` | `DispatchDueJobsUseCase` / `ReconcileMissedJobsUseCase` on intervals |
+
+## Tenancy & rules
+- `tenantId` is stamped at register time, filtered into claims only via the
+  dispatch payload, and restored into CLS by the worker before handlers run.
+- `TENANCY_MODE=multi` ⇒ jobType handlers must treat `payload.tenantId` as
+  authenticated and pass it to repository writes.
+- Background executions must not read a raw HTTP header — everything comes
+  from the `scheduled_jobs` row + payload.

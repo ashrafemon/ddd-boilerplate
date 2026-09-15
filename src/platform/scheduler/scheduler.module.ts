@@ -1,4 +1,4 @@
-import { INFRA_CACHE_MODULE } from '@infrastructure/cache/cache.module';
+import { LockingModule } from '@platform/locking/locking.module';
 import { ContextModule } from '@platform/context/context.module';
 import { AuditModule } from '@platform/audit/audit.module';
 import { MessagingModule } from '@platform/messaging/messaging.module';
@@ -9,7 +9,6 @@ import { ScheduledJobProcessor } from './scheduled-job.processor';
 import { SchedulerTicker } from './scheduler.ticker';
 import { SchedulerTickHeartbeat } from './scheduler-tick.heartbeat';
 import { SchedulerPort } from './ports/scheduler.port';
-import { DistributedLockPort } from './ports/distributed-lock.port';
 import { ScheduledJobDispatchLogRepositoryPort } from './ports/scheduled-job-dispatch-log-repository.port';
 import { ScheduledJobEditLogRepositoryPort } from './ports/scheduled-job-edit-log-repository.port';
 import { ScheduledJobRepositoryPort } from './ports/scheduled-job-repository.port';
@@ -31,7 +30,6 @@ import { SCHEDULER_QUEUE_NAME } from './scheduler.constants';
 import { BullMqSchedulerQueueAdapter } from './adapters/bullmq-scheduler-queue.adapter';
 import { BullMqSchedulerJobWorker } from './adapters/bullmq-scheduler-job.worker';
 import { RabbitMqSchedulerEventPublisher } from './adapters/rabbitmq-scheduler-event.publisher';
-import { RedisDistributedLockAdapter } from './adapters/redis-distributed-lock.adapter';
 import { SchedulerAdapter } from './adapters/scheduler.adapter';
 import { SchedulerController, SchedulerHealthController } from './http/scheduler.controller';
 
@@ -64,13 +62,12 @@ import { SchedulerController, SchedulerHealthController } from './http/scheduler
   imports: [
     ContextModule,
     AuditModule,
-    INFRA_CACHE_MODULE,
+    LockingModule,
     MessagingModule,
     BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }),
   ],
   controllers: [SchedulerController, SchedulerHealthController],
   providers: [
-    // outbound adapters
     ScheduledJobHandlerRegistry,
     PrismaScheduledJobRepository,
     { provide: ScheduledJobRepositoryPort, useExisting: PrismaScheduledJobRepository },
@@ -84,8 +81,6 @@ import { SchedulerController, SchedulerHealthController } from './http/scheduler
       provide: ScheduledJobEditLogRepositoryPort,
       useExisting: PrismaScheduledJobEditLogRepository,
     },
-    RedisDistributedLockAdapter,
-    { provide: DistributedLockPort, useExisting: RedisDistributedLockAdapter },
     RabbitMqSchedulerEventPublisher,
     { provide: SchedulerEventPublisherPort, useExisting: RabbitMqSchedulerEventPublisher },
     ScheduledJobProcessor,

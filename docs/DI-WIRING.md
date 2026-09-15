@@ -77,6 +77,9 @@ flowchart LR
     ConfigurationModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ContextModule__src_platform_context__2 -->|ConfigService| ConfigModule
     ContextModule__src_platform_context__2 -->|PrismaWriteService| PrismaModule
+    IdempotencyModule["IdempotencyModule"]
+    IdempotencyModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    IdempotencyModule -->|ConfigService| ConfigModule
     ImportModule["ImportModule"]
     ImportModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ImportModule -->|OutboxWriterPort| OutboxModule
@@ -86,6 +89,10 @@ flowchart LR
     ImportModule -->|FileStoragePort| StorageModule__src_platform_storage__2
     ImportModule -->|NumberingPort| NumberingModule
     ImportModule -->|AuditPort| AuditModule
+    LockingModule["LockingModule"]
+    CacheModule__src_infrastructure_cache_["CacheModule (src/infrastructure/cache)"]
+    CacheModule__src_infrastructure_cache__2["CacheModule__src_infrastructure_cache_"]
+    LockingModule -->|RedisService| CacheModule__src_infrastructure_cache__2
     MessagingModule__src_platform_messaging_["MessagingModule (src/platform/messaging)"]
     MessagingModule__src_platform_messaging__2["MessagingModule__src_platform_messaging_"]
     MessagingModule__src_platform_messaging__2 -->|ConfigService| ConfigModule
@@ -108,11 +115,9 @@ flowchart LR
     RecurringModule -->|AuditPort| AuditModule
     SchedulerModule -->|RequestContextPort| ContextModule__src_platform_context__2
     SchedulerModule -->|ConfigService| ConfigModule
-    CacheModule__src_infrastructure_cache_["CacheModule (src/infrastructure/cache)"]
-    CacheModule__src_infrastructure_cache__2["CacheModule__src_infrastructure_cache_"]
-    SchedulerModule -->|RedisService| CacheModule__src_infrastructure_cache__2
     SchedulerModule -->|RabbitMqPublisher| MessagingModule__src_platform_messaging__2
     SchedulerModule -->|AuditPort| AuditModule
+    SchedulerModule -->|DistributedLockPort| LockingModule
 ```
 
 ---
@@ -987,7 +992,7 @@ flowchart LR
 
 #### SchedulerModule — `src/platform/scheduler/scheduler.module.ts`
 
-imports: ContextModule, AuditModule, MessagingModule, BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }) · exports: SchedulerPort, ScheduledJobHandlerRegistry
+imports: ContextModule, AuditModule, LockingModule, MessagingModule, BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }) · exports: SchedulerPort, ScheduledJobHandlerRegistry
 
 ```mermaid
 flowchart LR
@@ -1000,9 +1005,6 @@ flowchart LR
     ScheduledJobEditLogRepositoryPort["ScheduledJobEditLogRepositoryPort"]
     PrismaScheduledJobEditLogRepository["PrismaScheduledJobEditLogRepository"]
     ScheduledJobEditLogRepositoryPort -.->|useExisting| PrismaScheduledJobEditLogRepository
-    DistributedLockPort["DistributedLockPort"]
-    RedisDistributedLockAdapter["RedisDistributedLockAdapter"]
-    DistributedLockPort -.->|useExisting| RedisDistributedLockAdapter
     SchedulerEventPublisherPort["SchedulerEventPublisherPort"]
     RabbitMqSchedulerEventPublisher["RabbitMqSchedulerEventPublisher"]
     SchedulerEventPublisherPort -.->|useExisting| RabbitMqSchedulerEventPublisher
@@ -1038,9 +1040,6 @@ flowchart LR
     PrismaScheduledJobDispatchLogRepository -->|injects| TransactionHost__library_
     PrismaScheduledJobEditLogRepository -->|injects| TransactionHost__library_
     PrismaScheduledJobEditLogRepository -->|injects| TransactionHost__library_
-    RedisService["RedisService"]
-    RedisDistributedLockAdapter -->|injects via CacheModule| RedisService
-    RedisDistributedLockAdapter -->|injects via CacheModule| RedisService
     RabbitMqPublisher["RabbitMqPublisher"]
     RabbitMqSchedulerEventPublisher -->|injects via MessagingModule| RabbitMqPublisher
     RabbitMqSchedulerEventPublisher -->|injects via MessagingModule| RabbitMqPublisher
@@ -1071,7 +1070,8 @@ flowchart LR
     UpdateScheduledJobUseCase -->|injects| ScheduledJobEditLogRepositoryPort
     DispatchDueJobsUseCase["DispatchDueJobsUseCase"]
     DispatchDueJobsUseCase -->|injects| ScheduledJobRepositoryPort
-    DispatchDueJobsUseCase -->|injects| DistributedLockPort
+    DistributedLockPort["DistributedLockPort"]
+    DispatchDueJobsUseCase -->|injects via LockingModule| DistributedLockPort
     DispatchDueJobsUseCase -->|injects| SchedulerJobQueuePort
     DispatchDueJobsUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
     DispatchDueJobsUseCase -->|injects via ConfigModule| ConfigService

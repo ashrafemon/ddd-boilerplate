@@ -60,3 +60,15 @@ GET    /import/jobs/:id/report
 POST   /import/jobs/:id/execute
 POST   /import/jobs/:id/cancel
 ```
+
+## Tenancy & rules
+
+- Job + rows + storage objects are tenant-stamped; every read/preview/report
+  path enforces `TenantScope` (foreign tenant ⇒ 404). Upload keys embed the tenant.
+- A job may only reference an `IMPORT_SOURCE` storage object of the SAME tenant
+  (cross-tenant `storageObjectId` is rejected as not-found) — the object id is a
+  bearer token, so treat it as sensitive.
+- The pipeline acquires a renewing job-level `StageLock` (from `platform/locking`)
+  per async stage; the reconciler only resumes-orphaned stages under that same
+  lock, so it never double-runs a live phase.
+- Create/execute POST routes use `@Idempotent()` (`platform/idempotency`).

@@ -93,3 +93,10 @@ via a batch is indistinguishable from one moved by hand. See
 
 Per-row permission re-check, heterogeneous (multi-aggregate) jobs, retry-failed-rows
 as a new job, result_snapshot retention purge, WebSocket/SSE progress push, undo.
+
+
+## Tenancy & rules
+
+- Tenant-stamped; foreign-tenant reads 404 via TenantScope.
+- Cancel honored between row claims; multi mode requires a tenant at submit.
+- Handlers must tenant-check entity resolution.

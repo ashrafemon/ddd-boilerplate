@@ -8,7 +8,9 @@ import { ConditionEngineModule } from './condition-engine/condition-engine.modul
 import { ConfigurationModule } from './configuration/configuration.module';
 import { ContextModule } from './context/context.module';
 import { EventsModule } from './events/events.module';
+import { IdempotencyModule } from './idempotency/idempotency.module';
 import { ImportModule } from './import/import.module';
+import { LockingModule } from './locking/locking.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { NotificationModule } from './notification/notification.module';
 import { NumberingModule } from './numbering/numbering.module';
@@ -43,6 +45,8 @@ import { StorageModule } from './storage/storage.module';
     NumberingModule,
     NotificationModule,
     ConditionEngineModule,
+    LockingModule,
+    IdempotencyModule,
     SchedulerModule,
     RecurringModule,
     BatchOperationModule,
@@ -61,6 +65,8 @@ import { StorageModule } from './storage/storage.module';
     NumberingModule,
     NotificationModule,
     ConditionEngineModule,
+    LockingModule,
+    IdempotencyModule,
     SchedulerModule,
     RecurringModule,
     BatchOperationModule,

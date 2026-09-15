@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createHash, randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
-import { DistributedLockPort } from '../ports/distributed-lock.port';
+import { DistributedLockPort } from '@platform/locking/ports/distributed-lock.port';
 import { SchedulerJobQueuePort } from '../ports/scheduler-job-queue.port';
 import { ScheduledJobDispatchLogRepositoryPort } from '../ports/scheduled-job-dispatch-log-repository.port';
 import { ClaimedJob, DispatchStatus, ScheduleMode } from '../scheduler.types';
@@ -69,8 +69,8 @@ export class DispatchDueJobsUseCase {
 
   /** Returns false when the per-job Redis lock could not be taken. */
   private async dispatchOne(job: ClaimedJob, lockTtlMs: number): Promise<boolean> {
-    const acquired = await this.lock.acquire(job.id, lockTtlMs);
-    if (!acquired) {
+    const ticket = await this.lock.acquire(job.id, lockTtlMs);
+    if (!ticket) {
       // Fail closed: leave CLAIMED for reconciliation; do not enqueue.
       this.logger.warn(`Lock acquire failed for job ${job.id}; leaving CLAIMED for reconcile`);
       return false;
@@ -141,7 +141,7 @@ export class DispatchDueJobsUseCase {
       return true;
     } finally {
       try {
-        await this.lock.release(job.id);
+        await this.lock.release(ticket);
       } catch (releaseErr) {
         this.logger.error(
           `Failed to release lock for job ${job.id}: ${(releaseErr as Error).message}`,

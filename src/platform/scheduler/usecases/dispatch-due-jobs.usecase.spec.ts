@@ -2,7 +2,7 @@ import { ConfigService } from '@config/config.service';
 import { SchedulerTickHeartbeat } from '../scheduler-tick.heartbeat';
 import { DispatchDueJobsUseCase } from './dispatch-due-jobs.usecase';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
-import { DistributedLockPort } from '../ports/distributed-lock.port';
+import { DistributedLockPort } from '@platform/locking/ports/distributed-lock.port';
 import { SchedulerJobQueuePort } from '../ports/scheduler-job-queue.port';
 import { ScheduledJobDispatchLogRepositoryPort } from '../ports/scheduled-job-dispatch-log-repository.port';
 import { ClaimedJob, JobScope, ScheduleMode } from '../scheduler.types';
@@ -37,7 +37,7 @@ function makeUseCase(rows: ClaimedJob[]) {
     recordFailure,
   } as unknown as ScheduledJobRepositoryPort;
 
-  const acquire = jest.fn().mockResolvedValue(true);
+  const acquire = jest.fn().mockResolvedValue({ key: 'job-1', owner: 'test-owner' });
   const release = jest.fn().mockResolvedValue(undefined);
   const lock = { acquire, release } as unknown as DistributedLockPort;
 
@@ -108,12 +108,12 @@ describe('DispatchDueJobsUseCase', () => {
       }),
     );
     expect(touchLastRunAt).toHaveBeenCalledWith('job-1');
-    expect(release).toHaveBeenCalledWith('job-1');
+    expect(release).toHaveBeenCalledWith({ key: 'job-1', owner: 'test-owner' });
   });
 
   it('fail-closes when Redis lock acquire returns false', async () => {
     const { usecase, acquire, enqueue, release } = makeUseCase([claimed()]);
-    acquire.mockResolvedValue(false);
+    acquire.mockResolvedValue(null);
 
     await usecase.execute({ batchSize: 20 });
 

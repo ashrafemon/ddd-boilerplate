@@ -22,7 +22,8 @@ import {
   UpdateImportMappingUseCase,
 } from '../usecases/import.usecases';
 import { Throttle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { normalizePageQuery } from '@shared-kernel/types/pagination';
 import { ImportHandlerRegistry } from '../import-handler.registry';
@@ -71,8 +72,19 @@ export class ImportController {
   }
 
   @Post('jobs')
+  @Idempotent()
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  @ApiOperation({ summary: 'Create an import job from a verified upload' })
+  @ApiOperation({
+    summary: 'Create an import job from a verified upload',
+    description:
+      'Requires an `Idempotency-Key` header: a retried POST replays the first ' +
+      'job/response instead of creating a duplicate pipeline (platform/idempotency).',
+  })
+  @ApiHeader({
+    name: 'idempotency-key',
+    description: 'Caller-generated unique key',
+    required: true,
+  })
   async create(@Body() dto: CreateJobDto) {
     const ctx = this.requestContext.get();
     const data = await this.createJob.execute({

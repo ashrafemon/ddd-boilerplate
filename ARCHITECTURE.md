@@ -66,8 +66,8 @@ src/
 ├── platform/                # services built on those clients, exposed as ports
 │                            # (outbox, events, messaging, context (incl. PrismaReadPort),
 │                            #  cache, audit, numbering, configuration, notification,
-│                            #  observability, storage, condition-engine, scheduler,
-│                            #  recurring, batch-operation, import)
+│                            #  observability, storage, condition-engine, locking,
+│                            #  idempotency, scheduler, recurring, batch-operation, import)
 ├── generated/               # Prisma-generated client (DO NOT EDIT; `@prisma/client` alias)
 └── business/
     ├── shared-business/     # framework-independent domain primitives + registries
@@ -110,12 +110,15 @@ The only place that reads `process.env`. Each concern is a typed `registerAs` bl
 - `cache.config.ts` — driver (`redis` | `memcache`) + connection settings
 - `storage.config.ts` — S3 endpoint/bucket/region/pathStyle/presigned TTL
 - `security.config.ts` — throttler (`THROTTLE_TTL_MS`/`THROTTLE_LIMIT`), encryption key,
-  tenant/organization header names
-- `outbox.config.ts` — poll interval, batch size, max attempts, retry backoff, cleanup age
+  tenant/organization header names, tenancy mode (`TENANCY_MODE` single|multi)
+- `outbox.config.ts` — poll interval, batch size, max attempts, retry backoff,
+  claim lease (`OUTBOX_CLAIM_LEASE_MS`), cleanup age (platform/outbox only)
+- `idempotency.config.ts` — replay/TTL window (`IDEMPOTENCY_TTL_MS`, platform/idempotency only)
 - `notification.config.ts` — SNS (topic ARN/region) + SES (from address/region)
 - `observability.config.ts` — Sentry DSN/traces sample rate, Loki URL
 - `scheduler.config.ts` — poll interval, batch size, lock TTL, reconciliation interval,
-  worker concurrency, job attempts (platform/scheduler only)
+  worker concurrency, job attempts, retry escalation (`maxRetries` + backoff;
+  platform/scheduler only)
 - `batch-operation.config.ts` — max records per job, sync threshold, chunk size, worker
   concurrency, chunk attempts, reconciliation window, result-snapshot cap
 - `import.config.ts` — file/row limits, chunk sizes, lock TTL, retention, preview, build SHA
@@ -589,51 +592,64 @@ cases/facades. Consumers are the only business code allowed to touch broker deco
 
 ## 9. Platform Layer
 
-Each sub-system owns its folder, module and ports; `PlatformModule` composes and re-exports
-them (not global — business modules import it explicitly):
+Each sub-system owns its folder, module and ports, **and a `README.md`** (purpose,
+public API, layout, who-calls/how, data & config, tenancy behaviour, rules).
+`PlatformModule` composes and re-exports them (not global — business modules import it
+explicitly). `src/platform/README.md` is the service index and the canonical-anatomy /
+add-a-service checklist that every module below follows:
 
 ```text
 platform/
 ├── outbox/          OutboxModule — OutboxWriter (OutboxWriterPort), OutboxPublisher,
-│                    OutboxScheduler, PrismaOutboxRepository (OutboxRepository)
+│                    OutboxScheduler, PrismaOutboxRepository; SKIP-LOCKED claim with a
+│                    claimedAt lease, attempts+backoff gating, DEAD_LETTER, envelope-stable
+│                    re-dispatch, and tenant stamping on every row
 ├── events/          EventsModule — NestEventBusAdapter (InProcessEventBus),
 │                    DefaultMessageRoutingPolicy (MessageRoutingPolicy)
 ├── messaging/       MessagingModule — binds RabbitMqPublisher/KafkaPublisher/SqsPublisher
 │                    tokens to MessagePublisher adapters over the infra clients
-├── context/         ContextModule — ClsRequestContextService (RequestContextPort) and
-│                    PrismaReadPort (bound to the infrastructure PrismaReadService);
-│                    the ports folder also defines the immutable RequestContext snapshot type
+├── context/         ContextModule — ClsRequestContextService (RequestContextPort: per-request
+│                    identity/trace, set/get/require + run() for background context),
+│                    PrismaReadPort (bound to the infra PrismaReadService); TenancyAuthGuard
+│                    (registered as APP_GUARD in app.module) enforces the single/multi trust
+│                    boundary; the immutable RequestContext snapshot lives in ports/
+├── locking/         LockingModule — RedisDistributedLockAdapter (DistributedLockPort):
+│                    owner-token SETNX lease, Lua renew/release, fail-closed. Shared by the
+│                    pipeline stages of scheduler/import (formerly scheduler-private)
+├── idempotency/     IdempotencyModule — PrismaIdempotencyRepository (IdempotencyPort:
+│                    insert-as-claim reserve → markCompleted/markFailed, response replay) +
+│                    @Idempotent() decorator/interceptor + hourly purge of expired keys
 ├── cache/           CacheModule — Redis or Memcached CachePort adapter, chosen by the same
 │                    resolveCacheDriver() the infrastructure layer uses (exactly one client)
-├── configuration/   ConfigurationModule — PrismaCompanyConfigAdapter (CompanyConfigPort),
-│                    DEFAULT_COMPANY_ID fallback config (currency USD, threshold 10 000)
-├── audit/           AuditModule — PrismaAuditService (AuditPort): transactional audit rows
-│                    enriched with request/correlation/tenant context from CLS
-├── numbering/       NumberingModule — PrismaNumberingService (NumberingPort): race-safe
-│                    upsert-increment sequences with prefix/padding
+├── configuration/   ConfigurationModule — PrismaCompanyConfigRepository (CompanyConfigPort),
+│                    company resolved from the authenticated org, DEFAULT_COMPANY_ID fallback
+├── audit/           AuditModule — PrismaAuditRepository (AuditPort): transactional audit rows
+│                    enriched + redacted from CLS; wired into platform state transitions
+├── numbering/       NumberingModule — PrismaNumberingRepository (NumberingPort): race-safe
+│                    upsert-increment, tenant/company-namespaced keys, prefix/padding
 ├── notification/    NotificationModule — NotificationDispatchService
 │                    (NotificationDispatchPort) → SES email / SNS push-sms adapters
 ├── observability/   ObservabilityModule — ConsoleLoggerAdapter (LoggerPort),
-│                    PrometheusMetricsAdapter (MetricsPort),
+│                    PrometheusMetricsAdapter (MetricsPort, GET /api/v1/metrics),
 │                    SentryErrorTrackingAdapter (ErrorTrackingPort, self-disabling)
 ├── storage/         StorageModule — S3FileStorageAdapter (FileStoragePort:
-│                    upload/download/delete/metadata/presigned URL)
+│                    upload/download/delete/metadata/presigned URL; no public-URL fallback)
 ├── condition-engine/ ConditionEngineModule — ConditionEvaluationService (ConditionEvaluator)
 │                    + FieldResolverRegistry; generic AND/OR rule gate; data-owning modules
 │                    register FieldResolvers (opt-in, never imported here)
 ├── scheduler/       SchedulerModule — DB-backed ScheduledJob table polled by SchedulerTicker,
-│                    BullMQ async execution, RedisDistributedLockAdapter, per-jobType fire
-│                    handlers via ScheduledJobHandlerRegistry, RabbitMqSchedulerEventPublisher;
-│                    SchedulerPort facade + adapter-bound ops ports; HTTP /scheduled-jobs
-├── recurring/       RecurringModule — RecurringTemplate/Execution (generic TIME+EVENT trigger
-│                    model), RecurringGenerationHandler (plugs into scheduler),
+│                    BullMQ async execution, retry→SUSPENDED/DEAD_LETTER escalation, per-jobType
+│                    fire handlers via ScheduledJobHandlerRegistry, RabbitMqSchedulerEventPublisher;
+│                    SchedulerPort facade + ops ports; HTTP /scheduled-jobs (lock via @platform/locking)
+├── recurring/       RecurringModule — RecurringTemplate/Execution (TIME+EVENT trigger model),
+│                    transactional claim+append+reschedule handler, stale-execution sweeper,
 │                    DomainEventDispatcher; HTTP /recurring-templates
 ├── batch-operation/ BatchOperationModule — Sync/Async bulk transitions, job+row tables,
-│                    BatchOperationHandlerRegistry (aggregate handlers opt in from their own
-│                    module), BullMQ chunk fan-out, reconciliation cron; HTTP /batch-operations
-└── import/          ImportModule — upload→parse→mapping→validation→execution pipeline over
-                     S3 storage objects, BullMQ fan-out, ImportHandlerRegistry (entities opt in
-                     from their own module), xlsx/CSV parsing, reconciliation; HTTP /import
+│                    BatchOperationHandlerRegistry, BullMQ chunk fan-out, claim-token fencing,
+│                    reconcile (reset/recount/finalise/resume); HTTP /batch-operations (@Idempotent submit)
+└── import/          ImportModule — upload→parse→mapping→validation→execution over S3,
+                     BullMQ fan-out, ImportHandlerRegistry, stage locks + row claim tokens,
+                     resume-not-kill reconciliation, storage purge; HTTP /import (@Idempotent create)
 ```
 
 Business code injects the **port abstractions** and never imports concrete platform services
@@ -645,10 +661,11 @@ or infrastructure clients.
 > controller/worker (batch-operation job commands), the controller injects the **use case
 > directly** — no one-implementation port+adapter pairs. The moment another module needs the same
 > operation it is published behind a port (recurring template creation = `RecurringTemplatePort`;
-> the internal controller keeps using the use case directly). All five registries
-> (`BatchOperationHandler` / `ImportHandler` / `ScheduledJobFireHandler` / `FieldResolver` /
-> `FieldResolver`) share `KeyedRegistryBase` (`shared-kernel/utils`); owner modules register
-> into them in `onApplicationBootstrap`.
+> the internal controller keeps using the use case directly). The four opt-in registries
+> (`BatchOperationHandler` / `ImportHandler` / `ScheduledJobFireHandler` / `FieldResolver`)
+> share `KeyedRegistryBase` (`shared-kernel/utils`); owner modules register into them in
+> `onApplicationBootstrap`. (Domain events reach the in-process bus through a fifth,
+> business-owned `DomainEventRegistry` rehydrator map, populated the same way.)
 
 ### 9.1 Opt-in registration (business → platform, dependency points inward)
 
@@ -687,6 +704,51 @@ onApplicationBootstrap(): void {
   this.scheduledJobHandlers.register('Recurring', this.generationHandler);
 }
 ```
+
+### 9.2 Canonical platform-service structure (mandatory for every NEW service)
+
+The existing services converged on one shape; new platform services MUST start from it
+(following `§15` symmetrically on the business side):
+
+```text
+platform/<service>/
+├── README.md                     REQUIRED — sections: What it does · Public API ·
+│                                 Layout · Who calls it / how called · Data & config ·
+│                                 Tenancy behaviour · Rules & gotchas
+├── <service>.module.ts           bindings + exports ONLY (no logic, not @Global)
+├── ports/                        abstract classes = DI tokens (inbound + outbound)
+├── usecases/                     one class per capability; @Transactional at their
+│                                 boundary; controllers/workers inject use cases directly
+│                                 UNLESS the operation crosses a module boundary (then
+│                                 publish an inbound port + thin adapter — 9.1 rule)
+├── repositories/ (+adapters/)    Prisma data access (TransactionHost) | queue/broker/cache I/O
+├── http/requests/*.request.dto.ts  ONE DTO per file (business-module convention, incl.
+│                                 platform services); controllers stay thin
+├── <name>.ticker.ts / *reconciliation* / *sweeper*  crons converging crashed executions
+└── __testing__/                  in-memory port fakes so use cases unit-test without DB
+```
+
+Non-negotiable invariants (all enforced or precedented in the current services):
+
+1. **Tenancy**: every owned table gets `tenantId String?`; reads/mutations thread the
+   request tenant and enforce `TenantScope` (foreign ⇒ 404); background executions
+   restore context with `RequestContextPort.run(payload)` before touching services
+   that read CLS (numbering, company config, audit).
+2. **Idempotent by construction**: claims use insert-as-claim or `FOR UPDATE
+   SKIP LOCKED`, terminal writes are CAS/token-fenced, and at-least-once redelivery
+   can only ever re-run, never double-apply. Cross-replica "one-winner-now" uses
+   `DistributedLockPort` (`platform/locking`, fail-closed); request/effect
+   dedupe-with-replay uses `IdempotencyPort` / `@Idempotent()` (`platform/idempotency`).
+3. **Side effects leave via the outbox only** (`OutboxWriterPort` inside the use-case
+   transaction); in-process listeners get envelope-stable rehydrated events.
+4. **State escalation visible**: transient failures back off with bounded retries,
+   terminal poison states park (`SUSPENDED`/`DEAD_LETTER`/`FAILED`) — nothing loops
+   forever and nothing dies silently; stale in-flight states have a reconciler.
+5. **Config**: `src/config/<service>.config.ts` (+ `ConfigService` getter with
+   identical defaults) — no raw `process.env` outside `src/config`.
+6. Registration into platform registries happens in the OWNING module's
+   `onApplicationBootstrap`; `PlatformModule` imports+exports the new module;
+   `src/platform/README.md` catalog row + this tree entry get updated in the same PR.
 
 ## 10. Infrastructure Layer
 
@@ -924,6 +986,12 @@ call use case → wrap `{ data, message }`.
 9. **Enforcement list** — add `<context>/<module>` to `businessModules` in
    `eslint.config.mjs`.
 10. **Tests** — aggregate spec + use case fakes; `npm test`, then `npm run lint:check`.
+11. **Docs** — platform services additionally REQUIRE a module `README.md` following the
+    template in `src/platform/README.md` (What it does · Public API · Layout ·
+    Who calls it / how called · Data & config · Tenancy behaviour · Rules & gotchas);
+    new *platform* services follow the canonical anatomy of `§9.2` (checklist in
+    `src/platform/README.md` — "Adding a new platform service"). A business module's
+    contract lives in `public/index.ts` JSDoc; a README is optional there.
 
 Symmetry rule: if your module needs data from another module, define an **outbound port** in
 `application/outbound-ports/` typed against the producer's `public/` contract, bind a

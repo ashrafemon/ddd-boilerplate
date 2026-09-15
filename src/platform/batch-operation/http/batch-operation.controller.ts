@@ -10,7 +10,8 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
 import type { FastifyReply } from 'fastify';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 import { normalizePageQuery } from '@shared-kernel/types/pagination';
@@ -76,9 +77,18 @@ export class BatchOperationController {
   }
 
   @Post()
+  @Idempotent()
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Submit a batch operation (Sync 200 with result, Async 202 with job)',
+    description:
+      'Requires an `Idempotency-Key` header: repeats with the same key replay the ' +
+      'original response instead of creating a second job (platform/idempotency).',
+  })
+  @ApiHeader({
+    name: 'idempotency-key',
+    description: 'Caller-generated unique key',
+    required: true,
   })
   async submit(
     @Body() dto: SubmitBatchOperationDto,

@@ -142,6 +142,11 @@ export class ConfigService {
     });
   }
 
+  /** Idempotency ledger Environment Variables */
+  public getIdempotency(): { ttlMs: number } {
+    return this.config.get('idempotency', { ttlMs: 24 * 60 * 60 * 1000 });
+  }
+
   /** Outbox Environment Variables */
   public getOutbox(): IOutboxConfig {
     return this.config.get<IOutboxConfig>('outbox', {
