@@ -4,6 +4,7 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import 'reflect-metadata';
 import { AppModule } from '../app.module';
 import { configureCors } from './configure-cors';
+import { configureBatchOperations } from './configure-batch-operations';
 import { configureHttp } from './configure-http';
 import { configureSecurity } from './configure-security';
 import { configureSentry } from './configure-sentry';
@@ -44,6 +45,13 @@ export async function bootstrap(): Promise<void> {
 
     app.useLogger(new Logger());
     app.flushLogs();
+
+    // Composition-root opt-in bridge (ARCHITECTURE §9.1): must run before
+    // listen() — NestFactory.create only instantiates providers; the
+    // onModuleInit hooks that subscribe in-process BullMQ consumers fire
+    // inside init() from configureServer, and the HTTP listener starts with
+    // it, so handlers are registered before anything can resolve them.
+    configureBatchOperations(app);
 
     await configureSecurity(app);
     configureCors(app);

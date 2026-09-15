@@ -1,5 +1,4 @@
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
-import { BatchOperationHandlerRegistry } from '@platform/batch-operation/batch-operation-handler.registry';
+import { Injectable } from '@nestjs/common';
 import { BatchOperationHandler } from '@platform/batch-operation/ports/batch-operation-handler.port';
 import { ExecutionResult, ValidationResult } from '@platform/batch-operation/batch-operation.types';
 import { CompleteGrnUseCase } from '../../../application/usecases/complete-grn.usecase';
@@ -16,14 +15,16 @@ const ALLOWED_FROM: Record<string, string[]> = {
 };
 
 /**
- * GoodReceiptNote's Batch Operation port — thin router onto the module's own
+ * GoodReceiptNote's Batch Operation port — pure handler data + routing, no
+ * lifecycle: the composition root (src/bootstrap/configure-batch-operations.ts)
+ * registers it on the platform registry at boot, so generated adapters never
+ * import platform implementation classes. Thin router onto the module's own
  * single-record use cases (receive / complete), each running inside its own
  * @Transactional boundary.
  */
 @Injectable()
-export class GrnBatchOperationAdapter implements BatchOperationHandler, OnApplicationBootstrap {
+export class GrnBatchOperationAdapter implements BatchOperationHandler {
   constructor(
-    private readonly registry: BatchOperationHandlerRegistry,
     private readonly getGrn: GetGrnUseCase,
     private readonly receiveGrn: ReceiveGrnUseCase,
     private readonly completeGrn: CompleteGrnUseCase,
@@ -35,11 +36,6 @@ export class GrnBatchOperationAdapter implements BatchOperationHandler, OnApplic
 
   supportedOperations(): string[] {
     return [...OPERATIONS];
-  }
-
-  /** Opt-in: this adapter is its own registration — the module file stays a pure @Module declaration. */
-  onApplicationBootstrap(): void {
-    this.registry.register(this);
   }
 
   async validate(entityId: string, operationCode: string): Promise<ValidationResult> {

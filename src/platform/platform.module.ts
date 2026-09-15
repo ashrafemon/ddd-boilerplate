@@ -25,9 +25,11 @@ import { StorageModule } from './storage/storage.module';
  * platform service must `imports: [PlatformModule]`, which keeps the
  * business → platform dependency visible in the module metadata.
  *
- * Opt-in aggregation (batch/import/recurring/scheduler job handlers) is done
- * by the OWNING module injecting the platform registry directly and calling
- * `register(...)` in `onApplicationBootstrap` — no ModuleRef lookups.
+ * Opt-in aggregation: business handlers are PURE port data bridged onto their
+ * platform registry by the composition root (batch =
+ * `src/bootstrap/configure-batch-operations.ts`; vendor-import is the legacy
+ * module-side shape, migrate on touch); recurring→scheduler is
+ * platform→platform and stays module-side. See ARCHITECTURE.md §9.1.
  */
 @Module({
   imports: [

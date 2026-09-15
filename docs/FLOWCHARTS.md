@@ -34,7 +34,7 @@ OUTBOUND port = "what THIS module needs from the world"      → implemented by 
   ├─ to platform:  infrastructure/adapters/platform/*.adapter.ts   (wraps a @platform port)
   └─ to a module:  infrastructure/adapters/module/*.adapter.ts     (injects another module's public port)
 PUBLIC port   = "what THIS module offers to other modules"   → implemented by a FACADE in application/facades/
-REGISTRY      = "who may plug a handler in"                  → the handler self-registers in onApplicationBootstrap (batch); legacy owner-module registration elsewhere
+REGISTRY      = "who may plug a handler in"                  → pure handler + composition-root bridge (src/bootstrap); legacy vendor/import registration elsewhere
 ```
 
 All four are **abstract classes used as their own DI token**; every binding lives in the module
@@ -305,19 +305,22 @@ needs no changes.
 
 ## 8. Opt-in registrations (who plugs into whom)
 
-Registries are populated at `onApplicationBootstrap` — no `ModuleRef` lookups; duplicate
-registrations throw at boot. Batch-operation is the self-registering
-pattern (the **adapter** injects the platform registry and registers itself, so the owner
-module class stays a pure `@Module` — the generated-template shape); import/scheduler
-handlers still register from their owner module (legacy — migrate on touch).
+Registries are populated after modules are instantiated, before the listener starts;
+duplicate registrations throw at boot. Business opt-ins are wired by the
+**composition-root bridge** (the generated adapter is pure port data — the owner
+module class stays a pure `@Module`): `src/bootstrap/configure-batch-operations.ts`
+holds `{ ownerModule → batchHandler }` rows and calls
+`registry.register(app.select(ownerModule).get(batchHandler, { strict: true }))`.
+Recurring→scheduler is platform→platform (allowed to inject its own registry);
+vendor's import opt-in still registers in `VendorModule` (legacy — migrate on touch).
 
-| Opt-in registry             | Key               | Handler                                                     | Bootstrapped by               |
-| --------------------------- | ----------------- | ----------------------------------------------------------- | ----------------------------- |
-| BatchOperationHandlerRegistry | `PurchaseOrder`   | PurchaseOrderBatchOperationAdapter (`infrastructure/adapters/platform/`) | the adapter itself |
-| BatchOperationHandlerRegistry | `GoodReceiptNote` | GrnBatchOperationAdapter                                    | the adapter itself            |
-| ImportHandlerRegistry       | `vendor`          | VendorImportHandler                                         | VendorModule (legacy)         |
-| ScheduledJobHandlerRegistry | `Recurring`       | RecurringGenerationHandler                                    | RecurringModule (legacy)      |
-| FieldResolverRegistry       | field prefix      | FieldResolver                                                 | the resolver itself (standard, not built yet) |
+| Opt-in registry             | Key               | Handler                                                     | Wired by                                  |
+| --------------------------- | ----------------- | ----------------------------------------------------------- | ----------------------------------------- |
+| BatchOperationHandlerRegistry | `PurchaseOrder`   | PurchaseOrderBatchOperationAdapter (`infrastructure/adapters/platform/`) | `configureBatchOperations` bridge |
+| BatchOperationHandlerRegistry | `GoodReceiptNote` | GrnBatchOperationAdapter                                    | `configureBatchOperations` bridge         |
+| ImportHandlerRegistry       | `vendor`          | VendorImportHandler                                         | VendorModule (legacy)                     |
+| ScheduledJobHandlerRegistry | `Recurring`       | RecurringGenerationHandler                                    | RecurringModule (platform→platform)       |
+| FieldResolverRegistry       | field prefix      | FieldResolver                                                 | bridge row per resolver (standard, not built yet) |
 
 ## 9. Mental-model cheat sheet
 

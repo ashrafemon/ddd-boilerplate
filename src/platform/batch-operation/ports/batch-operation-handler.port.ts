@@ -2,11 +2,11 @@ import { BatchOperationContext, ExecutionResult, ValidationResult } from '../bat
 
 /**
  * The ONLY surface between the batch pipeline and a batch-capable aggregate.
- * Implemented once per aggregateType (e.g. PurchaseOrderBatchOperationAdapter).
- * The adapter itself registers on `BatchOperationHandlerRegistry` in its own
- * `onApplicationBootstrap` — owning module classes declare the adapter as a
- * provider but contain no registration code — and is resolved keyed on
- * aggregateType. The handler is its own registration metadata:
+ * Implemented once per aggregateType (e.g. PurchaseOrderBatchOperationAdapter)
+ * as PURE data + routing — no lifecycle hooks, no registry imports: the
+ * composition root (`src/bootstrap/configure-batch-operations.ts`) registers
+ * the handler on `BatchOperationHandlerRegistry` at boot, and it is resolved
+ * keyed on aggregateType. The handler is its own registration metadata:
  * aggregateType() + supportedOperations() are the single source of truth.
  *
  * If a third method appears here, ask what bookkeeping has leaked out of the

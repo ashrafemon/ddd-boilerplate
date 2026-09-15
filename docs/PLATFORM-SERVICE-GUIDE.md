@@ -183,8 +183,9 @@ outcomes), not the ORM.
 - [ ] gates: `npx prisma generate && npx tsc --noEmit -p tsconfig.json && npm run lint:check && npm test && npm run build && npm run docs:di` all green
 - [ ] DI-graph smoke (proves module wiring/exports, instantiates nothing — preview):
   `npm run build && node -e "process.env.NODE_ENV='test';(async()=>{const{NestFactory}=require('@nestjs/core');const{AppModule}=require('./dist/app.module.js');const a=await NestFactory.create(AppModule,{preview:true});await a.init();await a.close();})().then(()=>console.log('DI_OK'))"`
-- [ ] registry opt-in (if exposed): the **handler self-registers** in its own
-      `onApplicationBootstrap` (owner module class stays a pure `@Module` — §9.1); duplicates throw
+- [ ] registry opt-in (if exposed): business handlers are **pure port data**; the
+      **composition root** (`src/bootstrap/configure-<x>.ts` `{ module → handler }` rows)
+      registers them (§9.1); duplicates throw
 
 ## 5. Module README template (required in every `src/platform/<x>/README.md`)
 

@@ -36,8 +36,10 @@ No `scheduled_jobs` row. `DomainEventDispatcher` matches ACTIVE templates by `ev
 - HTTP `/api/v1/recurring-templates` (create TIME/EVENT, list — status + page/limit, get, pause/resume/cancel).
 - Inbound port `RecurringExecutionPort` (`complete` / `fail` / `skip`) — bound to
   `RecurringExecutionAdapter` — is how the document-creating consumer closes the loop.
-- `RecurringGenerationHandler` self-registers with the scheduler at
-  `onApplicationBootstrap`.
+- `RecurringGenerationHandler` is registered by `RecurringModule` in its
+  `onApplicationBootstrap` (platform→platform — the §9.1 module-side shape
+  that platform-to-platform wiring keeps; business handlers use the
+  composition-root bridge instead).
 
 ## Who calls it / how called
 

@@ -676,12 +676,13 @@ or infrastructure clients.
 > operation it is published behind a port (recurring template creation = `RecurringTemplatePort`;
 > the internal controller keeps using the use case directly). The four opt-in registries
 > (`BatchOperationHandler` / `ImportHandler` / `ScheduledJobFireHandler` / `FieldResolver`)
-> share `KeyedRegistryBase` (`shared-kernel/utils`); registration lives in a **generated
-> template-friendly shape**: batch-operation adapters self-register (see 9.1 — the
-> pattern the code generator emits for); services whose handler predates it (import,
-> scheduler) still register from the owner module's `onApplicationBootstrap`. (Domain
-> events reach the in-process bus through a fifth, business-owned `DomainEventRegistry`
-> rehydrator map, populated via the owner module's side-effect import.)
+> share `KeyedRegistryBase` (`shared-kernel/utils`); for business-side handlers, registration
+> lives in the **composition root** — the handler is pure port data and
+> `src/bootstrap/configure-*.ts` plugs it into the platform registry (see 9.1 — the pattern
+> the generated business modules emit); legacy shapes (vendor's import opt-in) still register
+> from their owner module's `onApplicationBootstrap` until migrated. (Domain events reach the
+> in-process bus through a fifth, business-owned `DomainEventRegistry` rehydrator map,
+> populated via the owner module's side-effect import.)
 
 ### 9.1 Opt-in registration (business → platform, dependency points inward)
 
@@ -689,39 +690,43 @@ The scheduler, recurring, batch-operation and import services each own a **regis
 (`ScheduledJobHandlerRegistry`, `BatchOperationHandlerRegistry`, `ImportHandlerRegistry`,
 plus `FieldResolverRegistry` in condition-engine). A platform service never imports a business
 module — the registry classes are exported through each platform sub-module and re-exported by
-`PlatformModule`, so consumers can inject them without a `ModuleRef` lookup. Duplicates /
-mismatches throw at boot.
+`PlatformModule`. Duplicates throw at boot.
 
-**Self-registering handler (current standard — batch-operation uses it):** the aggregate's
-adapter injects the registry and calls `register(...)` in its own `onApplicationBootstrap`,
-taking the key/operations from itself (the handler is its own registration metadata).
-The owning module then contains ZERO class code — just a plain `@Module` whose providers list
-mentions the adapter, which is exactly what a generated template must emit:
+**Composition-root bridge (current standard for business opt-ins — batch-operation uses it):**
+generated adapters must stay pure `BatchOperationHandler` data + routing — no
+`OnApplicationBootstrap`, no registry imports, business knows only platform **ports**. The
+bridge file `src/bootstrap/configure-batch-operations.ts` (the only layer allowed to know
+both sides — same precedent as `configure-event-rehydration.ts` bridging rehydrators) keeps a
+generated-row table mapping each batch-capable aggregate's module to its handler and, after
+modules are instantiated but before the listener starts, calls:
 
 ```ts
-// purchase-order/infrastructure/adapters/platform/purchase-order-batch-operation.adapter.ts
+// src/bootstrap/configure-batch-operations.ts
+registry.register(app.select(ownerModule).get(batchHandler, { strict: true }));
+```
+
+```ts
+// purchase-order/infrastructure/adapters/platform/purchase-order-batch-operation.adapter.ts — PURE handler
 @Injectable()
-export class PurchaseOrderBatchOperationAdapter
-  implements BatchOperationHandler, OnApplicationBootstrap
-{
-  constructor(private readonly registry: BatchOperationHandlerRegistry, /* own use cases */) {}
+export class PurchaseOrderBatchOperationAdapter implements BatchOperationHandler {
   aggregateType(): string { return 'PurchaseOrder'; }
   supportedOperations(): string[] { return ['submit', 'approve', 'reject', 'cancel']; }
-  onApplicationBootstrap(): void {
-    this.registry.register(this);
-  }
+  // validate()/execute() → own use cases (unchanged)
 }
 
-// procurement/purchase-order.module.ts — no class body, no registration
+// procurement/purchase-order.module.ts — no class body, no registration, no lifecycle
 @Module({ imports: [PlatformModule, …], providers: [PurchaseOrderBatchOperationAdapter, …] })
 export class PurchaseOrderModule {}
 ```
 
-Legacy shape (import/scheduler, pre-pilot): the owning module itself injects registry +
-handler and calls `register(...)` in `onApplicationBootstrap` — e.g.
-`platform/recurring/recurring.module.ts`:
-`onApplicationBootstrap(): void { this.scheduledJobHandlers.register('Recurring', this.generationHandler); }`
-Migrate those to self-registering handlers when touched.
+The handler is its own registration metadata: `registry.register(handler)` reads key +
+operations from it, so there is no second source to drift from. Adding a batch-capable
+aggregate = one row in `BATCH_OPERATION_AGGREGATES` (what the module generator appends).
+
+Legacy shapes: (a) recurring→scheduler (platform→platform) injects registry + handler in its
+own module's `onApplicationBootstrap` — fine, platform may know platform; (b) vendor's import
+opt-in (business→platform) still registers from `VendorModule`'s class body — pre-pilot,
+migrate to the bridge when touched.
 
 ### 9.2 Canonical platform-service structure (mandatory for every NEW service)
 
@@ -769,9 +774,9 @@ Non-negotiable invariants (all enforced or precedented in the current services):
    forever and nothing dies silently; stale in-flight states have a reconciler.
 5. **Config**: `src/config/<service>.config.ts` (+ `ConfigService` getter with
    identical defaults) — no raw `process.env` outside `src/config`.
-6. Registration into platform registries happens in the **handler's own**
-   `onApplicationBootstrap` (self-registering adapter — §9.1 standard; legacy
-   owner-module registration allowed only until migrated); `PlatformModule` imports+exports
+6. Registration of business handlers into platform registries happens in the
+   **composition root** (`src/bootstrap/configure-<feature>.ts` table → `register(handler)`
+   — §9.1 standard; the registry docstring says so too); `PlatformModule` imports+exports
    the new module; `src/platform/README.md` catalog row + this tree entry get updated in the
    same PR.
 
@@ -1005,7 +1010,10 @@ call use case → wrap `{ data, message }`.
    web/mobile response DTOs wired through `@DeviceResponse`.
 6. **Module** — `<name>.module.ts`: `imports: [PlatformModule]`, bind every port to its
    adapter, register listeners, export your public port(s). Add the module to its context
-   module (e.g. `ProcurementModule`).
+   module (e.g. `ProcurementModule`). For a **bridged opt-in** (batch-capable, etc.) the
+   pure handler adapter from step 4 also needs one row appended to the relevant
+   `src/bootstrap/configure-<feature>.ts` table (e.g. `BATCH_OPERATION_AGGREGATES`) —
+   without it the registry stays empty and the opt-in is silently inert (§9.1).
 7. **Persistence schema** — `prisma/schema/<context>/<name>.prisma`, then
    `npm run db:migrate` (client regenerates to `src/generated/`).
 8. **Listeners** — only if the module reacts to events; add `integrations/listeners/` classes

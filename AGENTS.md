@@ -49,10 +49,11 @@ source of truth; this file is the load-bearing summary.
   **one request DTO per file** (`http/requests/*.request.dto.ts`, zod via
   `createZodDto`), ports are abstract classes used as DI tokens, providers use
   `useExisting`, module file contains bindings/exports only, `@Global()` is
-  never used, registries are filled by the **handler's own**
-  `onApplicationBootstrap` (self-registering adapter — owner module classes
-  stay pure `@Module` declarations; import/scheduler legacy module-side
-  registration migrates on touch).
+  never used, business opt-in registries are bridged by the **composition
+  root** `src/bootstrap/configure-*.ts` (generated adapters stay pure port
+  data — no lifecycle, only platform ports; vendor-import legacy module-side
+  registration migrates on touch — recurring→scheduler is platform→platform
+  and stays module-side).
 - Every new/changed service keeps its `src/platform/<x>/README.md` current
   (sections: purpose/API/layout/**who-calls-how**/data/config/tenancy/rules).
 

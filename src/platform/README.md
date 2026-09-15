@@ -45,10 +45,10 @@ src/platform/<service>/
 ```
 
 Rules inherited repo-wide: ports own contracts, adapters own I/O; cross-module
-calls only through another module's **exported token**; registries are filled
-by the **handler's own** `onApplicationBootstrap` (self-registering adapter —
-owner module classes stay pure `@Module`s; import/scheduler module-side
-registration is legacy, migrate on touch); platform writes cross the
+calls only through another module's **exported token**; business opt-in
+registries are filled by the **composition root** (`src/bootstrap/configure-*.ts`
+bridging pure handlers — owner module classes stay pure `@Module`s; vendor-import
+module-side registration is legacy, migrate on touch); platform writes cross the
 process boundary solely via `OutboxWriterPort`; every mutating path is
 tenant-stamped and read via `TenantScope` (404 for foreign rows); every state
 write is CAS/claim-token guarded so redelivery can never double-apply.
@@ -84,8 +84,8 @@ write is CAS/claim-token guarded so redelivery can never double-apply.
    `docs/PLATFORM-SERVICE-GUIDE.md`.
 6. `lint:check` (boundary rules pass), unit tests with in-memory port fakes,
    update `ARCHITECTURE.md` §9 catalog + this index table.
-7. If business modules can plug in: expose a registry, document
-   bootstrap-time `register(...)`, and fail fast on misuse.
+7. If business modules can plug in: expose a registry, document the
+   composition-root bridge row pattern, and fail fast on misuse.
 
 ## Per-module README template
 

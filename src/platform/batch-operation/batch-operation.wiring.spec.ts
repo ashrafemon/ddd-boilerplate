@@ -1,5 +1,4 @@
 import { Test } from '@nestjs/testing';
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { BatchOperationHandlerRegistry } from './batch-operation-handler.registry';
@@ -36,15 +35,12 @@ const configStub = {
 };
 
 /**
- * Mirrors the generated-template opt-in shape (e.g.
- * PurchaseOrderBatchOperationAdapter): the adapter is a plain provider that
- * registers ITSELF on the registry at bootstrap — owner module classes carry
- * no registration code.
+ * Mirrors the generated-template shape (e.g. PurchaseOrderBatchOperationAdapter):
+ * a PURE BatchOperationHandler — no lifecycle, no registry imports; the
+ * composition root plugs it into the registry at boot (see
+ * src/bootstrap/configure-batch-operations.spec.ts for the bridge itself).
  */
-@Injectable()
-class InvoiceBatchOperationAdapter implements BatchOperationHandler, OnApplicationBootstrap {
-  constructor(private readonly registry: BatchOperationHandlerRegistry) {}
-
+class InvoiceBatchOperationHandler implements BatchOperationHandler {
   aggregateType(): string {
     return 'Invoice';
   }
@@ -59,10 +55,6 @@ class InvoiceBatchOperationAdapter implements BatchOperationHandler, OnApplicati
 
   execute(entityId: string) {
     return Promise.resolve({ resultSnapshot: { approved: entityId } });
-  }
-
-  onApplicationBootstrap(): void {
-    this.registry.register(this);
   }
 }
 
@@ -90,7 +82,7 @@ describe('batch-operation DI wiring', () => {
           useValue: { writeJobCompletedEvent: jest.fn().mockResolvedValue(undefined) },
         },
         BatchOperationHandlerRegistry,
-        InvoiceBatchOperationAdapter,
+        InvoiceBatchOperationHandler,
         ProcessBatchOperationRowUseCase,
         BatchOperationWorker,
         CreateBatchOperationJobUseCase,
@@ -111,7 +103,9 @@ describe('batch-operation DI wiring', () => {
       ],
     }).compile();
 
-    moduleRef.get(InvoiceBatchOperationAdapter).onApplicationBootstrap();
+    moduleRef
+      .get(BatchOperationHandlerRegistry)
+      .register(moduleRef.get(InvoiceBatchOperationHandler));
     expect(moduleRef.get(BatchOperationHandlerRegistry).health()).toEqual([
       { aggregateType: 'Invoice', supportedOperations: ['approve'] },
     ]);

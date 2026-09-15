@@ -12,6 +12,7 @@ import { RecurringExecutionPort } from '../src/platform/recurring/ports/recurrin
 import { ConditionEvaluator } from './../src/platform/condition-engine/ports/condition-evaluator.port';
 import { BatchOperationHandlerRegistry } from '../src/platform/batch-operation/batch-operation-handler.registry';
 import { ImportHandlerRegistry } from '../src/platform/import/import-handler.registry';
+import { configureBatchOperations } from '../src/bootstrap/configure-batch-operations';
 import { GenerateRecurringInvoiceUseCase } from './../src/business/sales/invoice/application/usecases/generate-recurring-invoice.usecase';
 
 describe('App (e2e)', () => {
@@ -24,6 +25,9 @@ describe('App (e2e)', () => {
 
     app = moduleFixture.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     await app.init();
+    // composition-root bridge: business batch handlers -> platform registry
+    // (mirrors bootstrap(); the registry would otherwise stay empty)
+    configureBatchOperations(app);
   }, 30_000);
 
   it('registers all business use cases and shared ports', () => {
@@ -40,7 +44,7 @@ describe('App (e2e)', () => {
     expect(app.get(ConditionEvaluator)).toBeDefined();
     expect(app.get(GenerateRecurringInvoiceUseCase)).toBeDefined();
 
-    // opt-in registrations applied by the owning modules at bootstrap
+    // opt-in registrations applied by the composition-root bridge at startup
     expect(app.get(ScheduledJobHandlerRegistry).has('Recurring')).toBe(true);
     expect(app.get(BatchOperationHandlerRegistry).health()).toEqual(
       expect.arrayContaining([

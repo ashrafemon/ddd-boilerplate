@@ -1,5 +1,4 @@
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
-import { BatchOperationHandlerRegistry } from '@platform/batch-operation/batch-operation-handler.registry';
+import { Injectable } from '@nestjs/common';
 import { BatchOperationHandler } from '@platform/batch-operation/ports/batch-operation-handler.port';
 import { ExecutionResult, ValidationResult } from '@platform/batch-operation/batch-operation.types';
 import { PurchaseOrderTransition } from '../../../domain/types/purchase-order.types';
@@ -7,7 +6,10 @@ import { GetPurchaseOrderUseCase } from '../../../application/usecases/get-purch
 import { PurchaseOrderTransitionUseCase } from '../../../application/usecases/purchase-order-transition.usecase';
 
 /**
- * PurchaseOrder's Batch Operation port. A thin router: validate() pre-checks
+ * PurchaseOrder's Batch Operation port — pure handler data + routing, no
+ * lifecycle: the composition root (src/bootstrap/configure-batch-operations.ts)
+ * registers it on the platform registry at boot, so generated adapters never
+ * import platform implementation classes. A thin router: validate() pre-checks
  * the current status; execute() delegates to the same
  * PurchaseOrderTransitionUseCase a single-record UI click would call, inside
  * that use case's own @Transactional boundary — a PO moved via a batch is
@@ -23,11 +25,8 @@ const ALLOWED_FROM: Record<string, string[]> = {
 };
 
 @Injectable()
-export class PurchaseOrderBatchOperationAdapter
-  implements BatchOperationHandler, OnApplicationBootstrap
-{
+export class PurchaseOrderBatchOperationAdapter implements BatchOperationHandler {
   constructor(
-    private readonly registry: BatchOperationHandlerRegistry,
     private readonly getPurchaseOrder: GetPurchaseOrderUseCase,
     private readonly transitionPurchaseOrder: PurchaseOrderTransitionUseCase,
   ) {}
@@ -38,11 +37,6 @@ export class PurchaseOrderBatchOperationAdapter
 
   supportedOperations(): string[] {
     return [...OPERATIONS];
-  }
-
-  /** Opt-in: this adapter is its own registration — the module file stays a pure @Module declaration. */
-  onApplicationBootstrap(): void {
-    this.registry.register(this);
   }
 
   async validate(entityId: string, operationCode: string): Promise<ValidationResult> {

@@ -10,16 +10,16 @@ interface RegisteredEntry {
 
 /**
  * Map<aggregateType, handler>, resolved by string key at runtime — the same
- * service-locator pattern as ScheduledJobHandlerRegistry. Populated at
- * bootstrap by the owning aggregate's BatchOperationHandler adapter itself
- * (self-registration — no business-module class code); every
+ * service-locator pattern as ScheduledJobHandlerRegistry. Populated by the
+ * composition-root bridge (`src/bootstrap/configure-batch-operations.ts`)
+ * registering PURE business handlers at boot; every
  * pipeline component (Service / Worker) resolves through this and never
  * branches on aggregateType or operationCode itself.
  */
 @Injectable()
 export class BatchOperationHandlerRegistry extends KeyedRegistryBase<RegisteredEntry> {
   /**
-   * Called once per handler at boot; every field of the entry comes from the
+   * Called once per handler at boot. Every field of the entry comes from the
    * handler itself (`aggregateType()` / `supportedOperations()`) so there is
    * no second registration source to drift from. A duplicate aggregateType
    * throws here, not on the first row that hits it.
