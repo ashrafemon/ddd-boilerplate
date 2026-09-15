@@ -9,18 +9,16 @@ import {
   Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import {
-  CancelImportJobUseCase,
-  CreateImportJobUseCase,
-  CreateImportUploadUseCase,
-  ExecuteImportJobUseCase,
-  GetImportJobStatusUseCase,
-  GetImportPreviewUseCase,
-  GetImportReportUseCase,
-  InitImportUseCase,
-  ListImportJobsUseCase,
-  UpdateImportMappingUseCase,
-} from '../usecases/import.usecases';
+import { CancelImportJobUseCase } from '../usecases/cancel-import-job.usecase';
+import { CreateImportJobUseCase } from '../usecases/create-import-job.usecase';
+import { CreateImportUploadUseCase } from '../usecases/create-import-upload.usecase';
+import { ExecuteImportJobUseCase } from '../usecases/execute-import-job.usecase';
+import { GetImportJobStatusUseCase } from '../usecases/get-import-job-status.usecase';
+import { GetImportPreviewUseCase } from '../usecases/get-import-preview.usecase';
+import { GetImportReportUseCase } from '../usecases/get-import-report.usecase';
+import { InitImportUseCase } from '../usecases/init-import.usecase';
+import { ListImportJobsUseCase } from '../usecases/list-import-jobs.usecase';
+import { UpdateImportMappingUseCase } from '../usecases/update-import-mapping.usecase';
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';

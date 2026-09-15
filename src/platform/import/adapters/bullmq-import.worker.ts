@@ -1,9 +1,7 @@
 import { Logger } from '@nestjs/common';
-import {
-  ParseImportJobUseCase,
-  RunImportExecutionUseCase,
-  ValidateImportJobUseCase,
-} from '../usecases/import.usecases';
+import { ParseImportJobUseCase } from '../usecases/parse-import-job.usecase';
+import { RunImportExecutionUseCase } from '../usecases/run-import-execution.usecase';
+import { ValidateImportJobUseCase } from '../usecases/validate-import-job.usecase';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import {

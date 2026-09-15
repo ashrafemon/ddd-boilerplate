@@ -78,6 +78,8 @@ write is CAS/claim-token guarded so redelivery can never double-apply.
    exports) — consumers get it through `PlatformModule`.
 5. Consume existing primitives (`locking`, `idempotency`, `outbox`,
    `audit`, `numbering`, `context.run` in workers) instead of re-inventing.
+   Full file-by-file templates + the naming map + the acceptance checklist:
+   `docs/PLATFORM-SERVICE-GUIDE.md`.
 6. `lint:check` (boundary rules pass), unit tests with in-memory port fakes,
    update `ARCHITECTURE.md` §9 catalog + this index table.
 7. If business modules can plug in: expose a registry, document

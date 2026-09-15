@@ -608,7 +608,8 @@ Each sub-system owns its folder, module and ports, **and a `README.md`** (purpos
 public API, layout, who-calls/how, data & config, tenancy behaviour, rules).
 `PlatformModule` composes and re-exports them (not global — business modules import it
 explicitly). `src/platform/README.md` is the service index and the canonical-anatomy /
-add-a-service checklist that every module below follows:
+add-a-service checklist that every module below follows; the build-it recipe with code
+templates is `docs/PLATFORM-SERVICE-GUIDE.md`:
 
 ```text
 platform/
@@ -718,6 +719,11 @@ onApplicationBootstrap(): void {
 ```
 
 ### 9.2 Canonical platform-service structure (mandatory for every NEW service)
+
+> The full step-by-step recipe — exact file names, copy-pasteable port/repo/use-case/
+> controller/DTO/event code shapes, the naming map, the invariant checklist and the
+> verification battery — lives in **`docs/PLATFORM-SERVICE-GUIDE.md`**. This section is
+> the summary; the guide is what you follow to build a service strictly.
 
 The existing services converged on one shape; new platform services MUST start from it
 (following `§15` symmetrically on the business side):
@@ -968,6 +974,9 @@ call use case → wrap `{ data, message }`.
 ---
 
 ## 15. Creating a New Business Module
+
+> Step-by-step file templates, binding style and the acceptance checklist:
+> **`docs/BUSINESS-MODULE-GUIDE.md`** (reference implementation: `procurement/product`).
 
 1. **Domain** — `domain/aggregates` (aggregate + `<name>.invariants.ts`),
    `domain/value-objects`, `domain/events` + `domain/events/<name>.registry.ts`
