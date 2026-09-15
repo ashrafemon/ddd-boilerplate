@@ -1,8 +1,9 @@
 import { BatchOperationHandlerRegistry } from './batch-operation-handler.registry';
 import { BatchOperationHandler } from './ports/batch-operation-handler.port';
 
-function fakeHandler(ops: string[]): BatchOperationHandler {
+function fakeHandler(ops: string[], aggregateType = 'Invoice'): BatchOperationHandler {
   return {
+    aggregateType: () => aggregateType,
     supportedOperations: () => ops,
     validate: () => Promise.resolve({ canProceed: true }),
     execute: () => Promise.resolve({}),
@@ -10,10 +11,10 @@ function fakeHandler(ops: string[]): BatchOperationHandler {
 }
 
 describe('BatchOperationHandlerRegistry', () => {
-  it('registers and resolves a handler by aggregateType', () => {
+  it('registers and resolves a handler, entry derived from the handler itself', () => {
     const registry = new BatchOperationHandlerRegistry();
     const handler = fakeHandler(['approve', 'cancel']);
-    registry.register('Invoice', ['approve', 'cancel'], handler);
+    registry.register(handler);
 
     expect(registry.resolveHandler('Invoice')).toBe(handler);
     expect(registry.health()).toEqual([
@@ -23,19 +24,9 @@ describe('BatchOperationHandlerRegistry', () => {
 
   it('throws on a duplicate aggregateType registration', () => {
     const registry = new BatchOperationHandlerRegistry();
-    registry.register('Invoice', ['approve'], fakeHandler(['approve']));
+    registry.register(fakeHandler(['approve']));
 
-    expect(() => registry.register('Invoice', ['approve'], fakeHandler(['approve']))).toThrow(
-      /already registered/,
-    );
-  });
-
-  it('throws at registration when the declared operations exceed what the handler reports', () => {
-    const registry = new BatchOperationHandlerRegistry();
-
-    expect(() =>
-      registry.register('Invoice', ['approve', 'post'], fakeHandler(['approve'])),
-    ).toThrow(/does not report/);
+    expect(() => registry.register(fakeHandler(['approve']))).toThrow(/already registered/);
   });
 
   it('throws for an unknown aggregateType', () => {
@@ -47,13 +38,17 @@ describe('BatchOperationHandlerRegistry', () => {
     );
   });
 
-  it('rejects an operationCode outside the registered supportedOperations', () => {
+  it('rejects an operationCode outside the handler-reported supportedOperations', () => {
     const registry = new BatchOperationHandlerRegistry();
-    registry.register('Invoice', ['approve'], fakeHandler(['approve', 'post']));
+    registry.register(fakeHandler(['approve', 'post']));
 
-    expect(() => registry.assertOperationSupported('Invoice', 'post')).toThrow(
+    expect(() => registry.assertOperationSupported('Invoice', 'delete')).toThrow(
       /does not support operationCode/,
     );
     expect(() => registry.assertOperationSupported('Invoice', 'approve')).not.toThrow();
+    registry.register(fakeHandler(['approve'], 'Bill'));
+    expect(() => registry.assertOperationSupported('Bill', 'post')).toThrow(
+      /does not support operationCode/,
+    );
   });
 });

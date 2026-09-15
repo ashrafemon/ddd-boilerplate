@@ -217,7 +217,7 @@ comment documenting the table contract (all existing files do this — copy styl
     OutboxAdapter,
     { provide: XIntegrationPort, useExisting: OutboxAdapter },
     CompanyConfigAdapter, { provide: CompanyConfigPort, useExisting: CompanyConfigAdapter },
-    // (opt-in platform features:) XBatchOperationAdapter + implements OnApplicationBootstrap
+    // (opt-in platform features:) XBatchOperationAdapter — a provider that self-registers on its own onApplicationBootstrap; module class stays a pure @Module
   ],
   exports: [XForYPort],           // ONLY public ports (facades implement them inside)
 })

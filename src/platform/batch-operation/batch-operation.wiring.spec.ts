@@ -1,8 +1,11 @@
 import { Test } from '@nestjs/testing';
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { BatchOperationHandlerRegistry } from './batch-operation-handler.registry';
+import { BatchOperationHandler } from './ports/batch-operation-handler.port';
 import { BatchOperationWorker } from './batch-operation.worker';
+import { ValidationResult } from './batch-operation.types';
 import { AuditPort } from '@platform/audit/ports/audit.port';
 import { BatchOperationJobRepositoryPort } from './ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from './ports/batch-operation-job-row-repository.port';
@@ -33,6 +36,37 @@ const configStub = {
 };
 
 /**
+ * Mirrors the generated-template opt-in shape (e.g.
+ * PurchaseOrderBatchOperationAdapter): the adapter is a plain provider that
+ * registers ITSELF on the registry at bootstrap — owner module classes carry
+ * no registration code.
+ */
+@Injectable()
+class InvoiceBatchOperationAdapter implements BatchOperationHandler, OnApplicationBootstrap {
+  constructor(private readonly registry: BatchOperationHandlerRegistry) {}
+
+  aggregateType(): string {
+    return 'Invoice';
+  }
+
+  supportedOperations(): string[] {
+    return ['approve'];
+  }
+
+  validate(): Promise<ValidationResult> {
+    return Promise.resolve({ canProceed: true });
+  }
+
+  execute(entityId: string) {
+    return Promise.resolve({ resultSnapshot: { approved: entityId } });
+  }
+
+  onApplicationBootstrap(): void {
+    this.registry.register(this);
+  }
+}
+
+/**
  * Resolves the whole batch-operation provider graph through Nest's DI the same
  * way PlatformModule wires it — a provider-resolution error here would
  * otherwise only surface at app boot (which needs a database).
@@ -56,6 +90,7 @@ describe('batch-operation DI wiring', () => {
           useValue: { writeJobCompletedEvent: jest.fn().mockResolvedValue(undefined) },
         },
         BatchOperationHandlerRegistry,
+        InvoiceBatchOperationAdapter,
         ProcessBatchOperationRowUseCase,
         BatchOperationWorker,
         CreateBatchOperationJobUseCase,
@@ -76,12 +111,10 @@ describe('batch-operation DI wiring', () => {
       ],
     }).compile();
 
-    const registry = moduleRef.get(BatchOperationHandlerRegistry);
-    registry.register('Invoice', ['approve'], {
-      supportedOperations: () => ['approve'],
-      validate: () => Promise.resolve({ canProceed: true }),
-      execute: (entityId: string) => Promise.resolve({ resultSnapshot: { approved: entityId } }),
-    });
+    moduleRef.get(InvoiceBatchOperationAdapter).onApplicationBootstrap();
+    expect(moduleRef.get(BatchOperationHandlerRegistry).health()).toEqual([
+      { aggregateType: 'Invoice', supportedOperations: ['approve'] },
+    ]);
 
     const controller = moduleRef.get(BatchOperationController);
     const resMock = { status: jest.fn() };

@@ -46,8 +46,9 @@ import { BatchOperationController } from './http/batch-operation.controller';
  *     Reconciliation cron resets stuck rows and re-dispatches orphans.
  *
  * No inbound ports: the controller/worker inject these use cases directly;
- * BatchOperationHandlerRegistry is the plugin boundary (owner modules register
- * in onApplicationBootstrap). Reads are tenant-scoped.
+ * BatchOperationHandlerRegistry is the plugin boundary — each aggregate's
+ * adapter self-registers on it in its own onApplicationBootstrap (owner
+ * module classes stay pure @Module declarations). Reads are tenant-scoped.
  */
 @Module({
   imports: [

@@ -9,7 +9,8 @@ import { InMemoryBatchOperationJobRepository } from '../__testing__/in-memory-ba
 function makeSut(overrides?: { syncThreshold?: number; maxRecordsPerJob?: number }) {
   const repo = new InMemoryBatchOperationJobRepository();
   const registry = new BatchOperationHandlerRegistry();
-  registry.register('Invoice', ['approve', 'post'], {
+  registry.register({
+    aggregateType: () => 'Invoice',
     supportedOperations: () => ['approve', 'post'],
     validate: () => Promise.resolve({ canProceed: true }),
     execute: () => Promise.resolve({}),

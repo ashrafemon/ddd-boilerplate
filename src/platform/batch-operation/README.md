@@ -50,27 +50,37 @@ http/
 
 ## Onboarding a batch-capable aggregate
 
-Inside the domain module that owns the aggregate (never the reverse):
+All opt-in code lives in the aggregate's own adapter (never the reverse) — the
+module file stays a pure `@Module` declaration, so a generated template can
+emit it unchanged:
 
 ```ts
-@Module({
-  imports: [PlatformModule],
-  providers: [PurchaseOrderBatchOperationAdapter /* + its own deps */],
-})
-export class PurchaseOrderModule implements OnApplicationBootstrap {
+// <aggregate>/infrastructure/adapters/platform/<aggregate>-batch-operation.adapter.ts
+@Injectable()
+export class PurchaseOrderBatchOperationAdapter
+  implements BatchOperationHandler, OnApplicationBootstrap
+{
   constructor(
-    private readonly batchHandlers: BatchOperationHandlerRegistry,
-    private readonly batchOperationHandler: PurchaseOrderBatchOperationAdapter,
+    private readonly registry: BatchOperationHandlerRegistry,
+    /* own use cases */
   ) {}
 
+  aggregateType(): string { return 'PurchaseOrder'; }
+  supportedOperations(): string[] { return ['submit', 'approve', 'reject', 'cancel']; }
+
   onApplicationBootstrap(): void {
-    this.batchHandlers.register(
-      'PurchaseOrder',
-      ['submit', 'approve', 'reject', 'cancel'],
-      this.batchOperationHandler,
-    );
+    this.registry.register(this);
   }
 }
+```
+
+```ts
+// procurement/purchase-order.module.ts — no class body, no registration code
+@Module({
+  imports: [PlatformModule],
+  providers: [PurchaseOrderBatchOperationAdapter, /* ... */],
+})
+export class PurchaseOrderModule {}
 ```
 
 The adapter is a thin router: `validate()` is a pure check of the record's
@@ -84,7 +94,7 @@ via a batch is indistinguishable from one moved by hand. See
 | Design doc                                | Here                                                                                                                                                             |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TypeORM                                   | Prisma via `TransactionHost`                                                                                                                                     |
-| `BatchOperationModule.forRoot/forHandler` | providers live in `batch-operation.module.ts`; the aggregate module registers on `BatchOperationHandlerRegistry` at bootstrap                                    |
+| `BatchOperationModule.forRoot/forHandler` | providers live in `batch-operation.module.ts`; the aggregate's adapter self-registers on `BatchOperationHandlerRegistry` at bootstrap                             |
 | `job_no` generator                        | `NumberingPort` sequence `batch-operation-job`, prefix `BATCH-`                                                                                                  |
 | BullMQ chunk queue                        | `BullMqBatchOperationQueuePublisher` + `BullMqBatchOperationWorker` (same pattern as scheduler); Sync still calls `BatchOperationWorker.processChunk` in-process |
 | Job-completed notification                | `BatchOperationJobOutboxWriterPort` → transactional outbox                                                                                                       |

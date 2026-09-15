@@ -46,7 +46,9 @@ src/platform/<service>/
 
 Rules inherited repo-wide: ports own contracts, adapters own I/O; cross-module
 calls only through another module's **exported token**; registries are filled
-by the OWNING module in `onApplicationBootstrap`; platform writes cross the
+by the **handler's own** `onApplicationBootstrap` (self-registering adapter —
+owner module classes stay pure `@Module`s; import/scheduler module-side
+registration is legacy, migrate on touch); platform writes cross the
 process boundary solely via `OutboxWriterPort`; every mutating path is
 tenant-stamped and read via `TenantScope` (404 for foreign rows); every state
 write is CAS/claim-token guarded so redelivery can never double-apply.

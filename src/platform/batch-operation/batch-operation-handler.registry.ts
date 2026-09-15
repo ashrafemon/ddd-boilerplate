@@ -10,38 +10,33 @@ interface RegisteredEntry {
 
 /**
  * Map<aggregateType, handler>, resolved by string key at runtime — the same
- * service-locator pattern as ScheduledJobHandlerRegistry. Populated by
- * the owning aggregate modules' bootstrap registrations; every
+ * service-locator pattern as ScheduledJobHandlerRegistry. Populated at
+ * bootstrap by the owning aggregate's BatchOperationHandler adapter itself
+ * (self-registration — no business-module class code); every
  * pipeline component (Service / Worker) resolves through this and never
  * branches on aggregateType or operationCode itself.
  */
 @Injectable()
 export class BatchOperationHandlerRegistry extends KeyedRegistryBase<RegisteredEntry> {
   /**
-   * Called once per aggregateType at boot. Validates that the handler reports
-   * every operationCode the registration claims — a mismatch throws here, not
-   * on the first row that hits it.
+   * Called once per handler at boot; every field of the entry comes from the
+   * handler itself (`aggregateType()` / `supportedOperations()`) so there is
+   * no second registration source to drift from. A duplicate aggregateType
+   * throws here, not on the first row that hits it.
    */
-  register(
-    aggregateType: string,
-    supportedOperations: string[],
-    handler: BatchOperationHandler,
-  ): void {
+  register(handler: BatchOperationHandler): void {
+    const aggregateType = handler.aggregateType();
     if (this.has(aggregateType)) {
       throw new Error(
         `BatchOperationHandler for aggregateType '${aggregateType}' already registered`,
       );
     }
 
-    const reported = new Set(handler.supportedOperations());
-    const missing = supportedOperations.filter(op => !reported.has(op));
-    if (missing.length > 0) {
-      throw new Error(
-        `BatchOperationHandler '${aggregateType}' was registered for operations it does not report: ${missing.join(', ')}`,
-      );
-    }
-
-    this.entries.set(aggregateType, { aggregateType, supportedOperations, handler });
+    this.entries.set(aggregateType, {
+      aggregateType,
+      supportedOperations: handler.supportedOperations(),
+      handler,
+    });
   }
 
   resolveHandler(aggregateType: string): BatchOperationHandler {

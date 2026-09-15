@@ -30,6 +30,8 @@ flowchart LR
     ConfigurationModule["ConfigurationModule"]
     VendorModule -->|CompanyConfigPort| ConfigurationModule
     GoodReceiptNoteModule["GoodReceiptNoteModule"]
+    BatchOperationModule["BatchOperationModule"]
+    GoodReceiptNoteModule -->|BatchOperationHandlerRegistry| BatchOperationModule
     GoodReceiptNoteModule -->|PrismaReadPort| ContextModule__src_platform_context__2
     GoodReceiptNoteModule -->|OutboxWriterPort| OutboxModule
     GoodReceiptNoteModule -->|CompanyConfigPort| ConfigurationModule
@@ -40,6 +42,7 @@ flowchart LR
     ProductModule -->|OutboxWriterPort| OutboxModule
     ProductModule -->|CompanyConfigPort| ConfigurationModule
     PurchaseOrderModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
+    PurchaseOrderModule -->|BatchOperationHandlerRegistry| BatchOperationModule
     RecurringModule["RecurringModule"]
     PurchaseOrderModule -->|RecurringTemplatePort, RecurringExecutionPort| RecurringModule
     ObservabilityModule["ObservabilityModule"]
@@ -67,7 +70,6 @@ flowchart LR
     NotificationModule__src_infrastructure_notification__2 -->|ConfigService| ConfigModule
     AuditModule["AuditModule"]
     AuditModule -->|RequestContextPort| ContextModule__src_platform_context__2
-    BatchOperationModule["BatchOperationModule"]
     BatchOperationModule -->|RequestContextPort| ContextModule__src_platform_context__2
     BatchOperationModule -->|OutboxWriterPort| OutboxModule
     BatchOperationModule -->|ConfigService| ConfigModule
@@ -228,6 +230,8 @@ flowchart LR
     ListGrnsUseCase["ListGrnsUseCase"]
     GrnController -->|injects| ListGrnsUseCase
     GrnBatchOperationAdapter["GrnBatchOperationAdapter"]
+    BatchOperationHandlerRegistry["BatchOperationHandlerRegistry"]
+    GrnBatchOperationAdapter -->|injects via BatchOperationModule| BatchOperationHandlerRegistry
     GrnBatchOperationAdapter -->|injects| GetGrnUseCase
     GrnBatchOperationAdapter -->|injects| ReceiveGrnUseCase
     GrnBatchOperationAdapter -->|injects| CompleteGrnUseCase
@@ -255,10 +259,6 @@ flowchart LR
     CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
     PurchaseOrderForGrnPort["PurchaseOrderForGrnPort"]
     PurchaseOrderAdapter -->|injects via PurchaseOrderModule| PurchaseOrderForGrnPort
-    GoodReceiptNoteModule_bootstrap["GoodReceiptNoteModule bootstrap"]
-    BatchOperationHandlerRegistry["BatchOperationHandlerRegistry"]
-    GoodReceiptNoteModule_bootstrap -->|registers or injects| BatchOperationHandlerRegistry
-    GoodReceiptNoteModule_bootstrap -->|registers or injects| GrnBatchOperationAdapter
 ```
 
 #### PurchaseOrderModule — `src/business/procurement/purchase-order/purchase-order.module.ts`
@@ -311,6 +311,8 @@ flowchart LR
     RequestContextPort["RequestContextPort"]
     PurchaseOrderController -->|injects via ContextModule| RequestContextPort
     PurchaseOrderBatchOperationAdapter["PurchaseOrderBatchOperationAdapter"]
+    BatchOperationHandlerRegistry["BatchOperationHandlerRegistry"]
+    PurchaseOrderBatchOperationAdapter -->|injects via BatchOperationModule| BatchOperationHandlerRegistry
     PurchaseOrderBatchOperationAdapter -->|injects| GetPurchaseOrderUseCase
     PurchaseOrderBatchOperationAdapter -->|injects| PurchaseOrderTransitionUseCase
     CreatePurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
@@ -361,10 +363,6 @@ flowchart LR
     PurchasableProductAdapter -->|injects via ProductModule| ProductForPurchasePort
     VendorForPurchasePort["VendorForPurchasePort"]
     OrderableVendorAdapter -->|injects via VendorModule| VendorForPurchasePort
-    PurchaseOrderModule_bootstrap["PurchaseOrderModule bootstrap"]
-    BatchOperationHandlerRegistry["BatchOperationHandlerRegistry"]
-    PurchaseOrderModule_bootstrap -->|registers or injects| BatchOperationHandlerRegistry
-    PurchaseOrderModule_bootstrap -->|registers or injects| PurchaseOrderBatchOperationAdapter
 ```
 
 ### Business — sales/invoice

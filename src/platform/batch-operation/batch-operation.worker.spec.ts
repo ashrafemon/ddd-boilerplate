@@ -65,6 +65,7 @@ describe('BatchOperationWorker.processChunk', () => {
     const repo = new InMemoryBatchOperationJobRepository();
     const registry = new BatchOperationHandlerRegistry();
     const handler: BatchOperationHandler = {
+      aggregateType: () => 'Invoice',
       supportedOperations: () => ['approve'],
       validate: entityId =>
         Promise.resolve(
@@ -77,7 +78,7 @@ describe('BatchOperationWorker.processChunk', () => {
         return Promise.resolve({ resultSnapshot: { ok: entityId } });
       },
     };
-    registry.register('Invoice', ['approve'], handler);
+    registry.register(handler);
     const writeJobCompletedEvent = jest.fn().mockResolvedValue(undefined);
     const worker = makeWorker(repo, registry, { writeJobCompletedEvent });
 
@@ -98,7 +99,8 @@ describe('BatchOperationWorker.processChunk', () => {
   it('finalises an all-success job as COMPLETED', async () => {
     const repo = new InMemoryBatchOperationJobRepository();
     const registry = new BatchOperationHandlerRegistry();
-    registry.register('Invoice', ['approve'], {
+    registry.register({
+      aggregateType: () => 'Invoice',
       supportedOperations: () => ['approve'],
       validate: () => Promise.resolve({ canProceed: true }),
       execute: () => Promise.resolve({}),
@@ -115,7 +117,8 @@ describe('BatchOperationWorker.processChunk', () => {
     const repo = new InMemoryBatchOperationJobRepository();
     const registry = new BatchOperationHandlerRegistry();
     const execute = jest.fn().mockResolvedValue({});
-    registry.register('Invoice', ['approve'], {
+    registry.register({
+      aggregateType: () => 'Invoice',
       supportedOperations: () => ['approve'],
       validate: () => Promise.resolve({ canProceed: true }),
       execute,
@@ -140,7 +143,8 @@ describe('BatchOperationWorker.processChunk', () => {
     const repo = new InMemoryBatchOperationJobRepository();
     const registry = new BatchOperationHandlerRegistry();
     const execute = jest.fn().mockResolvedValue({});
-    registry.register('Invoice', ['approve'], {
+    registry.register({
+      aggregateType: () => 'Invoice',
       supportedOperations: () => ['approve'],
       validate: () => Promise.resolve({ canProceed: true }),
       execute,

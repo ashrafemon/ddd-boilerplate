@@ -1,5 +1,4 @@
-import { Module, OnApplicationBootstrap } from '@nestjs/common';
-import { BatchOperationHandlerRegistry } from '@platform/batch-operation/batch-operation-handler.registry';
+import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
 import { ProductModule } from '@business/procurement/product/product.module';
 import { VendorModule } from '@business/party/vendor/vendor.module';
@@ -68,18 +67,4 @@ import { PurchaseOrderBatchOperationAdapter } from './infrastructure/adapters/pl
   ],
   exports: [PurchaseOrderForGrnPort],
 })
-export class PurchaseOrderModule implements OnApplicationBootstrap {
-  constructor(
-    private readonly batchHandlers: BatchOperationHandlerRegistry,
-    private readonly batchOperationHandler: PurchaseOrderBatchOperationAdapter,
-  ) {}
-
-  /** Opt-in: register this aggregate's batch handler directly on the platform registry. */
-  onApplicationBootstrap(): void {
-    this.batchHandlers.register(
-      'PurchaseOrder',
-      ['submit', 'approve', 'reject', 'cancel'],
-      this.batchOperationHandler,
-    );
-  }
-}
+export class PurchaseOrderModule {}

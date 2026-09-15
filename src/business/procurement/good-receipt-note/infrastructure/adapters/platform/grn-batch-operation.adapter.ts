@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { BatchOperationHandlerRegistry } from '@platform/batch-operation/batch-operation-handler.registry';
 import { BatchOperationHandler } from '@platform/batch-operation/ports/batch-operation-handler.port';
 import { ExecutionResult, ValidationResult } from '@platform/batch-operation/batch-operation.types';
 import { CompleteGrnUseCase } from '../../../application/usecases/complete-grn.usecase';
@@ -20,15 +21,25 @@ const ALLOWED_FROM: Record<string, string[]> = {
  * @Transactional boundary.
  */
 @Injectable()
-export class GrnBatchOperationAdapter implements BatchOperationHandler {
+export class GrnBatchOperationAdapter implements BatchOperationHandler, OnApplicationBootstrap {
   constructor(
+    private readonly registry: BatchOperationHandlerRegistry,
     private readonly getGrn: GetGrnUseCase,
     private readonly receiveGrn: ReceiveGrnUseCase,
     private readonly completeGrn: CompleteGrnUseCase,
   ) {}
 
+  aggregateType(): string {
+    return 'GoodReceiptNote';
+  }
+
   supportedOperations(): string[] {
     return [...OPERATIONS];
+  }
+
+  /** Opt-in: this adapter is its own registration — the module file stays a pure @Module declaration. */
+  onApplicationBootstrap(): void {
+    this.registry.register(this);
   }
 
   async validate(entityId: string, operationCode: string): Promise<ValidationResult> {

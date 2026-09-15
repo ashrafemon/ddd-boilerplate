@@ -32,8 +32,9 @@ const { passed } = await evaluator.evaluate(cond, { tenantId, traceId });
 ## Who calls it / how called
 `platform/recurring` (`recurring-generation.handler.ts`) is the only
 consumer, injecting the evaluator and calling the parser statically.
-Resolvers are meant to be registered by the field-owning module at
-`onApplicationBootstrap`.
+Resolvers follow the §9.1 standard: the field-owning module's own resolver
+implements `FieldResolver` + `OnApplicationBootstrap` and registers itself on
+`FieldResolverRegistry`, so the owner module class stays a pure `@Module`.
 
 ## Tenancy & Gotchas (important)
 - **No production code registers any FieldResolver today** (only spec files

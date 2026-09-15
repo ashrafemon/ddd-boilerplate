@@ -34,7 +34,7 @@ OUTBOUND port = "what THIS module needs from the world"      → implemented by 
   ├─ to platform:  infrastructure/adapters/platform/*.adapter.ts   (wraps a @platform port)
   └─ to a module:  infrastructure/adapters/module/*.adapter.ts     (injects another module's public port)
 PUBLIC port   = "what THIS module offers to other modules"   → implemented by a FACADE in application/facades/
-REGISTRY      = "who may plug a handler in"                  → owner module registers in onApplicationBootstrap
+REGISTRY      = "who may plug a handler in"                  → the handler self-registers in onApplicationBootstrap (batch); legacy owner-module registration elsewhere
 ```
 
 All four are **abstract classes used as their own DI token**; every binding lives in the module
@@ -305,17 +305,19 @@ needs no changes.
 
 ## 8. Opt-in registrations (who plugs into whom)
 
-Every registry is injected directly by its owner module and populated in
-`onApplicationBootstrap` — no `ModuleRef` lookups; duplicates / supportedOperations mismatches
-throw at boot.
+Registries are populated at `onApplicationBootstrap` — no `ModuleRef` lookups; duplicate
+registrations throw at boot. Batch-operation is the self-registering
+pattern (the **adapter** injects the platform registry and registers itself, so the owner
+module class stays a pure `@Module` — the generated-template shape); import/scheduler
+handlers still register from their owner module (legacy — migrate on touch).
 
-| Owner module            | Registry injected             | Key               | Handler the owner provides itself                                        |
-| ----------------------- | ----------------------------- | ----------------- | ------------------------------------------------------------------------ |
-| PurchaseOrderModule     | BatchOperationHandlerRegistry | `PurchaseOrder`   | PurchaseOrderBatchOperationAdapter (`infrastructure/adapters/platform/`) |
-| GoodReceiptNoteModule   | BatchOperationHandlerRegistry | `GoodReceiptNote` | GrnBatchOperationAdapter                                                 |
-| VendorModule            | ImportHandlerRegistry         | `vendor`          | VendorImportHandler                                                      |
-| RecurringModule         | ScheduledJobHandlerRegistry   | `Recurring`       | RecurringGenerationHandler                                               |
-| data-owning modules     | FieldResolverRegistry         | field prefix      | FieldResolver                                                            |
+| Opt-in registry             | Key               | Handler                                                     | Bootstrapped by               |
+| --------------------------- | ----------------- | ----------------------------------------------------------- | ----------------------------- |
+| BatchOperationHandlerRegistry | `PurchaseOrder`   | PurchaseOrderBatchOperationAdapter (`infrastructure/adapters/platform/`) | the adapter itself |
+| BatchOperationHandlerRegistry | `GoodReceiptNote` | GrnBatchOperationAdapter                                    | the adapter itself            |
+| ImportHandlerRegistry       | `vendor`          | VendorImportHandler                                         | VendorModule (legacy)         |
+| ScheduledJobHandlerRegistry | `Recurring`       | RecurringGenerationHandler                                    | RecurringModule (legacy)      |
+| FieldResolverRegistry       | field prefix      | FieldResolver                                                 | the resolver itself (standard, not built yet) |
 
 ## 9. Mental-model cheat sheet
 
