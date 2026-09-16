@@ -1,11 +1,11 @@
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { OutboxEventBase } from '@platform/events/bases/outbox-event.base';
 import { ImportJobStatus } from '../import.types';
 
 /**
  * Raised when an import job finishes applying rows — COMPLETED when every row
  * applied, COMPLETED_WITH_ERRORS when some did not.
  */
-export class ImportJobCompletedEvent extends DomainEvent {
+export class ImportJobCompletedEvent extends OutboxEventBase {
   constructor(
     public readonly jobId: string,
     public readonly jobNo: string,

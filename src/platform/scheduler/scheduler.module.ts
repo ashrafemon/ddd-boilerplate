@@ -1,18 +1,14 @@
-import { INFRA_CACHE_MODULE } from '@infrastructure/cache/cache.module';
+import { LockingModule } from '@platform/locking/locking.module';
+import { ContextModule } from '@platform/context/context.module';
+import { AuditModule } from '@platform/audit/audit.module';
 import { MessagingModule } from '@platform/messaging/messaging.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ScheduledJobHandlerRegistry } from './scheduled-job-handler.registry';
 import { ScheduledJobProcessor } from './scheduled-job.processor';
 import { SchedulerTicker } from './scheduler.ticker';
-import { DispatchDueJobsPort } from './ports/dispatch-due-jobs.port';
-import { GetScheduledJobStatusPort } from './ports/get-scheduled-job-status.port';
-import { GetSchedulerHealthMetricsPort } from './ports/get-scheduler-health-metrics.port';
-import { ListScheduledJobDispatchLogPort } from './ports/list-scheduled-job-dispatch-log.port';
-import { ReconcileMissedJobsPort } from './ports/reconcile-missed-jobs.port';
+import { SchedulerTickHeartbeat } from './scheduler-tick.heartbeat';
 import { SchedulerPort } from './ports/scheduler.port';
-import { UpdateScheduledJobPort } from './ports/update-scheduled-job.port';
-import { DistributedLockPort } from './ports/distributed-lock.port';
 import { ScheduledJobDispatchLogRepositoryPort } from './ports/scheduled-job-dispatch-log-repository.port';
 import { ScheduledJobEditLogRepositoryPort } from './ports/scheduled-job-edit-log-repository.port';
 import { ScheduledJobRepositoryPort } from './ports/scheduled-job-repository.port';
@@ -27,38 +23,51 @@ import { ReconcileMissedJobsUseCase } from './usecases/reconcile-missed-jobs.use
 import { RegisterScheduledJobUseCase } from './usecases/register-scheduled-job.usecase';
 import { RescheduleExternalJobUseCase } from './usecases/reschedule-external-job.usecase';
 import { UpdateScheduledJobUseCase } from './usecases/update-scheduled-job.usecase';
-import { PrismaScheduledJobDispatchLogRepository } from './adapters/prisma-scheduled-job-dispatch-log.repository';
-import { PrismaScheduledJobEditLogRepository } from './adapters/prisma-scheduled-job-edit-log.repository';
-import { PrismaScheduledJobRepository } from './adapters/prisma-scheduled-job.repository';
+import { PrismaScheduledJobDispatchLogRepository } from './repositories/prisma-scheduled-job-dispatch-log.repository';
+import { PrismaScheduledJobEditLogRepository } from './repositories/prisma-scheduled-job-edit-log.repository';
+import { PrismaScheduledJobRepository } from './repositories/prisma-scheduled-job.repository';
 import { SCHEDULER_QUEUE_NAME } from './scheduler.constants';
-import { BullMqSchedulerJobQueue } from './adapters/bullmq-scheduler-job.queue';
+import { BullMqSchedulerQueueAdapter } from './adapters/bullmq-scheduler-queue.adapter';
 import { BullMqSchedulerJobWorker } from './adapters/bullmq-scheduler-job.worker';
 import { RabbitMqSchedulerEventPublisher } from './adapters/rabbitmq-scheduler-event.publisher';
-import { RedisDistributedLockAdapter } from './adapters/redis-distributed-lock.adapter';
 import { SchedulerAdapter } from './adapters/scheduler.adapter';
-import { DispatchDueJobsAdapter } from './adapters/dispatch-due-jobs.adapter';
-import { GetScheduledJobStatusAdapter } from './adapters/get-scheduled-job-status.adapter';
-import { GetSchedulerHealthMetricsAdapter } from './adapters/get-scheduler-health-metrics.adapter';
-import { ListScheduledJobDispatchLogAdapter } from './adapters/list-scheduled-job-dispatch-log.adapter';
-import { ReconcileMissedJobsAdapter } from './adapters/reconcile-missed-jobs.adapter';
-import { UpdateScheduledJobAdapter } from './adapters/update-scheduled-job.adapter';
 import { SchedulerController, SchedulerHealthController } from './http/scheduler.controller';
 
 /**
- * Platform scheduler — DB-backed job table polled by SchedulerTicker, async
- * execution through BullMQ, Redis locks, and per-jobType fire handlers
- * registered opt-in on ScheduledJobHandlerRegistry by the owning module. Business code
- * injects the inbound port abstract classes only.
+ * Platform scheduler — durable job timing for the whole monolith.
+ *
+ * Tables owned: scheduled_jobs, scheduled_job_dispatch_log, scheduled_job_edit_log.
+ *
+ * Lifecycle (numbered flow):
+ *  1. Register  — services/business call SchedulerPort.schedule(...) (or the
+ *     update/dispatch ops ports; thin adapters delegate to use cases).
+ *  2. Poll      — SchedulerTicker (interval, SCHEDULER_POLL_INTERVAL_MS) runs
+ *     DispatchDueJobsUseCase: claimDue (FOR UPDATE SKIP LOCKED) -> Redis
+ *     distributed lock -> enqueue BullMQ job (idempotencyKey as BullMQ jobId).
+ *  3. Execute   — BullMqSchedulerJobWorker -> ScheduledJobProcessor:
+ *     registered jobType handler fires in-process, otherwise the job is
+ *     published to RabbitMQ as scheduler.job.<jobType> for external consumers.
+ *  4. Reschedule— CRON jobs compute nextRunAt via CronCalculator; EXTERNAL jobs
+ *     stay claimed until the owner calls rescheduleExternal.
+ *  5. Reconcile — ReconcileMissedJobsUseCase releases stale claims and applies
+ *     missed-fire policy; edit log + dispatch log audit every change.
+ *  Ops    — /scheduled-jobs (paged, tenant-scoped), PATCH (optimistic version),
+ *     cancel, and POST :id/dispatch-now to force a job due-now for backfills.
+ *
+ * Inbound surface: SchedulerPort (cross-module facade), ops ports bound through
+ * thin adapters; ScheduledJobHandlerRegistry is the plugin boundary business
+ * modules register into from onApplicationBootstrap. Reads are tenant-scoped.
  */
 @Module({
   imports: [
-    INFRA_CACHE_MODULE,
+    ContextModule,
+    AuditModule,
+    LockingModule,
     MessagingModule,
     BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }),
   ],
   controllers: [SchedulerController, SchedulerHealthController],
   providers: [
-    // outbound adapters
     ScheduledJobHandlerRegistry,
     PrismaScheduledJobRepository,
     { provide: ScheduledJobRepositoryPort, useExisting: PrismaScheduledJobRepository },
@@ -72,56 +81,28 @@ import { SchedulerController, SchedulerHealthController } from './http/scheduler
       provide: ScheduledJobEditLogRepositoryPort,
       useExisting: PrismaScheduledJobEditLogRepository,
     },
-    RedisDistributedLockAdapter,
-    { provide: DistributedLockPort, useExisting: RedisDistributedLockAdapter },
     RabbitMqSchedulerEventPublisher,
     { provide: SchedulerEventPublisherPort, useExisting: RabbitMqSchedulerEventPublisher },
     ScheduledJobProcessor,
-    BullMqSchedulerJobQueue,
-    { provide: SchedulerJobQueuePort, useExisting: BullMqSchedulerJobQueue },
+    BullMqSchedulerQueueAdapter,
+    { provide: SchedulerJobQueuePort, useExisting: BullMqSchedulerQueueAdapter },
     BullMqSchedulerJobWorker,
 
-    // use cases (business logic only) bound to their inbound ports via a thin adapter
+    // use cases — internal consumers (ticker/controller/adapter) inject them directly
     RegisterScheduledJobUseCase,
     CancelScheduledJobUseCase,
     RescheduleExternalJobUseCase,
     UpdateScheduledJobUseCase,
-    UpdateScheduledJobAdapter,
-    { provide: UpdateScheduledJobPort, useExisting: UpdateScheduledJobAdapter },
     DispatchDueJobsUseCase,
-    DispatchDueJobsAdapter,
-    { provide: DispatchDueJobsPort, useExisting: DispatchDueJobsAdapter },
     ReconcileMissedJobsUseCase,
-    ReconcileMissedJobsAdapter,
-    { provide: ReconcileMissedJobsPort, useExisting: ReconcileMissedJobsAdapter },
     GetScheduledJobStatusUseCase,
-    GetScheduledJobStatusAdapter,
-    { provide: GetScheduledJobStatusPort, useExisting: GetScheduledJobStatusAdapter },
     ListScheduledJobDispatchLogUseCase,
-    ListScheduledJobDispatchLogAdapter,
-    {
-      provide: ListScheduledJobDispatchLogPort,
-      useExisting: ListScheduledJobDispatchLogAdapter,
-    },
     GetSchedulerHealthMetricsUseCase,
-    GetSchedulerHealthMetricsAdapter,
-    {
-      provide: GetSchedulerHealthMetricsPort,
-      useExisting: GetSchedulerHealthMetricsAdapter,
-    },
     SchedulerAdapter,
     { provide: SchedulerPort, useExisting: SchedulerAdapter },
     SchedulerTicker,
+    SchedulerTickHeartbeat,
   ],
-  exports: [
-    SchedulerPort,
-    UpdateScheduledJobPort,
-    DispatchDueJobsPort,
-    ReconcileMissedJobsPort,
-    GetScheduledJobStatusPort,
-    ListScheduledJobDispatchLogPort,
-    GetSchedulerHealthMetricsPort,
-    ScheduledJobHandlerRegistry,
-  ],
+  exports: [SchedulerPort, ScheduledJobHandlerRegistry],
 })
 export class SchedulerModule {}

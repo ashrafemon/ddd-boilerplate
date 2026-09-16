@@ -1,5 +1,7 @@
+import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
 import { ConflictException, Injectable } from '@nestjs/common';
-import { CreateRecurringTemplateUseCase } from '@platform/recurring/usecases/create-recurring-template.usecase';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RecurringTemplatePort } from '@platform/recurring/ports/recurring-template.port';
 import type {
   CreateRecurringTemplateInput,
   RecurringTemplateRecord,
@@ -10,13 +12,13 @@ import { NumberingPort } from '../outbound-ports/numbering.port';
 const TEMPLATE_SEQUENCE = 'RecurringTemplate:PurchaseOrder';
 
 export interface CreateRecurringPurchaseOrderLineInput {
+  [key: string]: JsonValue;
   productId: string;
   quantity: number;
   unitPrice: number;
 }
 
 export interface CreateRecurringPurchaseOrderInput {
-  tenantId?: string;
   name: string;
   vendorId: string;
   currency?: string;
@@ -31,8 +33,7 @@ export interface CreateRecurringPurchaseOrderInput {
   autoPost?: boolean;
   autoEmail?: boolean;
   autoApprove?: boolean;
-  generationCondition?: Record<string, unknown>;
-  createdBy?: string;
+  generationCondition?: JsonObject;
 }
 
 /**
@@ -46,7 +47,8 @@ export class CreateRecurringPurchaseOrderUseCase {
   constructor(
     private readonly vendorQueryPort: OrderableVendorPort,
     private readonly numbering: NumberingPort,
-    private readonly createRecurringTemplate: CreateRecurringTemplateUseCase,
+    private readonly createRecurringTemplate: RecurringTemplatePort,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(input: CreateRecurringPurchaseOrderInput): Promise<RecurringTemplateRecord> {
@@ -60,9 +62,11 @@ export class CreateRecurringPurchaseOrderUseCase {
     }
 
     const templateNo = await this.numbering.nextNumber(TEMPLATE_SEQUENCE, { prefix: 'REC-PO-' });
+    const tenantId = this.requestContext.getTenantId();
+    const createdBy = this.requestContext.getUserId();
 
-    return this.createRecurringTemplate.execute({
-      tenantId: input.tenantId,
+    return this.createRecurringTemplate.create({
+      tenantId,
       templateNo,
       name: input.name,
       targetEntityType: 'PurchaseOrder',
@@ -81,7 +85,7 @@ export class CreateRecurringPurchaseOrderUseCase {
       autoApprove: input.autoApprove,
       generationCondition: input.generationCondition,
       lines: input.lines,
-      createdBy: input.createdBy,
+      createdBy,
     });
   }
 }

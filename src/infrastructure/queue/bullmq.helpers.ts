@@ -1,4 +1,5 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 export function isDuplicateJobError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
+  const message = FailureMessage.of(err);
   return /already exists/i.test(message);
 }

@@ -1,8 +1,8 @@
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { OutboxEventBase } from '@platform/events/bases/outbox-event.base';
 import { BatchOperationJobStatus } from '../batch-operation.types';
 
 /** Raised when a batch job reaches a terminal status (Completed* / Failed / Cancelled). */
-export class BatchOperationJobCompletedEvent extends DomainEvent {
+export class BatchOperationJobCompletedEvent extends OutboxEventBase {
   constructor(
     public readonly jobId: string,
     public readonly jobNo: string,

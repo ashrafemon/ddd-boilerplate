@@ -8,8 +8,8 @@ import {
 
 /**
  * The ONLY surface between the import pipeline and an import-capable aggregate.
- * Implemented once per entityKey (e.g. CustomerImportHandler), registered via
- * the owning domain module's `onApplicationBootstrap` registration.
+ * Implemented once per entityKey (e.g. CustomerImportHandler) as a PURE handler;
+ * the composition root (`src/bootstrap/configure-imports.ts`) registers it.
  *
  * Three methods. A fourth usually means pipeline logic has leaked into the
  * domain (or vice versa) — stop and ask.

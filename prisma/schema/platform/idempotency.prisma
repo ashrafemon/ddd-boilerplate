@@ -1,0 +1,40 @@
+// ============================================================================
+// Platform — Idempotency (idempotency.prisma)
+// ============================================================================
+// Reservation ledger backing the IdempotencyPort and the @Idempotent()
+// HTTP decorator. A key is reserved (INSERT) before the operation runs, then
+// marked COMPLETED (with the response snapshot for replay) or FAILED
+// (releasable for retry). Expiry is swept by the idempotency reconciler.
+//
+// Multi-tenancy: (scope, tenantId, key) is the natural identity — callers
+// encode the operation key (e.g. a client Idempotency-Key header); tenantId
+// scopes it so two tenants may reuse the same key string.
+// ============================================================================
+
+enum IdempotencyStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+
+  @@map("idempotency_status")
+}
+
+model IdempotencyKey {
+  id         String            @id @default(uuid()) @db.Uuid
+  // Scoping column. The repository normalizes "no tenant" to '' because
+  // Postgres treats NULLs as distinct in unique indexes — a NULL tenantId
+  // would silently allow duplicate reservations.
+  tenantId   String?
+  scope      String
+  key        String
+  status     IdempotencyStatus @default(IN_PROGRESS)
+  result     Json?
+  attempts   Int               @default(1)
+  expiresAt  DateTime
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([scope, tenantId, key])
+  @@index([status, expiresAt])
+  @@map("idempotency_keys")
+}

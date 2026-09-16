@@ -1,12 +1,11 @@
 import { ConditionEvaluationService } from './condition-evaluation.service';
 import { FieldResolverRegistry } from './field-resolver.registry';
-import { UnregisteredFieldError } from './errors/unregistered-field.error';
-import { EvaluationContext, FieldResolver } from './ports/field-resolver.port';
+import { ConditionValue, EvaluationContext, FieldResolver } from './ports/field-resolver.port';
 
 class FakeFieldResolver implements FieldResolver {
-  constructor(private readonly values: Record<string, unknown>) {}
+  constructor(private readonly values: Record<string, ConditionValue>) {}
 
-  resolve(field: string): Promise<unknown> {
+  resolve(field: string): Promise<ConditionValue> {
     return Promise.resolve(this.values[field]);
   }
 }
@@ -100,6 +99,6 @@ describe('ConditionEvaluationService', () => {
         },
         makeContext(),
       ),
-    ).rejects.toBeInstanceOf(UnregisteredFieldError);
+    ).rejects.toThrow(/No FieldResolver registered/);
   });
 });

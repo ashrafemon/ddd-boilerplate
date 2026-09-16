@@ -1,7 +1,12 @@
 import { ScheduledJobProcessor } from './scheduled-job.processor';
 import { ScheduledJobHandlerRegistry } from './scheduled-job-handler.registry';
 import { SchedulerEventPublisherPort } from './ports/scheduler-event-publisher.port';
+import { ScheduledJobRepositoryPort } from './ports/scheduled-job-repository.port';
 import { SchedulerQueuedJob } from './ports/scheduler-job-queue.port';
+import { ScheduleMode } from './scheduler.types';
+
+const liveJobsPort = (): ScheduledJobRepositoryPort =>
+  ({ findById: jest.fn().mockResolvedValue(null) }) as unknown as ScheduledJobRepositoryPort;
 
 function queued(overrides: Partial<SchedulerQueuedJob> = {}): SchedulerQueuedJob {
   return {
@@ -14,6 +19,8 @@ function queued(overrides: Partial<SchedulerQueuedJob> = {}): SchedulerQueuedJob
     payload: null,
     idempotencyKey: 'idem-1',
     priority: 'normal',
+    scheduleMode: ScheduleMode.EXTERNAL,
+    cronExpression: null,
     ...overrides,
   };
 }
@@ -25,7 +32,7 @@ describe('ScheduledJobProcessor', () => {
     registry.register('Recurring', { handle });
     const publishJobDue = jest.fn().mockResolvedValue(undefined);
     const publisher = { publishJobDue } as unknown as SchedulerEventPublisherPort;
-    const processor = new ScheduledJobProcessor(registry, publisher);
+    const processor = new ScheduledJobProcessor(registry, publisher, liveJobsPort());
 
     await processor.process(queued());
 
@@ -39,11 +46,28 @@ describe('ScheduledJobProcessor', () => {
     const registry = new ScheduledJobHandlerRegistry();
     const publishJobDue = jest.fn().mockResolvedValue(undefined);
     const publisher = { publishJobDue } as unknown as SchedulerEventPublisherPort;
-    const processor = new ScheduledJobProcessor(registry, publisher);
+    const processor = new ScheduledJobProcessor(registry, publisher, liveJobsPort());
     const job = queued();
 
     await processor.process(job);
 
     expect(publishJobDue).toHaveBeenCalledWith(job);
+  });
+
+  it('skips execution when the schedule was cancelled while queued', async () => {
+    const registry = new ScheduledJobHandlerRegistry();
+    const handle = jest.fn().mockResolvedValue(undefined);
+    registry.register('Recurring', { handle });
+    const publishSkipped = jest.fn().mockResolvedValue(undefined);
+    const publisher = { publishJobDue: publishSkipped } as unknown as SchedulerEventPublisherPort;
+    const jobs = {
+      findById: jest.fn().mockResolvedValue({ id: 'job-1', status: 'CANCELLED' }),
+    } as unknown as ScheduledJobRepositoryPort;
+    const processor = new ScheduledJobProcessor(registry, publisher, jobs);
+
+    await processor.process(queued());
+
+    expect(handle).not.toHaveBeenCalled();
+    expect(publishSkipped).not.toHaveBeenCalled();
   });
 });

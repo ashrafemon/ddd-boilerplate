@@ -1,11 +1,11 @@
-import { EvaluationContext } from '@platform/condition-engine/ports/field-resolver.port';
+import { JsonObject } from '@shared-kernel/types/json-value.type';
 
 /**
  * Structurally satisfies condition-engine's EvaluationContext without this
  * module importing it — a RecurringContext value is passed anywhere an
  * EvaluationContext parameter is expected.
  */
-export interface RecurringContext extends EvaluationContext {
+export interface RecurringContext {
   tenantId?: string;
   recurringTemplateId: string;
   triggerKey: string;
@@ -19,12 +19,5 @@ export interface RecurringContext extends EvaluationContext {
    * { itemId } for a reorder-point PO). TIME-triggered executions leave
    * this undefined.
    */
-  eventPayload?: Record<string, unknown>;
-}
-
-export interface ResolvedHeader {
-  partyId: string;
-  partyType: string;
-  currency: string;
-  [key: string]: unknown;
+  eventPayload?: JsonObject;
 }

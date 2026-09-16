@@ -42,6 +42,17 @@ export class ClsRequestContextService implements RequestContextPort {
     this.cls.set(CLS_REQUEST_CONTEXT_KEY, RequestContext.create({ ...emptyContext(), ...context }));
   }
 
+  public async run<T>(patch: Partial<RequestContextData>, fn: () => T | Promise<T>): Promise<T> {
+    const previous = this.cls.get<RequestContext | undefined>(CLS_REQUEST_CONTEXT_KEY);
+    const base = previous ?? RequestContext.create({ ...emptyContext() });
+    this.cls.set(CLS_REQUEST_CONTEXT_KEY, base.with(patch));
+    try {
+      return await this.cls.run(() => fn());
+    } finally {
+      this.cls.set(CLS_REQUEST_CONTEXT_KEY, previous);
+    }
+  }
+
   public getRequestId(): string | undefined {
     return this.get()?.requestId;
   }

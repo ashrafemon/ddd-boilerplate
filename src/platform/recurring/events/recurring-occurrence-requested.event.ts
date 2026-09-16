@@ -1,4 +1,5 @@
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
+import { OutboxEventBase } from '@platform/events/bases/outbox-event.base';
 
 /**
  * Raised by RecurringGenerationHandler after a claimed, eligible occurrence.
@@ -16,12 +17,12 @@ export interface RecurringOccurrenceRequestedPayload {
   triggerKey: string;
   traceId: string;
   tenantId?: string;
-  headerOverrides: Record<string, unknown> | null;
-  lines: unknown[];
-  eventPayload?: Record<string, unknown>;
+  headerOverrides: JsonObject | null;
+  lines: JsonValue[];
+  eventPayload?: JsonObject;
 }
 
-export class RecurringOccurrenceRequested extends DomainEvent {
+export class RecurringOccurrenceRequested extends OutboxEventBase {
   constructor(
     public readonly executionId: string,
     public readonly recurringTemplateId: string,
@@ -32,10 +33,10 @@ export class RecurringOccurrenceRequested extends DomainEvent {
     public readonly autoPost: boolean,
     public readonly triggerKey: string,
     public readonly traceId: string,
-    public readonly headerOverrides: Record<string, unknown> | null,
-    public readonly lines: unknown[],
+    public readonly headerOverrides: JsonObject | null,
+    public readonly lines: JsonValue[],
     public readonly tenantId?: string,
-    public readonly eventPayload?: Record<string, unknown>,
+    public readonly eventPayload?: JsonObject,
   ) {
     super();
   }

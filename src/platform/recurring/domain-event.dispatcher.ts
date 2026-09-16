@@ -1,9 +1,11 @@
+import { JsonObject } from '@shared-kernel/types/json-value.type';
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { ScheduledJobHandlerRegistry } from '@platform/scheduler/scheduled-job-handler.registry';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';
-import { RecurringTemplateRecord } from './recurring-template.types';
 
 /**
  * EVENT-trigger path (doc §7 Phase 3B). Matches `recurring_templates` on
@@ -15,16 +17,10 @@ import { RecurringTemplateRecord } from './recurring-template.types';
  * publishes (`emitter.emit(event.constructor.name, event)`), so listening
  * with `onAny` needs no wildcard pattern of its own.
  *
- * Redelivery caveat: doc's failure matrix wants `triggerKey = sourceEventId`
- * stable across an at-least-once redelivery of "the same" event. In this
- * codebase every domain event is rehydrated from the outbox before it
- * reaches the in-process bus (see OutboxPublisher), and DomainEvent's
- * `eventId` field is randomised on construction with no way to carry the
- * original value through rehydration — so today `eventId` is only a
- * best-effort identifier, not a guaranteed-stable one across a genuine
- * outbox retry. Fixing that needs the event bus itself to expose a stable
- * message id (doc §11 open decision #14, event bus integration) — out of
- * scope until a concrete EVENT-triggered use case needs it for real.
+ * Redelivery stability: in-process dispatch is fed by the outbox publisher,
+ * which restores the persisted envelope (`eventId` included) on rehydration —
+ * so `triggerKey = sourceEventId` survives an outbox retry and the claim
+ * insert collapses the duplicate EVENT generation.
  */
 @Injectable()
 export class DomainEventDispatcher implements OnModuleInit {
@@ -38,63 +34,62 @@ export class DomainEventDispatcher implements OnModuleInit {
 
   onModuleInit(): void {
     this.eventEmitter.onAny((eventName, event: unknown) => {
-      void this.onEvent(String(eventName), event);
+      void this.onEvent(
+        String(eventName),
+        event !== null && typeof event === 'object' ? event : null,
+      );
     });
   }
 
-  private async onEvent(eventName: string, event: unknown): Promise<void> {
-    let templates: RecurringTemplateRecord[];
+  private async onEvent(eventName: string, event: object | null): Promise<void> {
     try {
-      templates = await this.templateRepository.findActiveByEventName(eventName);
+      const templates = await this.templateRepository.findActiveByEventName(eventName);
+      if (templates.length === 0) {
+        return;
+      }
+
+      const handler = this.handlerRegistry.resolveHandler('Recurring');
+      const sourceEventId = DispatcherEventReader.eventId(event);
+      const eventPayload = DispatcherEventReader.snapshot(event);
+
+      for (const template of templates) {
+        try {
+          await handler.handle({
+            jobId: null,
+            jobType: 'Recurring',
+            tenantId: template.tenantId ?? undefined,
+            aggregateType: 'RecurringTemplate',
+            aggregateId: template.id,
+            sourceEventId,
+            eventPayload,
+          });
+        } catch (err) {
+          this.logger.error(
+            `EVENT-triggered dispatch failed for template ${template.id}: ${FailureMessage.of(err)}`,
+          );
+        }
+      }
     } catch (err) {
       this.logger.error(
-        `Failed to look up EVENT-triggered templates for '${eventName}': ${(err as Error).message}`,
+        `EVENT dispatch pipeline failed for '${eventName}': ${FailureMessage.of(err)}`,
       );
-      return;
-    }
-    if (templates.length === 0) {
-      return;
-    }
-
-    const handler = this.handlerRegistry.resolveHandler('Recurring');
-    const sourceEventId = extractEventId(event);
-    const eventPayload = toPlainObject(event);
-
-    for (const template of templates) {
-      try {
-        await handler.handle({
-          jobId: null,
-          jobType: 'Recurring',
-          tenantId: template.tenantId ?? undefined,
-          aggregateType: 'RecurringTemplate',
-          aggregateId: template.id,
-          sourceEventId,
-          eventPayload,
-        });
-      } catch (err) {
-        this.logger.error(
-          `EVENT-triggered dispatch failed for template ${template.id}: ${(err as Error).message}`,
-        );
-      }
     }
   }
 }
 
-function extractEventId(event: unknown): string {
-  if (
-    event &&
-    typeof event === 'object' &&
-    'eventId' in event &&
-    typeof event.eventId === 'string'
-  ) {
-    return event.eventId;
+/** One audited read of unknown bus payloads (domain-event envelope). */
+class DispatcherEventReader {
+  /**
+   * Envelope read is STRUCTURAL (any event carrying `eventId` — a business
+   * DomainEvent or a platform OutboxEvent) so the dispatcher keeps zero
+   * compile-time dependency on the business kernel.
+   */
+  static eventId(event: object | null): string {
+    const candidate = (event as { eventId?: unknown } | null)?.eventId;
+    return typeof candidate === 'string' && candidate.length > 0 ? candidate : randomUUID();
   }
-  return randomUUID();
-}
 
-function toPlainObject(event: unknown): Record<string, unknown> {
-  if (event && typeof event === 'object') {
-    return JSON.parse(JSON.stringify(event)) as Record<string, unknown>;
+  static snapshot(event: object | null): JsonObject {
+    return event ? PrismaJson.snapshot(event) : {};
   }
-  return {};
 }

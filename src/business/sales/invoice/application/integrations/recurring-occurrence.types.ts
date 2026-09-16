@@ -1,3 +1,4 @@
+import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
 /**
  * Wire shape of the RecurringOccurrenceRequested integration event, owned by
  * THIS module (consumer-side contract — the invoice module never imports
@@ -15,7 +16,7 @@ export interface RecurringOccurrenceRequestedPayload {
   triggerKey: string;
   traceId: string;
   tenantId?: string;
-  headerOverrides: Record<string, unknown> | null;
-  lines: unknown[];
-  eventPayload?: Record<string, unknown>;
+  headerOverrides: JsonObject | null;
+  lines: JsonValue[];
+  eventPayload?: JsonObject;
 }

@@ -103,6 +103,9 @@ model ImportJobRow {
   mappedPayload    Json?
   validationStatus ImportRowValidationStatus @default(PENDING)
   executionStatus  ImportRowExecutionStatus  @default(PENDING)
+  // Fencing token bumped by each execution claim; result application only
+  // lands while the token still matches what the worker received.
+  executionClaimToken Int                    @default(0)
   validationErrors Json?
   errorMessage     String?
   entityId         String?

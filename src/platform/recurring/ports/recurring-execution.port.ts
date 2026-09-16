@@ -4,7 +4,8 @@ import { RecurringExecutionRecord } from '../recurring-template.types';
 /**
  * Inbound port for completing a claimed Recurring execution from a business
  * consumer (e.g. after a RabbitMQ command created the document). DI token
- * (abstract class port), implemented by RecurringExecutionFacade.
+ * (abstract class port), implemented by RecurringExecutionAdapter. Terminal
+ * writes land only while the execution is still IN_PROGRESS.
  */
 export abstract class RecurringExecutionPort {
   abstract findById(id: string): Promise<RecurringExecutionRecord | null>;

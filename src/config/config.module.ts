@@ -7,6 +7,7 @@ import cacheConfig from './cache.config';
 import { envFileCandidates } from './env.util';
 import { ConfigService } from './config.service';
 import databaseConfig from './database.config';
+import idempotencyConfig from './idempotency.config';
 import importConfig from './import.config';
 import messagingConfig from './messaging.config';
 import notificationConfig from './notification.config';
@@ -38,6 +39,7 @@ import storageConfig from './storage.config';
     NestConfigModule.forFeature(schedulerConfig),
     NestConfigModule.forFeature(batchOperationConfig),
     NestConfigModule.forFeature(importConfig),
+    NestConfigModule.forFeature(idempotencyConfig),
   ],
   providers: [ConfigService],
   exports: [ConfigService],

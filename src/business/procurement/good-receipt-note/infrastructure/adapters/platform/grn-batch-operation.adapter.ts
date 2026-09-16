@@ -15,7 +15,10 @@ const ALLOWED_FROM: Record<string, string[]> = {
 };
 
 /**
- * GoodReceiptNote's Batch Operation port — thin router onto the module's own
+ * GoodReceiptNote's Batch Operation port — pure handler data + routing, no
+ * lifecycle: the composition root (src/bootstrap/configure-batch-operations.ts)
+ * registers it on the platform registry at boot, so generated adapters never
+ * import platform implementation classes. Thin router onto the module's own
  * single-record use cases (receive / complete), each running inside its own
  * @Transactional boundary.
  */
@@ -26,6 +29,10 @@ export class GrnBatchOperationAdapter implements BatchOperationHandler {
     private readonly receiveGrn: ReceiveGrnUseCase,
     private readonly completeGrn: CompleteGrnUseCase,
   ) {}
+
+  aggregateType(): string {
+    return 'GoodReceiptNote';
+  }
 
   supportedOperations(): string[] {
     return [...OPERATIONS];

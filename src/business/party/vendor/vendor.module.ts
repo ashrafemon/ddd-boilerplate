@@ -1,9 +1,5 @@
-import { Module, OnApplicationBootstrap } from '@nestjs/common';
-import { ImportHandlerRegistry } from '@platform/import/import-handler.registry';
-import {
-  VendorImportHandler,
-  VENDOR_IMPORT_DESCRIPTOR,
-} from './infrastructure/adapters/platform/vendor-import.adapter';
+import { Module } from '@nestjs/common';
+import { VendorImportHandler } from './infrastructure/adapters/platform/vendor-import.adapter';
 import { PlatformModule } from '@platform/platform.module';
 import { VendorForPurchaseFacade } from './application/facades/vendor-for-purchase.facade';
 import { VendorEventEmitterListener } from './application/integrations/listeners/vendor.created.event-emitter.listener-event';
@@ -28,6 +24,11 @@ import { VendorController } from './presentation/http/vendor.controller';
 import { VendorForPurchasePort } from '@business/party/vendor/public';
 import './domain/events/vendor.registry';
 
+/**
+ * Vendor aggregate module. The import opt-in handler is registered by the
+ * composition-root bridge (`src/bootstrap/configure-imports.ts`) — this
+ * module carries no lifecycle.
+ */
 @Module({
   imports: [PlatformModule],
   controllers: [VendorController],
@@ -52,14 +53,4 @@ import './domain/events/vendor.registry';
   ],
   exports: [VendorForPurchasePort],
 })
-export class VendorModule implements OnApplicationBootstrap {
-  constructor(
-    private readonly importHandlers: ImportHandlerRegistry,
-    private readonly vendorImportHandler: VendorImportHandler,
-  ) {}
-
-  /** Opt-in: register this entity's import handler directly on the platform registry. */
-  onApplicationBootstrap(): void {
-    this.importHandlers.register('vendor', VENDOR_IMPORT_DESCRIPTOR, this.vendorImportHandler);
-  }
-}
+export class VendorModule {}

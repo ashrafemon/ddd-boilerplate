@@ -1,8 +1,12 @@
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { InMemoryRequestContextService } from '@platform/context/__testing__/in-memory-request-context';
 import { BatchOperationHandlerRegistry } from './batch-operation-handler.registry';
+import { BatchOperationHandler } from './ports/batch-operation-handler.port';
 import { BatchOperationWorker } from './batch-operation.worker';
+import { ValidationResult } from './batch-operation.types';
+import { AuditPort } from '@platform/audit/ports/audit.port';
 import { BatchOperationJobRepositoryPort } from './ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from './ports/batch-operation-job-row-repository.port';
 import { BatchOperationQueuePublisherPort } from './ports/batch-operation-queue-publisher.port';
@@ -28,7 +32,32 @@ const configStub = {
     reconciliationWindowMs: 300_000,
     resultSnapshotMaxBytes: 65_536,
   }),
+  getSecurity: () => ({ tenancy: { mode: 'single' as const } }),
 };
+
+/**
+ * Mirrors the generated-template shape (e.g. PurchaseOrderBatchOperationAdapter):
+ * a PURE BatchOperationHandler — no lifecycle, no registry imports; the
+ * composition root plugs it into the registry at boot (see
+ * src/bootstrap/configure-batch-operations.spec.ts for the bridge itself).
+ */
+class InvoiceBatchOperationHandler implements BatchOperationHandler {
+  aggregateType(): string {
+    return 'Invoice';
+  }
+
+  supportedOperations(): string[] {
+    return ['approve'];
+  }
+
+  validate(): Promise<ValidationResult> {
+    return Promise.resolve({ canProceed: true });
+  }
+
+  execute(entityId: string) {
+    return Promise.resolve({ resultSnapshot: { approved: entityId } });
+  }
+}
 
 /**
  * Resolves the whole batch-operation provider graph through Nest's DI the same
@@ -41,6 +70,8 @@ describe('batch-operation DI wiring', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [BatchOperationController],
       providers: [
+        { provide: AuditPort, useValue: { record: jest.fn().mockResolvedValue(undefined) } },
+
         { provide: BatchOperationJobRepositoryPort, useValue: repo },
         { provide: BatchOperationJobRowRepositoryPort, useValue: repo },
         {
@@ -52,6 +83,7 @@ describe('batch-operation DI wiring', () => {
           useValue: { writeJobCompletedEvent: jest.fn().mockResolvedValue(undefined) },
         },
         BatchOperationHandlerRegistry,
+        InvoiceBatchOperationHandler,
         ProcessBatchOperationRowUseCase,
         BatchOperationWorker,
         CreateBatchOperationJobUseCase,
@@ -63,7 +95,7 @@ describe('batch-operation DI wiring', () => {
         { provide: ConfigService, useValue: configStub },
         {
           provide: RequestContextPort,
-          useValue: { get: () => ({ tenantId: 't1', userId: 'u1' }) },
+          useValue: new InMemoryRequestContextService({ tenantId: 't1', userId: 'u1' }),
         },
         {
           provide: NumberingPort,
@@ -72,12 +104,12 @@ describe('batch-operation DI wiring', () => {
       ],
     }).compile();
 
-    const registry = moduleRef.get(BatchOperationHandlerRegistry);
-    registry.register('Invoice', ['approve'], {
-      supportedOperations: () => ['approve'],
-      validate: () => Promise.resolve({ canProceed: true }),
-      execute: (entityId: string) => Promise.resolve({ resultSnapshot: { approved: entityId } }),
-    });
+    moduleRef
+      .get(BatchOperationHandlerRegistry)
+      .register(moduleRef.get(InvoiceBatchOperationHandler));
+    expect(moduleRef.get(BatchOperationHandlerRegistry).health()).toEqual([
+      { aggregateType: 'Invoice', supportedOperations: ['approve'] },
+    ]);
 
     const controller = moduleRef.get(BatchOperationController);
     const resMock = { status: jest.fn() };

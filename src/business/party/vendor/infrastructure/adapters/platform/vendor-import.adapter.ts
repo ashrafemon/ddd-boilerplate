@@ -1,3 +1,4 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable } from '@nestjs/common';
 import { ImportHandler } from '@platform/import/ports/import-handler.port';
 import {
@@ -116,7 +117,7 @@ export class VendorImportHandler implements ImportHandler<VendorImportRow> {
         results.push({
           rowNumber: row.rowNumber,
           status: 'FAILED',
-          errorMessage: err instanceof Error ? err.message : String(err),
+          errorMessage: FailureMessage.of(err),
         });
       }
     }

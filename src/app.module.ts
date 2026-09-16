@@ -1,6 +1,8 @@
 import { BusinessModule } from '@business/business.module';
 import { Module } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ConfigService } from './config/config.service';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from './config/config.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { PlatformModule } from './platform/platform.module';
@@ -10,12 +12,27 @@ import { LoggingInterceptor } from './shared-kernel/interceptors/logging.interce
 import { RequestIdInterceptor } from './shared-kernel/interceptors/request-id.interceptor';
 import { ResponseInterceptor } from './shared-kernel/interceptors/response.interceptor';
 import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
+import { TenancyAuthGuard } from '@platform/context/guards/tenancy-auth.guard';
 
 @Module({
-  imports: [ConfigModule, InfrastructureModule, PlatformModule, BusinessModule],
+  imports: [
+    ConfigModule,
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const { ttlMs, limit } = config.getThrottler();
+        return { throttlers: [{ ttl: ttlMs, limit }] };
+      },
+    }),
+    InfrastructureModule,
+    PlatformModule,
+    BusinessModule,
+  ],
   controllers: [],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: TenancyAuthGuard },
     { provide: APP_FILTER, useClass: HttpExceptionsFilter },
     { provide: APP_PIPE, useClass: AppValidationPipe },
     { provide: APP_INTERCEPTOR, useClass: RequestIdInterceptor },

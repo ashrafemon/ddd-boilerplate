@@ -2,20 +2,25 @@ import { BatchOperationContext, ExecutionResult, ValidationResult } from '../bat
 
 /**
  * The ONLY surface between the batch pipeline and a batch-capable aggregate.
- * Implemented once per aggregateType (e.g. PurchaseOrderBatchOperationAdapter),
- * registered on `BatchOperationHandlerRegistry` inside the
- * domain module that owns the aggregate, and resolved by
- * `BatchOperationHandlerRegistry` keyed on aggregateType.
+ * Implemented once per aggregateType (e.g. PurchaseOrderBatchOperationAdapter)
+ * as PURE data + routing — no lifecycle hooks, no registry imports: the
+ * composition root (`src/bootstrap/configure-batch-operations.ts`) registers
+ * the handler on `BatchOperationHandlerRegistry` at boot, and it is resolved
+ * keyed on aggregateType. The handler is its own registration metadata:
+ * aggregateType() + supportedOperations() are the single source of truth.
  *
- * Two methods, one context object. If a third method appears here, ask what
- * bookkeeping has leaked out of the pipeline into an adapter meant to stay a
- * thin router.
+ * If a third method appears here, ask what bookkeeping has leaked out of the
+ * pipeline into an adapter meant to stay a thin router.
  */
 export interface BatchOperationHandler {
+  /** Stable key this handler answers to (e.g. 'PurchaseOrder'). */
+  aggregateType(): string;
+
   /**
-   * Which operationCodes this adapter actually implements. Checked at boot
-   * against the array passed to registry.register() — a mismatch fails
-   * boot, never the first row that hits it.
+   * Which operationCodes this adapter actually implements — the single source
+   * of truth for registration: registry.register(handler) reads the key and
+   * this list from the handler, so there is nothing at boot to drift against.
+   * A duplicate aggregateType registration throws at boot instead.
    */
   supportedOperations(): string[];
 
@@ -42,10 +47,4 @@ export interface BatchOperationHandler {
     params: Record<string, unknown> | undefined,
     context: BatchOperationContext,
   ): Promise<ExecutionResult>;
-}
-
-/** What an aggregate module records against an aggregateType. */
-export interface BatchOperationHandlerRegistration {
-  aggregateType: string;
-  supportedOperations: string[];
 }

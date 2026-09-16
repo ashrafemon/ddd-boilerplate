@@ -62,13 +62,18 @@ export class S3FileStorageAdapter implements FileStoragePort {
     if (disk.getTemporaryUrl) {
       return disk.getTemporaryUrl(key, expiresInSeconds);
     }
-    const url = disk.url ? await disk.url(key) : undefined;
-    if (!url) {
-      throw new Error('Presigned URLs are not supported by the configured storage disk');
-    }
-    return url;
+    // NEVER fall back to disk.url(): on the S3 driver that is the indefinite
+    // public/CDN URL for a private object — an unauthenticated read primitive.
+    throw new Error('Presigned URLs are not supported by the configured storage disk');
   }
 
+  /**
+   * NOTE: the returned PUT URL is not a S3 POST policy — `maxBytes` and
+   * `contentTypes` are NOT enforced by S3 on a plain PUT presign. They are
+   * advisory for the client and enforced authoritatively when the job is
+   * created (`CreateImportJobUseCase` getMetadata size check + the upload DTO
+   * content-type allowlist).
+   */
   public async createPresignedUpload(input: {
     key: string;
     expiresInSeconds: number;

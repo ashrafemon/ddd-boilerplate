@@ -1,78 +1,64 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/context/context.module';
+import { AuditModule } from '@platform/audit/audit.module';
 import { NumberingModule } from '@platform/numbering/numbering.module';
 import { OutboxModule } from '@platform/outbox/outbox.module';
 import { StorageModule } from '@platform/storage/storage.module';
 import { ImportReconciliationConsumer } from './import-reconciliation.consumer';
 import { ImportHandlerRegistry } from './import-handler.registry';
-import {
-  CancelImportJobPort,
-  CreateImportJobPort,
-  CreateImportUploadPort,
-  ExecuteImportJobPort,
-  GetImportJobStatusPort,
-  GetImportPreviewPort,
-  GetImportReportPort,
-  InitImportPort,
-  ListImportJobsPort,
-  ParseImportJobPort,
-  RunImportExecutionPort,
-  UpdateImportMappingPort,
-  ValidateImportJobPort,
-} from './ports/import.ports';
 import { ImportJobOutboxWriterPort } from './ports/import-job-outbox-writer.port';
 import { ImportJobRepositoryPort } from './ports/import-job-repository.port';
 import { ImportJobRowRepositoryPort } from './ports/import-job-row-repository.port';
 import { ImportQueuePublisherPort } from './ports/import-queue-publisher.port';
 import { StorageObjectRepositoryPort } from './ports/storage-object-repository.port';
-import {
-  CancelImportJobUseCase,
-  CreateImportJobUseCase,
-  CreateImportUploadUseCase,
-  ExecuteImportJobUseCase,
-  GetImportJobStatusUseCase,
-  GetImportPreviewUseCase,
-  GetImportReportUseCase,
-  InitImportUseCase,
-  ListImportJobsUseCase,
-  ParseImportJobUseCase,
-  RunImportExecutionUseCase,
-  UpdateImportMappingUseCase,
-  ValidateImportJobUseCase,
-} from './usecases/import.usecases';
-import { PrismaImportJobOutboxWriter } from './adapters/prisma-import-job-outbox.writer';
-import { PrismaImportJobRepository } from './adapters/prisma-import-job.repository';
-import { PrismaImportJobRowRepository } from './adapters/prisma-import-job-row.repository';
-import { PrismaStorageObjectRepository } from './adapters/prisma-storage-object.repository';
+import { CancelImportJobUseCase } from './usecases/cancel-import-job.usecase';
+import { CreateImportJobUseCase } from './usecases/create-import-job.usecase';
+import { CreateImportUploadUseCase } from './usecases/create-import-upload.usecase';
+import { ExecuteImportJobUseCase } from './usecases/execute-import-job.usecase';
+import { GetImportJobStatusUseCase } from './usecases/get-import-job-status.usecase';
+import { GetImportPreviewUseCase } from './usecases/get-import-preview.usecase';
+import { GetImportReportUseCase } from './usecases/get-import-report.usecase';
+import { InitImportUseCase } from './usecases/init-import.usecase';
+import { ListImportJobsUseCase } from './usecases/list-import-jobs.usecase';
+import { ParseImportJobUseCase } from './usecases/parse-import-job.usecase';
+import { RunImportExecutionUseCase } from './usecases/run-import-execution.usecase';
+import { UpdateImportMappingUseCase } from './usecases/update-import-mapping.usecase';
+import { ValidateImportJobUseCase } from './usecases/validate-import-job.usecase';
+import { PrismaImportJobOutboxWriter } from './repositories/prisma-import-job-outbox.writer';
+import { PrismaImportJobRepository } from './repositories/prisma-import-job.repository';
+import { PrismaImportJobRowRepository } from './repositories/prisma-import-job-row.repository';
+import { PrismaStorageObjectRepository } from './repositories/prisma-storage-object.repository';
 import { IMPORT_QUEUE_NAME } from './import.constants';
-import { BullMqImportQueuePublisher } from './adapters/bullmq-import-queue.publisher';
+import { BullMqImportQueueAdapter } from './adapters/bullmq-import-queue.adapter';
 import { BullMqImportWorker } from './adapters/bullmq-import.worker';
 import { ImportController } from './http/import.controller';
-import {
-  CancelImportJobAdapter,
-  CreateImportJobAdapter,
-  CreateImportUploadAdapter,
-  ExecuteImportJobAdapter,
-  GetImportJobStatusAdapter,
-  GetImportPreviewAdapter,
-  GetImportReportAdapter,
-  InitImportAdapter,
-  ListImportJobsAdapter,
-  ParseImportJobAdapter,
-  RunImportExecutionAdapter,
-  UpdateImportMappingAdapter,
-  ValidateImportJobAdapter,
-} from './adapters/import-inbound.adapters';
+import { ImportFileParser } from './import-file.parser';
 
 /**
- * Platform import — upload → parse → mapping → validation → execution, with
- * S3-backed storage objects, BullMQ fan-out and per-entityKey handlers
- * registered on ImportHandlerRegistry by the owning module at bootstrap.
+ * Platform import — upload -> parse -> mapping -> validation -> execution.
+ *
+ * Tables owned: storage_objects, import_jobs, import_job_rows.
+ *
+ * Lifecycle:
+ *  1. CreateImportUploadUseCase — presigned S3 slot + StorageObject row.
+ *  2. CreateImportJobUseCase    — [TX] import job snapshotting the registered
+ *     ImportHandler descriptor; BullMQ parse stage.
+ *  3. Parse    — ImportFileParser (xlsx/CSV) -> suggested ColumnMapping -> preview.
+ *  4. Mapping  — user confirms/overrides; validation chunks run generic
+ *     structural checks + handler.validateBatch (per-row verdicts, never aborts).
+ *  5. Execute  — handler.executeBatch per chunk: claim -> ONE domain txn per row
+ *     -> APPLIED/FAILED/SKIPPED; counters + progress; cancel flag honored.
+ *  6. Terminal events go to the outbox; an error report becomes a StorageObject;
+ *     the reconciliation cron fails stale-heartbeat jobs.
+ *
+ * Controller/worker inject use cases directly (no inbound ports);
+ * ImportHandlerRegistry is the plugin boundary; jobs are tenant-scoped.
  */
 @Module({
   imports: [
     ContextModule,
+    AuditModule,
     NumberingModule,
     OutboxModule,
     StorageModule,
@@ -81,6 +67,7 @@ import {
   controllers: [ImportController],
   providers: [
     ImportHandlerRegistry,
+    ImportFileParser,
     PrismaStorageObjectRepository,
     { provide: StorageObjectRepositoryPort, useExisting: PrismaStorageObjectRepository },
     PrismaImportJobRepository,
@@ -89,62 +76,24 @@ import {
     { provide: ImportJobRowRepositoryPort, useExisting: PrismaImportJobRowRepository },
     PrismaImportJobOutboxWriter,
     { provide: ImportJobOutboxWriterPort, useExisting: PrismaImportJobOutboxWriter },
-    BullMqImportQueuePublisher,
-    { provide: ImportQueuePublisherPort, useExisting: BullMqImportQueuePublisher },
+    BullMqImportQueueAdapter,
+    { provide: ImportQueuePublisherPort, useExisting: BullMqImportQueueAdapter },
     BullMqImportWorker,
     ImportReconciliationConsumer,
     InitImportUseCase,
-    InitImportAdapter,
-    { provide: InitImportPort, useExisting: InitImportAdapter },
     CreateImportUploadUseCase,
-    CreateImportUploadAdapter,
-    { provide: CreateImportUploadPort, useExisting: CreateImportUploadAdapter },
     CreateImportJobUseCase,
-    CreateImportJobAdapter,
-    { provide: CreateImportJobPort, useExisting: CreateImportJobAdapter },
     GetImportPreviewUseCase,
-    GetImportPreviewAdapter,
-    { provide: GetImportPreviewPort, useExisting: GetImportPreviewAdapter },
     UpdateImportMappingUseCase,
-    UpdateImportMappingAdapter,
-    { provide: UpdateImportMappingPort, useExisting: UpdateImportMappingAdapter },
-    GetImportReportUseCase,
-    GetImportReportAdapter,
-    { provide: GetImportReportPort, useExisting: GetImportReportAdapter },
-    ExecuteImportJobUseCase,
-    ExecuteImportJobAdapter,
-    { provide: ExecuteImportJobPort, useExisting: ExecuteImportJobAdapter },
-    CancelImportJobUseCase,
-    CancelImportJobAdapter,
-    { provide: CancelImportJobPort, useExisting: CancelImportJobAdapter },
-    GetImportJobStatusUseCase,
-    GetImportJobStatusAdapter,
-    { provide: GetImportJobStatusPort, useExisting: GetImportJobStatusAdapter },
-    ListImportJobsUseCase,
-    ListImportJobsAdapter,
-    { provide: ListImportJobsPort, useExisting: ListImportJobsAdapter },
-    ParseImportJobUseCase,
-    ParseImportJobAdapter,
-    { provide: ParseImportJobPort, useExisting: ParseImportJobAdapter },
     ValidateImportJobUseCase,
-    ValidateImportJobAdapter,
-    { provide: ValidateImportJobPort, useExisting: ValidateImportJobAdapter },
+    ParseImportJobUseCase,
+    ExecuteImportJobUseCase,
+    CancelImportJobUseCase,
+    GetImportJobStatusUseCase,
+    ListImportJobsUseCase,
+    GetImportReportUseCase,
     RunImportExecutionUseCase,
-    RunImportExecutionAdapter,
-    { provide: RunImportExecutionPort, useExisting: RunImportExecutionAdapter },
   ],
-  exports: [
-    ImportHandlerRegistry,
-    InitImportPort,
-    CreateImportUploadPort,
-    CreateImportJobPort,
-    GetImportPreviewPort,
-    UpdateImportMappingPort,
-    GetImportReportPort,
-    ExecuteImportJobPort,
-    CancelImportJobPort,
-    GetImportJobStatusPort,
-    ListImportJobsPort,
-  ],
+  exports: [ImportHandlerRegistry],
 })
 export class ImportModule {}

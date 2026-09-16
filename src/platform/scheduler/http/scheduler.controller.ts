@@ -1,37 +1,53 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
-import { ScheduledJobDispatchLogRecord } from '../scheduler.types';
-import { ScheduledJobRecord } from '../scheduler.types';
-import { SchedulerHealthMetrics } from '../scheduler.types';
-import { SchedulerPort } from '../ports/scheduler.port';
-import { GetScheduledJobStatusPort } from '../ports/get-scheduled-job-status.port';
-import { GetSchedulerHealthMetricsPort } from '../ports/get-scheduler-health-metrics.port';
-import { ListScheduledJobDispatchLogPort } from '../ports/list-scheduled-job-dispatch-log.port';
-import { UpdateScheduledJobPort } from '../ports/update-scheduled-job.port';
-import { ListScheduledJobsDto, UpdateScheduledJobDto } from './requests/scheduler.request.dto';
+import { PageResult } from '@shared-kernel/types/pagination';
+import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
+import { GetScheduledJobStatusUseCase } from '../usecases/get-scheduled-job-status.usecase';
+import { GetSchedulerHealthMetricsUseCase } from '../usecases/get-scheduler-health-metrics.usecase';
+import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
+import { RescheduleExternalJobUseCase } from '../usecases/reschedule-external-job.usecase';
+import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
+import { ScheduledJobDispatchLogRecord, ScheduledJobRecord } from '../scheduler.types';
+import { ListScheduledJobsDto } from './requests/list-scheduled-jobs.request.dto';
+import { UpdateScheduledJobDto } from './requests/update-scheduled-job.request.dto';
 
 @ApiTags('scheduler')
 @ApiBearerAuth()
 @Controller('scheduled-jobs')
 export class SchedulerController {
   constructor(
-    private readonly getStatus: GetScheduledJobStatusPort,
-    private readonly listDispatchLog: ListScheduledJobDispatchLogPort,
-    private readonly updateJob: UpdateScheduledJobPort,
-    private readonly scheduler: SchedulerPort,
+    private readonly getStatus: GetScheduledJobStatusUseCase,
+    private readonly listDispatchLog: ListScheduledJobDispatchLogUseCase,
+    private readonly updateJob: UpdateScheduledJobUseCase,
+    private readonly cancelJob: CancelScheduledJobUseCase,
+    private readonly rescheduleJob: RescheduleExternalJobUseCase,
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'List scheduled jobs' })
-  async list(@Query() query: ListScheduledJobsDto): Promise<ApiResponse<ScheduledJobRecord[]>> {
-    const data = await this.getStatus.list(query);
+  @ApiOperation({ summary: 'List scheduled jobs (paged, tenant-scoped)' })
+  async list(
+    @Query() query: ListScheduledJobsDto,
+  ): Promise<ApiResponse<PageResult<ScheduledJobRecord>>> {
+    const data = await this.getStatus.list({ ...query });
     return { data, message: 'Scheduled jobs' };
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get scheduled job status' })
-  async get(@Param('id') id: string): Promise<ApiResponse<ScheduledJobRecord>> {
+  async get(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<ApiResponse<ScheduledJobRecord>> {
     const data = await this.getStatus.execute(id);
     return { data, message: 'Scheduled job' };
   }
@@ -39,7 +55,7 @@ export class SchedulerController {
   @Get(':id/dispatch-log')
   @ApiOperation({ summary: 'List dispatch history for a scheduled job' })
   async dispatchLog(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<ScheduledJobDispatchLogRecord[]>> {
     const data = await this.listDispatchLog.execute(id);
     return { data, message: 'Dispatch log' };
@@ -48,7 +64,7 @@ export class SchedulerController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update cron expression or nextRunAt (optimistic concurrency)' })
   async update(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @Body() body: UpdateScheduledJobDto,
   ): Promise<ApiResponse<ScheduledJobRecord>> {
     await this.updateJob.execute({
@@ -65,9 +81,19 @@ export class SchedulerController {
   @Post(':id/cancel')
   @HttpCode(200)
   @ApiOperation({ summary: 'Cancel a scheduled job' })
-  async cancel(@Param('id') id: string): Promise<ApiResponse<{ id: string }>> {
-    await this.scheduler.cancel(id);
+  async cancel(@Param('id', new ParseUUIDPipe()) id: string): Promise<ApiResponse<{ id: string }>> {
+    await this.cancelJob.execute(id);
     return { data: { id }, message: 'Scheduled job cancelled' };
+  }
+
+  @Post(':id/dispatch-now')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Force a job due-now (backfill / manual re-fire)' })
+  async dispatchNow(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<ApiResponse<ScheduledJobRecord>> {
+    const data = await this.rescheduleJob.dispatchNow(id);
+    return { data, message: 'Scheduled job queued for immediate dispatch' };
   }
 }
 
@@ -75,12 +101,14 @@ export class SchedulerController {
 @ApiBearerAuth()
 @Controller('scheduler')
 export class SchedulerHealthController {
-  constructor(private readonly health: GetSchedulerHealthMetricsPort) {}
+  constructor(private readonly health: GetSchedulerHealthMetricsUseCase) {}
 
   @Get('health')
   @ApiOperation({ summary: 'Scheduler health metrics' })
-  async healthMetrics(): Promise<ApiResponse<SchedulerHealthMetrics>> {
+  async healthMetrics(): Promise<ApiResponse<HealthMetricsData>> {
     const data = await this.health.execute();
     return { data, message: 'Scheduler health' };
   }
 }
+
+type HealthMetricsData = Awaited<ReturnType<GetSchedulerHealthMetricsUseCase['execute']>>;

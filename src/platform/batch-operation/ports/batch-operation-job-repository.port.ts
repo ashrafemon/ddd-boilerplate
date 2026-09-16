@@ -2,13 +2,16 @@ import { PageResult } from '@shared-kernel/types/pagination';
 import {
   BatchOperationJobRecord,
   BatchOperationListQuery,
-  BatchOperationRowOutcome,
   NewBatchOperationJob,
 } from '../batch-operation.types';
 
 /**
  * Persistence of batch_operation_jobs (header). createJobWithRows also writes
  * Pending rows in the SAME transaction — no job without its rows.
+ *
+ * Row counters are bumped exclusively by the row repository's `settleRow`
+ * (claim-token gated, same transaction) — the header is never decremented by
+ * stale workers.
  */
 export abstract class BatchOperationJobRepositoryPort {
   /**
@@ -27,25 +30,35 @@ export abstract class BatchOperationJobRepositoryPort {
 
   abstract listJobs(query: BatchOperationListQuery): Promise<PageResult<BatchOperationJobRecord>>;
 
-  /** Marks the job RUNNING and stamps started_at, if it was still PENDING. */
+  /** Marks the job RUNNING and stamps started_at, if it was still PENDING (and not cancelled). */
   abstract markJobRunning(jobId: string): Promise<void>;
 
-  /** Atomically bumps processed_records + the matching outcome counter. */
-  abstract incrementProgress(
-    jobId: string,
-    outcome: BatchOperationRowOutcome,
-  ): Promise<BatchOperationJobRecord>;
+  /**
+   * Terminal status from counters (COMPLETED / COMPLETED_WITH_ERRORS / FAILED)
+   * + completed_at. CAS: only non-terminal rows flip; returns null when the
+   * job was already finalised elsewhere (duplicate event guard).
+   */
+  abstract finaliseJob(jobId: string): Promise<BatchOperationJobRecord | null>;
 
-  /** Terminal status from counters (COMPLETED / COMPLETED_WITH_ERRORS / FAILED) + completed_at. */
-  abstract finaliseJob(jobId: string): Promise<BatchOperationJobRecord>;
+  /** Sets status=CANCELLED + completed_at once the last in-flight chunk settled. */
+  abstract finaliseCancelled(jobId: string): Promise<BatchOperationJobRecord | null>;
 
-  /** Sets status=CANCELLED + completed_at once the last in-flight chunk has finished. */
-  abstract finaliseCancelled(jobId: string): Promise<BatchOperationJobRecord>;
+  /** Enqueue/transport failure right after creation: PENDING -> FAILED, not COMPLETED. */
+  abstract markJobFailed(jobId: string): Promise<void>;
 
   abstract setCancelRequested(jobId: string): Promise<void>;
 
   abstract isCancelRequested(jobId: string): Promise<boolean>;
 
-  /** Non-terminal jobs (PENDING/RUNNING, not cancel-requested) that still have PENDING rows. */
+  /**
+   * Async jobs (PENDING/RUNNING, not cancel-requested) that still have PENDING
+   * rows — reconciliation re-dispatches their chunks.
+   */
   abstract findResumableJobs(): Promise<BatchOperationJobRecord[]>;
+
+  /** Header counters re-derived from row truth for every non-terminal job. */
+  abstract recountJobCounters(): Promise<number>;
+
+  /** Non-terminal jobs whose rows are all settled — safe to finalise now. */
+  abstract findCompletableJobs(): Promise<BatchOperationJobRecord[]>;
 }

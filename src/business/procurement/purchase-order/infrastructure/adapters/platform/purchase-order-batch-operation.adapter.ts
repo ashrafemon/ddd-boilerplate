@@ -6,7 +6,10 @@ import { GetPurchaseOrderUseCase } from '../../../application/usecases/get-purch
 import { PurchaseOrderTransitionUseCase } from '../../../application/usecases/purchase-order-transition.usecase';
 
 /**
- * PurchaseOrder's Batch Operation port. A thin router: validate() pre-checks
+ * PurchaseOrder's Batch Operation port — pure handler data + routing, no
+ * lifecycle: the composition root (src/bootstrap/configure-batch-operations.ts)
+ * registers it on the platform registry at boot, so generated adapters never
+ * import platform implementation classes. A thin router: validate() pre-checks
  * the current status; execute() delegates to the same
  * PurchaseOrderTransitionUseCase a single-record UI click would call, inside
  * that use case's own @Transactional boundary — a PO moved via a batch is
@@ -27,6 +30,10 @@ export class PurchaseOrderBatchOperationAdapter implements BatchOperationHandler
     private readonly getPurchaseOrder: GetPurchaseOrderUseCase,
     private readonly transitionPurchaseOrder: PurchaseOrderTransitionUseCase,
   ) {}
+
+  aggregateType(): string {
+    return 'PurchaseOrder';
+  }
 
   supportedOperations(): string[] {
     return [...OPERATIONS];

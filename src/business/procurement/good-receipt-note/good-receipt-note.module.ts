@@ -1,5 +1,4 @@
-import { Module, OnApplicationBootstrap } from '@nestjs/common';
-import { BatchOperationHandlerRegistry } from '@platform/batch-operation/batch-operation-handler.registry';
+import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
 import { PurchaseOrderModule } from '@business/procurement/purchase-order/purchase-order.module';
 import { GrnForPurchaseOrderFacade } from './application/facades/grn-for-purchase-order.facade';
@@ -53,18 +52,4 @@ import { GrnBatchOperationAdapter } from './infrastructure/adapters/platform/grn
   ],
   exports: [GrnForPurchaseOrderPort],
 })
-export class GoodReceiptNoteModule implements OnApplicationBootstrap {
-  constructor(
-    private readonly batchHandlers: BatchOperationHandlerRegistry,
-    private readonly batchOperationHandler: GrnBatchOperationAdapter,
-  ) {}
-
-  /** Opt-in: register this aggregate's batch handler directly on the platform registry. */
-  onApplicationBootstrap(): void {
-    this.batchHandlers.register(
-      'GoodReceiptNote',
-      ['receive', 'complete'],
-      this.batchOperationHandler,
-    );
-  }
-}
+export class GoodReceiptNoteModule {}

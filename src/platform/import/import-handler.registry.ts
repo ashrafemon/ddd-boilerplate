@@ -1,12 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { KeyedRegistryBase } from '@shared-kernel/utils/keyed-registry.base';
 import { ImportHandler } from './ports/import-handler.port';
 import { ImportDescriptor } from './import.types';
-import {
-  DuplicateImportHandlerRegistrationError,
-  InvalidImportDescriptorError,
-  UnregisteredImportHandlerError,
-} from './import.errors';
 
 interface RegisteredEntry {
   entityKey: string;
@@ -28,7 +23,7 @@ export class ImportHandlerRegistry extends KeyedRegistryBase<RegisteredEntry> {
    */
   register(entityKey: string, descriptor: ImportDescriptor, handler: ImportHandler): void {
     if (this.has(entityKey)) {
-      throw new DuplicateImportHandlerRegistrationError(entityKey);
+      throw new Error(`ImportHandler for entityKey '${entityKey}' already registered`);
     }
 
     this.assertDescriptorValid(entityKey, descriptor);
@@ -61,7 +56,10 @@ export class ImportHandlerRegistry extends KeyedRegistryBase<RegisteredEntry> {
   }
 
   private entry(entityKey: string): RegisteredEntry {
-    return this.requireEntry(entityKey, () => new UnregisteredImportHandlerError(entityKey));
+    return this.requireEntry(
+      entityKey,
+      () => new Error(`No ImportHandler registered for entityKey '${entityKey}'`),
+    );
   }
 
   private assertDescriptorValid(entityKey: string, descriptor: ImportDescriptor): void {
@@ -101,7 +99,9 @@ export class ImportHandlerRegistry extends KeyedRegistryBase<RegisteredEntry> {
     }
 
     if (reasons.length > 0) {
-      throw new InvalidImportDescriptorError(entityKey, reasons);
+      throw new BadRequestException(
+        `Invalid import descriptor for '${entityKey}': ${reasons.join(', ')}`,
+      );
     }
   }
 }

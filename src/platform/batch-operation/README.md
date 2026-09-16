@@ -17,7 +17,7 @@ root
   batch-operation.module.ts             DI wiring
   batch-operation-handler.registry.ts   Map<aggregateType, handler> + boot validation + health
   batch-operation.worker.ts             thin chunk loop → ProcessBatchOperationRowUseCase
-  batch-operation-reconciliation.consumer.ts   @Cron: reset stuck PROCESSING, re-enqueue PENDING
+  batch-operation-reconciliation.consumer.ts   @Cron: fence+reset stuck PROCESSING, recount counters, finalise settled jobs, re-enqueue PENDING
   batch-operation.types.ts · batch-operation.errors.ts · batch-operation.constants.ts
 usecases/    business logic only, one class per capability, injected directly
              by the controller/worker — no per-usecase port+adapter wrapper
@@ -50,27 +50,36 @@ http/
 
 ## Onboarding a batch-capable aggregate
 
-Inside the domain module that owns the aggregate (never the reverse):
+All opt-in code is pure data in the aggregate's own adapter (no registry
+imports, no lifecycle hooks) plus one row in the composition-root bridge —
+the module file stays a pure `@Module` declaration, so a generated template
+can emit it unchanged:
 
 ```ts
+// <aggregate>/infrastructure/adapters/platform/<aggregate>-batch-operation.adapter.ts
+@Injectable()
+export class PurchaseOrderBatchOperationAdapter implements BatchOperationHandler {
+  constructor(/* own use cases */ ) {}
+  aggregateType(): string { return 'PurchaseOrder'; }
+  supportedOperations(): string[] { return ['submit', 'approve', 'reject', 'cancel']; }
+  // validate()/execute() delegate to the aggregate's own single-record use cases
+}
+```
+
+```ts
+// procurement/purchase-order.module.ts — no class body, no registration code
 @Module({
   imports: [PlatformModule],
-  providers: [PurchaseOrderBatchOperationAdapter /* + its own deps */],
+  providers: [PurchaseOrderBatchOperationAdapter, /* ... */],
 })
-export class PurchaseOrderModule implements OnApplicationBootstrap {
-  constructor(
-    private readonly batchHandlers: BatchOperationHandlerRegistry,
-    private readonly batchOperationHandler: PurchaseOrderBatchOperationAdapter,
-  ) {}
+export class PurchaseOrderModule {}
+```
 
-  onApplicationBootstrap(): void {
-    this.batchHandlers.register(
-      'PurchaseOrder',
-      ['submit', 'approve', 'reject', 'cancel'],
-      this.batchOperationHandler,
-    );
-  }
-}
+```ts
+// src/bootstrap/configure-batch-operations.ts — the bridge (adds one row)
+export const BATCH_OPERATION_AGGREGATES = [
+  { ownerModule: PurchaseOrderModule, batchHandler: PurchaseOrderBatchOperationAdapter },
+];
 ```
 
 The adapter is a thin router: `validate()` is a pure check of the record's
@@ -84,7 +93,7 @@ via a batch is indistinguishable from one moved by hand. See
 | Design doc                                | Here                                                                                                                                                             |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TypeORM                                   | Prisma via `TransactionHost`                                                                                                                                     |
-| `BatchOperationModule.forRoot/forHandler` | providers live in `batch-operation.module.ts`; the aggregate module registers on `BatchOperationHandlerRegistry` at bootstrap                                    |
+| `BatchOperationModule.forRoot/forHandler` | providers live in `batch-operation.module.ts`; business modules ship PURE handlers and the composition-root bridge (`src/bootstrap/configure-batch-operations.ts`) registers them at boot |
 | `job_no` generator                        | `NumberingPort` sequence `batch-operation-job`, prefix `BATCH-`                                                                                                  |
 | BullMQ chunk queue                        | `BullMqBatchOperationQueuePublisher` + `BullMqBatchOperationWorker` (same pattern as scheduler); Sync still calls `BatchOperationWorker.processChunk` in-process |
 | Job-completed notification                | `BatchOperationJobOutboxWriterPort` → transactional outbox                                                                                                       |
@@ -93,3 +102,10 @@ via a batch is indistinguishable from one moved by hand. See
 
 Per-row permission re-check, heterogeneous (multi-aggregate) jobs, retry-failed-rows
 as a new job, result_snapshot retention purge, WebSocket/SSE progress push, undo.
+
+
+## Tenancy & rules
+
+- Tenant-stamped; foreign-tenant reads 404 via TenantScope.
+- Cancel honored between row claims; multi mode requires a tenant at submit.
+- Handlers must tenant-check entity resolution.

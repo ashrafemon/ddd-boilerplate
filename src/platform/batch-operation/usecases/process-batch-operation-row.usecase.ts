@@ -1,3 +1,4 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
@@ -42,6 +43,15 @@ export class ProcessBatchOperationRowUseCase {
     if (!claimed) {
       return 'SKIPPED_CLAIM';
     }
+    if (await this.jobs.isCancelRequested(dispatch.jobId)) {
+      // Claimed after cancel raced in: hand the row back unstalled.
+      await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+        outcome: 'SKIPPED',
+        skipReason: 'CANCELLED_BY_REQUEST',
+        processingTimeMs: 0,
+      });
+      return 'CANCELLED';
+    }
 
     const handler = this.registry.resolveHandler(dispatch.aggregateType);
     const context: BatchOperationContext = {
@@ -62,12 +72,11 @@ export class ProcessBatchOperationRowUseCase {
       );
 
       if (!verdict.canProceed) {
-        await this.rows.markRowSkipped(
-          claimed.id,
-          normaliseSkipReason(verdict.reason),
-          Date.now() - startedAt,
-        );
-        await this.jobs.incrementProgress(dispatch.jobId, 'SKIPPED');
+        await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+          outcome: 'SKIPPED',
+          skipReason: ProcessBatchOperationRowUseCase.normaliseSkipReason(verdict.reason),
+          processingTimeMs: Date.now() - startedAt,
+        });
         return 'PROCESSED';
       }
 
@@ -78,42 +87,46 @@ export class ProcessBatchOperationRowUseCase {
         context,
       );
 
-      await this.rows.markRowSuccess(
-        claimed.id,
-        capSnapshot(result.resultSnapshot ?? null, resultSnapshotMaxBytes),
-        Date.now() - startedAt,
-      );
-      await this.jobs.incrementProgress(dispatch.jobId, 'SUCCESS');
+      await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+        outcome: 'SUCCESS',
+        resultSnapshot: ProcessBatchOperationRowUseCase.capSnapshot(
+          result.resultSnapshot ?? null,
+          resultSnapshotMaxBytes,
+        ),
+        processingTimeMs: Date.now() - startedAt,
+      });
       return 'PROCESSED';
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = FailureMessage.of(err);
       this.logger.warn(
         `Batch row ${claimed.id} (${dispatch.aggregateType}/${dispatch.operationCode}) failed: ${message}`,
       );
-      await this.rows.markRowFailed(claimed.id, message, Date.now() - startedAt);
-      await this.jobs.incrementProgress(dispatch.jobId, 'FAILED');
+      await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+        outcome: 'FAILED',
+        errorMessage: message,
+        processingTimeMs: Date.now() - startedAt,
+      });
       return 'PROCESSED';
     }
   }
-}
+  private static normaliseSkipReason(reason: string | undefined): string {
+    if (reason && (KNOWN_SKIP_REASONS as readonly string[]).includes(reason)) {
+      return reason;
+    }
+    return reason ? `VALIDATION_FAILED: ${reason}`.slice(0, 200) : 'VALIDATION_FAILED';
+  }
 
-function normaliseSkipReason(reason: string | undefined): string {
-  if (reason && (KNOWN_SKIP_REASONS as readonly string[]).includes(reason)) {
-    return reason;
+  private static capSnapshot(
+    snapshot: Record<string, unknown> | null,
+    maxBytes: number,
+  ): Record<string, unknown> | null {
+    if (!snapshot) {
+      return null;
+    }
+    const size = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
+    if (size <= maxBytes) {
+      return snapshot;
+    }
+    return { _truncated: true, _originalBytes: size };
   }
-  return reason ? `VALIDATION_FAILED: ${reason}`.slice(0, 200) : 'VALIDATION_FAILED';
-}
-
-function capSnapshot(
-  snapshot: Record<string, unknown> | null,
-  maxBytes: number,
-): Record<string, unknown> | null {
-  if (!snapshot) {
-    return null;
-  }
-  const size = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
-  if (size <= maxBytes) {
-    return snapshot;
-  }
-  return { _truncated: true, _originalBytes: size };
 }

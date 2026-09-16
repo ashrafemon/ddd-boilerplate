@@ -16,6 +16,17 @@ export interface CompleteExecutionInput {
 export abstract class RecurringExecutionRepositoryPort {
   abstract claim(input: ClaimExecutionInput): Promise<RecurringExecutionRecord | null>;
   abstract findById(id: string): Promise<RecurringExecutionRecord | null>;
+  abstract findByTemplateAndTrigger(
+    recurringTemplateId: string,
+    triggerKey: string,
+  ): Promise<RecurringExecutionRecord | null>;
+  /**
+   * Crash sweeper: fail IN_PROGRESS executions older than the cutoff (their
+   * document consumer never completed them). Returns the affected count;
+   * never touches rows that finished in the meantime.
+   */
+  abstract failStale(createdAtOlderThan: Date, limit: number): Promise<number>;
+  /** Terminal transitions only land while the row is still IN_PROGRESS. */
   abstract complete(id: string, input: CompleteExecutionInput): Promise<void>;
   abstract fail(id: string, errorMessage: string): Promise<void>;
   abstract skip(

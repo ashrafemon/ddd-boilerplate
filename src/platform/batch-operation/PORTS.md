@@ -18,7 +18,7 @@ Called **out** of the pipeline toward persistence, queue, outbox, or domain adap
 | `BatchOperationJobRowRepositoryPort` | `ports/batch-operation-job-row-repository.port.ts` | `PrismaBatchOperationJobRepository`                               | same file as above                                                                                                                       | Same Prisma class implements both repo ports                                                  |
 | `BatchOperationQueuePublisherPort`   | `ports/batch-operation-queue-publisher.port.ts`    | `BullMqBatchOperationQueuePublisher`                              | `adapters/bullmq-batch-operation-queue.publisher.ts`                                                                                     | Async chunk enqueue; Sync bypasses this and calls the worker in-process                       |
 | `BatchOperationJobOutboxWriterPort`  | `ports/batch-operation-job-outbox-writer.port.ts`  | `PrismaBatchOperationJobOutboxWriter`                             | `adapters/prisma-batch-operation-job-outbox.writer.ts`                                                                                   | Writes `BatchOperationJobCompletedEvent` via `OutboxWriterPort`                               |
-| `BatchOperationHandler`              | `ports/batch-operation-handler.port.ts`            | Per-aggregate adapter (e.g. `PurchaseOrderBatchOperationAdapter`) | Domain module, e.g. `src/business/procurement/purchase-order/infrastructure/adapters/platform/purchase-order-batch-operation.adapter.ts` | Registered by the owning module's `onApplicationBootstrap` on `BatchOperationHandlerRegistry` |
+| `BatchOperationHandler`              | `ports/batch-operation-handler.port.ts`            | Per-aggregate adapter (e.g. `PurchaseOrderBatchOperationAdapter`) | Domain module, e.g. `src/business/procurement/purchase-order/infrastructure/adapters/platform/purchase-order-batch-operation.adapter.ts` | PURE handler (`aggregateType()`/`supportedOperations()` are its registration metadata); plugged into `BatchOperationHandlerRegistry` by the composition-root bridge (`src/bootstrap/configure-batch-operations.ts`) — see README "Onboarding" |
 
 ### DI wiring (outbound)
 
@@ -27,7 +27,9 @@ Called **out** of the pipeline toward persistence, queue, outbox, or domain adap
 { provide: BatchOperationJobRowRepositoryPort, useExisting: PrismaBatchOperationJobRepository }
 { provide: BatchOperationQueuePublisherPort, useExisting: BullMqBatchOperationQueuePublisher }
 { provide: BatchOperationJobOutboxWriterPort, useExisting: PrismaBatchOperationJobOutboxWriter }
-// BatchOperationHandler — not provided here; domain modules register adapters at boot
+// BatchOperationHandler — not provided here; business modules ship PURE handlers and
+// the composition root (src/bootstrap/configure-batch-operations.ts) registers them
+// on the registry at boot (see README "Onboarding")
 ```
 
 ### Test doubles

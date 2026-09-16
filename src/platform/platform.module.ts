@@ -7,9 +7,10 @@ import { CacheModule } from './cache/cache.module';
 import { ConditionEngineModule } from './condition-engine/condition-engine.module';
 import { ConfigurationModule } from './configuration/configuration.module';
 import { ContextModule } from './context/context.module';
-import { DatabaseModule } from './database/database.module';
 import { EventsModule } from './events/events.module';
+import { IdempotencyModule } from './idempotency/idempotency.module';
 import { ImportModule } from './import/import.module';
+import { LockingModule } from './locking/locking.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { NotificationModule } from './notification/notification.module';
 import { NumberingModule } from './numbering/numbering.module';
@@ -24,9 +25,11 @@ import { StorageModule } from './storage/storage.module';
  * platform service must `imports: [PlatformModule]`, which keeps the
  * business → platform dependency visible in the module metadata.
  *
- * Opt-in aggregation (batch/import/recurring/scheduler job handlers) is done
- * by the OWNING module injecting the platform registry directly and calling
- * `register(...)` in `onApplicationBootstrap` — no ModuleRef lookups.
+ * Opt-in aggregation: business handlers are PURE port data bridged onto their
+ * platform registry by the composition root (batch =
+ * `src/bootstrap/configure-batch-operations.ts`; vendor-import is the legacy
+ * module-side shape, migrate on touch); recurring→scheduler is
+ * platform→platform and stays module-side. See ARCHITECTURE.md §9.1.
  */
 @Module({
   imports: [
@@ -39,12 +42,13 @@ import { StorageModule } from './storage/storage.module';
     ObservabilityModule,
     CacheModule,
     ContextModule,
-    DatabaseModule,
     ConfigurationModule,
     AuditModule,
     NumberingModule,
     NotificationModule,
     ConditionEngineModule,
+    LockingModule,
+    IdempotencyModule,
     SchedulerModule,
     RecurringModule,
     BatchOperationModule,
@@ -58,12 +62,13 @@ import { StorageModule } from './storage/storage.module';
     ObservabilityModule,
     CacheModule,
     ContextModule,
-    DatabaseModule,
     ConfigurationModule,
     AuditModule,
     NumberingModule,
     NotificationModule,
     ConditionEngineModule,
+    LockingModule,
+    IdempotencyModule,
     SchedulerModule,
     RecurringModule,
     BatchOperationModule,

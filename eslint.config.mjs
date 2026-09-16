@@ -179,6 +179,31 @@ export default tseslint.config(
   ...businessBoundaryRules,
 
   // ------------------------------------------------------------------
+  // platform is independent of business MODULES *and* the business kernel:
+  // NO @business/** import is allowed (regex bans alias + relative paths).
+  // Platform defines its own event contract (@platform/events/bases +
+  // registries); the business rehydrator registry is attached as a DELEGATE
+  // by the composition root (src/bootstrap/configure-event-rehydration.ts).
+  // ------------------------------------------------------------------
+  {
+    files: ['src/platform/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '(?:@business/|(?:\\.\\./)+business/)',
+              message:
+                'platform is independent of business: define a platform-owned contract and bridge it from the composition root (src/bootstrap) instead',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // ------------------------------------------------------------------
   // shared-business must stay framework-free: no NestJS, no platform types.
   // ------------------------------------------------------------------
   {

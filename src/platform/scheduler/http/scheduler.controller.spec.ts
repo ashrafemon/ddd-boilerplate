@@ -1,10 +1,24 @@
-import { SchedulerPort } from '../ports/scheduler.port';
-import { GetScheduledJobStatusPort } from '../ports/get-scheduled-job-status.port';
-import { GetSchedulerHealthMetricsPort } from '../ports/get-scheduler-health-metrics.port';
-import { ListScheduledJobDispatchLogPort } from '../ports/list-scheduled-job-dispatch-log.port';
-import { UpdateScheduledJobPort } from '../ports/update-scheduled-job.port';
+import { z } from 'zod';
+import { AuditPort } from '@platform/audit/ports/audit.port';
+import { ScheduledJobDispatchLogRepositoryPort } from '../ports/scheduled-job-dispatch-log-repository.port';
+import { ScheduledJobEditLogRepositoryPort } from '../ports/scheduled-job-edit-log-repository.port';
+import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { JobScope, JobStatus, ScheduledJobRecord, ScheduleMode } from '../scheduler.types';
+import { GetScheduledJobStatusUseCase } from '../usecases/get-scheduled-job-status.usecase';
+import { GetSchedulerHealthMetricsUseCase } from '../usecases/get-scheduler-health-metrics.usecase';
+import { SchedulerTickHeartbeat } from '../scheduler-tick.heartbeat';
+import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
+import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
+import { InMemoryRequestContextService } from '@platform/context/__testing__/in-memory-request-context';
+import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
+import { RescheduleExternalJobUseCase } from '../usecases/reschedule-external-job.usecase';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { SchedulerController, SchedulerHealthController } from './scheduler.controller';
+
+import {
+  UpdateScheduledJobDto,
+  updateScheduledJobSchema,
+} from './requests/update-scheduled-job.request.dto';
 
 function aJob(): ScheduledJobRecord {
   return {
@@ -29,66 +43,126 @@ function aJob(): ScheduledJobRecord {
   };
 }
 
-describe('SchedulerController', () => {
-  it('lists jobs via getStatus port', async () => {
-    const list = jest.fn().mockResolvedValue([]);
-    const getStatus = { list, execute: jest.fn() } as unknown as GetScheduledJobStatusPort;
-    const controller = new SchedulerController(
-      getStatus,
-      {} as ListScheduledJobDispatchLogPort,
-      {} as UpdateScheduledJobPort,
-      {} as SchedulerPort,
-    );
+function makeJobs(overrides: Partial<ScheduledJobRepositoryPort> = {}): ScheduledJobRepositoryPort {
+  return {
+    create: jest.fn(),
+    findById: jest.fn().mockResolvedValue(aJob()),
+    list: jest.fn().mockResolvedValue([]),
+    cancel: jest.fn(),
+    cancelByAggregate: jest.fn(),
+    reschedule: jest.fn(),
+    rescheduleByAggregate: jest.fn(),
+    claimDue: jest.fn(),
+    findOverdue: jest.fn().mockResolvedValue(0),
+    markPendingWithNextRun: jest.fn(),
+    touchLastRunAt: jest.fn(),
+    markRunningExternal: jest.fn().mockResolvedValue(true),
+    recordFailure: jest.fn().mockResolvedValue('RETRYING'),
+    releaseStaleClaims: jest.fn(),
+    count: jest.fn().mockResolvedValue(1),
+    updateWithVersionCheck: jest.fn().mockResolvedValue(true),
+    ...overrides,
+  };
+}
 
-    const result = await controller.list({});
-    expect(result.data).toEqual([]);
+const auditStub: AuditPort = { record: jest.fn().mockResolvedValue(undefined) };
+
+const makeDispatchLogs = (): ScheduledJobDispatchLogRepositoryPort => ({
+  insert: jest.fn(),
+  recordOutcome: jest.fn(),
+  listByJobId: jest.fn().mockResolvedValue([]),
+  countFailuresSince: jest.fn().mockResolvedValue(0),
+});
+
+function makeController(jobs = makeJobs()) {
+  const requestContext = new InMemoryRequestContextService({ tenantId: 't1' });
+  const getStatus = new GetScheduledJobStatusUseCase(jobs, requestContext);
+  const listDispatchLog = new ListScheduledJobDispatchLogUseCase(
+    makeDispatchLogs(),
+    jobs,
+    requestContext,
+  );
+  const updateJob = new UpdateScheduledJobUseCase(
+    jobs,
+    {
+      insert: jest.fn(),
+    } satisfies ScheduledJobEditLogRepositoryPort,
+    requestContext,
+  );
+  return new SchedulerController(
+    getStatus,
+    listDispatchLog,
+    updateJob,
+    new CancelScheduledJobUseCase(jobs, auditStub, requestContext),
+    new RescheduleExternalJobUseCase(jobs, auditStub, requestContext),
+  );
+}
+
+describe('SchedulerController', () => {
+  it('lists jobs through the repository port', async () => {
+    const list = jest.fn().mockResolvedValue([]);
+    const controller = makeController(makeJobs({ list }));
+
+    const result = await controller.list({ page: 1, pageSize: 20 });
+    expect(result.data.items).toEqual([]);
+    expect(result.data.total).toBe(1);
     expect(list).toHaveBeenCalled();
   });
 
-  it('cancels a job via the scheduler port', async () => {
-    const cancel = jest.fn().mockResolvedValue(undefined);
-    const scheduler = { cancel } as unknown as SchedulerPort;
-    const controller = new SchedulerController(
-      {} as GetScheduledJobStatusPort,
-      {} as ListScheduledJobDispatchLogPort,
-      {} as UpdateScheduledJobPort,
-      scheduler,
+  it('reads a single job status', async () => {
+    const controller = makeController();
+    const result = await controller.get('j1');
+    expect(result.data.id).toBe('j1');
+  });
+
+  it('dispatch-now re-queues a job and returns the updated record', async () => {
+    const reschedule = jest.fn();
+    const controller = makeController(makeJobs({ reschedule }));
+
+    const result = await controller.dispatchNow('j1');
+
+    expect(reschedule).toHaveBeenCalledWith('j1', expect.any(Date));
+    expect(result.data.id).toBe('j1');
+  });
+
+  it('dispatch-now refuses cancelled jobs and hides foreign tenants', async () => {
+    const cancelled = makeJobs({
+      findById: jest.fn().mockResolvedValue({ ...aJob(), status: JobStatus.CANCELLED }),
+    });
+    await expect(makeController(cancelled).dispatchNow('j1')).rejects.toBeInstanceOf(
+      ConflictException,
     );
 
-    const result = await controller.cancel('j1');
-    expect(result.data).toEqual({ id: 'j1' });
-    expect(cancel).toHaveBeenCalledWith('j1');
+    const foreign = makeJobs({
+      findById: jest.fn().mockResolvedValue({ ...aJob(), tenantId: 't9' }),
+    });
+    await expect(makeController(foreign).dispatchNow('j1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('updates a job and returns the fresh record', async () => {
+    const controller = makeController();
+    const body = {
+      expectedVersion: 0,
+      nextRunAt: '2026-01-02T00:00:00.000Z',
+    } satisfies z.infer<typeof updateScheduledJobSchema> as UpdateScheduledJobDto;
+    const result = await controller.update('j1', body);
+    expect(result.data.id).toBe('j1');
+    expect(result.message).toBe('Scheduled job updated');
   });
 });
 
 describe('SchedulerHealthController', () => {
   it('returns health metrics', async () => {
-    const health = {
-      execute: jest.fn().mockResolvedValue({
-        overdueCount: 0,
-        recentDispatchFailureCount: 0,
-        lastSuccessfulTickAt: null,
-      }),
-    } as unknown as GetSchedulerHealthMetricsPort;
-
-    const controller = new SchedulerHealthController(health);
+    const controller = new SchedulerHealthController(
+      new GetSchedulerHealthMetricsUseCase(
+        makeJobs(),
+        makeDispatchLogs(),
+        new SchedulerTickHeartbeat(),
+      ),
+    );
     const result = await controller.healthMetrics();
     expect(result.data.overdueCount).toBe(0);
-  });
-
-  it('reads a single job status', async () => {
-    const getStatus = {
-      execute: jest.fn().mockResolvedValue(aJob()),
-      list: jest.fn(),
-    } as unknown as GetScheduledJobStatusPort;
-    const controller = new SchedulerController(
-      getStatus,
-      {} as ListScheduledJobDispatchLogPort,
-      {} as UpdateScheduledJobPort,
-      {} as SchedulerPort,
-    );
-
-    const result = await controller.get('j1');
-    expect(result.data.id).toBe('j1');
   });
 });

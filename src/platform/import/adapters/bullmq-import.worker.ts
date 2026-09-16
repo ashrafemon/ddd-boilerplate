@@ -1,11 +1,9 @@
 import { Logger } from '@nestjs/common';
+import { ParseImportJobUseCase } from '../usecases/parse-import-job.usecase';
+import { RunImportExecutionUseCase } from '../usecases/run-import-execution.usecase';
+import { ValidateImportJobUseCase } from '../usecases/validate-import-job.usecase';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import {
-  ParseImportJobPort,
-  ValidateImportJobPort,
-  RunImportExecutionPort,
-} from '../ports/import.ports';
 import {
   IMPORT_EXECUTE_JOB_NAME,
   IMPORT_PARSE_JOB_NAME,
@@ -13,16 +11,16 @@ import {
   IMPORT_VALIDATE_JOB_NAME,
   IMPORT_WORKER_CONCURRENCY,
 } from '../import.constants';
-import { ImportQueuePayload } from './bullmq-import-queue.publisher';
+import { ImportQueuePayload } from './bullmq-import-queue.adapter';
 
 @Processor(IMPORT_QUEUE_NAME, { concurrency: IMPORT_WORKER_CONCURRENCY })
 export class BullMqImportWorker extends WorkerHost {
   private readonly logger = new Logger(BullMqImportWorker.name);
 
   constructor(
-    private readonly parseJob: ParseImportJobPort,
-    private readonly validateJob: ValidateImportJobPort,
-    private readonly runExecution: RunImportExecutionPort,
+    private readonly parseJob: ParseImportJobUseCase,
+    private readonly validateJob: ValidateImportJobUseCase,
+    private readonly runExecution: RunImportExecutionUseCase,
   ) {
     super();
   }

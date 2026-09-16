@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { OutboxEvent } from '@platform/events/bases/outbox-event.base';
 import { InProcessEventBus } from '@platform/events/ports/event-bus.port';
 
 /**
@@ -11,11 +11,11 @@ import { InProcessEventBus } from '@platform/events/ports/event-bus.port';
 export class NestEventBusAdapter implements InProcessEventBus {
   constructor(private readonly emitter: EventEmitter2) {}
 
-  publish(event: DomainEvent): void {
+  publish(event: OutboxEvent): void {
     this.emitter.emit(event.constructor.name, event);
   }
 
-  publishAll(events: readonly DomainEvent[]): void {
+  publishAll(events: readonly OutboxEvent[]): void {
     for (const event of events) {
       this.publish(event);
     }

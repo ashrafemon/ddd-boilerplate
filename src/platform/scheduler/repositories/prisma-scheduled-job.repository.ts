@@ -1,0 +1,336 @@
+import { Prisma, ScheduledJobStatus } from '../../../generated/client';
+import { Injectable } from '@nestjs/common';
+import { TransactionHost } from '@nestjs-cls/transactional';
+import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
+import { ConfigService } from '@config/config.service';
+import { JsonObject } from '@shared-kernel/types/json-value.type';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import {
+  CreateScheduledJobData,
+  ScheduledJobRepositoryPort,
+} from '../ports/scheduled-job-repository.port';
+import {
+  ClaimedJob,
+  JobScope,
+  JobStatus,
+  ScheduleMode,
+  ScheduledJobRecord,
+} from '../scheduler.types';
+
+type TxClient = TransactionHost<TransactionalAdapterPrisma>['tx'];
+
+@Injectable()
+export class PrismaScheduledJobRepository implements ScheduledJobRepositoryPort {
+  constructor(
+    private readonly txHost: TransactionHost<TransactionalAdapterPrisma>,
+    private readonly configService: ConfigService,
+  ) {}
+
+  private get tx(): TxClient {
+    return this.txHost.tx;
+  }
+
+  async create(data: CreateScheduledJobData): Promise<string> {
+    const job = await this.tx.scheduledJob.create({
+      data: {
+        jobType: data.jobType,
+        scope: data.scope,
+        scheduleMode: data.scheduleMode,
+        cronExpression: data.cronExpression ?? null,
+        nextRunAt: data.nextRunAt,
+        tenantId: data.tenantId ?? null,
+        aggregateType: data.aggregateType ?? null,
+        aggregateId: data.aggregateId ?? null,
+        payload: PrismaJson.toInput(data.payload),
+        status: 'PENDING',
+      },
+    });
+    return job.id;
+  }
+
+  async findById(jobId: string): Promise<ScheduledJobRecord | null> {
+    const row = await this.tx.scheduledJob.findUnique({ where: { id: jobId } });
+    return row ? ScheduledJobMapper.toRecord(row) : null;
+  }
+
+  async list(options?: {
+    jobType?: string;
+    status?: JobStatus | string;
+    tenantId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ScheduledJobRecord[]> {
+    const rows = await this.tx.scheduledJob.findMany({
+      where: this.listWhere(options),
+      take: options?.limit ?? 50,
+      skip: options?.offset ?? 0,
+      orderBy: { nextRunAt: 'asc' },
+    });
+    return rows.map(row => ScheduledJobMapper.toRecord(row));
+  }
+
+  async count(options?: {
+    jobType?: string;
+    status?: JobStatus | string;
+    tenantId?: string;
+  }): Promise<number> {
+    return this.tx.scheduledJob.count({ where: this.listWhere(options) });
+  }
+
+  private listWhere(options?: {
+    jobType?: string;
+    status?: JobStatus | string;
+    tenantId?: string;
+  }) {
+    return {
+      jobType: options?.jobType,
+      status: options?.status ? DB_JOB_STATUS[options.status] : undefined,
+      tenantId: options?.tenantId,
+    };
+  }
+
+  async cancel(jobId: string): Promise<void> {
+    await this.tx.scheduledJob.updateMany({
+      where: { id: jobId, status: { not: 'CANCELLED' } },
+      data: { status: 'CANCELLED', lockedUntil: null, lockedBy: null, version: { increment: 1 } },
+    });
+  }
+
+  async cancelByAggregate(aggregateType: string, aggregateId: string): Promise<void> {
+    await this.tx.scheduledJob.updateMany({
+      where: { aggregateType, aggregateId, status: { not: 'CANCELLED' } },
+      data: { status: 'CANCELLED', lockedUntil: null, lockedBy: null, version: { increment: 1 } },
+    });
+  }
+
+  async reschedule(jobId: string, nextRunAt: Date): Promise<void> {
+    await this.tx.scheduledJob.updateMany({
+      where: { id: jobId, status: { not: 'CANCELLED' } },
+      data: {
+        nextRunAt,
+        status: 'PENDING',
+        lockedUntil: null,
+        lockedBy: null,
+        version: { increment: 1 },
+      },
+    });
+  }
+
+  async rescheduleByAggregate(
+    aggregateType: string,
+    aggregateId: string,
+    nextRunAt: Date,
+  ): Promise<void> {
+    await this.tx.scheduledJob.updateMany({
+      where: { aggregateType, aggregateId, status: { not: 'CANCELLED' } },
+      data: {
+        nextRunAt,
+        status: 'PENDING',
+        lockedUntil: null,
+        lockedBy: null,
+        version: { increment: 1 },
+      },
+    });
+  }
+
+  async claimDue(batchSize: number, lockedBy: string): Promise<ClaimedJob[]> {
+    const now = new Date();
+    const { lockTtlMs } = this.configService.getScheduler();
+    const lockedUntil = new Date(now.getTime() + lockTtlMs);
+
+    return this.tx.$transaction(async tx => {
+      const rows = await tx.$queryRaw<
+        Array<{
+          id: string;
+          tenantId: string | null;
+          jobType: string;
+          scope: string;
+          scheduleMode: string;
+          cronExpression: string | null;
+          aggregateType: string | null;
+          aggregateId: string | null;
+          payload: Prisma.JsonValue | null;
+          nextRunAt: Date;
+          retryCount: number;
+          version: number;
+        }>
+      >`
+        SELECT id, "tenantId", "jobType", scope, "scheduleMode", "cronExpression",
+               "aggregateType", "aggregateId", payload, "nextRunAt", "retryCount", version
+        FROM "scheduled_jobs"
+        WHERE status = 'PENDING' AND "nextRunAt" <= ${now}
+        ORDER BY "nextRunAt" ASC
+        LIMIT ${batchSize}
+        FOR UPDATE SKIP LOCKED
+      `;
+
+      if (rows.length === 0) {
+        return [];
+      }
+
+      await tx.scheduledJob.updateMany({
+        where: { id: { in: rows.map(r => r.id) } },
+        data: { status: 'CLAIMED', lockedUntil, lockedBy },
+      });
+
+      return rows.map(r => ({
+        id: r.id,
+        tenantId: r.tenantId,
+        jobType: r.jobType,
+        scope: r.scope as JobScope,
+        scheduleMode: r.scheduleMode as ScheduleMode,
+        cronExpression: r.cronExpression,
+        aggregateType: r.aggregateType,
+        aggregateId: r.aggregateId,
+        payload: PrismaJson.as<JsonObject>(r.payload),
+        nextRunAt: r.nextRunAt,
+        retryCount: r.retryCount,
+        version: r.version,
+      }));
+    });
+  }
+
+  async findOverdue(thresholdMs: number): Promise<number> {
+    const cutoff = new Date(Date.now() - thresholdMs);
+    return this.tx.scheduledJob.count({
+      where: {
+        status: { in: ['PENDING', 'CLAIMED'] },
+        nextRunAt: { lt: cutoff },
+      },
+    });
+  }
+
+  async markPendingWithNextRun(jobId: string, nextRunAt: Date, lastRunAt?: Date): Promise<void> {
+    await this.tx.scheduledJob.updateMany({
+      where: { id: jobId, status: { notIn: ['CANCELLED', 'SUSPENDED'] } },
+      data: {
+        status: 'PENDING',
+        nextRunAt,
+        lastRunAt: lastRunAt ?? undefined,
+        lockedUntil: null,
+        lockedBy: null,
+        version: { increment: 1 },
+      },
+    });
+  }
+
+  async touchLastRunAt(jobId: string): Promise<void> {
+    await this.tx.scheduledJob.updateMany({
+      where: { id: jobId, status: { in: ['CLAIMED', 'RUNNING'] } },
+      data: { lastRunAt: new Date() },
+    });
+  }
+
+  async markRunningExternal(jobId: string, lockedUntil: Date): Promise<boolean> {
+    const result = await this.tx.scheduledJob.updateMany({
+      where: { id: jobId, status: 'CLAIMED' },
+      data: { status: 'RUNNING', lockedUntil },
+    });
+    return result.count === 1;
+  }
+
+  async recordFailure(
+    jobId: string,
+    retry: { maxRetries: number; backoffBaseMs: number },
+  ): Promise<'RETRYING' | 'SUSPENDED' | 'IGNORED'> {
+    const row = await this.tx.scheduledJob.findUnique({ where: { id: jobId } });
+    if (!row || row.status === 'CANCELLED' || row.status === 'SUSPENDED') {
+      return 'IGNORED';
+    }
+    const attempts = row.retryCount + 1;
+    const suspended = attempts >= retry.maxRetries;
+    // Never fire earlier than its (possibly already advanced) slot; add
+    // exponential backoff on top of "now" for immediate retries.
+    const backoffAt = new Date(Date.now() + retry.backoffBaseMs * 2 ** (attempts - 1));
+    const nextRunAt = row.nextRunAt > backoffAt ? row.nextRunAt : backoffAt;
+    await this.tx.scheduledJob.update({
+      where: { id: jobId },
+      data: {
+        status: suspended ? 'SUSPENDED' : 'PENDING',
+        retryCount: attempts,
+        nextRunAt,
+        lockedUntil: null,
+        lockedBy: null,
+        version: { increment: 1 },
+      },
+    });
+    return suspended ? 'SUSPENDED' : 'RETRYING';
+  }
+
+  async releaseStaleClaims(): Promise<number> {
+    const result = await this.tx.scheduledJob.updateMany({
+      where: { status: { in: ['CLAIMED', 'RUNNING'] }, lockedUntil: { lt: new Date() } },
+      data: { status: 'PENDING', lockedUntil: null, lockedBy: null, version: { increment: 1 } },
+    });
+    return result.count;
+  }
+
+  async updateWithVersionCheck(
+    jobId: string,
+    expectedVersion: number,
+    data: {
+      cronExpression?: string | null;
+      nextRunAt?: Date;
+      scheduleMode?: ScheduleMode;
+    },
+  ): Promise<boolean> {
+    const result = await this.tx.scheduledJob.updateMany({
+      where: { id: jobId, version: expectedVersion },
+      data: {
+        cronExpression: data.cronExpression,
+        nextRunAt: data.nextRunAt,
+        scheduleMode: data.scheduleMode,
+        version: { increment: 1 },
+      },
+    });
+    return result.count === 1;
+  }
+}
+
+export class ScheduledJobMapper {
+  static toRecord(row: {
+    id: string;
+    tenantId: string | null;
+    jobType: string;
+    scope: string;
+    scheduleMode: string;
+    cronExpression: string | null;
+    aggregateType: string | null;
+    aggregateId: string | null;
+    payload: Prisma.JsonValue | null;
+    nextRunAt: Date;
+    lastRunAt: Date | null;
+    status: string;
+    retryCount: number;
+    version: number;
+    lockedUntil: Date | null;
+    lockedBy: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): ScheduledJobRecord {
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      jobType: row.jobType,
+      scope: row.scope as JobScope,
+      scheduleMode: row.scheduleMode as ScheduleMode,
+      cronExpression: row.cronExpression,
+      aggregateType: row.aggregateType,
+      aggregateId: row.aggregateId,
+      payload: PrismaJson.as<JsonObject>(row.payload),
+      nextRunAt: row.nextRunAt,
+      lastRunAt: row.lastRunAt,
+      status: row.status as JobStatus,
+      retryCount: row.retryCount,
+      version: row.version,
+      lockedUntil: row.lockedUntil,
+      lockedBy: row.lockedBy,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
+}
+
+/** DB enum guard: unknown status strings simply do not match any row. */
+const DB_JOB_STATUS: Record<string, (typeof ScheduledJobStatus)[keyof typeof ScheduledJobStatus]> =
+  Object.fromEntries(Object.values(ScheduledJobStatus).map(v => [v, v]));

@@ -1,11 +1,22 @@
-import { EvaluationContext } from './field-resolver.port';
+import { ConditionValue, EvaluationContext } from './field-resolver.port';
 
 export type ConditionOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'notIn';
+
+export const CONDITION_OPERATORS: readonly ConditionOperator[] = [
+  'eq',
+  'neq',
+  'gt',
+  'gte',
+  'lt',
+  'lte',
+  'in',
+  'notIn',
+];
 
 export interface ConditionClause {
   field: string;
   operator: ConditionOperator;
-  value: unknown;
+  value: ConditionValue | ConditionValue[];
 }
 
 /**
@@ -20,7 +31,7 @@ export interface GenerationCondition {
 
 export interface ConditionEvaluationResult {
   passed: boolean;
-  evaluatedValues: Record<string, unknown>;
+  evaluatedValues: Record<string, ConditionValue | undefined>;
 }
 
 /**

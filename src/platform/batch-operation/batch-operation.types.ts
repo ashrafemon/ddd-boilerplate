@@ -128,6 +128,18 @@ export interface NewBatchOperationJob {
 export interface ClaimedBatchOperationRow {
   id: string;
   entityId: string;
+  jobId: string;
+  /** Fencing token received at claim; terminal writes must present it. */
+  claimToken: number;
+}
+
+/** Terminal outcome for a claimed row, written together with its counter bump. */
+export interface BatchOperationRowSettlement {
+  outcome: BatchOperationRowOutcome;
+  resultSnapshot?: Record<string, unknown> | null;
+  errorMessage?: string;
+  skipReason?: string;
+  processingTimeMs: number;
 }
 
 /** Everything the worker needs to process a chunk without re-reading the job. */
@@ -151,11 +163,13 @@ export interface BatchOperationListQuery {
 }
 
 /** True once a job can no longer be cancelled or resumed. */
-export function isTerminalBatchOperationStatus(status: BatchOperationJobStatus): boolean {
-  return (
-    status === 'COMPLETED' ||
-    status === 'COMPLETED_WITH_ERRORS' ||
-    status === 'FAILED' ||
-    status === 'CANCELLED'
-  );
+export class BatchOperationStatusRules {
+  static isTerminal(status: BatchOperationJobStatus): boolean {
+    return (
+      status === 'COMPLETED' ||
+      status === 'COMPLETED_WITH_ERRORS' ||
+      status === 'FAILED' ||
+      status === 'CANCELLED'
+    );
+  }
 }

@@ -62,6 +62,10 @@ model BatchOperationJobRow {
   batchOperationJobId String  @db.Uuid
   entityId            String
   status              BatchOperationRowStatus @default(PENDING)
+  // Fencing token: bumped by every claim; result writes must present the
+  // token they received at claim time, so stale workers cannot overwrite
+  // rows re-claimed after the reconcile window.
+  claimToken          Int                     @default(0)
   skipReason          String?
   errorMessage        String?
   resultSnapshot      Json?

@@ -31,11 +31,26 @@ export abstract class ImportJobRepositoryPort {
   ): Promise<void>;
   abstract setCancelRequested(jobId: string): Promise<void>;
   abstract isCancelRequested(jobId: string): Promise<boolean>;
+  /** CAS: only non-terminal jobs flip; null = already terminal elsewhere. */
   abstract markTerminal(
     jobId: string,
     status: TerminalImportJobStatus,
     history: StatusHistoryEntry,
-  ): Promise<ImportJobRecord>;
+  ): Promise<ImportJobRecord | null>;
   abstract findStaleJobs(olderThan: Date): Promise<ImportJobRecord[]>;
   abstract attachErrorReport(jobId: string, errorReportStorageObjectId: string): Promise<void>;
+
+  /**
+   * Job-level stage lock (the schema has advertised lockedBy/lockedUntil for
+   * ages — now enforced). CAS-acquirable while expired/unheld; the pipeline
+   * stages and the reconciler all go through it, so "heartbeat stale" never
+   * means "the pipeline owns nothing".
+   */
+  abstract tryAcquireLock(jobId: string, lockedBy: string, lockedUntil: Date): Promise<boolean>;
+  /** Extend + heartbeat only while still the named owner (and non-terminal). */
+  abstract heartbeat(jobId: string, lockedBy: string, lockedUntil: Date): Promise<boolean>;
+  abstract releaseLock(jobId: string, lockedBy: string): Promise<void>;
+
+  /** Header counters re-derived from row truth; returns the fresh record. */
+  abstract recountCounters(jobId: string): Promise<ImportJobRecord | null>;
 }

@@ -36,4 +36,7 @@ export abstract class MetricsPort {
   public abstract registerCounter(options: CounterOptions): void;
   public abstract registerHistogram(options: HistogramOptions): void;
   public abstract registerGauge(options: GaugeOptions): void;
+  /** Prometheus exposition rendering for the /metrics scrape endpoint. */
+  public abstract getMetrics(): Promise<string>;
+  public abstract getMetricsContentType(): Promise<string>;
 }

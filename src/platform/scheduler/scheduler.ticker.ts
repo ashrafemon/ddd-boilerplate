@@ -1,8 +1,9 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { ConfigService } from '@config/config.service';
-import { DispatchDueJobsPort } from './ports/dispatch-due-jobs.port';
-import { ReconcileMissedJobsPort } from './ports/reconcile-missed-jobs.port';
+import { DispatchDueJobsUseCase } from './usecases/dispatch-due-jobs.usecase';
+import { ReconcileMissedJobsUseCase } from './usecases/reconcile-missed-jobs.usecase';
 
 const TICK_INTERVAL = 'scheduler-tick';
 const RECONCILE_INTERVAL = 'scheduler-reconcile';
@@ -17,8 +18,8 @@ export class SchedulerTicker implements OnModuleInit, OnModuleDestroy {
   private ticking = false;
 
   constructor(
-    private readonly dispatch: DispatchDueJobsPort,
-    private readonly reconcile: ReconcileMissedJobsPort,
+    private readonly dispatch: DispatchDueJobsUseCase,
+    private readonly reconcile: ReconcileMissedJobsUseCase,
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
   ) {}
@@ -51,7 +52,7 @@ export class SchedulerTicker implements OnModuleInit, OnModuleDestroy {
     try {
       return await this.dispatch.execute();
     } catch (err) {
-      this.logger.error(`Scheduler tick failed: ${(err as Error).message}`);
+      this.logger.error(`Scheduler tick failed: ${FailureMessage.of(err)}`);
       return 0;
     } finally {
       this.ticking = false;
@@ -62,7 +63,7 @@ export class SchedulerTicker implements OnModuleInit, OnModuleDestroy {
     try {
       return await this.reconcile.execute();
     } catch (err) {
-      this.logger.error(`Scheduler reconcile failed: ${(err as Error).message}`);
+      this.logger.error(`Scheduler reconcile failed: ${FailureMessage.of(err)}`);
       return 0;
     }
   }

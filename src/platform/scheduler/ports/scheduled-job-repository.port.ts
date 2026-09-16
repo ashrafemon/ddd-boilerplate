@@ -17,11 +17,18 @@ export abstract class ScheduledJobRepositoryPort {
   abstract list(options?: {
     jobType?: string;
     status?: JobStatus | string;
+    tenantId?: string;
     limit?: number;
     offset?: number;
   }): Promise<ScheduledJobRecord[]>;
+  abstract count(options?: {
+    jobType?: string;
+    status?: JobStatus | string;
+    tenantId?: string;
+  }): Promise<number>;
   abstract cancel(jobId: string): Promise<void>;
   abstract cancelByAggregate(aggregateType: string, aggregateId: string): Promise<void>;
+  /** Only non-cancelled rows are rescheduled; bumps `version`. */
   abstract reschedule(jobId: string, nextRunAt: Date): Promise<void>;
   abstract rescheduleByAggregate(
     aggregateType: string,
@@ -31,10 +38,21 @@ export abstract class ScheduledJobRepositoryPort {
   /** Claims due PENDING rows via FOR UPDATE SKIP LOCKED; marks CLAIMED. */
   abstract claimDue(batchSize: number, lockedBy: string): Promise<ClaimedJob[]>;
   abstract findOverdue(thresholdMs: number): Promise<number>;
+  /** CANCELLED/SUSPENDED rows are never resurrected; bumps `version`. */
   abstract markPendingWithNextRun(jobId: string, nextRunAt: Date, lastRunAt?: Date): Promise<void>;
   abstract touchLastRunAt(jobId: string): Promise<void>;
-  abstract markFailed(jobId: string): Promise<void>;
-  /** Releases CLAIMED rows whose lockedUntil has elapsed (Redis lock gone). */
+  /** External rows move CLAIMED -> RUNNING with a refreshed lease at handler start. */
+  abstract markRunningExternal(jobId: string, lockedUntil: Date): Promise<boolean>;
+  /**
+   * One failed attempt: bumps retryCount and either backs the row off to
+   * PENDING (RETRYING) or parks it SUSPENDED at maxRetries. Terminal statuses
+   * (CANCELLED/SUSPENDED) are never touched.
+   */
+  abstract recordFailure(
+    jobId: string,
+    retry: { maxRetries: number; backoffBaseMs: number },
+  ): Promise<'RETRYING' | 'SUSPENDED' | 'IGNORED'>;
+  /** Releases CLAIMED/RUNNING rows whose lockedUntil has elapsed (worker died). */
   abstract releaseStaleClaims(): Promise<number>;
   abstract updateWithVersionCheck(
     jobId: string,

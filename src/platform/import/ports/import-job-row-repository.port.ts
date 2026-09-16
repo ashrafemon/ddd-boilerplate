@@ -2,7 +2,7 @@ import {
   ImportJobRowRecord,
   ImportRowExecutionStatus,
   ImportRowValidationStatus,
-  RowResult,
+  RowExecutionSettlement,
   RowVerdict,
 } from '../import.types';
 
@@ -12,8 +12,8 @@ export abstract class ImportJobRowRepositoryPort {
       tenantId?: string;
       importJobId: string;
       rowNumber: number;
-      rawPayload?: Record<string, unknown>;
-      mappedPayload?: Record<string, unknown>;
+      rawPayload?: Record<string, string>;
+      mappedPayload?: Record<string, string>;
     }>,
   ): Promise<void>;
 
@@ -28,11 +28,16 @@ export abstract class ImportJobRowRepositoryPort {
   /**
    * Claim VALID+PENDING rows for execution. Concurrent claimers get disjoint
    * sets; UNIQUE (importJobId, rowNumber) + conditional update is the guard.
+   * Each returned row carries `executionClaimToken` for its settlement.
    */
   abstract claimForExecution(jobId: string, limit: number): Promise<ImportJobRowRecord[]>;
 
   abstract applyValidationVerdicts(jobId: string, verdicts: RowVerdict[]): Promise<void>;
-  abstract applyExecutionResults(jobId: string, results: RowResult[]): Promise<number>;
+  /**
+   * Applies results fenced by (`PROCESSING`, claim token): stale-worker
+   * settlements are dropped (not counted in the returned applied total).
+   */
+  abstract applyExecutionResults(jobId: string, results: RowExecutionSettlement[]): Promise<number>;
   abstract countByValidationStatus(
     jobId: string,
   ): Promise<Record<ImportRowValidationStatus, number>>;

@@ -1,21 +1,17 @@
 import { ConfigService } from '@config/config.service';
+import { InMemoryRequestContextService } from '@platform/context/__testing__/in-memory-request-context';
 import { NumberingPort } from '@platform/numbering/ports/numbering.port';
 import { CreateBatchOperationJobUseCase } from './create-batch-operation-job.usecase';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
 import { BatchOperationWorker } from '../batch-operation.worker';
 import { BatchOperationQueuePublisherPort } from '../ports/batch-operation-queue-publisher.port';
 import { InMemoryBatchOperationJobRepository } from '../__testing__/in-memory-batch-operation-job.repository';
-import {
-  BatchSelectionTooLargeError,
-  EmptyBatchSelectionError,
-  UnregisteredBatchHandlerError,
-  UnsupportedBatchOperationError,
-} from '../batch-operation.errors';
 
 function makeSut(overrides?: { syncThreshold?: number; maxRecordsPerJob?: number }) {
   const repo = new InMemoryBatchOperationJobRepository();
   const registry = new BatchOperationHandlerRegistry();
-  registry.register('Invoice', ['approve', 'post'], {
+  registry.register({
+    aggregateType: () => 'Invoice',
     supportedOperations: () => ['approve', 'post'],
     validate: () => Promise.resolve({ canProceed: true }),
     execute: () => Promise.resolve({}),
@@ -35,6 +31,7 @@ function makeSut(overrides?: { syncThreshold?: number; maxRecordsPerJob?: number
       reconciliationWindowMs: 300_000,
       resultSnapshotMaxBytes: 65_536,
     }),
+    getSecurity: () => ({ tenancy: { mode: 'single' as const } }),
   } as unknown as ConfigService;
 
   const sut = new CreateBatchOperationJobUseCase(
@@ -44,6 +41,7 @@ function makeSut(overrides?: { syncThreshold?: number; maxRecordsPerJob?: number
     queuePublisher,
     numbering,
     config,
+    new InMemoryRequestContextService(),
   );
   return { sut, repo, processChunk, dispatchChunks };
 }
@@ -100,15 +98,15 @@ describe('CreateBatchOperationJobUseCase', () => {
 
     await expect(
       sut.execute({ aggregateType: 'Ghost', operationCode: 'approve', entityIds: ['a'] }),
-    ).rejects.toBeInstanceOf(UnregisteredBatchHandlerError);
+    ).rejects.toThrow(/No BatchOperationHandler registered/);
 
     await expect(
       sut.execute({ aggregateType: 'Invoice', operationCode: 'delete', entityIds: ['a'] }),
-    ).rejects.toBeInstanceOf(UnsupportedBatchOperationError);
+    ).rejects.toThrow(/does not support operationCode/);
 
     await expect(
       sut.execute({ aggregateType: 'Invoice', operationCode: 'approve', entityIds: [] }),
-    ).rejects.toBeInstanceOf(EmptyBatchSelectionError);
+    ).rejects.toThrow(/at least one record/);
 
     await expect(
       sut.execute({
@@ -116,6 +114,6 @@ describe('CreateBatchOperationJobUseCase', () => {
         operationCode: 'approve',
         entityIds: ['a', 'b', 'c'],
       }),
-    ).rejects.toBeInstanceOf(BatchSelectionTooLargeError);
+    ).rejects.toThrow(/exceeds the maximum/);
   });
 });

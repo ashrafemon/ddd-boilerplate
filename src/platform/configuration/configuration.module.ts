@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
-import { PrismaCompanyConfigAdapter } from './prisma-company-config.adapter';
+import { ContextModule } from '@platform/context/context.module';
+import { PrismaCompanyConfigRepository } from './repositories/company-config.repository';
 import { CompanyConfigPort } from './ports/company-config.port';
 
 @Module({
+  imports: [ContextModule],
   providers: [
-    PrismaCompanyConfigAdapter,
-    { provide: CompanyConfigPort, useExisting: PrismaCompanyConfigAdapter },
+    PrismaCompanyConfigRepository,
+    { provide: CompanyConfigPort, useExisting: PrismaCompanyConfigRepository },
   ],
   exports: [CompanyConfigPort],
 })

@@ -1,13 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { ScheduledJobEditLogRepositoryPort } from '../ports/scheduled-job-edit-log-repository.port';
 import { UpdateScheduledJobInput, ScheduleMode } from '../scheduler.types';
-import {
-  JobNotFoundError,
-  OptimisticConcurrencyError,
-  InvalidCronExpressionError,
-} from '../scheduler.errors';
-import { computeNextRunAt } from '../cron-calculator';
+import { CronCalculator } from '../cron-calculator';
 
 @Injectable()
 export class UpdateScheduledJobUseCase {
@@ -15,13 +17,16 @@ export class UpdateScheduledJobUseCase {
     private readonly jobs: ScheduledJobRepositoryPort,
 
     private readonly editLogs: ScheduledJobEditLogRepositoryPort,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
-  async execute(input: UpdateScheduledJobInput): Promise<void> {
+  async execute(input: UpdateScheduledJobInput & { tenantId?: string }): Promise<void> {
     const existing = await this.jobs.findById(input.jobId);
     if (!existing) {
-      throw new JobNotFoundError(input.jobId);
+      throw new NotFoundException(`Scheduled job '${input.jobId}' not found`);
     }
+    const tenantId = input.tenantId ?? this.requestContext.getTenantId();
+    TenantScope.assertVisible(existing.tenantId ?? null, tenantId);
 
     const changedFields: Record<string, unknown> = {};
     let cronExpression = existing.cronExpression;
@@ -29,12 +34,11 @@ export class UpdateScheduledJobUseCase {
 
     if (input.cronExpression !== undefined) {
       if (existing.scheduleMode !== ScheduleMode.CRON) {
-        throw new InvalidCronExpressionError(
-          input.cronExpression,
-          'cronExpression only valid for CRON schedule mode',
+        throw new BadRequestException(
+          'Invalid cron expression: cronExpression only valid for CRON schedule mode',
         );
       }
-      nextRunAt = computeNextRunAt(input.cronExpression, new Date());
+      nextRunAt = CronCalculator.nextRunAt(input.cronExpression, new Date());
       cronExpression = input.cronExpression;
       changedFields.cronExpression = input.cronExpression;
       changedFields.nextRunAt = nextRunAt.toISOString();
@@ -54,7 +58,9 @@ export class UpdateScheduledJobUseCase {
       nextRunAt,
     });
     if (!ok) {
-      throw new OptimisticConcurrencyError(input.jobId, input.expectedVersion);
+      throw new ConflictException(
+        `Scheduled job '${input.jobId}' was modified concurrently (expected version ${input.expectedVersion})`,
+      );
     }
 
     await this.editLogs.insert({

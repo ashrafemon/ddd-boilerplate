@@ -13,7 +13,6 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
 import type { RecurringTemplateRecord } from '@platform/recurring/recurring-template.types';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AddPurchaseOrderLineUseCase } from '../../application/usecases/add-purchase-order-line.usecase';
 import { CreatePurchaseOrderUseCase } from '../../application/usecases/create-purchase-order.usecase';
 import { CreateRecurringPurchaseOrderUseCase } from '../../application/usecases/create-recurring-purchase-order.usecase';
@@ -26,10 +25,8 @@ import { CreatePurchaseOrderDto } from './requests/create-purchase-order.request
 import { AddLineDto } from './requests/add-purchase-order-line.request.dto';
 import { PurchaseOrderQueryDto } from './requests/query-purchase-orders.request.dto';
 import { RejectPurchaseOrderDto } from './requests/reject-purchase-order.request.dto';
-import {
-  CreateRecurringPurchaseOrderDto,
-  CreateRecurringFromPurchaseOrderDto,
-} from './requests/create-recurring-purchase-order.request.dto';
+import { CreateRecurringPurchaseOrderDto } from './requests/create-recurring-purchase-order.request.dto';
+import { CreateRecurringFromPurchaseOrderDto } from './requests/create-recurring-from-purchase-order.request.dto';
 import {
   GetPurchaseOrderMobileResponseDto,
   type GetPurchaseOrderMobileResponse,
@@ -66,7 +63,6 @@ export class PurchaseOrderController {
     private readonly listPurchaseOrdersUseCase: ListPurchaseOrdersUseCase,
     private readonly createRecurringPurchaseOrderUseCase: CreateRecurringPurchaseOrderUseCase,
     private readonly createRecurringFromPurchaseOrderUseCase: CreateRecurringFromPurchaseOrderUseCase,
-    private readonly requestContext: RequestContextPort,
   ) {}
 
   @Post()
@@ -83,13 +79,10 @@ export class PurchaseOrderController {
   async createRecurring(
     @Body() dto: CreateRecurringPurchaseOrderDto,
   ): Promise<ApiResponse<RecurringTemplateRecord>> {
-    const ctx = this.requestContext.get();
     const template = await this.createRecurringPurchaseOrderUseCase.execute({
       ...dto,
       startDate: dto.startDate ? new Date(dto.startDate) : undefined,
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
-      tenantId: ctx?.tenantId,
-      createdBy: ctx?.userId,
     });
     return { data: template, message: 'Recurring purchase order template created' };
   }
@@ -129,14 +122,11 @@ export class PurchaseOrderController {
     @Param('id') id: string,
     @Body() dto: CreateRecurringFromPurchaseOrderDto,
   ): Promise<ApiResponse<RecurringTemplateRecord>> {
-    const ctx = this.requestContext.get();
     const template = await this.createRecurringFromPurchaseOrderUseCase.execute({
       ...dto,
       purchaseOrderId: id,
       startDate: dto.startDate ? new Date(dto.startDate) : undefined,
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
-      tenantId: ctx?.tenantId,
-      createdBy: ctx?.userId,
     });
     return { data: template, message: 'Recurring purchase order template created' };
   }

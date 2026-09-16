@@ -1,21 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { ScheduledJobDispatchLogRepositoryPort } from '../ports/scheduled-job-dispatch-log-repository.port';
+import { SchedulerTickHeartbeat } from '../scheduler-tick.heartbeat';
 import { SchedulerHealthMetrics } from '../scheduler.types';
 
 /** Module-level so ticker can stamp last success without DI cycles. */
-let lastSuccessfulTickAt: Date | null = null;
-
-export function markSchedulerTickSuccess(at: Date = new Date()): void {
-  lastSuccessfulTickAt = at;
-}
-
 @Injectable()
 export class GetSchedulerHealthMetricsUseCase {
   constructor(
     private readonly jobs: ScheduledJobRepositoryPort,
 
     private readonly dispatchLogs: ScheduledJobDispatchLogRepositoryPort,
+    private readonly heartbeat: SchedulerTickHeartbeat,
   ) {}
 
   async execute(overdueThresholdMs = 60_000): Promise<SchedulerHealthMetrics> {
@@ -27,7 +23,7 @@ export class GetSchedulerHealthMetricsUseCase {
     return {
       overdueCount,
       recentDispatchFailureCount,
-      lastSuccessfulTickAt,
+      lastSuccessfulTickAt: this.heartbeat.lastTick,
     };
   }
 }

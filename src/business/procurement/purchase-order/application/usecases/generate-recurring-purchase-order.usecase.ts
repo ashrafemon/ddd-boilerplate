@@ -1,3 +1,4 @@
+import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { LoggerPort } from '@platform/observability/ports/logger.port';
 import { RecurringExecutionPort } from '@platform/recurring/ports/recurring-execution.port';
@@ -85,7 +86,7 @@ export class GenerateRecurringPurchaseOrderUseCase {
         }
       }
     } catch (err) {
-      const message = (err as Error).message;
+      const message = FailureMessage.of(err);
       await this.recurringExecution.fail(command.executionId, message);
       this.logger.error(
         `Recurring purchase order generation failed for execution ${command.executionId}: ${message}`,

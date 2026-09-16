@@ -82,6 +82,14 @@ export interface RowResult {
   errorMessage?: string;
 }
 
+/**
+ * A RowResult plus the fencing token received from claimForExecution: results
+ * only apply while the row is PROCESSING under THAT claim, so a worker whose
+ * rows were reset (heartbeat gap / reconcile takeover) can no longer overwrite
+ * outcomes written by the current owner.
+ */
+export type RowExecutionSettlement = RowResult & { executionClaimToken: number };
+
 export interface StatusHistoryEntry {
   from: string;
   to: string;
@@ -132,14 +140,16 @@ export interface ImportJobRowRecord {
   tenantId?: string;
   importJobId: string;
   rowNumber: number;
-  rawPayload?: Record<string, unknown>;
-  mappedPayload?: Record<string, unknown>;
+  rawPayload?: Record<string, string>;
+  mappedPayload?: Record<string, string>;
   validationStatus: ImportRowValidationStatus;
   executionStatus: ImportRowExecutionStatus;
   validationErrors?: string[];
   errorMessage?: string;
   entityId?: string;
   secondaryEntityIds?: string[];
+  /** Set only by claimForExecution: fencing token for the settlement write. */
+  executionClaimToken?: number;
   createdAt: Date;
   updatedAt: Date;
   processedAt?: Date;
@@ -189,8 +199,8 @@ export interface NewImportJob {
 /** A row as first written by the parser — mapped payload only once a mapping exists. */
 export interface NewImportJobRow {
   rowNumber: number;
-  rawPayload?: Record<string, unknown>;
-  mappedPayload?: Record<string, unknown>;
+  rawPayload?: Record<string, string>;
+  mappedPayload?: Record<string, string>;
   tenantId?: string;
 }
 

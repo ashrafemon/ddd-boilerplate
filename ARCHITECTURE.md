@@ -64,9 +64,10 @@ src/
 ├── bootstrap/               # app bootstrap steps (sentry, security, cors, http, swagger, ...)
 ├── infrastructure/          # third-party client init ONLY (Prisma, brokers, cache, AWS, CLS)
 ├── platform/                # services built on those clients, exposed as ports
-│                            # (outbox, events, messaging, database, context, cache, audit,
-│                            #  numbering, configuration, notification, observability, storage,
-│                            #  condition-engine, scheduler, recurring, batch-operation, import)
+│                            # (outbox, events, messaging, context (incl. PrismaReadPort),
+│                            #  cache, audit, numbering, configuration, notification,
+│                            #  observability, storage, condition-engine, locking,
+│                            #  idempotency, scheduler, recurring, batch-operation, import)
 ├── generated/               # Prisma-generated client (DO NOT EDIT; `@prisma/client` alias)
 └── business/
     ├── shared-business/     # framework-independent domain primitives + registries
@@ -79,16 +80,16 @@ src/
 
 Module aliases (see `tsconfig.json` + Jest `moduleNameMapper` in `package.json`):
 
-| Alias | Path |
-|---|---|
-| `@config/*` | `src/config/*` |
-| `@shared-kernel/*` | `src/shared-kernel/*` |
-| `@bootstrap/*` | `src/bootstrap/*` |
-| `@infrastructure/*` | `src/infrastructure/*` |
-| `@platform/*` | `src/platform/*` |
-| `@business/*` | `src/business/*` |
-| `@test/*` | `test/*` |
-| `@prisma/client` | `src/generated/client.ts` |
+| Alias               | Path                      |
+| ------------------- | ------------------------- |
+| `@config/*`         | `src/config/*`            |
+| `@shared-kernel/*`  | `src/shared-kernel/*`     |
+| `@bootstrap/*`      | `src/bootstrap/*`         |
+| `@infrastructure/*` | `src/infrastructure/*`    |
+| `@platform/*`       | `src/platform/*`          |
+| `@business/*`       | `src/business/*`          |
+| `@test/*`           | `test/*`                  |
+| `@prisma/client`    | `src/generated/client.ts` |
 
 ---
 
@@ -109,12 +110,15 @@ The only place that reads `process.env`. Each concern is a typed `registerAs` bl
 - `cache.config.ts` — driver (`redis` | `memcache`) + connection settings
 - `storage.config.ts` — S3 endpoint/bucket/region/pathStyle/presigned TTL
 - `security.config.ts` — throttler (`THROTTLE_TTL_MS`/`THROTTLE_LIMIT`), encryption key,
-  tenant/organization header names
-- `outbox.config.ts` — poll interval, batch size, max attempts, retry backoff, cleanup age
+  tenant/organization header names, tenancy mode (`TENANCY_MODE` single|multi)
+- `outbox.config.ts` — poll interval, batch size, max attempts, retry backoff,
+  claim lease (`OUTBOX_CLAIM_LEASE_MS`), cleanup age (platform/outbox only)
+- `idempotency.config.ts` — replay/TTL window (`IDEMPOTENCY_TTL_MS`, platform/idempotency only)
 - `notification.config.ts` — SNS (topic ARN/region) + SES (from address/region)
 - `observability.config.ts` — Sentry DSN/traces sample rate, Loki URL
 - `scheduler.config.ts` — poll interval, batch size, lock TTL, reconciliation interval,
-  worker concurrency, job attempts (platform/scheduler only)
+  worker concurrency, job attempts, retry escalation (`maxRetries` + backoff;
+  platform/scheduler only)
 - `batch-operation.config.ts` — max records per job, sync threshold, chunk size, worker
   concurrency, chunk attempts, reconciliation window, result-snapshot cap
 - `import.config.ts` — file/row limits, chunk sizes, lock TTL, retention, preview, build SHA
@@ -276,7 +280,8 @@ Rules (enforced in `eslint.config.mjs`):
 ```text
 Allowed:
   infrastructure   third-party clients + config + shared-kernel exceptions only
-  platform         infrastructure clients + shared-business primitives, exposed as ports
+  platform         infrastructure clients ONLY (exposed as ports) — zero @business/**
+                   imports; see the OutboxEvent contract below
   business module  its own internals, @platform ports, shared-business, shared-kernel types,
                    ANOTHER module's public/** or application/outbound-ports/** contract
 Forbidden:
@@ -286,6 +291,17 @@ Forbidden:
                   application/usecases/**, application/integrations/**,
                   application/facades/**, infrastructure/**
   shared-business → @platform/**, @infrastructure/**, any concrete module (@business/*/*/**)
+  platform → @business/** (ANY, including shared-business) — a single ESLint
+          regex bans it. Platform defines its OWN event contract
+          (`@platform/events/bases/outbox-event.base.ts` → `OutboxEvent`
+          structural interface + `OutboxEventBase`, and
+          `outbox-event.registry.ts` → `outboxEventRegistry`). A business
+          `DomainEvent` satisfies `OutboxEvent` STRUCTURALLY (same envelope),
+          so the outbox pipes it with no shared type. The business rehydrator
+          registry is attached as a read-only DELEGATE by the composition
+          root (`src/bootstrap/configure-event-rehydration.ts`), not imported
+          by platform — control is inverted, business registration flows one
+          way only
   raw client libs (Prisma, @prisma/adapter-pg, amqplib, kafkajs, ioredis/redis,
   @golevelup/nestjs-rabbitmq, @ssut/nestjs-sqs) → infrastructure/config/bootstrap/platform only
   @nestjs/schedule → platform only (the outbox scheduler owns cron)
@@ -311,12 +327,12 @@ class and the module binds the concrete adapter with `useClass`/`useExisting`.
 
 Per aggregate module there are four port families:
 
-| Port (token) | Defined in | Implemented by | Used for |
-|---|---|---|---|
-| `ProductCommandRepository` | `domain/repositories/` | `PrismaProductCommandRepository` (via `TransactionHost`) | reads/writes of the aggregate inside the `@Transactional` boundary |
-| `ProductQuery` | `application/queries/` | `PrismaProductQueryRepository` (via `PrismaReadPort`) | read-model queries (list/get/purchasable) |
-| `ProductIntegrationPort` | `application/integrations/publishes/` | `infrastructure/adapters/platform/OutboxAdapter` (wraps platform `OutboxWriterPort`) | append raised domain events to the outbox |
-| `CompanyConfigPort` (module-local) | `application/outbound-ports/` | `infrastructure/adapters/platform/CompanyConfigAdapter` (wraps platform `CompanyConfigPort`) | default currency / auto-approve threshold |
+| Port (token)                       | Defined in                            | Implemented by                                                                               | Used for                                                           |
+| ---------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `ProductCommandRepository`         | `domain/repositories/`                | `PrismaProductCommandRepository` (via `TransactionHost`)                                     | reads/writes of the aggregate inside the `@Transactional` boundary |
+| `ProductQuery`                     | `application/queries/`                | `PrismaProductQueryRepository` (via `PrismaReadPort`)                                        | read-model queries (list/get/purchasable)                          |
+| `ProductIntegrationPort`           | `application/integrations/publishes/` | `infrastructure/adapters/platform/OutboxAdapter` (wraps platform `OutboxWriterPort`)         | append raised domain events to the outbox                          |
+| `CompanyConfigPort` (module-local) | `application/outbound-ports/`         | `infrastructure/adapters/platform/CompanyConfigAdapter` (wraps platform `CompanyConfigPort`) | default currency / auto-approve threshold                          |
 
 Example binding (`product.module.ts`):
 
@@ -418,8 +434,8 @@ domain/common/value-objects/  Money (minor-units integer math, currency guards,
                     fromDecimal/toDecimal), VendorId
 domain/registries/  invariantRegistry  — keyed Invariant list, enforce() throws on violation
                     policyRegistry     — keyed Policy list, evaluate()/enforce()
-                    domainEventRegistry — event-type-name → rehydrator, used by the outbox
-                    publisher to rebuild domain events for in-process re-dispatch
+                    domainEventRegistry — event-type-name → rehydrator for domain events;
+                    bridged into the platform outboxEventRegistry as a delegate at bootstrap
 ```
 
 Aggregates register invariants/policies by importing side-effect files
@@ -503,37 +519,45 @@ flowchart LR
     ROUTE --> RMQ[RabbitMQ]
     ROUTE --> KAFKA[Kafka]
     ROUTE --> SQS[SQS]
-    PUB --> BUS[In-process re-dispatch<br/>via domainEventRegistry]
+    PUB --> BUS[In-process re-dispatch<br/>via outboxEventRegistry (+ business delegate)]
 ```
 
 Flow details:
 
 - `OutboxWriter.append(event, aggregateType, aggregateId)` builds an `IntegrationMessage`
   (`eventType` = domain event class name, JSON payload minus envelope fields, headers with
-  `event-id`/`request-id`/`correlation-id` from `RequestContextPort`) and saves it via
-  `PrismaOutboxRepository` on the caller's `TransactionHost`.
-- `OutboxPublisher.publishPendingBatch()` (guarded against overlap, chunks of 10 in
-  parallel): `claimBatch(batchSize)` atomically flips `PENDING|FAILED → PUBLISHING`, publishes
-  to each broker target, re-dispatches the rehydrated domain event in-process, then
-  `markPublished` (or `markFailed`, incrementing `attempts`).
-- `OutboxScheduler` (`@nestjs/schedule` cron):
-  - every 10 s — publish pending batch;
-  - every minute — `retryFailed()` re-queues `FAILED` rows under `maxAttempts`;
-  - every hour — `cleanup()` deletes `PUBLISHED` rows older than `cleanupOlderThanHours`.
-- `OutboxMessageStatus`: `PENDING → PUBLISHING → PUBLISHED | FAILED`.
+  `event-id`/`request-id`/`correlation-id`/`causation-id`/`tenant-id`/`organization-id` from
+  `RequestContextPort`) and saves it — with a `tenantId` column — via `PrismaOutboxRepository`
+  on the caller's `TransactionHost`.
+- `OutboxPublisher.publishPendingBatch()` (guarded against overlap): `claimBatch(batchSize,
+  maxAttempts)` runs a single `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` so
+  concurrent replicas claim disjoint rows; the claim flips `PENDING|FAILED → PUBLISHING`,
+  stamps `claimedAt` (lease) and increments `attempts` (backoff gating uses `nextRetryAt` on
+  FAILED rows). Events are grouped per aggregate and each group is published sequentially
+  (parallel across groups of 10) to preserve per-aggregate FIFO. Re-dispatch restores the
+  persisted envelope (`eventId`, `occurredAt`, correlation, causation) so consumer idempotency
+  and recurring EVENT-trigger dedupe see stable identities, and runs under a restored tenant
+  CLS context.
+- `OutboxScheduler`: publishes on `OUTBOX_POLL_INTERVAL_MS`; every minute a reconcile step
+  returns `PUBLISHING` rows whose lease (`OUTBOX_CLAIM_LEASE_MS`) expired to `PENDING`
+  (crashed publisher); every hour `cleanup()` deletes `PUBLISHED` rows older than
+  `cleanupOlderThanHours`. Retry cadence is data-driven (`nextRetryAt` + `attempts`), not cron-driven.
+- `OutboxMessageStatus`: `PENDING → PUBLISHING → PUBLISHED | FAILED | DEAD_LETTER`. A message
+  that fails `OUTBOX_MAX_ATTEMPTS` times becomes `DEAD_LETTER` (terminal, alertable) instead
+  of looping forever. Delivery is at-least-once; consumers dedupe on the stable `event-id`.
 - Publishing is **never** inside the business transaction. Business code only writes; the
   scheduler owns delivery. Brokers degrade gracefully: Kafka disabled without `KAFKA_BROKERS`,
   SQS disabled without `SQS_URL`.
 
 ### 8.2 Domain events vs integration events
 
-| | Domain event | Integration event |
-|---|---|---|
-| Scope | In-process, same monolith | Across brokers/processes |
-| Transport | `InProcessEventBus` (EventEmitter2 adapter, wildcard) | RabbitMQ / Kafka / SQS |
-| Durability | Best effort | Transactional outbox (guaranteed at-least-once) |
-| Persisted | No | `outbox_messages` |
-| Example | `ProductCreated` → `@OnEvent` listener | Same event published as the full `IntegrationMessage` envelope |
+|            | Domain event                                          | Integration event                                              |
+| ---------- | ----------------------------------------------------- | -------------------------------------------------------------- |
+| Scope      | In-process, same monolith                             | Across brokers/processes                                       |
+| Transport  | `InProcessEventBus` (EventEmitter2 adapter, wildcard) | RabbitMQ / Kafka / SQS                                         |
+| Durability | Best effort                                           | Transactional outbox (guaranteed at-least-once)                |
+| Persisted  | No                                                    | `outbox_messages`                                              |
+| Example    | `ProductCreated` → `@OnEvent` listener                | Same event published as the full `IntegrationMessage` envelope |
 
 Each module's `integrations/publishes/*.integration-event.ts` files declare the typed wire
 shape per event (`eventType: 'product.created'`, etc.) as a publish contract; the outbox
@@ -580,93 +604,181 @@ cases/facades. Consumers are the only business code allowed to touch broker deco
 
 ## 9. Platform Layer
 
-Each sub-system owns its folder, module and ports; `PlatformModule` composes and re-exports
-them (not global — business modules import it explicitly):
+Each sub-system owns its folder, module and ports, **and a `README.md`** (purpose,
+public API, layout, who-calls/how, data & config, tenancy behaviour, rules).
+`PlatformModule` composes and re-exports them (not global — business modules import it
+explicitly). `src/platform/README.md` is the service index and the canonical-anatomy /
+add-a-service checklist that every module below follows; the build-it recipe with code
+templates is `docs/PLATFORM-SERVICE-GUIDE.md`:
 
 ```text
 platform/
 ├── outbox/          OutboxModule — OutboxWriter (OutboxWriterPort), OutboxPublisher,
-│                    OutboxScheduler, PrismaOutboxRepository (OutboxRepository)
+│                    OutboxScheduler, PrismaOutboxRepository; SKIP-LOCKED claim with a
+│                    claimedAt lease, attempts+backoff gating, DEAD_LETTER, envelope-stable
+│                    re-dispatch, and tenant stamping on every row
 ├── events/          EventsModule — NestEventBusAdapter (InProcessEventBus),
 │                    DefaultMessageRoutingPolicy (MessageRoutingPolicy)
 ├── messaging/       MessagingModule — binds RabbitMqPublisher/KafkaPublisher/SqsPublisher
 │                    tokens to MessagePublisher adapters over the infra clients
-├── database/        DatabaseModule — PrismaReadPort (backed by PrismaReadService)
-├── context/         ContextModule — ClsRequestContextService (RequestContextPort);
-│                    ports also define RequestContext, Clock/SystemClock, UnitOfWork
+├── context/         ContextModule — ClsRequestContextService (RequestContextPort: per-request
+│                    identity/trace, set/get/require + run() for background context),
+│                    PrismaReadPort (bound to the infra PrismaReadService); TenancyAuthGuard
+│                    (registered as APP_GUARD in app.module) enforces the single/multi trust
+│                    boundary; the immutable RequestContext snapshot lives in ports/
+├── locking/         LockingModule — RedisDistributedLockAdapter (DistributedLockPort):
+│                    owner-token SETNX lease, Lua renew/release, fail-closed. Shared by the
+│                    pipeline stages of scheduler/import (formerly scheduler-private)
+├── idempotency/     IdempotencyModule — PrismaIdempotencyRepository (IdempotencyPort:
+│                    insert-as-claim reserve → markCompleted/markFailed, response replay) +
+│                    @Idempotent() decorator/interceptor + hourly purge of expired keys
 ├── cache/           CacheModule — Redis or Memcached CachePort adapter, chosen by the same
 │                    resolveCacheDriver() the infrastructure layer uses (exactly one client)
-├── configuration/   ConfigurationModule — PrismaCompanyConfigAdapter (CompanyConfigPort),
-│                    DEFAULT_COMPANY_ID fallback config (currency USD, threshold 10 000)
-├── audit/           AuditModule — PrismaAuditService (AuditPort): transactional audit rows
-│                    enriched with request/correlation/tenant context from CLS
-├── numbering/       NumberingModule — PrismaNumberingService (NumberingPort): race-safe
-│                    upsert-increment sequences with prefix/padding
+├── configuration/   ConfigurationModule — PrismaCompanyConfigRepository (CompanyConfigPort),
+│                    company resolved from the authenticated org, DEFAULT_COMPANY_ID fallback
+├── audit/           AuditModule — PrismaAuditRepository (AuditPort): transactional audit rows
+│                    enriched + redacted from CLS; wired into platform state transitions
+├── numbering/       NumberingModule — PrismaNumberingRepository (NumberingPort): race-safe
+│                    upsert-increment, tenant/company-namespaced keys, prefix/padding
 ├── notification/    NotificationModule — NotificationDispatchService
 │                    (NotificationDispatchPort) → SES email / SNS push-sms adapters
 ├── observability/   ObservabilityModule — ConsoleLoggerAdapter (LoggerPort),
-│                    PrometheusMetricsAdapter (MetricsPort),
+│                    PrometheusMetricsAdapter (MetricsPort, GET /api/v1/metrics),
 │                    SentryErrorTrackingAdapter (ErrorTrackingPort, self-disabling)
 ├── storage/         StorageModule — S3FileStorageAdapter (FileStoragePort:
-│                    upload/download/delete/metadata/presigned URL)
+│                    upload/download/delete/metadata/presigned URL; no public-URL fallback)
 ├── condition-engine/ ConditionEngineModule — ConditionEvaluationService (ConditionEvaluator)
 │                    + FieldResolverRegistry; generic AND/OR rule gate; data-owning modules
 │                    register FieldResolvers (opt-in, never imported here)
 ├── scheduler/       SchedulerModule — DB-backed ScheduledJob table polled by SchedulerTicker,
-│                    BullMQ async execution, RedisDistributedLockAdapter, per-jobType fire
-│                    handlers via ScheduledJobHandlerRegistry, RabbitMqSchedulerEventPublisher;
-│                    inbound SchedulerPort facade + 9 granular ports; HTTP /scheduled-jobs
-├── recurring/       RecurringModule — RecurringTemplate/Execution (generic TIME+EVENT trigger
-│                    model), RecurringGenerationHandler (plugs into scheduler),
-│                    RecurringGeneratorRegistry, DomainEventDispatcher; HTTP /recurring-templates
+│                    BullMQ async execution, retry→SUSPENDED/DEAD_LETTER escalation, per-jobType
+│                    fire handlers via ScheduledJobHandlerRegistry, RabbitMqSchedulerEventPublisher;
+│                    SchedulerPort facade + ops ports; HTTP /scheduled-jobs (lock via @platform/locking)
+├── recurring/       RecurringModule — RecurringTemplate/Execution (TIME+EVENT trigger model),
+│                    transactional claim+append+reschedule handler, stale-execution sweeper,
+│                    DomainEventDispatcher; HTTP /recurring-templates
 ├── batch-operation/ BatchOperationModule — Sync/Async bulk transitions, job+row tables,
-│                    BatchOperationHandlerRegistry (aggregate handlers opt in from their own
-│                    module), BullMQ chunk fan-out, reconciliation cron; HTTP /batch-operations
-└── import/          ImportModule — upload→parse→mapping→validation→execution pipeline over
-                     S3 storage objects, BullMQ fan-out, ImportHandlerRegistry (entities opt in
-                     from their own module), xlsx/CSV parsing, reconciliation; HTTP /import
+│                    BatchOperationHandlerRegistry, BullMQ chunk fan-out, claim-token fencing,
+│                    reconcile (reset/recount/finalise/resume); HTTP /batch-operations (@Idempotent submit)
+└── import/          ImportModule — upload→parse→mapping→validation→execution over S3,
+                     BullMQ fan-out, ImportHandlerRegistry, stage locks + row claim tokens,
+                     resume-not-kill reconciliation, storage purge; HTTP /import (@Idempotent create)
 ```
 
 Business code injects the **port abstractions** and never imports concrete platform services
 or infrastructure clients.
 
+> **Port discipline (current convention).** An inbound port + thin adapter exists only where
+> there is a real public boundary — a cross-module API (`SchedulerPort`, `RecurringExecutionPort`,
+> `RecurringTemplatePort`, public module ports). Where the sole consumer is the service's own
+> controller/worker (batch-operation job commands), the controller injects the **use case
+> directly** — no one-implementation port+adapter pairs. The moment another module needs the same
+> operation it is published behind a port (recurring template creation = `RecurringTemplatePort`;
+> the internal controller keeps using the use case directly). The four opt-in registries
+> (`BatchOperationHandler` / `ImportHandler` / `ScheduledJobFireHandler` / `FieldResolver`)
+> share `KeyedRegistryBase` (`shared-kernel/utils`); for business-side handlers, registration
+> lives in the **composition root** — the handler is pure port data and
+> `src/bootstrap/configure-*.ts` plugs it into the platform registry (see 9.1 — the pattern
+> the generated business modules emit; vendor's import opt-in has migrated to the bridge).
+> (Domain events reach the
+> in-process bus through a fifth, business-owned `DomainEventRegistry` rehydrator map,
+> populated via the owner module's side-effect import.)
+
 ### 9.1 Opt-in registration (business → platform, dependency points inward)
 
 The scheduler, recurring, batch-operation and import services each own a **registry**
-(`ScheduledJobHandlerRegistry`, `RecurringGeneratorRegistry`, `BatchOperationHandlerRegistry`,
-`ImportHandlerRegistry`). A platform service never imports a business module — instead the
-**owning module** injects the registry (and its own handler) directly and calls
-`register(...)` in `onApplicationBootstrap`, once the whole container is built. Duplicates /
-supportedOperations mismatches throw at boot. The registry classes are exported through each
-platform sub-module and re-exported by `PlatformModule`, so any module importing
-`PlatformModule` can inject them without a `ModuleRef` lookup.
+(`ScheduledJobHandlerRegistry`, `BatchOperationHandlerRegistry`, `ImportHandlerRegistry`,
+plus `FieldResolverRegistry` in condition-engine). A platform service never imports a business
+module — the registry classes are exported through each platform sub-module and re-exported by
+`PlatformModule`. Duplicates throw at boot.
+
+**Composition-root bridge (current standard for business opt-ins — batch-operation uses it):**
+generated adapters must stay pure `BatchOperationHandler` data + routing — no
+`OnApplicationBootstrap`, no registry imports, business knows only platform **ports**. The
+bridge file `src/bootstrap/configure-batch-operations.ts` (the only layer allowed to know
+both sides — same precedent as `configure-event-rehydration.ts` bridging rehydrators) keeps a
+generated-row table mapping each batch-capable aggregate's module to its handler and, after
+modules are instantiated but before the listener starts, calls:
 
 ```ts
-// procurement/purchase-order.module.ts
-@Module({
-  imports: [PlatformModule, ProductModule, VendorModule],
-  providers: [PurchaseOrderBatchOperationAdapter, /* ... */],
-})
-export class PurchaseOrderModule implements OnApplicationBootstrap {
-  constructor(
-    private readonly batchHandlers: BatchOperationHandlerRegistry,
-    private readonly batchOperationHandler: PurchaseOrderBatchOperationAdapter,
-  ) {}
-
-  onApplicationBootstrap(): void {
-    this.batchHandlers.register(
-      'PurchaseOrder',
-      ['submit', 'approve', 'reject', 'cancel'],
-      this.batchOperationHandler,
-    );
-  }
-}
-
-// platform/recurring/recurring.module.ts — Recurring plugs into the scheduler the same way
-onApplicationBootstrap(): void {
-  this.scheduledJobHandlers.register('Recurring', this.generationHandler);
-}
+// src/bootstrap/configure-batch-operations.ts
+registry.register(app.select(ownerModule).get(batchHandler, { strict: true }));
 ```
+
+```ts
+// purchase-order/infrastructure/adapters/platform/purchase-order-batch-operation.adapter.ts — PURE handler
+@Injectable()
+export class PurchaseOrderBatchOperationAdapter implements BatchOperationHandler {
+  aggregateType(): string { return 'PurchaseOrder'; }
+  supportedOperations(): string[] { return ['submit', 'approve', 'reject', 'cancel']; }
+  // validate()/execute() → own use cases (unchanged)
+}
+
+// procurement/purchase-order.module.ts — no class body, no registration, no lifecycle
+@Module({ imports: [PlatformModule, …], providers: [PurchaseOrderBatchOperationAdapter, …] })
+export class PurchaseOrderModule {}
+```
+
+The handler is its own registration metadata: `registry.register(handler)` reads key +
+operations from it, so there is no second source to drift from. Adding a batch-capable
+aggregate = one row in `BATCH_OPERATION_AGGREGATES` (what the module generator appends).
+
+Legacy shape: recurring→scheduler (platform→platform) injects registry + handler in its
+own module's `onApplicationBootstrap` — fine, platform may know platform. Business opt-ins
+(batch-operation, import) are bridged from `src/bootstrap/configure-batch-operations.ts` and
+`configure-imports.ts` respectively.
+
+### 9.2 Canonical platform-service structure (mandatory for every NEW service)
+
+> The full step-by-step recipe — exact file names, copy-pasteable port/repo/use-case/
+> controller/DTO/event code shapes, the naming map, the invariant checklist and the
+> verification battery — lives in **`docs/PLATFORM-SERVICE-GUIDE.md`**. This section is
+> the summary; the guide is what you follow to build a service strictly.
+
+The existing services converged on one shape; new platform services MUST start from it
+(following `§15` symmetrically on the business side):
+
+```text
+platform/<service>/
+├── README.md                     REQUIRED — sections: What it does · Public API ·
+│                                 Layout · Who calls it / how called · Data & config ·
+│                                 Tenancy behaviour · Rules & gotchas
+├── <service>.module.ts           bindings + exports ONLY (no logic, not @Global)
+├── ports/                        abstract classes = DI tokens (inbound + outbound)
+├── usecases/                     one class per capability; @Transactional at their
+│                                 boundary; controllers/workers inject use cases directly
+│                                 UNLESS the operation crosses a module boundary (then
+│                                 publish an inbound port + thin adapter — 9.1 rule)
+├── repositories/ (+adapters/)    Prisma data access (TransactionHost) | queue/broker/cache I/O
+├── http/requests/*.request.dto.ts  ONE DTO per file (business-module convention, incl.
+│                                 platform services); controllers stay thin
+├── <name>.ticker.ts / *reconciliation* / *sweeper*  crons converging crashed executions
+└── __testing__/                  in-memory port fakes so use cases unit-test without DB
+```
+
+Non-negotiable invariants (all enforced or precedented in the current services):
+
+1. **Tenancy**: every owned table gets `tenantId String?`; reads/mutations thread the
+   request tenant and enforce `TenantScope` (foreign ⇒ 404); background executions
+   restore context with `RequestContextPort.run(payload)` before touching services
+   that read CLS (numbering, company config, audit).
+2. **Idempotent by construction**: claims use insert-as-claim or `FOR UPDATE
+   SKIP LOCKED`, terminal writes are CAS/token-fenced, and at-least-once redelivery
+   can only ever re-run, never double-apply. Cross-replica "one-winner-now" uses
+   `DistributedLockPort` (`platform/locking`, fail-closed); request/effect
+   dedupe-with-replay uses `IdempotencyPort` / `@Idempotent()` (`platform/idempotency`).
+3. **Side effects leave via the outbox only** (`OutboxWriterPort` inside the use-case
+   transaction); in-process listeners get envelope-stable rehydrated events.
+4. **State escalation visible**: transient failures back off with bounded retries,
+   terminal poison states park (`SUSPENDED`/`DEAD_LETTER`/`FAILED`) — nothing loops
+   forever and nothing dies silently; stale in-flight states have a reconciler.
+5. **Config**: `src/config/<service>.config.ts` (+ `ConfigService` getter with
+   identical defaults) — no raw `process.env` outside `src/config`.
+6. Registration of business handlers into platform registries happens in the
+   **composition root** (`src/bootstrap/configure-<feature>.ts` table → `register(handler)`
+   — §9.1 standard; the registry docstring says so too); `PlatformModule` imports+exports
+   the new module; `src/platform/README.md` catalog row + this tree entry get updated in the
+   same PR.
 
 ## 10. Infrastructure Layer
 
@@ -713,24 +825,24 @@ persistence stays encapsulated with it.
   URL comes from `DATABASE_URL` via the config file (no `env()` in the schema).
 - Schema is **split per aggregate** under `prisma/schema/<context>/<module>.prisma`:
 
-| Model | Table | Notes |
-|---|---|---|
-| `Product` | `products` | unique `sku`, `status` enum, `unitPrice Decimal(18,2)`, `version` |
-| `Vendor` | `vendors` | unique `code`, `status` enum, `version` |
-| `PurchaseOrder` | `purchase_orders` | unique `orderNumber`, vendor by uuid id, totals, `version` |
-| `PurchaseOrderLine` | `purchase_order_lines` | `@@unique([purchaseOrderId, productId])`, cascade delete |
-| `GoodReceiptNote` | `good_receipt_notes` | unique `grnNumber`, purchaseOrderId + vendorId refs, `receivedAt` |
-| `GrnLine` | `grn_lines` | ordered/received quantities, `@@unique([grnId, productId])` |
-| `OutboxMessage` | `outbox_messages` | JSON payload/headers, status enum, `@@index([status, publishedAt])` |
-| `CompanyConfig` | `company_configs` | unique `companyId`, default currency, auto-approve threshold |
-| `NumberSequence` | `number_sequences` | unique `key`, BigInt `currentValue`, prefix/padding/step |
-| `AuditLog` | `audit_logs` | action/entity/actor, tenant/org/request/correlation ids |
-| `Invoice` | `invoices` | unique `invoiceNo`, `customerId`, `status` enum, `lines` JSON, `version` (sales demo) |
-| `ScheduledJob` | `scheduled_jobs` | jobType/scope/scheduleMode, `nextRunAt`, `status`, `version`, `lockedUntil/By` |
-| `ScheduledJobDispatchLog` / `ScheduledJobEditLog` | `scheduled_job_dispatch_log` / `scheduled_job_edit_log` | dispatch outcomes + cron/nextRun edits |
-| `RecurringTemplate` / `RecurringExecution` | `recurring_templates` / `recurring_executions` | TIME+EVENT trigger model; execution unique on `(templateId, triggerKey)` = idempotency |
-| `BatchOperationJob` / `BatchOperationJobRow` | `batch_operation_jobs` / `batch_operation_job_rows` | header counters + per-row claim/status/result_snapshot |
-| `StorageObject` / `ImportJob` / `ImportJobRow` | `storage_objects` / `import_jobs` / `import_job_rows` | upload + job (descriptor snapshot, statusHistory) + row outcomes |
+| Model                                             | Table                                                   | Notes                                                                                  |
+| ------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `Product`                                         | `products`                                              | unique `sku`, `status` enum, `unitPrice Decimal(18,2)`, `version`                      |
+| `Vendor`                                          | `vendors`                                               | unique `code`, `status` enum, `version`                                                |
+| `PurchaseOrder`                                   | `purchase_orders`                                       | unique `orderNumber`, vendor by uuid id, totals, `version`                             |
+| `PurchaseOrderLine`                               | `purchase_order_lines`                                  | `@@unique([purchaseOrderId, productId])`, cascade delete                               |
+| `GoodReceiptNote`                                 | `good_receipt_notes`                                    | unique `grnNumber`, purchaseOrderId + vendorId refs, `receivedAt`                      |
+| `GrnLine`                                         | `grn_lines`                                             | ordered/received quantities, `@@unique([grnId, productId])`                            |
+| `OutboxMessage`                                   | `outbox_messages`                                       | JSON payload/headers, status enum, `@@index([status, publishedAt])`                    |
+| `CompanyConfig`                                   | `company_configs`                                       | unique `companyId`, default currency, auto-approve threshold                           |
+| `NumberSequence`                                  | `number_sequences`                                      | unique `key`, BigInt `currentValue`, prefix/padding/step                               |
+| `AuditLog`                                        | `audit_logs`                                            | action/entity/actor, tenant/org/request/correlation ids                                |
+| `Invoice`                                         | `invoices`                                              | unique `invoiceNo`, `customerId`, `status` enum, `lines` JSON, `version` (sales demo)  |
+| `ScheduledJob`                                    | `scheduled_jobs`                                        | jobType/scope/scheduleMode, `nextRunAt`, `status`, `version`, `lockedUntil/By`         |
+| `ScheduledJobDispatchLog` / `ScheduledJobEditLog` | `scheduled_job_dispatch_log` / `scheduled_job_edit_log` | dispatch outcomes + cron/nextRun edits                                                 |
+| `RecurringTemplate` / `RecurringExecution`        | `recurring_templates` / `recurring_executions`          | TIME+EVENT trigger model; execution unique on `(templateId, triggerKey)` = idempotency |
+| `BatchOperationJob` / `BatchOperationJobRow`      | `batch_operation_jobs` / `batch_operation_job_rows`     | header counters + per-row claim/status/result_snapshot                                 |
+| `StorageObject` / `ImportJob` / `ImportJobRow`    | `storage_objects` / `import_jobs` / `import_job_rows`   | upload + job (descriptor snapshot, statusHistory) + row outcomes                       |
 
 All money columns are `Decimal(18,2)`; domain converts through `Money` (minor units).
 Migrations: `init`, `add_platform_numbering_audit`, `add_company_config`,
@@ -773,31 +885,33 @@ Request → RequestIdInterceptor → LoggingInterceptor → DeviceResponseInterc
 
 ### Error mapping (`HttpExceptionsFilter`)
 
-| Thrown | Response |
-|---|---|
-| `BadRequestException` with string[] messages (Zod validation) | `422 { status:'VALIDATE_ERROR', data: { field: msg } }` |
-| Nest `HttpException` (`NotFoundException` 404, `ConflictException` 409, ...) | `{ status:'ERROR', statusCode, message }` |
-| Plain `Error` carrying a numeric `statusCode` (invariant/policy/`Money` violations → 422) | `{ status:'ERROR', statusCode, message }` |
-| Anything else | `500 { status:'SERVER_ERROR', message:'Internal server error' }` — details never leak |
+| Thrown                                                                                    | Response                                                                              |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `BadRequestException` with string[] messages (Zod validation)                             | `422 { status:'VALIDATE_ERROR', data: { field: msg } }`                               |
+| Nest `HttpException` (`NotFoundException` 404, `ConflictException` 409, ...)              | `{ status:'ERROR', statusCode, message }`                                             |
+| Plain `Error` carrying a numeric `statusCode` (invariant/policy/`Money` violations → 422) | `{ status:'ERROR', statusCode, message }`                                             |
+| Anything else                                                                             | `500 { status:'SERVER_ERROR', message:'Internal server error' }` — details never leak |
 
 Domain code throws **framework-free** errors (`DomainException`/`InfrastructureException`
 classes exist in `shared-kernel/exceptions/`; registered invariants currently throw
 `Error` + `statusCode: 422`, which the filter maps). Controllers stay thin: validate DTO →
-call use case → wrap `{ data, message }`.
+call use case → wrap `{ data, message }` — they never read `RequestContextPort`; the use
+case resolves tenant/actor from the injected port itself (explicit `tenantId`/actor inputs
+stay as overrides for background executions that restored a different context).
 
 ### REST surface (all under `/api/v1`)
 
-| Module | Endpoints |
-|---|---|
-| products | `POST /products`, `GET /products` (paged), `GET /products/:id`, `PATCH /products/:id`, `PATCH /products/:id/change-price`, `PATCH /products/:id/{activate,deactivate,discontinue}` |
-| vendors | `POST /vendors`, `GET /vendors` (paged), `GET /vendors/:id`, `PATCH /vendors/:id`, `PATCH /vendors/:id/{activate,deactivate,block}` |
-| purchase-orders | `POST /purchase-orders`, `GET /purchase-orders` (paged), `GET /purchase-orders/:id`, `POST /purchase-orders/:id/lines`, `DELETE /purchase-orders/:id/lines/:productId`, `PATCH /purchase-orders/:id/{submit,approve,reject,cancel,complete}` |
-| grn | `POST /grn`, `GET /grn` (paged), `GET /grn/:id`, `POST /grn/:id/lines`, `PATCH /grn/:id/{receive,complete}` |
-| invoices | `POST /invoices`, `GET /invoices/:id`, `POST /invoices/:id/post` (sales demo) |
-| scheduler | `GET /scheduled-jobs` (+`/:id`, `/:id/dispatch-log`), `PATCH /scheduled-jobs/:id`, `POST /scheduled-jobs/:id/cancel`, `GET /scheduler/health` |
-| recurring | `POST /recurring-templates`, `GET /recurring-templates` (+`/:id`), `POST /recurring-templates/:id/{pause,resume,cancel}` |
-| batch-operations | `GET /batch-operations/_registry`, `POST /batch-operations/validate`, `POST /batch-operations` (Sync 200 / Async 202), `GET /batch-operations` (+`/:id`, `/:id/rows`), `POST /batch-operations/:id/cancel` |
-| import | `GET /import/_registry`, `POST /import/uploads`, `POST /import/jobs`, `GET /import/jobs` (+`/:id`, `/:id/preview`, `/:id/report`), `PATCH /import/jobs/:id/mapping`, `POST /import/jobs/:id/{execute,cancel}`, `GET /import/:entityKey/init` |
+| Module           | Endpoints                                                                                                                                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| products         | `POST /products`, `GET /products` (paged), `GET /products/:id`, `PATCH /products/:id`, `PATCH /products/:id/change-price`, `PATCH /products/:id/{activate,deactivate,discontinue}`                                                           |
+| vendors          | `POST /vendors`, `GET /vendors` (paged), `GET /vendors/:id`, `PATCH /vendors/:id`, `PATCH /vendors/:id/{activate,deactivate,block}`                                                                                                          |
+| purchase-orders  | `POST /purchase-orders`, `GET /purchase-orders` (paged), `GET /purchase-orders/:id`, `POST /purchase-orders/:id/lines`, `DELETE /purchase-orders/:id/lines/:productId`, `PATCH /purchase-orders/:id/{submit,approve,reject,cancel,complete}` |
+| grn              | `POST /grn`, `GET /grn` (paged), `GET /grn/:id`, `POST /grn/:id/lines`, `PATCH /grn/:id/{receive,complete}`                                                                                                                                  |
+| invoices         | `POST /invoices`, `GET /invoices/:id`, `POST /invoices/:id/post` (sales demo)                                                                                                                                                                |
+| scheduler        | `GET /scheduled-jobs` (+`/:id`, `/:id/dispatch-log`), `PATCH /scheduled-jobs/:id`, `POST /scheduled-jobs/:id/cancel`, `POST /scheduled-jobs/:id/dispatch-now` (force due-now), `GET /scheduler/health`                                                                                                |
+| recurring        | `POST /recurring-templates`, `GET /recurring-templates` (+`/:id`), `POST /recurring-templates/:id/{pause,resume,cancel}`                                                                                                                     |
+| batch-operations | `GET /batch-operations/_registry`, `POST /batch-operations/validate`, `POST /batch-operations` (Sync 200 / Async 202), `GET /batch-operations` (+`/:id`, `/:id/rows`), `POST /batch-operations/:id/cancel`                                   |
+| import           | `GET /import/_registry`, `POST /import/uploads`, `POST /import/jobs`, `GET /import/jobs` (+`/:id`, `/:id/preview`, `/:id/report`), `PATCH /import/jobs/:id/mapping`, `POST /import/jobs/:id/{execute,cancel}`, `GET /import/:entityKey/init` |
 
 ---
 
@@ -816,12 +930,32 @@ call use case → wrap `{ data, message }`.
 
 - Helmet (with production CSP) + response compression at the Fastify level.
 - Strict CORS from config; empty `CORS_ORIGINS` aborts production boot.
-- Throttler settings exposed through config (`THROTTLE_TTL_MS`/`THROTTLE_LIMIT`).
-- JWT/auth packages present (`auth.config.ts`, `@nestjs/jwt`, `passport-jwt`, `jwks-rsa`,
-  `bcrypt`); guards are opt-in per controller (`@ApiBearerAuth()` is already on controllers).
-- Multi-tenancy groundwork: `x-tenant-id`/`x-organization-id` flow into CLS `RequestContext`
-  and are stamped onto audit + outbox metadata.
-- UUID identifiers everywhere; aggregates carry `version` for optimistic concurrency.
+- **Rate limiting**: global `ThrottlerGuard` wired in `AppModule` from config
+  (`THROTTLE_TTL_MS`/`THROTTLE_LIMIT`) with stricter per-route overrides
+  (`@Throttle`) on expensive endpoints — batch submit (20/min), import uploads and
+  job creation (30/min).
+- JWT/auth packages (`auth.config.ts`, `@nestjs/jwt`); the global **`TenancyAuthGuard`**
+  enforces the trust boundary per `TENANCY_MODE`: `single` (default) trusts the identity
+  headers behind a verified gateway; `multi` requires a bearer JWT signed with
+  `JWT_ACCESS_SECRET` carrying a `tenantId` claim — every other request is rejected and raw
+  identity headers are ignored. Health/scrape routes opt out via `@SkipTenancy()`
+  (Prometheus is exposed at `GET /api/v1/metrics`).
+- Multi-tenancy: identity flows into CLS `RequestContext` and is stamped onto audit rows,
+  outbox messages and numbering sequence keys (per-tenant/company number streams). Company
+  configuration resolves from the authenticated organization (hard failure in multi mode if
+  the company has no config row). Platform reads/mutations pass the request tenant into
+  their use cases, which enforce visibility through `TenantScope` (shared-kernel): a
+  foreign-tenant row surfaces as `NotFoundException` — no existence leak. Rows without a
+  tenant are platform-owned; requests without a tenant header (single-tenant deployments)
+  see everything. Background executions (BullMQ workers, outbox re-dispatch) restore the
+  same tenant/correlation context before running business handlers.
+- State-changing platform operations (schedule cancel/dispatch-now, batch cancel, import
+  cancel/execute, recurring pause/resume/cancel) write `AuditPort` trail rows
+  (actor/tenant auto-attributed from context, sensitive keys redacted).
+- UUID identifiers everywhere; `version` columns exist on aggregates, and the scheduler's
+  PATCH enforces it (`expectedVersion`). Enforcing aggregate-level optimistic concurrency
+  in the business write repositories is open work tied to per-tenant business-table
+  migration (business schema is not yet tenant-scoped — platform tables only).
 - Secrets only via env (`requiredInProduction` fail-fast); 5 MB request body limit.
 - API versioning via URI (`/api/v1`), Swagger disabled in production.
 
@@ -855,6 +989,9 @@ call use case → wrap `{ data, message }`.
 
 ## 15. Creating a New Business Module
 
+> Step-by-step file templates, binding style and the acceptance checklist:
+> **`docs/BUSINESS-MODULE-GUIDE.md`** (reference implementation: `procurement/product`).
+
 1. **Domain** — `domain/aggregates` (aggregate + `<name>.invariants.ts`),
    `domain/value-objects`, `domain/events` + `domain/events/<name>.registry.ts`
    (rehydrators!), `domain/policies`, `domain/factories` (side-effect-import the
@@ -875,7 +1012,10 @@ call use case → wrap `{ data, message }`.
    web/mobile response DTOs wired through `@DeviceResponse`.
 6. **Module** — `<name>.module.ts`: `imports: [PlatformModule]`, bind every port to its
    adapter, register listeners, export your public port(s). Add the module to its context
-   module (e.g. `ProcurementModule`).
+   module (e.g. `ProcurementModule`). For a **bridged opt-in** (batch-capable, etc.) the
+   pure handler adapter from step 4 also needs one row appended to the relevant
+   `src/bootstrap/configure-<feature>.ts` table (e.g. `BATCH_OPERATION_AGGREGATES`) —
+   without it the registry stays empty and the opt-in is silently inert (§9.1).
 7. **Persistence schema** — `prisma/schema/<context>/<name>.prisma`, then
    `npm run db:migrate` (client regenerates to `src/generated/`).
 8. **Listeners** — only if the module reacts to events; add `integrations/listeners/` classes
@@ -884,6 +1024,12 @@ call use case → wrap `{ data, message }`.
 9. **Enforcement list** — add `<context>/<module>` to `businessModules` in
    `eslint.config.mjs`.
 10. **Tests** — aggregate spec + use case fakes; `npm test`, then `npm run lint:check`.
+11. **Docs** — platform services additionally REQUIRE a module `README.md` following the
+    template in `src/platform/README.md` (What it does · Public API · Layout ·
+    Who calls it / how called · Data & config · Tenancy behaviour · Rules & gotchas);
+    new *platform* services follow the canonical anatomy of `§9.2` (checklist in
+    `src/platform/README.md` — "Adding a new platform service"). A business module's
+    contract lives in `public/index.ts` JSDoc; a README is optional there.
 
 Symmetry rule: if your module needs data from another module, define an **outbound port** in
 `application/outbound-ports/` typed against the producer's `public/` contract, bind a
