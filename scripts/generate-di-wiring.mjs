@@ -10,7 +10,7 @@
  * Re-run after refactors: `npm run docs:di`.
  */
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync } from 'node:fs';
-import { join, dirname, relative, posix } from 'node:path';
+import { dirname, posix } from 'node:path';
 
 const SRC = 'src';
 const OUT = 'docs/DI-WIRING.md';
@@ -37,10 +37,16 @@ const EXTERNAL = new Set([
   'ConfigModule',
 ]);
 
+// All repo-relative file paths flowing through this script are compared
+// against hardcoded forward-slash literals (e.g. 'src/business/...') — every
+// path built from directory entries must stay POSIX-style even on Windows,
+// where native path.join()/dirname() would silently break every
+// startsWith('src/...') check downstream (Node's fs calls accept
+// forward-slash paths fine on Windows, so this costs nothing).
 const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const walk = d =>
   readdirSync(d).flatMap(e => {
-    const p = join(d, e);
+    const p = posix.join(d, e);
     if (p.includes('generated')) return [];
     return statSync(p).isDirectory()
       ? walk(p)
@@ -61,8 +67,8 @@ const tryTs = p =>
     ? p + '.ts'
     : src.has(p)
       ? p
-      : src.has(join(p, 'index.ts'))
-        ? join(p, 'index.ts')
+      : src.has(posix.join(p, 'index.ts'))
+        ? posix.join(p, 'index.ts')
         : null;
 const resolveSpec = (fromFile, spec) => {
   for (const [a, t] of Object.entries(ALIASES))
@@ -70,7 +76,7 @@ const resolveSpec = (fromFile, spec) => {
       const rest = spec.slice(a.length).replace(/^\//, '');
       return tryTs(rest ? posix.normalize(posix.join(t, rest)) : t);
     }
-  if (spec.startsWith('.')) return tryTs(posix.normalize(posix.join(dirname(fromFile), spec)));
+  if (spec.startsWith('.')) return tryTs(posix.normalize(posix.join(posix.dirname(fromFile), spec)));
   return null;
 };
 
@@ -145,7 +151,7 @@ for (const f of files.filter(x => x.endsWith('.module.ts'))) {
   }
   modules.push({
     file: f,
-    dir: dirname(f),
+    dir: posix.dirname(f),
     modName,
     imports: arr('imports').filter(x => /Module/.test(x)),
     controllers: arr('controllers').filter(x => /^[A-Z][\w$]*$/.test(x)),
@@ -385,7 +391,7 @@ for (const [g, pred] of groups) {
   if (!mods.length) continue;
   out += `### ${g}\n\n`;
   for (const mod of mods) {
-    out += `#### ${mod.display} — \`${relative('', mod.file)}\`\n\n`;
+    out += `#### ${mod.display} — \`${posix.relative('', mod.file)}\`\n\n`;
     out += `imports: ${mod.imports.join(', ') || '—'} · exports: ${mod.exports.join(', ') || '—'}\n\n`;
     if (!mod.providers.length && !mod.controllers.length) {
       out += '_Composition only._\n\n';

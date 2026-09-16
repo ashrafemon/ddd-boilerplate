@@ -12,6 +12,7 @@ import { IImportConfig } from './import.config';
 import { ISchedulerConfig } from './scheduler.config';
 import { ISecurityConfig, IThrottlerConfig } from './security.config';
 import { IS3Config, IStorageDriver } from './storage.config';
+import { IWebhookConfig } from './webhook.config';
 
 /**
  * Typed configuration facade. `process.env` is read only inside the
@@ -242,6 +243,18 @@ export class ConfigService {
       tenantHeader: 'x-tenant-id',
       organizationHeader: 'x-organization-id',
       tenancy: { mode: 'single' },
+    });
+  }
+
+  /** Webhook Environment Variables */
+  public getWebhook(): IWebhookConfig {
+    return this.config.get<IWebhookConfig>('webhook', {
+      deliveryAttempts: 6,
+      deliveryTimeoutMs: 10_000,
+      backoffBaseMs: 30_000,
+      circuitBreakerThreshold: 10,
+      reconciliationWindowMs: 600_000,
+      workerConcurrency: 5,
     });
   }
 

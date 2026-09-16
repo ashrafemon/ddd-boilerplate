@@ -7,6 +7,7 @@ import { configureCors } from './configure-cors';
 import { configureBatchOperations } from './configure-batch-operations';
 import { configureImports } from './configure-imports';
 import { configureNotifications } from './configure-notifications';
+import { configureWebhooks } from './configure-webhooks';
 import { configureHttp } from './configure-http';
 import { configureSecurity } from './configure-security';
 import { configureSentry } from './configure-sentry';
@@ -56,6 +57,7 @@ export async function bootstrap(): Promise<void> {
     configureBatchOperations(app);
     configureImports(app);
     configureNotifications(app);
+    configureWebhooks(app);
 
     await configureSecurity(app);
     configureCors(app);

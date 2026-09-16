@@ -19,6 +19,7 @@ import { OutboxModule } from './outbox/outbox.module';
 import { RecurringModule } from './recurring/recurring.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { StorageModule } from './storage/storage.module';
+import { WebhookModule } from './webhook/webhook.module';
 
 /**
  * Platform composition root. Not global on purpose: a module that wants a
@@ -53,6 +54,7 @@ import { StorageModule } from './storage/storage.module';
     RecurringModule,
     BatchOperationModule,
     ImportModule,
+    WebhookModule,
   ],
   exports: [
     OutboxModule,
@@ -73,6 +75,7 @@ import { StorageModule } from './storage/storage.module';
     RecurringModule,
     BatchOperationModule,
     ImportModule,
+    WebhookModule,
   ],
 })
 export class PlatformModule {}

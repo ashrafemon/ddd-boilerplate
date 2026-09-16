@@ -1,0 +1,83 @@
+// Webhook platform service persistence models.
+//
+// Two tables: webhook_subscriptions (who wants what) and webhook_deliveries
+// (one row per subscription x event, the retry/audit unit). eventType is an
+// opaque string resolved through WebhookEventTypeRegistry — never a DB-level
+// FK, same reasoning as notificationType in notification.prisma.
+//
+// Idempotency: UNIQUE (subscriptionId, eventId) on webhook_deliveries stops
+// a re-delivered outbox event from double-creating delivery rows.
+//
+// Status cycle: PENDING -> DELIVERING -> DELIVERED (terminal success) or,
+// on failure, back to PENDING (attemptCount incremented, nextAttemptAt
+// pushed out) until attempts are exhausted, at which point
+// DeliverWebhookUseCase moves it to DEAD_LETTER (terminal). There is no
+// separate "FAILED" status — a row mid-retry is just PENDING with
+// attemptCount > 0 and lastError set. Nothing outside that use case may
+// write DELIVERED — reconciliation only resets stuck DELIVERING rows, it
+// never fabricates a success.
+//
+// Inbound webhook dedupe needs no table here — it reuses the platform
+// idempotency_keys ledger (scope `webhook.inbound.<source>`).
+
+model WebhookSubscription {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  tenantId            String?
+  url                 String
+  secret              String
+  eventTypes          String[]
+  status              WebhookSubscriptionStatus @default(ACTIVE)
+  description         String?
+  consecutiveFailures Int                       @default(0)
+  lastSuccessAt       DateTime?
+  lastFailureAt       DateTime?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@index([tenantId, status])
+  @@map("webhook_subscriptions")
+}
+
+enum WebhookSubscriptionStatus {
+  ACTIVE
+  PAUSED
+  DISABLED
+
+  @@map("webhook_subscription_status")
+}
+
+model WebhookDelivery {
+  id               String                @id @default(uuid()) @db.Uuid
+  tenantId         String?
+  subscriptionId   String                @db.Uuid
+  eventId          String
+  eventType        String
+  payload          Json
+  status           WebhookDeliveryStatus @default(PENDING)
+  attemptCount     Int                   @default(0)
+  nextAttemptAt    DateTime              @default(now())
+  claimedAt        DateTime?
+  lastResponseCode Int?
+  lastError        String?
+  deliveredAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  subscription WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, eventId])
+  @@index([status, nextAttemptAt])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@map("webhook_deliveries")
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  DELIVERING
+  DELIVERED
+  DEAD_LETTER
+
+  @@map("webhook_delivery_status")
+}

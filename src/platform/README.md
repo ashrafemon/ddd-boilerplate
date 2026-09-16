@@ -22,6 +22,7 @@ composition root is the only bridge, and ESLint enforces the split.
 | `audit/` | `AuditPort` | same-transaction actor/tenant audit rows (redacted) |
 | `configuration/` | `CompanyConfigPort` | company settings resolved from authenticated context |
 | `notification/` | `NotificationDispatchPort` | SES/SNS dispatch, graceful channel degradation |
+| `webhook/` | `WebhookEventTypeRegistry`, `WebhookInboundSourceRegistry` + HTTP | generic inbound receipt (per-source verify+dedupe) and outbound subscription/dispatch/retry with circuit breaker |
 | `observability/` | `LoggerPort`, `MetricsPort`, `ErrorTrackingPort` (+ `GET /api/v1/metrics`) | logs, Prometheus, Sentry seams |
 | `storage/` | `FileStoragePort` | private object upload/download + presigned PUT (no public fallback) |
 | `cache/` | `CachePort` | Redis/Memcached KV seam |

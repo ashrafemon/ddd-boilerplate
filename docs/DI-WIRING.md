@@ -98,6 +98,9 @@ flowchart LR
     MessagingModule__src_platform_messaging__2 -->|ConfigService| ConfigModule
     NotificationModule__src_platform_notification_["NotificationModule (src/platform/notification)"]
     NotificationModule__src_platform_notification__2["NotificationModule__src_platform_notification_"]
+    NotificationModule__src_platform_notification__2 -->|RequestContextPort| ContextModule__src_platform_context__2
+    NotificationModule__src_platform_notification__2 -->|OutboxWriterPort| OutboxModule
+    NotificationModule__src_platform_notification__2 -->|ConfigService| ConfigModule
     NotificationModule__src_platform_notification__2 -->|LoggerPort| ObservabilityModule
     NumberingModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ObservabilityModule -->|ConfigService| ConfigModule
@@ -118,6 +121,11 @@ flowchart LR
     SchedulerModule -->|RequestContextPort| ContextModule__src_platform_context__2
     SchedulerModule -->|AuditPort| AuditModule
     SchedulerModule -->|DistributedLockPort| LockingModule
+    WebhookModule["WebhookModule"]
+    WebhookModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    WebhookModule -->|ConfigService| ConfigModule
+    WebhookModule -->|OutboxWriterPort| OutboxModule
+    WebhookModule -->|IdempotencyPort| IdempotencyModule
 ```
 
 ---
@@ -303,6 +311,9 @@ flowchart LR
     PurchaseOrderBatchOperationAdapter["PurchaseOrderBatchOperationAdapter"]
     PurchaseOrderBatchOperationAdapter -->|injects| GetPurchaseOrderUseCase
     PurchaseOrderBatchOperationAdapter -->|injects| PurchaseOrderTransitionUseCase
+    PurchaseOrderNotificationAdapter["PurchaseOrderNotificationAdapter"]
+    PurchaseOrderNotificationAdapter -->|injects| GetPurchaseOrderUseCase
+    PurchaseOrderNotificationAdapter -->|injects| OrderableVendorPort
     CreatePurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
     CreatePurchaseOrderUseCase -->|injects| OrderableVendorPort
     CreatePurchaseOrderUseCase -->|injects| PurchaseOrderIntegrationPort
@@ -588,34 +599,126 @@ flowchart LR
 
 #### NotificationModule (src/platform/notification) — `src/platform/notification/notification.module.ts`
 
-imports: InfraNotificationModule, ObservabilityModule · exports: EmailPort, NotificationPort, NotificationDispatchPort
+imports: ContextModule, OutboxModule, ObservabilityModule, InfraNotificationModule, BullModule.registerQueue({ name: NOTIFICATION_QUEUE_NAME }) · exports: NotificationHandlerRegistry, ChannelProviderRegistry, SendNotificationUseCase
 
 ```mermaid
 flowchart LR
-    EmailPort["EmailPort"]
-    SesEmailAdapter["SesEmailAdapter"]
-    EmailPort -.->|useExisting| SesEmailAdapter
-    NotificationPort["NotificationPort"]
-    SnsNotificationAdapter["SnsNotificationAdapter"]
-    NotificationPort -.->|useExisting| SnsNotificationAdapter
-    NotificationDispatchPort["NotificationDispatchPort"]
-    NotificationDispatchService["NotificationDispatchService"]
-    NotificationDispatchPort -.->|useExisting| NotificationDispatchService
+    NotificationRequestRepositoryPort["NotificationRequestRepositoryPort"]
+    PrismaNotificationRepository["PrismaNotificationRepository"]
+    NotificationRequestRepositoryPort -.->|useExisting| PrismaNotificationRepository
+    NotificationMessageRepositoryPort["NotificationMessageRepositoryPort"]
+    NotificationMessageRepositoryPort -.->|useExisting| PrismaNotificationRepository
+    NotificationTemplateRepositoryPort["NotificationTemplateRepositoryPort"]
+    NotificationTemplateRepositoryPort -.->|useExisting| PrismaNotificationRepository
+    NotificationPreferenceRepositoryPort["NotificationPreferenceRepositoryPort"]
+    NotificationPreferenceRepositoryPort -.->|useExisting| PrismaNotificationRepository
+    NotificationSuppressionRepositoryPort["NotificationSuppressionRepositoryPort"]
+    NotificationSuppressionRepositoryPort -.->|useExisting| PrismaNotificationRepository
+    NotificationOutboxWriterPort["NotificationOutboxWriterPort"]
+    PrismaNotificationOutboxWriter["PrismaNotificationOutboxWriter"]
+    NotificationOutboxWriterPort -.->|useExisting| PrismaNotificationOutboxWriter
+    NotificationQueuePublisherPort["NotificationQueuePublisherPort"]
+    BullMqNotificationQueueAdapter["BullMqNotificationQueueAdapter"]
+    NotificationQueuePublisherPort -.->|useExisting| BullMqNotificationQueueAdapter
+    NotificationController["NotificationController"]
+    SendNotificationUseCase["SendNotificationUseCase"]
+    NotificationController -->|injects| SendNotificationUseCase
+    GetNotificationStatusUseCase["GetNotificationStatusUseCase"]
+    NotificationController -->|injects| GetNotificationStatusUseCase
+    ListNotificationsUseCase["ListNotificationsUseCase"]
+    NotificationController -->|injects| ListNotificationsUseCase
+    ListNotificationPreferencesUseCase["ListNotificationPreferencesUseCase"]
+    NotificationController -->|injects| ListNotificationPreferencesUseCase
+    UpsertNotificationPreferenceUseCase["UpsertNotificationPreferenceUseCase"]
+    NotificationController -->|injects| UpsertNotificationPreferenceUseCase
+    ApplyDeliveryEventUseCase["ApplyDeliveryEventUseCase"]
+    NotificationController -->|injects| ApplyDeliveryEventUseCase
+    NotificationHandlerRegistry["NotificationHandlerRegistry"]
+    NotificationController -->|injects| NotificationHandlerRegistry
+    ChannelProviderRegistry["ChannelProviderRegistry"]
+    NotificationController -->|injects| ChannelProviderRegistry
+    RequestContextPort["RequestContextPort"]
+    NotificationController -->|injects via ContextModule| RequestContextPort
+    NotificationHandlerRegistry -->|injects| ChannelProviderRegistry
+    TransactionHost__library_["TransactionHost (library)"]
+    PrismaNotificationRepository -->|injects| TransactionHost__library_
+    PrismaNotificationRepository -->|injects| TransactionHost__library_
+    PrismaNotificationRepository -->|injects| TransactionHost__library_
+    PrismaNotificationRepository -->|injects| TransactionHost__library_
+    PrismaNotificationRepository -->|injects| TransactionHost__library_
+    PrismaNotificationRepository -->|injects| TransactionHost__library_
+    OutboxWriterPort["OutboxWriterPort"]
+    PrismaNotificationOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
+    PrismaNotificationOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
+    Queue__library_["Queue (library)"]
+    BullMqNotificationQueueAdapter -->|injects| Queue__library_
+    ConfigService["ConfigService"]
+    BullMqNotificationQueueAdapter -->|injects via ConfigModule| ConfigService
+    BullMqNotificationQueueAdapter -->|injects| Queue__library_
+    BullMqNotificationQueueAdapter -->|injects via ConfigModule| ConfigService
+    BullMqNotificationWorker["BullMqNotificationWorker"]
+    NotificationWorker["NotificationWorker"]
+    BullMqNotificationWorker -->|injects| NotificationWorker
+    NotificationWorker -->|injects| NotificationRequestRepositoryPort
+    NotificationWorker -->|injects| NotificationHandlerRegistry
+    RenderAndSendMessageUseCase["RenderAndSendMessageUseCase"]
+    NotificationWorker -->|injects| RenderAndSendMessageUseCase
+    FinaliseNotificationRequestUseCase["FinaliseNotificationRequestUseCase"]
+    NotificationWorker -->|injects| FinaliseNotificationRequestUseCase
+    NotificationReconciliationConsumer["NotificationReconciliationConsumer"]
+    NotificationReconciliationConsumer -->|injects| NotificationMessageRepositoryPort
+    NotificationReconciliationConsumer -->|injects| NotificationRequestRepositoryPort
+    NotificationReconciliationConsumer -->|injects| NotificationQueuePublisherPort
+    NotificationReconciliationConsumer -->|injects via ConfigModule| ConfigService
+    NotificationEventDispatcher["NotificationEventDispatcher"]
+    EventEmitter2__library_["EventEmitter2 (library)"]
+    NotificationEventDispatcher -->|injects| EventEmitter2__library_
+    NotificationEventDispatcher -->|injects| NotificationHandlerRegistry
+    NotificationEventDispatcher -->|injects| SendNotificationUseCase
+    SesEmailChannelAdapter["SesEmailChannelAdapter"]
     SesService["SesService"]
-    SesEmailAdapter -->|injects| SesService
+    SesEmailChannelAdapter -->|injects| SesService
+    SesEmailChannelAdapter -->|injects via ConfigModule| ConfigService
     LoggerPort["LoggerPort"]
-    SesEmailAdapter -->|injects via ObservabilityModule| LoggerPort
+    SesEmailChannelAdapter -->|injects via ObservabilityModule| LoggerPort
+    SnsSmsChannelAdapter["SnsSmsChannelAdapter"]
     SnsService["SnsService"]
-    SnsNotificationAdapter -->|injects| SnsService
-    SnsNotificationAdapter -->|injects via ObservabilityModule| LoggerPort
-    NotificationDispatchService -->|injects| EmailPort
-    NotificationDispatchService -->|injects| NotificationPort
-    SesEmailAdapter -->|injects| SesService
-    SesEmailAdapter -->|injects via ObservabilityModule| LoggerPort
-    SnsNotificationAdapter -->|injects| SnsService
-    SnsNotificationAdapter -->|injects via ObservabilityModule| LoggerPort
-    NotificationDispatchService -->|injects| EmailPort
-    NotificationDispatchService -->|injects| NotificationPort
+    SnsSmsChannelAdapter -->|injects| SnsService
+    SnsSmsChannelAdapter -->|injects via ConfigModule| ConfigService
+    SnsSmsChannelAdapter -->|injects via ObservabilityModule| LoggerPort
+    SnsPushChannelAdapter["SnsPushChannelAdapter"]
+    SnsPushChannelAdapter -->|injects| SnsService
+    SnsPushChannelAdapter -->|injects via ConfigModule| ConfigService
+    SnsPushChannelAdapter -->|injects via ObservabilityModule| LoggerPort
+    SendNotificationUseCase -->|injects| NotificationRequestRepositoryPort
+    SendNotificationUseCase -->|injects| NotificationPreferenceRepositoryPort
+    SendNotificationUseCase -->|injects| NotificationSuppressionRepositoryPort
+    SendNotificationUseCase -->|injects| NotificationHandlerRegistry
+    SendNotificationUseCase -->|injects| NotificationWorker
+    SendNotificationUseCase -->|injects| NotificationQueuePublisherPort
+    SendNotificationUseCase -->|injects via ConfigModule| ConfigService
+    RenderAndSendMessageUseCase -->|injects| NotificationMessageRepositoryPort
+    RenderAndSendMessageUseCase -->|injects| NotificationRequestRepositoryPort
+    RenderAndSendMessageUseCase -->|injects| NotificationTemplateRepositoryPort
+    RenderAndSendMessageUseCase -->|injects| ChannelProviderRegistry
+    TemplateRenderer["TemplateRenderer"]
+    RenderAndSendMessageUseCase -->|injects| TemplateRenderer
+    RenderAndSendMessageUseCase -->|injects via ConfigModule| ConfigService
+    ApplyDeliveryEventUseCase -->|injects| NotificationMessageRepositoryPort
+    ApplyDeliveryEventUseCase -->|injects| NotificationSuppressionRepositoryPort
+    ApplyDeliveryEventUseCase -->|injects| ChannelProviderRegistry
+    FinaliseNotificationRequestUseCase -->|injects| NotificationRequestRepositoryPort
+    FinaliseNotificationRequestUseCase -->|injects| NotificationMessageRepositoryPort
+    FinaliseNotificationRequestUseCase -->|injects| NotificationOutboxWriterPort
+    GetNotificationStatusUseCase -->|injects| NotificationRequestRepositoryPort
+    ListNotificationsUseCase -->|injects| NotificationRequestRepositoryPort
+    ListNotificationPreferencesUseCase -->|injects| NotificationPreferenceRepositoryPort
+    UpsertNotificationPreferenceUseCase -->|injects| NotificationPreferenceRepositoryPort
+    NotificationModule_bootstrap["NotificationModule bootstrap"]
+    NotificationModule_bootstrap -->|registers or injects| ChannelProviderRegistry
+    NotificationModule_bootstrap -->|registers or injects| SesEmailChannelAdapter
+    NotificationModule_bootstrap -->|registers or injects| SnsSmsChannelAdapter
+    NotificationModule_bootstrap -->|registers or injects| SnsPushChannelAdapter
 ```
 
 #### NumberingModule — `src/platform/numbering/numbering.module.ts`
