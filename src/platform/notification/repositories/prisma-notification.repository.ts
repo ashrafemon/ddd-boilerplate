@@ -3,7 +3,7 @@ import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Prisma } from '../../../generated/client';
 import { PageResult } from '@shared-kernel/types/pagination';
-import { toPrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { NotificationMessageRepositoryPort } from '../ports/notification-message-repository.port';
 import { NotificationPreferenceRepositoryPort } from '../ports/notification-preference-repository.port';
 import {
@@ -65,7 +65,7 @@ export class PrismaNotificationRepository
           notificationType: request.notificationType,
           dedupKey: request.dedupKey,
           sourceEvent: request.sourceEvent ?? null,
-          payload: toPrismaJson(request.payload),
+          payload: PrismaJson.toInput(request.payload),
           priority: request.priority,
           tenantId: request.tenantId,
           requestedBy: request.requestedBy,
@@ -295,7 +295,7 @@ export class PrismaNotificationRepository
         templateId: input.templateId,
         provider: input.provider,
         providerMessageId: input.providerMessageId,
-        renderedSnapshot: toPrismaJson(input.renderedSnapshot),
+        renderedSnapshot: PrismaJson.toInput(input.renderedSnapshot),
         sentAt: new Date(),
       },
     });

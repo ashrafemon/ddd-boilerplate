@@ -1,8 +1,8 @@
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { OutboxEventBase } from '@platform/events/bases/outbox-event.base';
 import { NotificationRequestStatus } from '../notification.types';
 
 /** Raised when a notification request reaches a terminal status. */
-export class NotificationRequestCompletedEvent extends DomainEvent {
+export class NotificationRequestCompletedEvent extends OutboxEventBase {
   constructor(
     public readonly requestId: string,
     public readonly notificationType: string,

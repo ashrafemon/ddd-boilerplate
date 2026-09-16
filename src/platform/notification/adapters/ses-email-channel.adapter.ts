@@ -21,8 +21,8 @@ import { verifyWebhookSignature } from './webhook-signature.util';
  * when SES is not configured, so local development runs without AWS.
  */
 @Injectable()
-export class SesEmailChannelProvider implements ChannelProvider {
-  private readonly logger = new Logger(SesEmailChannelProvider.name);
+export class SesEmailChannelAdapter implements ChannelProvider {
+  private readonly logger = new Logger(SesEmailChannelAdapter.name);
 
   constructor(
     private readonly sesService: SesService,

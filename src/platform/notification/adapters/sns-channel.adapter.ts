@@ -28,8 +28,8 @@ import { verifyWebhookSignature } from './webhook-signature.util';
  * payload rather than fabricating CloudWatch parsing; wiring the real feed is
  * a follow-up, not a gap in the pipeline's own architecture.
  */
-abstract class BaseSnsChannelProvider implements ChannelProvider {
-  private readonly logger = new Logger(BaseSnsChannelProvider.name);
+abstract class BaseSnsChannelAdapter implements ChannelProvider {
+  private readonly logger = new Logger(BaseSnsChannelAdapter.name);
 
   protected constructor(
     protected readonly channel: 'SMS' | 'PUSH',
@@ -84,7 +84,7 @@ abstract class BaseSnsChannelProvider implements ChannelProvider {
 }
 
 @Injectable()
-export class SnsSmsChannelProvider extends BaseSnsChannelProvider {
+export class SnsSmsChannelAdapter extends BaseSnsChannelAdapter {
   constructor(
     snsService: SnsService,
     configService: ConfigService,
@@ -105,7 +105,7 @@ export class SnsSmsChannelProvider extends BaseSnsChannelProvider {
 }
 
 @Injectable()
-export class SnsPushChannelProvider extends BaseSnsChannelProvider {
+export class SnsPushChannelAdapter extends BaseSnsChannelAdapter {
   constructor(
     snsService: SnsService,
     configService: ConfigService,

@@ -35,12 +35,14 @@ import { PurchasableProductAdapter } from './infrastructure/adapters/module/purc
 import { OrderableVendorAdapter } from './infrastructure/adapters/module/orderable-vendor.adapter';
 import './domain/events/purchase-order.registry';
 import { PurchaseOrderBatchOperationAdapter } from './infrastructure/adapters/platform/purchase-order-batch-operation.adapter';
+import { PurchaseOrderNotificationAdapter } from './infrastructure/adapters/platform/purchase-order-notification.adapter';
 
 @Module({
   imports: [PlatformModule, ProductModule, VendorModule],
   controllers: [PurchaseOrderController],
   providers: [
     PurchaseOrderBatchOperationAdapter,
+    PurchaseOrderNotificationAdapter,
     CreatePurchaseOrderUseCase,
     AddPurchaseOrderLineUseCase,
     RemovePurchaseOrderLineUseCase,

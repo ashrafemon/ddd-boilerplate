@@ -26,21 +26,23 @@ import { ListNotificationsUseCase } from './usecases/list-notifications.usecase'
 import { RenderAndSendMessageUseCase } from './usecases/render-and-send-message.usecase';
 import { SendNotificationUseCase } from './usecases/send-notification.usecase';
 import { UpsertNotificationPreferenceUseCase } from './usecases/upsert-notification-preference.usecase';
-import { BullMqNotificationQueuePublisher } from './adapters/bullmq-notification-queue.publisher';
+import { BullMqNotificationQueueAdapter } from './adapters/bullmq-notification-queue.adapter';
 import { BullMqNotificationWorker } from './adapters/bullmq-notification.worker';
-import { PrismaNotificationOutboxWriter } from './adapters/prisma-notification-outbox.writer';
-import { PrismaNotificationRepository } from './adapters/prisma-notification.repository';
-import { SesEmailChannelProvider } from './adapters/ses-email-channel.provider';
-import { SnsPushChannelProvider, SnsSmsChannelProvider } from './adapters/sns-channel.provider';
+import { SesEmailChannelAdapter } from './adapters/ses-email-channel.adapter';
+import { SnsPushChannelAdapter, SnsSmsChannelAdapter } from './adapters/sns-channel.adapter';
+import { PrismaNotificationOutboxWriter } from './repositories/prisma-notification-outbox.writer';
+import { PrismaNotificationRepository } from './repositories/prisma-notification.repository';
 import { NotificationController } from './http/notification.controller';
 
 /**
  * Platform notification — the one shared way the platform reaches a human
  * outside the app (Email/SMS/Push) in response to a domain event or an
- * explicit send. A notification-emitting domain module opts in by
- * registering with NotificationHandlerRegistry from its own
- * onApplicationBootstrap, the same direct way batch-operation/recurring
- * aggregates register themselves — never the reverse import.
+ * explicit send. A notification-emitting domain module opts in as a PURE
+ * NotificationHandler provider (no lifecycle, no registry import); the
+ * composition root (src/bootstrap/configure-notifications.ts) plugs it into
+ * NotificationHandlerRegistry at boot — same precedent as
+ * configure-batch-operations.ts / configure-imports.ts — never the reverse
+ * import.
  */
 @Module({
   imports: [
@@ -62,16 +64,16 @@ import { NotificationController } from './http/notification.controller';
     { provide: NotificationSuppressionRepositoryPort, useExisting: PrismaNotificationRepository },
     PrismaNotificationOutboxWriter,
     { provide: NotificationOutboxWriterPort, useExisting: PrismaNotificationOutboxWriter },
-    BullMqNotificationQueuePublisher,
-    { provide: NotificationQueuePublisherPort, useExisting: BullMqNotificationQueuePublisher },
+    BullMqNotificationQueueAdapter,
+    { provide: NotificationQueuePublisherPort, useExisting: BullMqNotificationQueueAdapter },
     BullMqNotificationWorker,
     NotificationWorker,
     NotificationReconciliationConsumer,
     NotificationEventDispatcher,
     TemplateRenderer,
-    SesEmailChannelProvider,
-    SnsSmsChannelProvider,
-    SnsPushChannelProvider,
+    SesEmailChannelAdapter,
+    SnsSmsChannelAdapter,
+    SnsPushChannelAdapter,
     SendNotificationUseCase,
     RenderAndSendMessageUseCase,
     ApplyDeliveryEventUseCase,
@@ -86,17 +88,17 @@ import { NotificationController } from './http/notification.controller';
 export class NotificationModule {
   constructor(
     private readonly channelProviders: ChannelProviderRegistry,
-    private readonly sesEmailChannelProvider: SesEmailChannelProvider,
-    private readonly snsSmsChannelProvider: SnsSmsChannelProvider,
-    private readonly snsPushChannelProvider: SnsPushChannelProvider,
+    private readonly sesEmailChannelAdapter: SesEmailChannelAdapter,
+    private readonly snsSmsChannelAdapter: SnsSmsChannelAdapter,
+    private readonly snsPushChannelAdapter: SnsPushChannelAdapter,
   ) {
     // Runs during DI graph construction — strictly before any module's
     // onApplicationBootstrap fires anywhere in the app — so
     // NotificationHandlerRegistry.register() can safely validate a domain
     // module's declared channels against this registry the moment that
     // domain module's own onApplicationBootstrap calls it.
-    this.channelProviders.register('EMAIL', this.sesEmailChannelProvider);
-    this.channelProviders.register('SMS', this.snsSmsChannelProvider);
-    this.channelProviders.register('PUSH', this.snsPushChannelProvider);
+    this.channelProviders.register('EMAIL', this.sesEmailChannelAdapter);
+    this.channelProviders.register('SMS', this.snsSmsChannelAdapter);
+    this.channelProviders.register('PUSH', this.snsPushChannelAdapter);
   }
 }

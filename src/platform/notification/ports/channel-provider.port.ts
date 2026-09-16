@@ -7,8 +7,8 @@ import {
 
 /**
  * The ONLY outward transport surface. Implemented once per channel
- * (SesEmailChannelProvider / SnsChannelProvider), registered on
- * ChannelProviderRegistry, and resolved by it keyed on channel.
+ * (SesEmailChannelAdapter / SnsSmsChannelAdapter / SnsPushChannelAdapter),
+ * registered on ChannelProviderRegistry, and resolved by it keyed on channel.
  *
  * Pure transport: never renders, never decides a recipient, never knows a
  * notificationType or aggregate name. Everything it needs arrives as a

@@ -16,9 +16,9 @@ minutes, sometimes never.
 ## Shape
 
 Flat platform-service layout — same convention as `platform/recurring`: root
-classes + `events/`, `http/`, `ports/`, `usecases/`, `adapters/`,
-`__testing__/`. No business-module DDD layering — this module has no
-aggregate of its own.
+classes + `events/`, `http/`, `ports/`, `usecases/`, `repositories/`,
+`adapters/`, `__testing__/`. No business-module DDD layering — this module
+has no aggregate of its own.
 
 ```
 root
@@ -49,15 +49,22 @@ usecases/    business logic only, one class per capability, injected
   get-notification-status.usecase.ts · list-notifications.usecase.ts
   list-notification-preferences.usecase.ts · upsert-notification-preference.usecase.ts
 ports/   only genuine boundaries — see PORTS.md
-adapters/
+repositories/                          DB-backed, same split as
+                                        platform/recurring + platform/import
   prisma-notification.repository.ts     one class, five repo ports
   prisma-notification-outbox.writer.ts
-  bullmq-notification-queue.publisher.ts · bullmq-notification.worker.ts
-  ses-email-channel.provider.ts         EMAIL, over the existing SesService
-  sns-channel.provider.ts               SMS + PUSH, over the existing SnsService
-  webhook-signature.util.ts · notification.mapper.ts
+  notification.mapper.ts
+adapters/                              non-DB transports only
+  bullmq-notification-queue.adapter.ts · bullmq-notification.worker.ts
+  ses-email-channel.adapter.ts          EMAIL, over the existing SesService
+  sns-channel.adapter.ts                SMS + PUSH, over the existing SnsService
+  webhook-signature.util.ts
 events/ · __testing__/
 http/
+  requests/    one DTO per file — notify.request.dto.ts ·
+               notification-query.request.dto.ts ·
+               upsert-notification-preference.request.dto.ts ·
+               delivery-webhook.request.dto.ts
   POST /notifications · GET /notifications · GET /notifications/:id ·
   GET /notifications/_registry · POST /notifications/webhooks/:channel ·
   GET /notifications/preferences/:recipientRef · PUT /notifications/preferences
@@ -65,31 +72,48 @@ http/
 
 ## Onboarding a notification-emitting domain module
 
-Inside the domain module that owns the event (never the reverse):
+Composition-root bridge — same precedent as `configure-batch-operations.ts` /
+`configure-imports.ts` (§9.1). The owning domain module stays a bodyless
+`@Module` with the handler as a plain provider; only
+`src/bootstrap/configure-notifications.ts` knows both sides:
 
 ```ts
+// inside the domain module — pure provider, no lifecycle hook, no registry import
 @Module({
   imports: [PlatformModule],
-  providers: [InvoiceNotificationProvider /* + its own read-model deps */],
+  providers: [InvoiceNotificationAdapter /* + its own read-model deps */],
 })
-export class InvoiceModule implements OnApplicationBootstrap {
-  constructor(
-    private readonly notificationHandlers: NotificationHandlerRegistry,
-    private readonly invoiceNotificationProvider: InvoiceNotificationProvider,
-  ) {}
+export class InvoiceModule {}
 
-  onApplicationBootstrap(): void {
-    this.notificationHandlers.register(
-      { notificationType: 'InvoiceOverdue', channels: ['EMAIL', 'SMS'], priority: 'NORMAL' },
-      this.invoiceNotificationProvider,
-    );
-  }
-}
+// src/bootstrap/configure-notifications.ts
+export const NOTIFICATION_HANDLERS: readonly NotificationOptIn[] = [
+  {
+    notificationType: 'InvoiceOverdue',
+    channels: ['EMAIL', 'SMS'],
+    priority: 'NORMAL',
+    eventName: 'InvoiceOverdue', // wires the EVENT-trigger path — omit for explicit-send-only
+    ownerModule: InvoiceModule,
+    notificationHandler: InvoiceNotificationAdapter,
+  },
+];
 ```
+
+`configureNotifications(app)` runs in `src/bootstrap/index.ts` alongside
+`configureBatchOperations`/`configureImports`, after the Nest app is created
+but before it listens — so `NotificationModule`'s own constructor (which
+registers the built-in channel providers) has already run, and
+`NotificationHandlerRegistry.register()` can validate declared channels
+against it. A duplicate notificationType throws at boot; see
+`../../../src/business/procurement/purchase-order/infrastructure/adapters/platform/purchase-order-notification.adapter.ts`
+for a real handler (PurchaseOrderApproved → EMAIL, vendor recipient).
 
 The adapter implements `resolveRecipients()`/`resolveModel()` only — it never
 renders a template, calls a provider, or writes a notification table. See
-`ports/notification-handler.port.ts`.
+`ports/notification-handler.port.ts`. Every `channel` × `notificationType` ×
+`locale` combination it fans out to also needs an active row in
+`notification_templates` (seeded in `prisma/seed.ts` for dev) — a missing
+template fails that one message with `NotificationTemplateNotFoundError`,
+not the whole request.
 
 ## Not yet built (workbook "OPEN" items, carried over honestly)
 
@@ -104,9 +128,9 @@ renders a template, calls a provider, or writes a notification table. See
   `notification_messages`; `notification_suppressions` is correctly never
   purged (a compliance record), the other tables simply have no retention
   job yet.
-- **Real AWS delivery-status feeds** — `sns-channel.provider.ts` accepts an
+- **Real AWS delivery-status feeds** — `sns-channel.adapter.ts` accepts an
   already-normalised delivery event rather than parsing AWS's own
-  CloudWatch-Logs-based SMS/push delivery reporting; `ses-email-channel.provider.ts`
+  CloudWatch-Logs-based SMS/push delivery reporting; `ses-email-channel.adapter.ts`
   does parse the real SES bounce/complaint/delivery notification shape.
 - **Full SNS message signature verification** — `webhook-signature.util.ts`
   is an HMAC shared-secret check, not AWS SNS's certificate-chain scheme.

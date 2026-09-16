@@ -5,6 +5,7 @@ import {
   Headers,
   HttpCode,
   Param,
+  ParseUUIDPipe,
   Post,
   Put,
   Query,
@@ -29,12 +30,10 @@ import {
   NotificationPreferenceRecord,
   NotificationRequestRecord,
 } from '../notification.types';
-import {
-  DeliveryWebhookDto,
-  NotificationQueryDto,
-  NotifyDto,
-  UpsertPreferenceDto,
-} from './requests/notification.request.dto';
+import { DeliveryWebhookDto } from './requests/delivery-webhook.request.dto';
+import { NotificationQueryDto } from './requests/notification-query.request.dto';
+import { NotifyDto } from './requests/notify.request.dto';
+import { UpsertPreferenceDto } from './requests/upsert-notification-preference.request.dto';
 
 /**
  * Generic entry point for every notification-emitting domain module and
@@ -123,7 +122,7 @@ export class NotificationController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get a notification request status (header + per-message breakdown)' })
   async get(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<
     ApiResponse<{ request: NotificationRequestRecord; messages: NotificationMessageRecord[] }>
   > {

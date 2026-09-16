@@ -11,8 +11,8 @@ import { NOTIFICATION_CHUNK_JOB_NAME, NOTIFICATION_QUEUE_NAME } from '../notific
  * and never overlap — avoids SKIP LOCKED contention.
  */
 @Injectable()
-export class BullMqNotificationQueuePublisher implements NotificationQueuePublisherPort {
-  private readonly logger = new Logger(BullMqNotificationQueuePublisher.name);
+export class BullMqNotificationQueueAdapter implements NotificationQueuePublisherPort {
+  private readonly logger = new Logger(BullMqNotificationQueueAdapter.name);
 
   constructor(
     @InjectQueue(NOTIFICATION_QUEUE_NAME)
