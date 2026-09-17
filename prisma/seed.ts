@@ -34,9 +34,40 @@ async function main() {
     });
   }
 
+  console.log('Seeding notification templates...');
+  const notificationTemplates = [
+    {
+      notificationType: 'PurchaseOrderApproved',
+      channel: 'EMAIL',
+      locale: 'en-US',
+      version: 1,
+      subject: 'Purchase Order {{orderNumber}} Approved',
+      body:
+        'Hello {{vendorName}},\n\n' +
+        'Purchase order {{orderNumber}} has been approved for {{currency}} {{total}}.\n\n' +
+        'Thank you.',
+      bodyFormat: 'text',
+    },
+  ];
+  for (const t of notificationTemplates) {
+    const existing = await prisma.notificationTemplate.findFirst({
+      where: {
+        tenantId: null,
+        notificationType: t.notificationType,
+        channel: t.channel,
+        locale: t.locale,
+        version: t.version,
+      },
+    });
+    if (!existing) {
+      await prisma.notificationTemplate.create({ data: { ...t, tenantId: null, isActive: true } });
+    }
+  }
+
   const count = {
     products: await prisma.product.count(),
     vendors: await prisma.vendor.count(),
+    notificationTemplates: await prisma.notificationTemplate.count(),
   };
   console.log('Seed complete:', count);
 }

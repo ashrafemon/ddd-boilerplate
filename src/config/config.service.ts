@@ -4,6 +4,7 @@ import { ICacheDriver, IMemcachedConfig, IRedisConfig } from './cache.config';
 import { IDatabaseConfig, IDatabaseDriver } from './database.config';
 import { IKafkaConfig, IRabbitMQConfig, ISqsConfig } from './messaging.config';
 import { ISesConfig, ISnsConfig } from './notification.config';
+import { INotificationPipelineConfig } from './notification-pipeline.config';
 import { ILokiConfig, ISentryConfig } from './observability.config';
 import { IOutboxConfig } from './outbox.config';
 import { IBatchOperationConfig } from './batch-operation.config';
@@ -11,6 +12,7 @@ import { IImportConfig } from './import.config';
 import { ISchedulerConfig } from './scheduler.config';
 import { ISecurityConfig, IThrottlerConfig } from './security.config';
 import { IS3Config, IStorageDriver } from './storage.config';
+import { IWebhookConfig } from './webhook.config';
 
 /**
  * Typed configuration facade. `process.env` is read only inside the
@@ -103,6 +105,7 @@ export class ConfigService {
       secretKey: '',
       topicArn: '',
       region: 'us-east-1',
+      webhookSecret: '',
     });
   }
   public getSes(): ISesConfig {
@@ -111,6 +114,23 @@ export class ConfigService {
       secretKey: '',
       address: '',
       region: 'us-east-1',
+      webhookSecret: '',
+    });
+  }
+
+  /** Notification Pipeline Environment Variables */
+  public getNotificationPipeline(): INotificationPipelineConfig {
+    return this.config.get<INotificationPipelineConfig>('notificationPipeline', {
+      maxRecipientsPerRequest: 10_000,
+      syncMessageThreshold: 5,
+      chunkSize: 100,
+      workerConcurrency: 5,
+      chunkAttempts: 3,
+      renderTimeoutMs: 2_000,
+      renderingStuckWindowMs: 600_000,
+      sentNoReceiptWindowMs: 86_400_000,
+      payloadMaxBytes: 65_536,
+      renderedSnapshotMaxBytes: 262_144,
     });
   }
 
@@ -223,6 +243,18 @@ export class ConfigService {
       tenantHeader: 'x-tenant-id',
       organizationHeader: 'x-organization-id',
       tenancy: { mode: 'single' },
+    });
+  }
+
+  /** Webhook Environment Variables */
+  public getWebhook(): IWebhookConfig {
+    return this.config.get<IWebhookConfig>('webhook', {
+      deliveryAttempts: 6,
+      deliveryTimeoutMs: 10_000,
+      backoffBaseMs: 30_000,
+      circuitBreakerThreshold: 10,
+      reconciliationWindowMs: 600_000,
+      workerConcurrency: 5,
     });
   }
 

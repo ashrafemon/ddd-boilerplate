@@ -1,0 +1,170 @@
+// Notification Service persistence models.
+//
+// Two EXECUTION tables (notification_requests, notification_messages) plus three
+// REFERENCE tables (notification_templates, notification_preferences,
+// notification_suppressions). notificationType and channel are opaque strings
+// resolved through NotificationHandlerRegistry / ChannelProviderRegistry —
+// never a DB-level FK, same reasoning as aggregateType/operationCode in
+// batch-operation.prisma.
+//
+// Three separate idempotency guarantees, at three grains:
+//   · UNIQUE (tenantId, dedupKey) on notification_requests — stops the same
+//     triggering event from fanning out twice.
+//   · UNIQUE (notificationRequestId, recipientRef, channel) on
+//     notification_messages — stops a retried fan-out double-creating a row.
+//   · UPDATE ... WHERE status='PENDING' (the send claim) — stops a redelivered
+//     chunk sending the same message twice. Not a DB constraint by nature.
+//
+// Status is monotonic: PENDING -> RENDERING -> SENT -> {DELIVERED|BOUNCED|
+// FAILED}; SUPPRESSED is terminal from creation. A delivery receipt is applied
+// only if it advances this order (see apply-delivery-event.usecase.ts).
+//
+// notification_suppressions is never purged on the normal retention schedule —
+// an honoured unsubscribe/bounce/STOP is a standing compliance record.
+
+model NotificationRequest {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  tenantId           String?
+  notificationType   String
+  dedupKey           String
+  sourceEvent        String?
+  payload            Json?
+  priority           NotificationPriority      @default(NORMAL)
+  // Placeholder until attachMessages() sets the real value once fan-out is
+  // known (Sync/Async depends on the surviving message count) — see
+  // send-notification.usecase.ts.
+  mode               NotificationMode          @default(ASYNC)
+  status             NotificationRequestStatus @default(PENDING)
+  totalMessages      Int                       @default(0)
+  sentMessages       Int                       @default(0)
+  failedMessages     Int                       @default(0)
+  suppressedMessages Int                       @default(0)
+  requestedBy        String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  messages NotificationMessage[]
+
+  @@unique([tenantId, dedupKey])
+  @@index([tenantId, status])
+  @@map("notification_requests")
+}
+
+enum NotificationPriority {
+  HIGH
+  NORMAL
+  LOW
+}
+
+enum NotificationMode {
+  SYNC
+  ASYNC
+}
+
+enum NotificationRequestStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+  FAILED
+  NO_RECIPIENTS
+}
+
+model NotificationMessage {
+  id                    String                    @id @default(uuid()) @db.Uuid
+  tenantId              String?
+  notificationRequestId String                    @db.Uuid
+  recipientRef          String
+  channel               String
+  address               String?
+  locale                String?
+  templateId            String?                   @db.Uuid
+  status                NotificationMessageStatus @default(PENDING)
+  suppressReason        String?
+  provider              String?
+  providerMessageId     String?
+  renderedSnapshot      Json?
+  errorMessage          String?
+  attemptCount          Int                       @default(0)
+  sentAt                DateTime?
+  deliveredAt           DateTime?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  request  NotificationRequest   @relation(fields: [notificationRequestId], references: [id], onDelete: Cascade)
+  template NotificationTemplate? @relation(fields: [templateId], references: [id], onDelete: Restrict)
+
+  @@unique([notificationRequestId, recipientRef, channel])
+  @@index([notificationRequestId, status])
+  @@index([providerMessageId])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@map("notification_messages")
+}
+
+enum NotificationMessageStatus {
+  PENDING
+  RENDERING
+  SENT
+  DELIVERED
+  BOUNCED
+  FAILED
+  SUPPRESSED
+}
+
+model NotificationTemplate {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String?
+  notificationType String
+  channel          String
+  locale           String
+  version          Int
+  subject          String?
+  body             String
+  bodyFormat       String
+  variables        Json?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  createdBy        String?
+
+  messages NotificationMessage[]
+
+  @@unique([tenantId, notificationType, channel, locale, version])
+  @@index([tenantId, notificationType, channel])
+  @@map("notification_templates")
+}
+
+model NotificationPreference {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String?
+  recipientRef    String
+  category        String
+  channel         String
+  optedIn         Boolean   @default(true)
+  quietHoursStart DateTime? @db.Time
+  quietHoursEnd   DateTime? @db.Time
+  timezone        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([tenantId, recipientRef, category, channel])
+  @@index([tenantId, recipientRef])
+  @@map("notification_preferences")
+}
+
+model NotificationSuppression {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String?
+  address      String
+  channel      String
+  reason       String
+  source       String?
+  suppressedAt DateTime  @default(now())
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@unique([tenantId, address, channel])
+  @@index([tenantId, address, channel])
+  @@map("notification_suppressions")
+}

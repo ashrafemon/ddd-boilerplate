@@ -11,11 +11,13 @@ import idempotencyConfig from './idempotency.config';
 import importConfig from './import.config';
 import messagingConfig from './messaging.config';
 import notificationConfig from './notification.config';
+import notificationPipelineConfig from './notification-pipeline.config';
 import observabilityConfig from './observability.config';
 import outboxConfig from './outbox.config';
 import schedulerConfig from './scheduler.config';
 import securityConfig from './security.config';
 import storageConfig from './storage.config';
+import webhookConfig from './webhook.config';
 
 @Global()
 @Module({
@@ -33,11 +35,13 @@ import storageConfig from './storage.config';
     NestConfigModule.forFeature(securityConfig),
     NestConfigModule.forFeature(outboxConfig),
     NestConfigModule.forFeature(notificationConfig),
+    NestConfigModule.forFeature(notificationPipelineConfig),
     NestConfigModule.forFeature(observabilityConfig),
     NestConfigModule.forFeature(schedulerConfig),
     NestConfigModule.forFeature(batchOperationConfig),
     NestConfigModule.forFeature(importConfig),
     NestConfigModule.forFeature(idempotencyConfig),
+    NestConfigModule.forFeature(webhookConfig),
   ],
   providers: [ConfigService],
   exports: [ConfigService],

@@ -5,12 +5,16 @@ export type ISnsConfig = {
   secretKey: string;
   topicArn: string;
   region?: string;
+  /** HMAC secret verifying the inbound delivery-receipt webhook is genuinely from this provider. */
+  webhookSecret: string;
 };
 export type ISesConfig = {
   accessKey: string;
   secretKey: string;
   address: string;
   region?: string;
+  /** HMAC secret verifying the inbound delivery-receipt webhook is genuinely from this provider. */
+  webhookSecret: string;
 };
 
 /**
@@ -23,11 +27,13 @@ export default registerAs('notification', () => ({
     secretKey: process.env.SNS_SECRET_KEY ?? process.env.AWS_SECRET_ACCESS_KEY ?? '',
     topicArn: process.env.SNS_TOPIC_ARN ?? '',
     region: process.env.SNS_REGION ?? process.env.AWS_REGION ?? 'us-east-1',
+    webhookSecret: process.env.SNS_WEBHOOK_SECRET ?? '',
   },
   ses: {
     accessKey: process.env.SES_ACCESS_KEY ?? process.env.AWS_ACCESS_KEY_ID ?? '',
     secretKey: process.env.SES_SECRET_KEY ?? process.env.AWS_SECRET_ACCESS_KEY ?? '',
     address: process.env.SES_FROM_ADDRESS ?? '',
     region: process.env.SES_REGION ?? process.env.AWS_REGION ?? 'us-east-1',
+    webhookSecret: process.env.SES_WEBHOOK_SECRET ?? '',
   },
 }));
