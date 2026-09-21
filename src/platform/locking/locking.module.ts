@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { INFRA_CACHE_MODULE } from '@infrastructure/cache/cache.module';
+import { CacheModule as InfraCacheModule } from '@infrastructure/cache/cache.module';
 import { RedisDistributedLockAdapter } from './adapters/redis-distributed-lock.adapter';
 import { DistributedLockPort } from './ports/distributed-lock.port';
 
@@ -10,7 +10,7 @@ import { DistributedLockPort } from './ports/distributed-lock.port';
  * or write lock keys directly.
  */
 @Module({
-  imports: [INFRA_CACHE_MODULE],
+  imports: [InfraCacheModule.forRoot()],
   providers: [
     RedisDistributedLockAdapter,
     { provide: DistributedLockPort, useExisting: RedisDistributedLockAdapter },

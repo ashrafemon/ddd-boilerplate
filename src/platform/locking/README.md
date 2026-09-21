@@ -50,7 +50,7 @@ Business modules must NOT use this — locking is a platform concern.
 
 ## Data & config
 
-No tables. Redis client comes from `INFRA_CACHE_MODULE` (infrastructure).
+No tables. Redis client comes from `CacheModule.forRoot()` (infrastructure).
 Lease TTLs are passed by the caller (scheduler: `SCHEDULER_LOCK_TTL_MS`).
 
 ## Tenancy behaviour

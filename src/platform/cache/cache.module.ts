@@ -1,21 +1,32 @@
+import { resolveCacheDriver } from '@infrastructure/cache/cache.config';
+import { CacheModule as InfraCacheModule } from '@infrastructure/cache/cache.module';
 import { Module } from '@nestjs/common';
-import { INFRA_CACHE_MODULE, resolveCacheDriver } from '@infrastructure/cache/cache.module';
 import { MemcachedCacheAdapter } from './adapters/memcached-cache.adapter';
 import { RedisCacheAdapter } from './adapters/redis-cache.adapter';
+import { CacheKeyBuilder } from './cache-key.builder';
+import { CacheService } from './cache.service';
+import { CacheKeyBuilderPort } from './ports/cache-key-builder.port';
+import { CacheStoragePort } from './ports/cache-storage.port';
 import { CachePort } from './ports/cache.port';
 
 /**
- * Platform cache module — provides the CachePort adapter backed by the Redis
- * or Memcached client initialized in the infrastructure layer. The same
- * resolver the infrastructure layer uses decides the driver, so exactly one
- * adapter is instantiated and it always matches the registered client.
+ * Platform cache module — provides CachePort backed by Redis or Memcached.
+ *
+ * Business modules inject CachePort only — never the adapter directly.
  */
-const CacheAdapter =
+const StorageAdapter =
   resolveCacheDriver() === 'memcache' ? MemcachedCacheAdapter : RedisCacheAdapter;
 
 @Module({
-  imports: [INFRA_CACHE_MODULE],
-  providers: [CacheAdapter, { provide: CachePort, useExisting: CacheAdapter }],
-  exports: [CachePort],
+  imports: [InfraCacheModule.forRoot()],
+  providers: [
+    StorageAdapter,
+    CacheKeyBuilder,
+    CacheService,
+    { provide: CacheStoragePort, useExisting: StorageAdapter },
+    { provide: CacheKeyBuilderPort, useExisting: CacheKeyBuilder },
+    { provide: CachePort, useExisting: CacheService },
+  ],
+  exports: [CachePort, CacheKeyBuilderPort],
 })
 export class CacheModule {}
