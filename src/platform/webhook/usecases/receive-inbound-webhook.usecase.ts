@@ -31,23 +31,34 @@ export class ReceiveInboundWebhookUseCase {
     }
 
     const key = idempotencyKey ?? hashBody(rawBody);
-    const ref = { scope: `webhook.inbound.${source}`, key };
-    const reservation = await this.idempotency.reserve(ref);
-    if (reservation.status === 'REPLAY') {
+    const result = await this.idempotency.reserve({
+      tenantId: '',
+      organizationId: '',
+      scope: `webhook.inbound.${source}`,
+      key,
+    });
+
+    if (result.status === 'REPLAY') {
       return;
     }
-    if (reservation.status === 'IN_PROGRESS') {
+    if (result.status === 'IN_PROGRESS') {
       // Another in-flight delivery of the same webhook is already being
       // handled — let the provider's own retry find it COMPLETED next time.
+      return;
+    }
+    if (result.status === 'KEY_REUSED' || result.status === 'SUSPENDED') {
       return;
     }
 
     const context: InboundWebhookContext = { source, receivedAt: new Date() };
     try {
       await handler.handle(rawBody, context);
-      await this.idempotency.markCompleted(ref);
+      await this.idempotency.complete({
+        reservation: result.reservation,
+        result: { success: true },
+      });
     } catch (err) {
-      await this.idempotency.markFailed(ref);
+      await this.idempotency.fail({ reservation: result.reservation });
       throw err;
     }
   }

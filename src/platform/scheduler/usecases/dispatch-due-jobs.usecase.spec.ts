@@ -6,6 +6,7 @@ import { DistributedLockPort } from '@platform/locking/ports/distributed-lock.po
 import { SchedulerJobQueuePort } from '../ports/scheduler-job-queue.port';
 import { ScheduledJobDispatchLogRepositoryPort } from '../ports/scheduled-job-dispatch-log-repository.port';
 import { ClaimedJob, JobScope, ScheduleMode } from '../scheduler.types';
+import { DistributedLockTicket } from '@platform/locking/locking.types';
 
 function claimed(overrides: Partial<ClaimedJob> = {}): ClaimedJob {
   return {
@@ -25,6 +26,16 @@ function claimed(overrides: Partial<ClaimedJob> = {}): ClaimedJob {
   };
 }
 
+const makeTicket = (overrides: Partial<DistributedLockTicket> = {}): DistributedLockTicket => ({
+  lockId: 'lock-1',
+  lockKey: 'system:scheduler:scheduled-job:job-1',
+  ownerToken: 'test-owner',
+  fencingToken: 1,
+  acquiredAt: new Date(),
+  expiresAt: new Date(Date.now() + 30_000),
+  ...overrides,
+});
+
 function makeUseCase(rows: ClaimedJob[]) {
   const claimDue = jest.fn().mockResolvedValueOnce(rows).mockResolvedValue([]);
   const markPendingWithNextRun = jest.fn();
@@ -37,7 +48,8 @@ function makeUseCase(rows: ClaimedJob[]) {
     recordFailure,
   } as unknown as ScheduledJobRepositoryPort;
 
-  const acquire = jest.fn().mockResolvedValue({ key: 'job-1', owner: 'test-owner' });
+  const ticket = makeTicket();
+  const acquire = jest.fn().mockResolvedValue({ status: 'ACQUIRED' as const, ticket });
   const release = jest.fn().mockResolvedValue(undefined);
   const lock = { acquire, release } as unknown as DistributedLockPort;
 
@@ -108,12 +120,14 @@ describe('DispatchDueJobsUseCase', () => {
       }),
     );
     expect(touchLastRunAt).toHaveBeenCalledWith('job-1');
-    expect(release).toHaveBeenCalledWith({ key: 'job-1', owner: 'test-owner' });
+    expect(release).toHaveBeenCalledWith({
+      ticket: expect.objectContaining({ lockKey: expect.any(String) }),
+    });
   });
 
-  it('fail-closes when Redis lock acquire returns false', async () => {
+  it('fail-closes when lock acquire returns BUSY', async () => {
     const { usecase, acquire, enqueue, release } = makeUseCase([claimed()]);
-    acquire.mockResolvedValue(null);
+    acquire.mockResolvedValue({ status: 'BUSY', retryAfterMs: 30_000 });
 
     await usecase.execute({ batchSize: 20 });
 

@@ -1,84 +1,78 @@
-import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
-import { randomUUID } from 'crypto';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { RedisService } from '@infrastructure/cache/redis/redis.service';
-import { DistributedLockPort, LockTicket } from '../ports/distributed-lock.port';
+import { RedisLockPort } from '../ports/redis-lock.port';
 
-const KEY_PREFIX = 'platform:lock:';
+const KEY_PREFIX = 'lock:';
 
 /**
- * Redis SET NX PX lock with owner-token fencing.
+ * Redis-backed distributed lock adapter using atomic Lua scripts.
  *
- * - value = random owner id; renew/release run compare-and-act Lua scripts so
- *   an expired holder can never extend or delete a lock another instance
- *   took over in the meantime.
- * - Fail closed: Redis missing or erroring yields null/false — pollers must
- *   skip their work unit, never run it speculatively.
+ * - acquire: SET key value NX PX leaseMs
+ * - renew:   ownership check + PEXPIRE (atomic via Lua)
+ * - release: ownership check + DEL (atomic via Lua)
+ *
+ * Fail closed: Redis missing or erroring yields false — callers must skip work.
  */
 @Injectable()
-export class RedisDistributedLockAdapter implements DistributedLockPort {
+export class RedisDistributedLockAdapter implements RedisLockPort {
   private readonly logger = new Logger(RedisDistributedLockAdapter.name);
 
   constructor(@Optional() private readonly redisService?: RedisService) {}
 
-  async acquire(key: string, ttlMs: number): Promise<LockTicket | null> {
+  async acquire(key: string, value: string, leaseMs: number): Promise<boolean> {
     const client = this.clientOrNull();
     if (!client) {
       this.logger.error('Redis unavailable — lock acquire fail-closed');
-      return null;
-    }
-    const owner = randomUUID();
-    try {
-      const result = await client.set(KEY_PREFIX + key, owner, 'PX', ttlMs, 'NX');
-      return result === 'OK' ? { key, owner } : null;
-    } catch (err) {
-      this.logger.error(`Redis lock acquire error: ${FailureMessage.of(err)}`);
-      return null;
-    }
-  }
-
-  async renew(ticket: LockTicket, ttlMs: number): Promise<boolean> {
-    const client = this.clientOrNull();
-    if (!client) {
       return false;
     }
+    const result = await client.set(KEY_PREFIX + key, value, 'PX', leaseMs, 'NX');
+    return result === 'OK';
+  }
+
+  async renew(key: string, value: string, leaseMs: number): Promise<boolean> {
+    const client = this.clientOrNull();
+    if (!client) return false;
     try {
       const renewed = await client.eval(
-        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('pexpire', KEYS[1], ARGV[2]) else return 0 end",
+        "if redis.call('get', KEYS[1]) == ARGV[1] then " +
+          "return redis.call('pexpire', KEYS[1], ARGV[2]) else return 0 end",
         1,
-        KEY_PREFIX + ticket.key,
-        ticket.owner,
-        String(ttlMs),
+        KEY_PREFIX + key,
+        value,
+        String(leaseMs),
       );
       return renewed === 1;
     } catch (err) {
-      this.logger.error(`Redis lock renew error: ${FailureMessage.of(err)}`);
+      this.logger.error(
+        `Redis lock renew error: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return false;
     }
   }
 
-  async release(ticket: LockTicket): Promise<void> {
+  async release(key: string, value: string): Promise<boolean> {
     const client = this.clientOrNull();
-    if (!client) {
-      return;
-    }
+    if (!client) return false;
     try {
-      await client.eval(
-        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+      const released = await client.eval(
+        "if redis.call('get', KEYS[1]) == ARGV[1] then " +
+          "return redis.call('del', KEYS[1]) else return 0 end",
         1,
-        KEY_PREFIX + ticket.key,
-        ticket.owner,
+        KEY_PREFIX + key,
+        value,
       );
+      return released === 1;
     } catch (err) {
-      this.logger.error(`Redis lock release error: ${FailureMessage.of(err)}`);
+      this.logger.error(
+        `Redis lock release error: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return false;
     }
   }
 
   async isHeld(key: string): Promise<boolean> {
     const client = this.clientOrNull();
-    if (!client) {
-      return false;
-    }
+    if (!client) return false;
     try {
       return (await client.exists(KEY_PREFIX + key)) === 1;
     } catch {

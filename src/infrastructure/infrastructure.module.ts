@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { INFRA_CACHE_MODULE } from './cache/cache.module';
+import { CacheModule } from './cache/cache.module';
 import { ContextModule } from './context/context.module';
 import { PrismaModule } from './database/prisma/prisma.module';
 import { MessagingModule } from './messaging/messaging.module';
@@ -21,7 +21,7 @@ import { StorageModule } from './storage/storage.module';
  */
 @Module({
   imports: [
-    INFRA_CACHE_MODULE,
+    CacheModule.forRoot(),
     PrismaModule,
     ContextModule,
     NotificationModule,
@@ -30,7 +30,7 @@ import { StorageModule } from './storage/storage.module';
     StorageModule,
   ],
   exports: [
-    INFRA_CACHE_MODULE,
+    CacheModule.forRoot(),
     PrismaModule,
     ContextModule,
     NotificationModule,

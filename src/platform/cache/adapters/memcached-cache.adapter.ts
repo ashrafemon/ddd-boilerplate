@@ -1,36 +1,43 @@
 import { MemcachedService } from '@andreafspeziale/nestjs-memcached';
-import { Injectable } from '@nestjs/common';
-import { InfrastructureException } from '@shared-kernel/exceptions/infrastructure.exception';
-import { CachePort } from '@platform/cache/ports/cache.port';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { CacheStoragePort } from '@platform/cache/ports/cache-storage.port';
 
 /**
- * Memcached-backed cache adapter built on @andreafspeziale/nestjs-memcached.
+ * Memcached-backed cache storage adapter built on @andreafspeziale/nestjs-memcached.
+ *
+ * Implements CacheStoragePort (the internal storage abstraction), NOT the
+ * public CachePort. Business modules never see this class.
  */
 @Injectable()
-export class MemcachedCacheAdapter implements CachePort {
+export class MemcachedCacheAdapter implements CacheStoragePort {
+  private readonly logger = new Logger(MemcachedCacheAdapter.name);
+
   constructor(private readonly memcached: MemcachedService) {}
 
   public onModuleDestroy(): void {
     this.memcached.end();
   }
 
-  public async get<T>(key: string): Promise<T | null> {
+  public async get(key: string): Promise<string | null> {
     try {
-      return this.memcached.get<T>(key);
+      const raw = await this.memcached.get<string>(key);
+      return raw ?? null;
     } catch (error) {
-      throw new InfrastructureException('Memcache get failed', { key, cause: messageOf(error) });
+      this.logger.error('memcache-get-failed', { key, error: messageOf(error) });
+      throw new ServiceUnavailableException('Memcache get failed');
     }
   }
 
-  public async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+  public async set(key: string, value: string, ttlSeconds: number): Promise<void> {
     try {
       await this.memcached.set(
         key,
         value,
-        ttlSeconds !== undefined ? { ttl: ttlSeconds } : undefined,
+        ttlSeconds > 0 ? { ttl: ttlSeconds } : undefined,
       );
     } catch (error) {
-      throw new InfrastructureException('Memcache get failed', { key, cause: messageOf(error) });
+      this.logger.error('memcache-set-failed', { key, error: messageOf(error) });
+      throw new ServiceUnavailableException('Memcache set failed');
     }
   }
 
@@ -38,15 +45,18 @@ export class MemcachedCacheAdapter implements CachePort {
     try {
       await this.memcached.del(key);
     } catch (error) {
-      throw new InfrastructureException('Memcache get failed', { key, cause: messageOf(error) });
+      this.logger.error('memcache-delete-failed', { key, error: messageOf(error) });
+      throw new ServiceUnavailableException('Memcache delete failed');
     }
   }
 
   public async exists(key: string): Promise<boolean> {
     try {
-      return (await this.memcached.get<unknown>(key)) !== null;
+      const raw = await this.memcached.get<string>(key);
+      return raw !== null && raw !== undefined;
     } catch (error) {
-      throw new InfrastructureException('Memcache get failed', { key, cause: messageOf(error) });
+      this.logger.error('memcache-exists-failed', { key, error: messageOf(error) });
+      throw new ServiceUnavailableException('Memcache exists failed');
     }
   }
 }

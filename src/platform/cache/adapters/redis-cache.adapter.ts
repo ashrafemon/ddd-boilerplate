@@ -1,35 +1,40 @@
-import { Injectable } from '@nestjs/common';
-import { InfrastructureException } from '@shared-kernel/exceptions/infrastructure.exception';
-import { CachePort } from '@platform/cache/ports/cache.port';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { CacheStoragePort } from '@platform/cache/ports/cache-storage.port';
 import { RedisService } from '@infrastructure/cache/redis/redis.service';
 
 /**
- * Redis-backed cache adapter.
+ * Redis-backed cache storage adapter.
+ *
+ * Implements CacheStoragePort (the internal storage abstraction), NOT the
+ * public CachePort. Business modules never see this class.
+ *
+ * Works with raw strings only — serialization is handled by the CacheService.
  */
 @Injectable()
-export class RedisCacheAdapter implements CachePort {
+export class RedisCacheAdapter implements CacheStoragePort {
+  private readonly logger = new Logger(RedisCacheAdapter.name);
+
   constructor(private readonly redisService: RedisService) {}
 
-  public async get<T>(key: string): Promise<T | null> {
+  public async get(key: string): Promise<string | null> {
     try {
-      const raw = await this.redisService.client.get(key);
-      if (raw == null) return null;
-      return JSON.parse(raw) as T;
+      return await this.redisService.client.get(key);
     } catch (error) {
-      throw new InfrastructureException('Redis get failed', { key, cause: messageOf(error) });
+      this.logger.error('redis-get-failed', { key, error: messageOf(error) });
+      throw new ServiceUnavailableException('Redis get failed');
     }
   }
 
-  public async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+  public async set(key: string, value: string, ttlSeconds: number): Promise<void> {
     try {
-      const raw = JSON.stringify(value);
-      if (ttlSeconds !== undefined && ttlSeconds > 0) {
-        await this.redisService.client.set(key, raw, 'EX', ttlSeconds);
+      if (ttlSeconds > 0) {
+        await this.redisService.client.set(key, value, 'EX', ttlSeconds);
       } else {
-        await this.redisService.client.set(key, raw);
+        await this.redisService.client.set(key, value);
       }
     } catch (error) {
-      throw new InfrastructureException('Redis set failed', { key, cause: messageOf(error) });
+      this.logger.error('redis-set-failed', { key, error: messageOf(error) });
+      throw new ServiceUnavailableException('Redis set failed');
     }
   }
 
@@ -37,7 +42,8 @@ export class RedisCacheAdapter implements CachePort {
     try {
       await this.redisService.client.del(key);
     } catch (error) {
-      throw new InfrastructureException('Redis delete failed', { key, cause: messageOf(error) });
+      this.logger.error('redis-delete-failed', { key, error: messageOf(error) });
+      throw new ServiceUnavailableException('Redis delete failed');
     }
   }
 
@@ -45,7 +51,8 @@ export class RedisCacheAdapter implements CachePort {
     try {
       return (await this.redisService.client.exists(key)) > 0;
     } catch (error) {
-      throw new InfrastructureException('Redis exists failed', { key, cause: messageOf(error) });
+      this.logger.error('redis-exists-failed', { key, error: messageOf(error) });
+      throw new ServiceUnavailableException('Redis exists failed');
     }
   }
 }

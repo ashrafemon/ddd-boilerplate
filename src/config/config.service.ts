@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { ICacheDriver, IMemcachedConfig, IRedisConfig } from './cache.config';
+import { ILockingConfig } from './locking.config';
+import { IIdempotencyConfig } from '../platform/idempotency/idempotency.types';
+import { IEventBusConfig } from '../platform/events/event-bus.types';
+import { IMessageQueueConfig } from '../platform/messaging/message-queue.types';
+import { IInboxConfig } from '../platform/inbox/inbox.types';
+import { ISagaConfig } from '../platform/saga/saga.types';
 import { IDatabaseConfig, IDatabaseDriver } from './database.config';
 import { IKafkaConfig, IRabbitMQConfig, ISqsConfig } from './messaging.config';
 import { ISesConfig, ISnsConfig } from './notification.config';
@@ -163,8 +169,12 @@ export class ConfigService {
   }
 
   /** Idempotency ledger Environment Variables */
-  public getIdempotency(): { ttlMs: number } {
-    return this.config.get('idempotency', { ttlMs: 24 * 60 * 60 * 1000 });
+  public getIdempotency(): IIdempotencyConfig {
+    return this.config.get<IIdempotencyConfig>('idempotency', {
+      ttlMs: 86_400_000,
+      claimLeaseMs: 300_000,
+      reconciliationIntervalMs: 3_600_000,
+    });
   }
 
   /** Outbox Environment Variables */
@@ -174,8 +184,61 @@ export class ConfigService {
       batchSize: 50,
       maxAttempts: 10,
       retryBackoffBaseMs: 1_000,
+      retryMaxDelayMs: 600_000,
       claimLeaseMs: 120_000,
       cleanupOlderThanHours: 24,
+    });
+  }
+
+  /** Event Bus Environment Variables */
+  public getEventBus(): IEventBusConfig {
+    return this.config.get<IEventBusConfig>('eventBus', {
+      provider: 'nest',
+      maxHandlerConcurrency: 20,
+      handlerTimeoutMs: 30_000,
+      failFast: false,
+      retryEnabled: true,
+      maxAttempts: 10,
+    });
+  }
+
+  /** Message Queue Environment Variables */
+  public getMessageQueue(): IMessageQueueConfig {
+    return this.config.get<IMessageQueueConfig>('messageQueue', {
+      provider: 'rabbitmq',
+      publishTimeoutMs: 10_000,
+      consumerPrefetch: 20,
+      maxAttempts: 10,
+      retryBaseDelayMs: 1_000,
+      retryMaxDelayMs: 600_000,
+      connectionTimeoutMs: 10_000,
+      heartbeatSeconds: 30,
+    });
+  }
+
+  /** Inbox Environment Variables */
+  public getInbox(): IInboxConfig {
+    return this.config.get<IInboxConfig>('inbox', {
+      claimLeaseMs: 300_000,
+      maxAttempts: 5,
+      retryBaseDelayMs: 5_000,
+      retryMaxDelayMs: 600_000,
+      reconciliationIntervalMs: 60_000,
+      batchSize: 100,
+    });
+  }
+
+  /** Saga Environment Variables */
+  public getSaga(): ISagaConfig {
+    return this.config.get<ISagaConfig>('saga', {
+      defaultTimeoutMs: 300_000,
+      defaultMaxAttempts: 5,
+      retryBaseDelayMs: 1_000,
+      retryMaxDelayMs: 600_000,
+      reconciliationIntervalMs: 60_000,
+      stepClaimLeaseMs: 60_000,
+      maxConcurrentInstances: 100,
+      maxConcurrentSteps: 20,
     });
   }
 
@@ -255,6 +318,16 @@ export class ConfigService {
       circuitBreakerThreshold: 10,
       reconciliationWindowMs: 600_000,
       workerConcurrency: 5,
+    });
+  }
+
+  /** Locking Environment Variables */
+  public getLocking(): ILockingConfig {
+    return this.config.get<ILockingConfig>('locking', {
+      defaultLeaseMs: 30_000,
+      minLeaseMs: 5_000,
+      maxLeaseMs: 300_000,
+      renewIntervalMs: 10_000,
     });
   }
 

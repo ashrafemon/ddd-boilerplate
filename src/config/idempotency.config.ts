@@ -1,15 +1,12 @@
 import { registerAs } from '@nestjs/config';
 import { numericEnv } from './env.util';
-
-export type IIdempotencyConfig = {
-  /** Lifetime of a reservation row (replay window + stale IN_PROGRESS takeover delay). */
-  ttlMs: number;
-};
+import { IIdempotencyConfig } from '@platform/idempotency/idempotency.types';
 
 /**
- * Idempotency ledger config — replay window for @Idempotent() reservations.
- * Consumed only by platform/idempotency.
+ * Idempotency configuration.
  */
 export default registerAs('idempotency', (): IIdempotencyConfig => ({
-  ttlMs: numericEnv('IDEMPOTENCY_TTL_MS', 24 * 60 * 60 * 1000),
+  ttlMs: numericEnv('IDEMPOTENCY_TTL_MS', 86_400_000),
+  claimLeaseMs: numericEnv('IDEMPOTENCY_CLAIM_LEASE_MS', 300_000),
+  reconciliationIntervalMs: numericEnv('IDEMPOTENCY_RECONCILIATION_INTERVAL_MS', 3_600_000),
 }));

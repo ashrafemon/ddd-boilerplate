@@ -11,7 +11,7 @@ import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { Observable, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
-import { IdempotencyPort, IdempotencyRef } from '../ports/idempotency.port';
+import { IdempotencyPort } from '../ports/idempotency.port';
 import { IDEMPOTENCY_HEADER, IDEMPOTENT_KEY } from './idempotent.decorator';
 
 /**
@@ -48,12 +48,11 @@ export class IdempotencyInterceptor implements NestInterceptor {
       throw new BadRequestException(`'Idempotency-Key' header is required for this operation`);
     }
 
-    const ref: IdempotencyRef = {
+    const reservation = await this.idempotency.reserve({
+      tenantId: this.requestContext.getTenantId() ?? '',
+      organizationId: this.requestContext.getOrganizationId() ?? '',
       scope: `${context.getClass().name}.${context.getHandler().name}`,
       key: key.trim().slice(0, 255),
-      tenantId: this.requestContext.getTenantId(),
-    };
-    const reservation = await this.idempotency.reserve(ref, {
       ttlMs: this.config.getIdempotency().ttlMs,
     });
 
@@ -62,17 +61,31 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
     if (reservation.status === 'IN_PROGRESS') {
       throw new ConflictException(
-        `An operation with Idempotency-Key '${ref.key}' is still in progress; retry later`,
+        `An operation with Idempotency-Key '${key.trim()}' is still in progress; retry later`,
+      );
+    }
+    if (reservation.status === 'SUSPENDED') {
+      throw new ConflictException(
+        `An operation with Idempotency-Key '${key.trim()}' requires reconciliation`,
+      );
+    }
+    if (reservation.status === 'KEY_REUSED') {
+      throw new ConflictException(
+        `Idempotency-Key '${key.trim()}' is associated with another request`,
       );
     }
 
     return next.handle().pipe(
       switchMap(async (response: unknown) => {
-        await this.idempotency.markCompleted(ref, response).catch(() => undefined);
+        await this.idempotency
+          .complete({ reservation: reservation.reservation, result: response })
+          .catch(() => undefined);
         return response;
       }),
       catchError(async (err: unknown) => {
-        await this.idempotency.markFailed(ref).catch(() => undefined);
+        await this.idempotency
+          .fail({ reservation: reservation.reservation })
+          .catch(() => undefined);
         throw err;
       }),
     );

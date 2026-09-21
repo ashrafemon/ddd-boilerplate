@@ -1,0 +1,72 @@
+// ============================================================================
+// Platform — Inbox (inbox.prisma)
+// ============================================================================
+// Durable inbound message claim and deduplication boundary.
+// The Inbox is the consumer-side counterpart of Outbox.
+// Outbox protects reliable publication; Inbox protects reliable consumption.
+//
+// A message is claimed via INSERT-as-claim on (tenantId, organizationId,
+// consumer, messageId). PROCESSED rows replay the dedup; FAILED rows are
+// re-claimable; expired IN_PROGRESS claims are reconciled.
+//
+// Multi-tenancy: (tenantId, organizationId, consumer, messageId) is the
+// natural identity — the same messageId can be independently processed
+// by different consumers.
+// ============================================================================
+
+enum InboxMessageStatus {
+  IN_PROGRESS
+  PROCESSED
+  FAILED
+  SUSPENDED
+
+  @@map("inbox_message_status")
+}
+
+model InboxMessage {
+  id             String             @id @default(uuid()) @db.Uuid
+
+  tenantId       String             @default("") @map("tenant_id") @db.VarChar(100)
+  organizationId String             @default("") @map("organization_id") @db.VarChar(100)
+  consumer       String             @db.VarChar(250)
+  messageId      String             @map("message_id") @db.VarChar(500)
+
+  messageType    String             @map("message_type") @db.VarChar(250)
+  messageVersion Int                @default(1) @map("message_version")
+
+  payloadHash    String?            @map("payload_hash") @db.VarChar(128)
+  payload        Json
+
+  occurredAt     DateTime?          @map("occurred_at")
+  receivedAt     DateTime           @default(now()) @map("received_at")
+
+  status         InboxMessageStatus @default(IN_PROGRESS)
+
+  attempts       Int                @default(1)
+
+  claimToken     String             @map("claim_token") @db.Uuid
+  claimedAt      DateTime?          @map("claimed_at")
+
+  processedAt    DateTime?          @map("processed_at")
+
+  nextAttemptAt  DateTime?          @map("next_attempt_at")
+
+  errorCode      String?            @map("error_code") @db.VarChar(100)
+  errorMessage   String?            @map("error_message") @db.Text
+  lastError      String?            @map("last_error") @db.Text
+
+  correlationId  String?            @map("correlation_id") @db.VarChar(200)
+  causationId    String?            @map("causation_id") @db.VarChar(200)
+
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  version        Int                @default(1)
+
+  @@unique([tenantId, organizationId, consumer, messageId])
+  @@index([status, nextAttemptAt])
+  @@index([claimedAt])
+  @@index([tenantId, organizationId, status])
+  @@index([consumer, messageId])
+  @@map("inbox_messages")
+}

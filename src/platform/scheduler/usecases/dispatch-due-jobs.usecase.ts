@@ -69,13 +69,21 @@ export class DispatchDueJobsUseCase {
 
   /** Returns false when the per-job Redis lock could not be taken. */
   private async dispatchOne(job: ClaimedJob, lockTtlMs: number): Promise<boolean> {
-    const ticket = await this.lock.acquire(job.id, lockTtlMs);
-    if (!ticket) {
+    const result = await this.lock.acquire({
+      tenantId: job.tenantId ?? 'system',
+      organizationId: 'scheduler',
+      scope: 'scheduled-job',
+      resource: job.id,
+      leaseMs: lockTtlMs,
+    });
+
+    if (result.status === 'BUSY') {
       // Fail closed: leave CLAIMED for reconciliation; do not enqueue.
       this.logger.warn(`Lock acquire failed for job ${job.id}; leaving CLAIMED for reconcile`);
       return false;
     }
 
+    const ticket = result.ticket;
     const idempotencyKey = deriveIdempotencyKey(job.id, job.nextRunAt);
     const started = Date.now();
 
@@ -141,7 +149,7 @@ export class DispatchDueJobsUseCase {
       return true;
     } finally {
       try {
-        await this.lock.release(ticket);
+        await this.lock.release({ ticket });
       } catch (releaseErr) {
         this.logger.error(
           `Failed to release lock for job ${job.id}: ${(releaseErr as Error).message}`,

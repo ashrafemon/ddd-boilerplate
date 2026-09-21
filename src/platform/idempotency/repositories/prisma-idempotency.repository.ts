@@ -1,108 +1,156 @@
-import { Prisma } from '../../../generated/client';
 import { Injectable } from '@nestjs/common';
-import { TransactionHost } from '@nestjs-cls/transactional';
-import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
-import { IdempotencyPort, IdempotencyRef, IdempotencyReservation } from '../ports/idempotency.port';
-
-const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
-const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
-
-function scopedTenant(ref: IdempotencyRef): string {
-  // NULL vs NULL is distinct in Postgres unique indexes — '' keeps empty
-  // tenancy genuinely deduplicating.
-  return ref.tenantId ?? '';
-}
+import { PrismaWriteService } from '@infrastructure/database/prisma/prisma-write.service';
+import { IdempotencyRepositoryPort } from '../ports/idempotency-repository.port';
+import { IdempotencyIdentity } from '../idempotency.types';
 
 /**
- * Prisma-backed idempotency ledger. The primary path is a plain INSERT
- * (claim); on constraint conflict an atomic takeover UPDATE re-arms only
- * FAILED/expired rows, so duplicates never race the original into running.
+ * PostgreSQL-backed idempotency repository.
+ *
+ * - Insert-as-claim on (tenantId, organizationId, scope, key)
+ * - Atomic takeover of FAILED/SUSPENDED/expired rows
+ * - CAS updates with claim token + version for ownership validation
+ * - Reconciliation of expired IN_PROGRESS claims
  */
 @Injectable()
-export class PrismaIdempotencyRepository implements IdempotencyPort {
-  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
+export class PrismaIdempotencyRepository implements IdempotencyRepositoryPort {
+  constructor(private readonly prisma: PrismaWriteService) {}
 
-  async reserve(
-    ref: IdempotencyRef,
-    options?: { ttlMs?: number },
-  ): Promise<IdempotencyReservation> {
-    const ttlMs = options?.ttlMs ?? DEFAULT_TTL_MS;
-    const tenantId = scopedTenant(ref);
-    try {
-      await this.txHost.tx.idempotencyKey.create({
-        data: {
-          tenantId,
-          scope: ref.scope,
-          key: ref.key,
-          status: 'IN_PROGRESS',
-          expiresAt: new Date(Date.now() + ttlMs),
+  async findUnique(identity: IdempotencyIdentity) {
+    const row = await this.prisma.idempotencyKey.findUnique({
+      where: {
+        tenantId_organizationId_scope_key: {
+          tenantId: identity.tenantId,
+          organizationId: identity.organizationId,
+          scope: identity.scope,
+          key: identity.key,
         },
-      });
-      return { status: 'ACQUIRED' };
-    } catch (err) {
-      if (
-        !(err instanceof Prisma.PrismaClientKnownRequestError) ||
-        err.code !== UNIQUE_CONSTRAINT_VIOLATION
-      ) {
-        throw err;
-      }
-    }
-
-    const takeover = await this.txHost.tx.$queryRaw<Array<{ id: string }>>`
-      UPDATE "idempotency_keys"
-      SET "status" = 'IN_PROGRESS',
-          "result" = NULL,
-          "attempts" = "attempts" + 1,
-          "expiresAt" = ${new Date(Date.now() + ttlMs)}
-      WHERE "scope" = ${ref.scope}
-        AND "tenantId" = ${tenantId}
-        AND "key" = ${ref.key}
-        AND ("status" = 'FAILED' OR "expiresAt" < now())
-      RETURNING "id"`;
-    if (takeover.length > 0) {
-      return { status: 'ACQUIRED' };
-    }
-
-    const existing = await this.txHost.tx.idempotencyKey.findUnique({
-      where: { scope_tenantId_key: { scope: ref.scope, tenantId, key: ref.key } },
+      },
     });
-    if (existing?.status === 'COMPLETED') {
-      return { status: 'REPLAY', result: (PrismaJson.asRecord(existing.result) ?? {}).result };
-    }
-    return { status: 'IN_PROGRESS' };
+    if (!row) return null;
+    return {
+      id: row.id,
+      status: row.status,
+      claimToken: row.claimToken,
+      version: row.version,
+      resultJson: row.resultJson,
+      requestHash: row.requestHash,
+      claimedAt: row.claimedAt,
+      expiresAt: row.expiresAt,
+    };
   }
 
-  async markCompleted(ref: IdempotencyRef, result?: unknown): Promise<void> {
-    await this.txHost.tx.idempotencyKey.updateMany({
+  async insert(
+    identity: IdempotencyIdentity,
+    claimToken: string,
+    expiresAt: Date,
+    requestHash?: string,
+  ): Promise<{ id: string; version: number }> {
+    const row = await this.prisma.idempotencyKey.create({
+      data: {
+        tenantId: identity.tenantId,
+        organizationId: identity.organizationId,
+        scope: identity.scope,
+        key: identity.key,
+        claimToken,
+        requestHash: requestHash ?? null,
+        expiresAt,
+        claimedAt: new Date(),
+      },
+    });
+    return { id: row.id, version: row.version };
+  }
+
+  async takeover(
+    identity: IdempotencyIdentity,
+    claimToken: string,
+    expiresAt: Date,
+  ): Promise<boolean> {
+    const result = await this.prisma.idempotencyKey.updateMany({
       where: {
-        scope: ref.scope,
-        tenantId: scopedTenant(ref),
-        key: ref.key,
+        tenantId: identity.tenantId,
+        organizationId: identity.organizationId,
+        scope: identity.scope,
+        key: identity.key,
+        OR: [{ status: 'FAILED' }, { status: 'SUSPENDED' }, { expiresAt: { lt: new Date() } }],
+      },
+      data: {
+        status: 'IN_PROGRESS',
+        claimToken,
+        resultJson: undefined,
+        errorCode: undefined,
+        errorMessage: undefined,
+        expiresAt,
+        claimedAt: new Date(),
+        version: { increment: 1 },
+      },
+    });
+    return result.count > 0;
+  }
+
+  async complete(
+    id: string,
+    claimToken: string,
+    version: number,
+    result: unknown,
+  ): Promise<boolean> {
+    const update = await this.prisma.idempotencyKey.updateMany({
+      where: {
+        id,
+        claimToken,
+        version,
         status: 'IN_PROGRESS',
       },
       data: {
         status: 'COMPLETED',
-        // Envelope object keeps scalars (strings/numbers) JSON-column-safe.
-        result: PrismaJson.toInput({ result: result ?? null }),
+        resultJson: result as Record<string, unknown>,
+        completedAt: new Date(),
+        version: { increment: 1 },
       },
     });
+    return update.count > 0;
   }
 
-  async markFailed(ref: IdempotencyRef): Promise<void> {
-    await this.txHost.tx.idempotencyKey.updateMany({
+  async fail(
+    id: string,
+    claimToken: string,
+    version: number,
+    errorCode?: string,
+    errorMessage?: string,
+  ): Promise<boolean> {
+    const update = await this.prisma.idempotencyKey.updateMany({
       where: {
-        scope: ref.scope,
-        tenantId: scopedTenant(ref),
-        key: ref.key,
+        id,
+        claimToken,
+        version,
         status: 'IN_PROGRESS',
       },
-      data: { status: 'FAILED' },
+      data: {
+        status: 'FAILED',
+        errorCode: errorCode ?? null,
+        errorMessage: errorMessage ?? null,
+        version: { increment: 1 },
+      },
     });
+    return update.count > 0;
+  }
+
+  async suspendExpiredClaims(claimLeaseMs: number): Promise<number> {
+    const cutoff = new Date(Date.now() - claimLeaseMs);
+    const result = await this.prisma.idempotencyKey.updateMany({
+      where: {
+        status: 'IN_PROGRESS',
+        claimedAt: { lt: cutoff },
+      },
+      data: {
+        status: 'SUSPENDED',
+        version: { increment: 1 },
+      },
+    });
+    return result.count;
   }
 
   async purgeExpired(): Promise<number> {
-    const result = await this.txHost.tx.idempotencyKey.deleteMany({
+    const result = await this.prisma.idempotencyKey.deleteMany({
       where: { expiresAt: { lt: new Date() } },
     });
     return result.count;
