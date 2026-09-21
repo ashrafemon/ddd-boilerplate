@@ -6,6 +6,7 @@ export { PurchaseOrderStatus } from './purchase-order.enum';
 export interface PurchaseOrderProps {
   orderNumber: OrderNumber;
   vendorId: VendorIdRef;
+  externalReference?: string;
   status: PurchaseOrderStatus;
   currency: string;
   lines: PurchaseOrderLine[];
@@ -17,6 +18,7 @@ export interface CreatePurchaseOrderInput {
   orderNumber: string;
   vendorId: string;
   currency?: string;
+  externalReference?: string;
 }
 
 export interface AddLineInput {
@@ -67,6 +69,7 @@ export interface PurchaseOrderQueryRecord {
 export interface CreatePurchaseOrderRequest {
   vendorId: string;
   currency?: string;
+  externalReference?: string;
 }
 
 export interface AddLineRequest {

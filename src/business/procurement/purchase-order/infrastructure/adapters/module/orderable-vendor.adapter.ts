@@ -13,4 +13,8 @@ export class OrderableVendorAdapter implements OrderableVendorPort {
   getOrderableVendor(id: string): Promise<VendorReference | null> {
     return this.vendorForPurchasePort.getOrderableVendor(id);
   }
+
+  findOrderableVendorsByCodes(codes: string[]): Promise<VendorReference[]> {
+    return this.vendorForPurchasePort.findOrderableVendorsByCodes(codes);
+  }
 }

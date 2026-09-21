@@ -12,6 +12,7 @@ import { CreateProductUseCase } from './application/usecases/create-product.usec
 import { GetProductUseCase } from './application/usecases/get-product.usecase';
 import { GetPurchasableProductsUseCase } from './application/usecases/get-purchasable-products.usecase';
 import { GetPurchasableProductUseCase } from './application/usecases/get-purchasable-product.usecase';
+import { FindPurchasableProductsBySkusUseCase } from './application/usecases/find-purchasable-products-by-skus.usecase';
 import { ListProductsUseCase } from './application/usecases/list-products.usecase';
 import { ProductStatusUseCase } from './application/usecases/product-status.usecase';
 import { UpdateProductUseCase } from './application/usecases/update-product.usecase';
@@ -42,6 +43,7 @@ import { ProductForPurchasePort } from '@business/procurement/product/public';
     GetProductUseCase,
     ListProductsUseCase,
     GetPurchasableProductUseCase,
+    FindPurchasableProductsBySkusUseCase,
     GetPurchasableProductsUseCase,
     ProductRabbitMQListener,
     ProductKafkaListener,

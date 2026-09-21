@@ -8,6 +8,7 @@ import { CreatePurchaseOrderUseCase } from './application/usecases/create-purcha
 import { AddPurchaseOrderLineUseCase } from './application/usecases/add-purchase-order-line.usecase';
 import { RemovePurchaseOrderLineUseCase } from './application/usecases/remove-purchase-order-line.usecase';
 import { PurchaseOrderTransitionUseCase } from './application/usecases/purchase-order-transition.usecase';
+import { ImportPurchaseOrderUseCase } from './application/usecases/import-purchase-order.usecase';
 import { GetPurchaseOrderUseCase } from './application/usecases/get-purchase-order.usecase';
 import { ListPurchaseOrdersUseCase } from './application/usecases/list-purchase-orders.usecase';
 import { CreateRecurringPurchaseOrderUseCase } from './application/usecases/create-recurring-purchase-order.usecase';
@@ -36,6 +37,7 @@ import { OrderableVendorAdapter } from './infrastructure/adapters/module/orderab
 import './domain/events/purchase-order.registry';
 import { PurchaseOrderBatchOperationAdapter } from './infrastructure/adapters/platform/purchase-order-batch-operation.adapter';
 import { PurchaseOrderNotificationAdapter } from './infrastructure/adapters/platform/purchase-order-notification.adapter';
+import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/purchase-order-import.adapter';
 
 @Module({
   imports: [PlatformModule, ProductModule, VendorModule],
@@ -43,7 +45,9 @@ import { PurchaseOrderNotificationAdapter } from './infrastructure/adapters/plat
   providers: [
     PurchaseOrderBatchOperationAdapter,
     PurchaseOrderNotificationAdapter,
+    PurchaseOrderImportHandler,
     CreatePurchaseOrderUseCase,
+    ImportPurchaseOrderUseCase,
     AddPurchaseOrderLineUseCase,
     RemovePurchaseOrderLineUseCase,
     PurchaseOrderTransitionUseCase,

@@ -25,6 +25,7 @@ export class PurchaseOrderFactory {
       {
         orderNumber: OrderNumber.create(input.orderNumber),
         vendorId: new VendorIdRef(input.vendorId),
+        externalReference: input.externalReference,
         status: PurchaseOrderStatus.DRAFT,
         currency: input.currency ?? 'USD',
         lines: [],

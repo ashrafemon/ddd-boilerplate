@@ -81,6 +81,41 @@ describe('PurchaseOrder aggregate', () => {
     expect(po.lines[0].quantity).toBe(5);
   });
 
+  describe('setLine (idempotent import write)', () => {
+    it('adds a new line and raises LineAdded', () => {
+      const po = create();
+      po.pullEvents();
+      expect(po.setLine('product-1', 2, Money.fromDecimal('10.00'))).toBe(true);
+      expect(po.lines).toHaveLength(1);
+      expect(po.total.amount).toBe(20);
+      expect(po.pullEvents()).toHaveLength(1);
+    });
+
+    it('replaces (never sums) an existing line', () => {
+      const po = create();
+      po.setLine('product-1', 2, Money.fromDecimal('10.00'));
+      expect(po.setLine('product-1', 5, Money.fromDecimal('4.00'))).toBe(true);
+      expect(po.lines).toHaveLength(1);
+      expect(po.lines[0].quantity).toBe(5);
+      expect(po.total.amount).toBe(20);
+    });
+
+    it('is a no-op (no event) when the line is already in that state', () => {
+      const po = create();
+      po.setLine('product-1', 2, Money.fromDecimal('10.00'));
+      po.pullEvents();
+      expect(po.setLine('product-1', 2, Money.fromDecimal('10.00'))).toBe(false);
+      expect(po.pullEvents()).toHaveLength(0);
+    });
+
+    it('rejects a non-editable order and a zero quantity', () => {
+      const po = withLine(create());
+      expect(() => po.setLine('product-9', 0, Money.fromDecimal('1.00'))).toThrow();
+      po.submit();
+      expect(() => po.setLine('product-1', 9, Money.fromDecimal('1.00'))).toThrow();
+    });
+  });
+
   it('evaluates approval policy threshold', () => {
     const small = withLine(create());
     small.submit();

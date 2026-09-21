@@ -7,6 +7,7 @@ export abstract class PurchaseOrderCommandRepository {
   abstract update(purchaseOrder: PurchaseOrder): Promise<PurchaseOrder>;
   abstract findById(id: PurchaseOrderId): Promise<PurchaseOrder | null>;
   abstract findByOrderNumber(orderNumber: string): Promise<PurchaseOrder | null>;
+  abstract findByExternalReference(externalReference: string): Promise<PurchaseOrder | null>;
   abstract nextOrderSequence(): Promise<number>;
 }
 

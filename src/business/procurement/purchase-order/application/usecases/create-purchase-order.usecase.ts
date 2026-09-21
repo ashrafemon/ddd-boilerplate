@@ -32,6 +32,7 @@ export class CreatePurchaseOrderUseCase {
       orderNumber: `PO-${String(sequence).padStart(8, '0')}`,
       vendorId: input.vendorId,
       currency,
+      externalReference: input.externalReference,
     });
 
     await this.purchaseOrderRepository.save(purchaseOrder);

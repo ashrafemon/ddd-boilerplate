@@ -3,6 +3,9 @@
 model PurchaseOrder {
   id          String                @id @default(uuid()) @db.Uuid
   orderNumber String                @unique
+  // Caller-supplied reference (import poReference). Groups import rows into one PO and
+  // makes re-imports find-or-create; NULL for POs created any other way.
+  externalReference String?           @unique @db.VarChar(128)
   vendorId    String                @db.Uuid
   status      PurchaseOrderStatus   @default(DRAFT)
   currency    String                @default("USD") @db.VarChar(3)

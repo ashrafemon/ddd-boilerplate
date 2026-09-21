@@ -53,6 +53,14 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
     return row ? PrismaPurchaseOrderMapper.toDomain(row) : null;
   }
 
+  async findByExternalReference(externalReference: string): Promise<PurchaseOrder | null> {
+    const row = await this.txHost.tx.purchaseOrder.findUnique({
+      where: { externalReference },
+      include: { lines: true },
+    });
+    return row ? PrismaPurchaseOrderMapper.toDomain(row) : null;
+  }
+
   async nextOrderSequence(): Promise<number> {
     const last = await this.txHost.tx.purchaseOrder.findFirst({
       orderBy: { createdAt: 'desc' },

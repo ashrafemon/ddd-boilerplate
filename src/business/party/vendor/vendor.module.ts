@@ -10,6 +10,7 @@ import { VendorIntegrationPort } from './application/integrations/publishes/vend
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { CreateVendorUseCase } from './application/usecases/create-vendor.usecase';
 import { GetOrderableVendorUseCase } from './application/usecases/get-orderable-vendor.usecase';
+import { FindOrderableVendorsByCodesUseCase } from './application/usecases/find-orderable-vendors-by-codes.usecase';
 import { GetVendorUseCase } from './application/usecases/get-vendor.usecase';
 import { ListVendorsUseCase } from './application/usecases/list-vendors.usecase';
 import { UpdateVendorUseCase } from './application/usecases/update-vendor.usecase';
@@ -40,6 +41,7 @@ import './domain/events/vendor.registry';
     GetVendorUseCase,
     ListVendorsUseCase,
     GetOrderableVendorUseCase,
+    FindOrderableVendorsByCodesUseCase,
     VendorEventEmitterListener,
     VendorRabbitMQListener,
     VendorKafkaListener,
