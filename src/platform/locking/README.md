@@ -1,68 +1,275 @@
-# platform/locking — Distributed Lock
+# Platform — Distributed Lock Service
 
-> Cross-instance mutual exclusion ("run this on exactly one replica right
-> now"), backed by Redis with owner-token fencing. Formerly private to
-> `platform/scheduler`; extracted as a shared platform primitive.
+## 1. Purpose
 
-## What it does
+Cross-instance mutual exclusion — the platform primitive that lets every
+service (scheduler, workers, request handlers) run "exactly one instance of
+this work right now" without duplicating Redis client setup or lock-key
+conventions.
 
-`DistributedLockPort` provides short-lived leases keyed by an arbitrary
-string. Acquisition is `SET NX PX`; renewal and release run compare-and-act
-Lua scripts bound to the random owner token captured in the returned
-`LockTicket`, so a worker whose lease expired can never extend or delete a
-lock that another instance has since taken over.
+| Concern | Handled here |
+|---|---|
+| Redis lock ownership (SET NX PX + Lua) | ✅ `RedisDistributedLockAdapter` |
+| PostgreSQL fencing token sequence | ✅ `PrismaDistributedLockRepository` |
+| Key structure & tenant isolation | ✅ `LockKeyBuilder` |
+| Business modules talk to | `DistributedLockPort` only |
 
-**Fail closed.** Redis missing/unavailable/erroring ⇒ `acquire` resolves to
-`null`. Callers MUST skip their work unit in that case — never run
-speculatively. Stuck `CLAIMED`-style rows are recovered by the owning
-service's reconciler, not by loosening the lock.
+Business modules never import Redis, write lock keys, or construct fencing
+logic.  They inject the port and control the sequence:
 
-## Public API
+```
+1. acquire() → ACQUIRED / BUSY
+2. execute operation
+3. renew() → RENEWED / LOST  (long-running only)
+4. execute operation
+5. release()
+```
+
+---
+
+## 2. Architecture
+
+```
+Business Module
+       │
+       ▼
+DistributedLockPort          ← abstract class, injected
+       │
+       ▼
+DistributedLockService       ← facade, one-liner per use case
+       │
+       ├──── AcquireUseCase  → RedisLockPort (SET NX PX)
+       │                       DistributedLockRepositoryPort (fencing token)
+       │
+       ├──── RenewUseCase    → RedisLockPort (ownership check + PEXPIRE)
+       │
+       └──── ReleaseUseCase  → RedisLockPort (ownership check + DEL)
+```
+
+**Data stores:**
+
+| Store | What it holds | Why |
+|---|---|---|
+| Redis | Active lock ownership (key → owner token, PX TTL) | Sub-ms atomic operations, lease expiry |
+| PostgreSQL | Fencing token sequence per lock resource | Durable monotonic counter, survives Redis restart |
+
+---
+
+## 3. File Structure
+
+```
+src/platform/locking/
+├── locking.types.ts                          # Types
+├── lock-key.builder.ts                       # Deterministic key builder
+├── distributed-lock.service.ts               # Facade
+├── locking.module.ts                         # NestJS module
+├── README.md
+│
+├── ports/
+│   ├── distributed-lock.port.ts              # Public port
+│   ├── distributed-lock-repository.port.ts   # Repository port (PostgreSQL)
+│   └── redis-lock.port.ts                    # Redis lock operations port
+│
+├── adapters/
+│   ├── redis-distributed-lock.adapter.ts     # Redis implementation
+│   └── redis-distributed-lock.adapter.spec.ts
+│
+├── repositories/
+│   └── prisma-distributed-lock.repository.ts # PostgreSQL implementation
+│
+├── usecases/
+│   ├── acquire-distributed-lock.usecase.ts
+│   ├── renew-distributed-lock.usecase.ts
+│   └── release-distributed-lock.usecase.ts
+│
+├── __testing__/
+│   └── in-memory-distributed-lock.adapter.ts
+│
+└── __tests__/
+    └── distributed-lock.service.spec.ts
+
+prisma/schema/platform/
+└── locking.prisma                            # DistributedLock table
+```
+
+---
+
+## 4. Lock Identity
+
+Every lock is identified by the tuple:
+
+```
+(tenantId, organizationId, scope, resource)
+```
+
+The `LockKeyBuilder` produces a deterministic string:
+
+```
+{tenantId}:{organizationId}:{scope}:{resource}
+```
+
+Example:
+```
+tenant-001:company-001:inventory.stock:product-123:warehouse-001
+```
+
+The adapter prepends `lock:` → Redis key: `lock:tenant-001:company-001:inventory.stock:product-123:warehouse-001`.
+
+---
+
+## 5. How to Use
+
+### Import the module
 
 ```ts
-import { DistributedLockPort, LockTicket } from '@platform/locking/ports/distributed-lock.port';
+// feature.module.ts
+import { LockingModule } from '@platform/locking/locking.module';
 
-acquire(key, ttlMs): Promise<LockTicket | null>   // take a lease, or null
-renew(ticket, ttlMs): Promise<boolean>            // extend, false = ownership lost
-release(ticket): Promise<void>                    // compare-and-delete, best effort
-isHeld(key): Promise<boolean>                     // observability only
+@Module({
+  imports: [LockingModule],
+})
+export class FeatureModule {}
 ```
 
-Callers namespace their own keys (`scheduler` passes the job id; the Redis
-key is `platform:lock:<key>`).
+### Inject the port
 
-## Layout
+```ts
+import { DistributedLockPort } from '@platform/locking/ports/distributed-lock.port';
+
+@Injectable()
+export class InventorySyncHandler {
+  constructor(private readonly lockPort: DistributedLockPort) {}
+
+  async handle(productId: string): Promise<void> {
+    const result = await this.lockPort.acquire({
+      tenantId: 'tenant-001',
+      organizationId: 'org-001',
+      scope: 'inventory.stock',
+      resource: productId,
+      leaseMs: 30_000,
+    });
+
+    if (result.status === 'BUSY') {
+      // Another instance is processing this product — skip.
+      return;
+    }
+
+    try {
+      await this.syncInventory(productId);
+    } finally {
+      await this.lockPort.release({ ticket: result.ticket });
+    }
+  }
+}
+```
+
+### Long-running operations (with renew)
+
+```ts
+async processLargeBatch(batchId: string): Promise<void> {
+  const result = await this.lockPort.acquire({
+    tenantId: 'tenant-001',
+    organizationId: 'org-001',
+    scope: 'batch.process',
+    resource: batchId,
+    leaseMs: 60_000,
+  });
+
+  if (result.status === 'BUSY') return;
+
+  const renewInterval = setInterval(async () => {
+    const renewed = await this.lockPort.renew({
+      ticket: result.ticket,
+      leaseMs: 60_000,
+    });
+    if (renewed.status === 'LOST') {
+      clearInterval(renewInterval);
+      // Lock lost — stop processing
+    }
+  }, 30_000);
+
+  try {
+    await this.processItems(batchId);
+  } finally {
+    clearInterval(renewInterval);
+    await this.lockPort.release({ ticket: result.ticket });
+  }
+}
+```
+
+---
+
+## 6. Failure Semantics
+
+| Scenario | Behavior | Rationale |
+|---|---|---|
+| Redis down | acquire → BUSY | Fail closed — caller skips work |
+| Redis error during acquire | BUSY (logged) | Fail closed |
+| Redis error during release | Silently ignored | Best effort — lock expires via TTL |
+| Owner token mismatch (renew) | LOST | Another instance took over |
+| Owner token mismatch (release) | Silently ignored | Best effort |
+| PostgreSQL down during acquire | Exception propagates | Fencing token is critical — cannot safely acquire without it |
+
+---
+
+## 7. Fencing Tokens
+
+Every acquire atomically increments a PostgreSQL counter for the lock resource.
+The returned fencing token lets downstream resources (databases, external APIs)
+reject stale operations from an expired lock holder.
 
 ```
-ports/distributed-lock.port.ts        the token (abstract class)
-adapters/redis-distributed-lock.adapter.ts   Redis SET NX + Lua implementation
-locking.module.ts                     binds port → adapter, exports the port
+Acquire 1 → fencingToken = 1
+Release
+Acquire 2 → fencingToken = 2
 ```
 
-## Who calls it / how called
+If instance A holds fencing token 1 and its lease expires, instance B acquires
+fencing token 2.  Any write from A with token 1 can be rejected by the
+downstream resource.
 
-| Consumer | How | Why |
-| --- | --- | --- |
-| `platform/scheduler` `DispatchDueJobsUseCase` | injects `DistributedLockPort` (via `LockingModule` import) | per-job Redis lock during dispatch; failure leaves the row CLAIMED for reconciliation |
+---
 
-New consumers `@platform/...` style: import `LockingModule`, inject the port.
-Business modules must NOT use this — locking is a platform concern.
+## 8. Do NOT
 
-## Data & config
+| Mistake | Why |
+|---|---|
+| Inject `RedisService` directly | Bypasses tenant isolation and fencing tokens |
+| Build lock keys manually | Use `LockKeyBuilder` or the port — keys must be deterministic |
+| Use locks as cache | Locks expire; cache has `CachePort` for that |
+| Use locks as session store | Session store is a different primitive |
+| Forget to release in `finally` | Leaked locks block other instances until TTL |
+| Skip PostgreSQL for fencing | Redis alone cannot provide durable monotonic tokens |
 
-No tables. Redis client comes from `CacheModule.forRoot()` (infrastructure).
-Lease TTLs are passed by the caller (scheduler: `SCHEDULER_LOCK_TTL_MS`).
+---
 
-## Tenancy behaviour
+## 9. Configuration
 
-None — keys are caller-chosen; include the tenant in the key if the lock is
-per-tenant (`lock:\`${tenantId}:${thing}\``).
+Environment variables (with defaults):
 
-## Rules & gotchas
+```bash
+# Distributed Lock
+LOCK_DEFAULT_LEASE_MS=30000     # Default lock lease (ms)
+LOCK_MIN_LEASE_MS=5000          # Minimum allowed lease
+LOCK_MAX_LEASE_MS=300000        # Maximum allowed lease
+LOCK_RENEW_INTERVAL_MS=10000    # Recommended renew check interval
+```
 
-- Release only with the ticket `acquire` returned for THIS run — never by key.
-- Locks are leases, not transactions: pair with a DB-side guard (status CAS
-  or claim) for correctness (the scheduler does exactly this).
-- Do not hold a lock across long unbounded work without `renew` (see the
-  import service's `StageLock`, which heartbeats on a timer).
-- `isHeld` is racy by nature; use for metrics/logs, never for decisions.
+---
+
+## 10. Testing
+
+Use `InMemoryDistributedLockAdapter` for unit tests:
+
+```ts
+import { InMemoryDistributedLockAdapter } from '@platform/locking/__testing__/in-memory-distributed-lock.adapter';
+
+const lock = new InMemoryDistributedLockAdapter();
+
+const result = await lock.acquire({
+  tenantId: 't1', organizationId: 'o1',
+  scope: 'test', resource: 'item-1',
+});
+
+expect(result.status).toBe('ACQUIRED');
+```

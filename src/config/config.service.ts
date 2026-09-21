@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { ICacheDriver, IMemcachedConfig, IRedisConfig } from './cache.config';
+import { ILockingConfig } from './locking.config';
 import { IDatabaseConfig, IDatabaseDriver } from './database.config';
 import { IKafkaConfig, IRabbitMQConfig, ISqsConfig } from './messaging.config';
 import { ISesConfig, ISnsConfig } from './notification.config';
@@ -255,6 +256,16 @@ export class ConfigService {
       circuitBreakerThreshold: 10,
       reconciliationWindowMs: 600_000,
       workerConcurrency: 5,
+    });
+  }
+
+  /** Locking Environment Variables */
+  public getLocking(): ILockingConfig {
+    return this.config.get<ILockingConfig>('locking', {
+      defaultLeaseMs: 30_000,
+      minLeaseMs: 5_000,
+      maxLeaseMs: 300_000,
+      renewIntervalMs: 10_000,
     });
   }
 
