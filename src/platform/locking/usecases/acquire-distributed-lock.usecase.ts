@@ -35,20 +35,20 @@ export class AcquireDistributedLockUseCase {
     const leaseMs = request.leaseMs ?? DEFAULT_LEASE_MS;
     const ownerToken = randomUUID();
 
-    // Get next fencing token from PostgreSQL (atomic increment)
-    const fencingToken = await this.repository.nextFencingToken(identity);
-
-    // Try to acquire in Redis
+    // 1. Try to acquire in Redis first (fast fail — no DB round-trip on BUSY)
     const acquired = await this.redisLock.acquire(lockKey, ownerToken, leaseMs);
 
     if (!acquired) {
       return { status: 'BUSY', retryAfterMs: leaseMs };
     }
 
+    // 2. Only NOW get fencing token from PostgreSQL (we own the lock)
+    const fencingToken = await this.repository.nextFencingToken(identity);
+
     const now = new Date();
     const expiresAt = new Date(now.getTime() + leaseMs);
 
-    // Get or create the lock record for the lockId
+    // 3. Fetch the lock record (nextFencingToken upserts it)
     const record = await this.repository.getOrCreate(identity);
 
     return {
