@@ -1,8 +1,11 @@
 import {
   IdempotencyPort,
-  IdempotencyRef,
-  IdempotencyReservation,
+  IdempotencyReserveRequest,
+  IdempotencyReserveResult,
+  IdempotencyCompleteRequest,
+  IdempotencyFailRequest,
 } from '@platform/idempotency/ports/idempotency.port';
+import { randomUUID } from 'crypto';
 import { WebhookInboundHandlerPort } from '../ports/webhook-inbound-handler.port';
 import { WebhookInboundSourceRegistry } from '../webhook-inbound-source.registry';
 import {
@@ -12,27 +15,26 @@ import {
 import { ReceiveInboundWebhookUseCase } from './receive-inbound-webhook.usecase';
 
 class FakeIdempotencyPort implements IdempotencyPort {
-  private readonly completed = new Set<string>();
+  private readonly completed = new Map<string, unknown>();
 
-  reserve(ref: IdempotencyRef): Promise<IdempotencyReservation> {
-    const key = `${ref.scope}:${ref.key}`;
+  reserve(request: IdempotencyReserveRequest): Promise<IdempotencyReserveResult> {
+    const key = `${request.scope}:${request.key}`;
     if (this.completed.has(key)) {
-      return Promise.resolve({ status: 'REPLAY', result: undefined });
+      return Promise.resolve({ status: 'REPLAY', result: this.completed.get(key) });
     }
-    return Promise.resolve({ status: 'ACQUIRED' });
+    return Promise.resolve({
+      status: 'ACQUIRED',
+      reservation: { id: randomUUID(), claimToken: randomUUID(), version: 1 },
+    });
   }
 
-  markCompleted(ref: IdempotencyRef): Promise<void> {
-    this.completed.add(`${ref.scope}:${ref.key}`);
+  complete(request: IdempotencyCompleteRequest): Promise<void> {
+    this.completed.set('webhook.inbound.stripe:evt_1', request.result);
     return Promise.resolve();
   }
 
-  markFailed(): Promise<void> {
+  fail(_request: IdempotencyFailRequest): Promise<void> {
     return Promise.resolve();
-  }
-
-  purgeExpired(): Promise<number> {
-    return Promise.resolve(0);
   }
 }
 

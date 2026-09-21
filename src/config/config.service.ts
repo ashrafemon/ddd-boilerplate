@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { ICacheDriver, IMemcachedConfig, IRedisConfig } from './cache.config';
 import { ILockingConfig } from './locking.config';
+import { IIdempotencyConfig } from '../platform/idempotency/idempotency.types';
 import { IDatabaseConfig, IDatabaseDriver } from './database.config';
 import { IKafkaConfig, IRabbitMQConfig, ISqsConfig } from './messaging.config';
 import { ISesConfig, ISnsConfig } from './notification.config';
@@ -164,8 +165,12 @@ export class ConfigService {
   }
 
   /** Idempotency ledger Environment Variables */
-  public getIdempotency(): { ttlMs: number } {
-    return this.config.get('idempotency', { ttlMs: 24 * 60 * 60 * 1000 });
+  public getIdempotency(): IIdempotencyConfig {
+    return this.config.get<IIdempotencyConfig>('idempotency', {
+      ttlMs: 86_400_000,
+      claimLeaseMs: 300_000,
+      reconciliationIntervalMs: 3_600_000,
+    });
   }
 
   /** Outbox Environment Variables */
