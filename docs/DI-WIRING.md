@@ -181,8 +181,12 @@ flowchart LR
     ListVendorsUseCase -->|injects| VendorQuery
     GetOrderableVendorUseCase["GetOrderableVendorUseCase"]
     GetOrderableVendorUseCase -->|injects| VendorQuery
+    FindOrderableVendorsByCodesUseCase["FindOrderableVendorsByCodesUseCase"]
+    FindOrderableVendorsByCodesUseCase -->|injects| VendorQuery
     VendorForPurchaseFacade -->|injects| GetOrderableVendorUseCase
+    VendorForPurchaseFacade -->|injects| FindOrderableVendorsByCodesUseCase
     VendorForPurchaseFacade -->|injects| GetOrderableVendorUseCase
+    VendorForPurchaseFacade -->|injects| FindOrderableVendorsByCodesUseCase
     TransactionHost__library_["TransactionHost (library)"]
     PrismaVendorCommandRepository -->|injects| TransactionHost__library_
     PrismaReadPort["PrismaReadPort"]
@@ -314,10 +318,18 @@ flowchart LR
     PurchaseOrderNotificationAdapter["PurchaseOrderNotificationAdapter"]
     PurchaseOrderNotificationAdapter -->|injects| GetPurchaseOrderUseCase
     PurchaseOrderNotificationAdapter -->|injects| OrderableVendorPort
+    PurchaseOrderImportHandler["PurchaseOrderImportHandler"]
+    PurchaseOrderImportHandler -->|injects| OrderableVendorPort
+    PurchaseOrderImportHandler -->|injects| PurchasableProductPort
+    ImportPurchaseOrderUseCase["ImportPurchaseOrderUseCase"]
+    PurchaseOrderImportHandler -->|injects| ImportPurchaseOrderUseCase
     CreatePurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
     CreatePurchaseOrderUseCase -->|injects| OrderableVendorPort
     CreatePurchaseOrderUseCase -->|injects| PurchaseOrderIntegrationPort
     CreatePurchaseOrderUseCase -->|injects| CompanyConfigPort
+    ImportPurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
+    ImportPurchaseOrderUseCase -->|injects| CreatePurchaseOrderUseCase
+    ImportPurchaseOrderUseCase -->|injects| PurchaseOrderIntegrationPort
     AddPurchaseOrderLineUseCase -->|injects| PurchaseOrderCommandRepository
     AddPurchaseOrderLineUseCase -->|injects| PurchasableProductPort
     AddPurchaseOrderLineUseCase -->|injects| PurchaseOrderIntegrationPort

@@ -49,6 +49,29 @@ The handler is provided inside the domain module (its deps resolve there), but
 registration happens in the composition root via strict `app.select(module).get(handler)`.
 Adding an importable entity = one row in `IMPORT_ENTITIES`.
 
+## Registered entities
+
+| entityKey        | Handler                      | File shape                                                |
+| ---------------- | ---------------------------- | --------------------------------------------------------- |
+| `vendor`         | `VendorImportHandler`        | one row per vendor (`code`, `name`, …)                    |
+| `purchase-order` | `PurchaseOrderImportHandler` | one row per **PO line**, grouped by `poReference` (below) |
+
+**`purchase-order`** — columns `poReference`, `vendorCode`, `currency?`, `sku`,
+`quantity`, `unitPrice`. Vendors/products are resolved by code/SKU (case-insensitive)
+through the vendor/product public ports (one batch lookup per chunk); the file never
+carries UUIDs. Rows sharing a `poReference` become one **DRAFT** PO, stored in
+`purchase_orders.externalReference` (unique). Semantics worth knowing:
+
+- Find-or-create by `poReference`, lines are _set_ (not summed): re-importing a
+  corrected file, or a redelivered chunk, converges on the same PO with no duplicates.
+- A PO whose lines straddle execution chunks is fine — later chunks add to the same PO.
+- All rows of a PO within a chunk apply or fail together (one transaction per PO).
+- A row is `INVALID` if its vendor/SKU is unknown or not orderable/purchasable, or its
+  vendor/currency disagrees with earlier rows of the same PO, or repeats a `sku` within
+  the same PO (detected within a validation chunk; across chunks the later row wins).
+- Importing into a `poReference` whose PO is no longer DRAFT, or belongs to another
+  vendor/currency, fails those rows (`FAILED`) with the reason in the report.
+
 ## HTTP
 
 ```

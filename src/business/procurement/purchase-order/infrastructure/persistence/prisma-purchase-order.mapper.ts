@@ -15,6 +15,7 @@ export class PrismaPurchaseOrderMapper {
     id: string;
     orderNumber: string;
     vendorId: string;
+    externalReference?: string | null;
     status: string;
     currency: string;
     lines: { productId: string; quantity: number; unitPrice: unknown; total: unknown }[];
@@ -37,6 +38,7 @@ export class PrismaPurchaseOrderMapper {
       {
         orderNumber: OrderNumber.create(row.orderNumber),
         vendorId: new VendorIdRef(row.vendorId),
+        externalReference: row.externalReference ?? undefined,
         status: row.status as PurchaseOrderStatus,
         currency: row.currency,
         lines,
@@ -52,6 +54,7 @@ export class PrismaPurchaseOrderMapper {
       id: purchaseOrder.id.toString(),
       orderNumber: purchaseOrder.orderNumber,
       vendorId: purchaseOrder.vendorId,
+      externalReference: purchaseOrder.externalReference ?? null,
       status: purchaseOrder.status,
       currency: purchaseOrder.currency,
       subtotal: purchaseOrder.subtotal.toDecimal(),

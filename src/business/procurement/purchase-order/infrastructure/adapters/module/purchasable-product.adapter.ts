@@ -13,4 +13,8 @@ export class PurchasableProductAdapter implements PurchasableProductPort {
   getPurchasableProduct(id: string): Promise<ProductReference | null> {
     return this.productForPurchasePort.getPurchasableProduct(id);
   }
+
+  findPurchasableProductsBySkus(skus: string[]): Promise<ProductReference[]> {
+    return this.productForPurchasePort.findPurchasableProductsBySkus(skus);
+  }
 }

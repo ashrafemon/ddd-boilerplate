@@ -7,6 +7,11 @@ import {
   VendorImportHandler,
   VENDOR_IMPORT_DESCRIPTOR,
 } from '@business/party/vendor/infrastructure/adapters/platform/vendor-import.adapter';
+import { PurchaseOrderModule } from '@business/procurement/purchase-order/purchase-order.module';
+import {
+  PurchaseOrderImportHandler,
+  PURCHASE_ORDER_IMPORT_DESCRIPTOR,
+} from '@business/procurement/purchase-order/infrastructure/adapters/platform/purchase-order-import.adapter';
 
 /**
  * Composition-root bridge for the import opt-in — same precedent as
@@ -29,6 +34,12 @@ export const IMPORT_ENTITIES: readonly ImportEntityOptIn[] = [
     descriptor: VENDOR_IMPORT_DESCRIPTOR,
     ownerModule: VendorModule,
     importHandler: VendorImportHandler,
+  },
+  {
+    entityKey: 'purchase-order',
+    descriptor: PURCHASE_ORDER_IMPORT_DESCRIPTOR,
+    ownerModule: PurchaseOrderModule,
+    importHandler: PurchaseOrderImportHandler,
   },
 ];
 

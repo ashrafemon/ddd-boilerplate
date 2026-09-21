@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GetPurchasableProductUseCase } from '../usecases/get-purchasable-product.usecase';
+import { FindPurchasableProductsBySkusUseCase } from '../usecases/find-purchasable-products-by-skus.usecase';
 import { ProductForPurchasePort, ProductReference } from '@business/procurement/product/public';
 
 /**
@@ -10,11 +11,18 @@ import { ProductForPurchasePort, ProductReference } from '@business/procurement/
  */
 @Injectable()
 export class ProductForPurchaseFacade extends ProductForPurchasePort {
-  constructor(private readonly getPurchasableProductUseCase: GetPurchasableProductUseCase) {
+  constructor(
+    private readonly getPurchasableProductUseCase: GetPurchasableProductUseCase,
+    private readonly findPurchasableProductsBySkusUseCase: FindPurchasableProductsBySkusUseCase,
+  ) {
     super();
   }
 
   getPurchasableProduct(id: string): Promise<ProductReference | null> {
     return this.getPurchasableProductUseCase.execute(id);
+  }
+
+  findPurchasableProductsBySkus(skus: string[]): Promise<ProductReference[]> {
+    return this.findPurchasableProductsBySkusUseCase.execute(skus);
   }
 }

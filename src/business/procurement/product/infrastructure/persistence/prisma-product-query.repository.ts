@@ -36,6 +36,14 @@ export class PrismaProductQueryRepository extends ProductQuery {
     return rows.map((row: never) => PrismaProductMapper.toRecord(row));
   }
 
+  async findPurchasableBySkus(skus: string[]): Promise<ProductQueryRecord[]> {
+    if (skus.length === 0) return [];
+    const rows = await this.prismaRead.product.findMany({
+      where: { sku: { in: skus }, status: 'ACTIVE' as never },
+    });
+    return rows.map((row: never) => PrismaProductMapper.toRecord(row));
+  }
+
   async findAll(query: PageQuery): Promise<PageResult<ProductQueryRecord>> {
     const skip = (query.page - 1) * query.pageSize;
     const [rows, total] = await Promise.all([

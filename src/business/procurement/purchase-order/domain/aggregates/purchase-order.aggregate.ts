@@ -40,6 +40,10 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     return this.props.vendorId.toString();
   }
 
+  get externalReference(): string | undefined {
+    return this.props.externalReference;
+  }
+
   get status(): PurchaseOrderStatus {
     return this.props.status;
   }
@@ -96,6 +100,35 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     }
     this.props.updatedAt = new Date();
     this.addEvent(new PurchaseOrderLineAdded(this.id, productId));
+  }
+
+  /**
+   * Idempotent line write for bulk import: makes the line for `productId` exactly
+   * (quantity, unitPrice) — replacing an existing line instead of summing into it,
+   * so a redelivered import row can never double-count. Returns false (and raises
+   * no event) when the line is already in that state.
+   */
+  setLine(productId: string, quantity: number, unitPrice: Money): boolean {
+    this.assertEditable();
+    invariantRegistry.enforce('purchase-order.line-quantity', { quantity });
+
+    const existing = this.props.lines.find(line => line.productId.toString() === productId);
+    if (existing && existing.quantity === quantity && existing.unitPrice.equals(unitPrice)) {
+      return false;
+    }
+    const total = unitPrice.multiply(quantity);
+    if (existing) {
+      this.props.lines = this.props.lines.map(line =>
+        line === existing ? line.withUpdatedQuantity(quantity, unitPrice, total) : line,
+      );
+    } else {
+      this.props.lines.push(
+        new PurchaseOrderLine(new ProductIdRef(productId), quantity, unitPrice, total),
+      );
+    }
+    this.props.updatedAt = new Date();
+    this.addEvent(new PurchaseOrderLineAdded(this.id, productId));
+    return true;
   }
 
   removeLine(productId: string): void {

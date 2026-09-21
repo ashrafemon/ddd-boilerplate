@@ -13,6 +13,17 @@ jest.mock('@business/party/vendor/infrastructure/adapters/platform/vendor-import
   VENDOR_IMPORT_DESCRIPTOR: { entityKey: 'vendor' },
 }));
 
+jest.mock('@business/procurement/purchase-order/purchase-order.module', () => ({
+  PurchaseOrderModule: class PurchaseOrderModule {},
+}));
+jest.mock(
+  '@business/procurement/purchase-order/infrastructure/adapters/platform/purchase-order-import.adapter',
+  () => ({
+    PurchaseOrderImportHandler: class PurchaseOrderImportHandler {},
+    PURCHASE_ORDER_IMPORT_DESCRIPTOR: { entityKey: 'purchase-order' },
+  }),
+);
+
 import { IMPORT_ENTITIES, configureImports } from './configure-imports';
 
 class FakeOwnerModule {}
@@ -92,6 +103,9 @@ describe('configureImports (composition-root bridge)', () => {
           importHandler: { name: string };
         }) => [entityKey, ownerModule.name, importHandler.name],
       ),
-    ).toEqual([['vendor', 'VendorModule', 'VendorImportHandler']]);
+    ).toEqual([
+      ['vendor', 'VendorModule', 'VendorImportHandler'],
+      ['purchase-order', 'PurchaseOrderModule', 'PurchaseOrderImportHandler'],
+    ]);
   });
 });

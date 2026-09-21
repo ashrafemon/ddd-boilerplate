@@ -23,6 +23,14 @@ export class PrismaVendorQueryRepository extends VendorQuery {
     return row ? PrismaVendorMapper.toRecord(row as never) : null;
   }
 
+  async findOrderableByCodes(codes: string[]): Promise<VendorQueryRecord[]> {
+    if (codes.length === 0) return [];
+    const rows = await this.prismaRead.vendor.findMany({
+      where: { code: { in: codes }, status: 'ACTIVE' as never },
+    });
+    return rows.map((row: never) => PrismaVendorMapper.toRecord(row));
+  }
+
   async findAll(query: PageQuery): Promise<PageResult<VendorQueryRecord>> {
     const skip = (query.page - 1) * query.pageSize;
     const [rows, total] = await Promise.all([
