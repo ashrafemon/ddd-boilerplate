@@ -1,36 +1,43 @@
 // Transactional Outbox persistence model. Written inside the same DB
-// transaction as the aggregate change and published by the outbox publisher.
+// transaction as the aggregate change and published by the outbox dispatcher.
 // Claim safety: rows move to PUBLISHING via FOR UPDATE SKIP LOCKED with
-// claimedAt as the lease timestamp; stale leases are reconciled back to
-// PENDING. attempts gates re-claim; nextRetryAt implements backoff;
-// DEAD_LETTER is the terminal failure state for expired poison messages.
+// claimToken + claimedAt as the lease; stale leases are reconciled back to
+// PENDING. attempts gates re-claim; availableAt implements backoff;
+// DEAD_LETTER is the terminal failure state for exhausted poison messages.
 model OutboxMessage {
   id            String              @id @default(uuid()) @db.Uuid
-  eventType     String
-  aggregateType String
-  aggregateId   String              @db.Uuid
-  tenantId      String?
+  eventId       String              @unique @map("event_id") @db.Uuid
+  eventVersion  Int                 @default(1) @map("event_version")
+  tenantId      String?             @map("tenant_id") @db.VarChar(100)
+  organizationId String?            @map("organization_id") @db.VarChar(100)
+  eventType     String              @map("event_type") @db.VarChar(250)
+  aggregateType String              @map("aggregate_type") @db.VarChar(200)
+  aggregateId   String              @map("aggregate_id") @db.Uuid
   payload       Json
   headers       Json?
-  occurredAt    DateTime
-  publishedAt   DateTime?
-  claimedAt     DateTime?
-  nextRetryAt   DateTime?
-  attempts      Int                 @default(0)
-  lastError     String?
+  occurredAt    DateTime            @map("occurred_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
   status        OutboxMessageStatus @default(PENDING)
-  createdAt     DateTime            @default(now())
+  availableAt   DateTime            @default(now()) @map("available_at")
+  attempts      Int                 @default(0)
+  claimedAt     DateTime?           @map("claimed_at")
+  claimToken    String?             @map("claim_token") @db.Uuid
+  publishedAt   DateTime?           @map("published_at")
+  lastError     String?             @map("last_error") @db.Text
+  correlationId String?             @map("correlation_id") @db.VarChar(200)
+  causationId   String?             @map("causation_id") @db.VarChar(200)
+  version       Int                 @default(1)
 
-  @@index([status, createdAt])
-  @@index([status, claimedAt])
-  @@index([tenantId, status, createdAt])
-  @@index([createdAt])
+  @@index([status, availableAt])
+  @@index([tenantId, organizationId, status])
+  @@index([claimedAt])
+  @@index([aggregateType, aggregateId])
   @@map("outbox_messages")
 }
 
 enum OutboxMessageStatus {
   PENDING
-  PUBLISHING
+  PUBLISHING  // Maps to CLAIMED conceptually — lease-stamped claim state
   PUBLISHED
   FAILED
   DEAD_LETTER

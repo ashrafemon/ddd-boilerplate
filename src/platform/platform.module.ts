@@ -10,13 +10,16 @@ import { ContextModule } from './context/context.module';
 import { EventsModule } from './events/events.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 import { ImportModule } from './import/import.module';
+import { InboxModule } from './inbox/inbox.module';
 import { LockingModule } from './locking/locking.module';
 import { MessagingModule } from './messaging/messaging.module';
+import { MessageQueueModule } from './messaging/message-queue.module';
 import { NotificationModule } from './notification/notification.module';
 import { NumberingModule } from './numbering/numbering.module';
 import { ObservabilityModule } from './observability/observability.module';
 import { OutboxModule } from './outbox/outbox.module';
 import { RecurringModule } from './recurring/recurring.module';
+import { SagaModule } from './saga/saga.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { StorageModule } from './storage/storage.module';
 import { WebhookModule } from './webhook/webhook.module';
@@ -39,6 +42,8 @@ import { WebhookModule } from './webhook/webhook.module';
     OutboxModule,
     EventsModule,
     MessagingModule,
+    MessageQueueModule,
+    InboxModule,
     StorageModule,
     ObservabilityModule,
     CacheModule,
@@ -51,6 +56,7 @@ import { WebhookModule } from './webhook/webhook.module';
     LockingModule,
     IdempotencyModule,
     SchedulerModule,
+    SagaModule,
     RecurringModule,
     BatchOperationModule,
     ImportModule,
@@ -60,6 +66,8 @@ import { WebhookModule } from './webhook/webhook.module';
     OutboxModule,
     EventsModule,
     MessagingModule,
+    MessageQueueModule,
+    InboxModule,
     StorageModule,
     ObservabilityModule,
     CacheModule,
@@ -72,6 +80,7 @@ import { WebhookModule } from './webhook/webhook.module';
     LockingModule,
     IdempotencyModule,
     SchedulerModule,
+    SagaModule,
     RecurringModule,
     BatchOperationModule,
     ImportModule,

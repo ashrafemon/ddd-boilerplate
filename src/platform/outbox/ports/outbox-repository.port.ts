@@ -1,45 +1,44 @@
-import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
+import {
+  AppendOutboxEventRequest,
+  ClaimOutboxOptions,
+  OutboxClaimedRecord,
+  OutboxMessage,
+} from '../outbox.types';
 
-export interface OutboxMessageRecord {
-  id: string;
-  eventType: string;
-  aggregateType: string;
-  aggregateId: string;
-  tenantId: string | null;
-  payload: Record<string, unknown>;
-  headers: Record<string, string> | null;
-  occurredAt: Date;
-  publishedAt: Date | null;
-  attempts: number;
-  lastError: string | null;
-  status: 'PENDING' | 'PUBLISHING' | 'PUBLISHED' | 'FAILED' | 'DEAD_LETTER';
-}
+/**
+ * Internal repository port for the outbox persistence boundary.
+ *
+ * Business modules consume `OutboxPort`, not this port.
+ * This port is internal to the Outbox module — used by use cases and the dispatcher.
+ */
+export abstract class OutboxRepositoryPort {
+  /** Persist a single outbox event. Must run inside the caller's transaction. */
+  abstract append(request: AppendOutboxEventRequest): Promise<OutboxMessage>;
 
-/** Outbound repository port (abstract class = DI token). */
-export abstract class OutboxRepository {
-  abstract save(message: IntegrationMessage): Promise<void>;
-
-  /**
-   * Race-safe claim: FOR UPDATE SKIP LOCKED over due PENDING/FAILED rows,
-   * `PUBLISHING` + `claimedAt` lease stamped, `attempts` incremented here so
-   * a claim-then-crash cycle still converges to the max-attempt bound.
-   */
-  abstract claimBatch(batchSize: number, maxAttempts: number): Promise<OutboxMessageRecord[]>;
-
-  abstract markPublished(id: string): Promise<void>;
+  /** Persist a batch of outbox events. Must run inside the caller's transaction. */
+  abstract appendMany(requests: AppendOutboxEventRequest[]): Promise<OutboxMessage[]>;
 
   /**
-   * Records a publish failure: FAILED with exponential `nextRetryAt` backoff,
-   * or DEAD_LETTER once the claimed `attempts` reached `maxAttempts`.
+   * Race-safe claim: FOR UPDATE SKIP LOCKED over due PENDING/FAILED rows.
+   * Stamps CLAIMED + claimToken + claimedAt and bumps attempts.
    */
+  abstract claimBatch(options: ClaimOutboxOptions): Promise<OutboxClaimedRecord[]>;
+
+  /** CAS update: CLAIMED → PUBLISHED. Only succeeds if claimToken matches. */
+  abstract markPublished(id: string, claimToken: string): Promise<void>;
+
+  /** CAS update: CLAIMED → FAILED (or DEAD_LETTER if attempts >= maxAttempts). */
   abstract markFailed(
     id: string,
+    claimToken: string,
     error: string,
-    retry: { maxAttempts: number; backoffBaseMs: number },
+    availableAt: Date,
+    maxAttempts: number,
   ): Promise<void>;
 
-  /** Returns expired-lease PUBLISHING rows to PENDING; returns affected count. */
-  abstract reconcileStaleClaims(leaseMs: number): Promise<number>;
+  /** Release expired CLAIMED rows back to PENDING. Returns affected count. */
+  abstract releaseExpiredClaims(now: Date): Promise<number>;
 
+  /** Delete old PUBLISHED rows. Returns deleted count. */
   abstract deletePublishedOlderThan(hours: number): Promise<number>;
 }

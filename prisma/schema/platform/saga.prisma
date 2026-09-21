@@ -1,0 +1,155 @@
+// ============================================================================
+// Platform — Saga Process Orchestration (saga.prisma)
+// ============================================================================
+// Configurable, tenant/company-aware process orchestration platform for
+// coordinating long-running business workflows across independent modules.
+//
+// A Saga is not one large database transaction — it coordinates a process
+// that spans multiple aggregates, modules, transactions, or async boundaries.
+//
+// Multi-tenancy: Every record is scoped by (tenantId, organizationId).
+// ============================================================================
+
+enum SagaInstanceStatus {
+  STARTED
+  RUNNING
+  WAITING
+  COMPLETED
+  COMPENSATING
+  COMPENSATED
+  FAILED
+  SUSPENDED
+
+  @@map("saga_instance_status")
+}
+
+enum SagaStepExecutionStatus {
+  PENDING
+  CLAIMED
+  WAITING
+  COMPLETED
+  FAILED
+  COMPENSATING
+  COMPENSATED
+  SUSPENDED
+
+  @@map("saga_step_execution_status")
+}
+
+model SagaInstance {
+  id             String             @id @default(uuid()) @db.Uuid
+  tenantId       String             @map("tenant_id") @db.VarChar(100)
+  organizationId String             @map("organization_id") @db.VarChar(100)
+  sagaType       String             @map("saga_type") @db.VarChar(250)
+  sagaVersion    Int                @default(1) @map("saga_version")
+  correlationId  String             @map("correlation_id") @db.VarChar(200)
+  status         SagaInstanceStatus @default(STARTED)
+  currentStep    String?            @map("current_step") @db.VarChar(250)
+  state          Json?
+  startedAt      DateTime           @default(now()) @map("started_at")
+  completedAt    DateTime?          @map("completed_at")
+  failedAt       DateTime?          @map("failed_at")
+  lastError      String?            @map("last_error") @db.Text
+  claimToken     String?            @map("claim_token") @db.Uuid
+  claimedAt      DateTime?          @map("claimed_at")
+  version        Int                @default(1)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  stepExecutions SagaStepExecution[]
+
+  @@unique([tenantId, organizationId, sagaType, correlationId])
+  @@index([status])
+  @@index([tenantId, organizationId, status])
+  @@index([correlationId])
+  @@map("saga_instances")
+}
+
+model SagaStepExecution {
+  id              String                  @id @default(uuid()) @db.Uuid
+  sagaInstanceId  String                  @map("saga_instance_id") @db.Uuid
+  stepName        String                  @map("step_name") @db.VarChar(250)
+  status          SagaStepExecutionStatus @default(PENDING)
+  attempts        Int                     @default(0)
+  commandId       String?                 @map("command_id") @db.Uuid
+  startedAt       DateTime?               @map("started_at")
+  completedAt     DateTime?               @map("completed_at")
+  availableAt     DateTime?               @map("available_at")
+  lastError       String?                 @map("last_error") @db.Text
+  claimToken      String?                 @map("claim_token") @db.Uuid
+  claimedAt       DateTime?               @map("claimed_at")
+  version         Int                     @default(1)
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  sagaInstance    SagaInstance            @relation(fields: [sagaInstanceId], references: [id])
+
+  @@unique([sagaInstanceId, stepName])
+  @@index([status, availableAt])
+  @@index([claimToken])
+  @@map("saga_step_executions")
+}
+
+model SagaCompanyConfig {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.VarChar(100)
+  organizationId String   @map("organization_id") @db.VarChar(100)
+  sagaType       String   @map("saga_type") @db.VarChar(250)
+  sagaVersion    Int      @default(1) @map("saga_version")
+  enabled        Boolean  @default(true)
+  configJson     Json?    @map("config_json")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, organizationId, sagaType])
+  @@map("saga_company_configs")
+}
+
+model SagaEventSubscription {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.VarChar(100)
+  organizationId String   @map("organization_id") @db.VarChar(100)
+  sagaType       String   @map("saga_type") @db.VarChar(250)
+  eventType      String   @map("event_type") @db.VarChar(250)
+  eventVersion   Int      @default(1) @map("event_version")
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, organizationId, sagaType, eventType, eventVersion])
+  @@map("saga_event_subscriptions")
+}
+
+model SagaStepConfig {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.VarChar(100)
+  organizationId String   @map("organization_id") @db.VarChar(100)
+  sagaType       String   @map("saga_type") @db.VarChar(250)
+  stepName       String   @map("step_name") @db.VarChar(250)
+  enabled        Boolean  @default(true)
+  timeoutMs      Int?     @map("timeout_ms")
+  maxAttempts    Int?     @map("max_attempts")
+  configJson     Json?    @map("config_json")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, organizationId, sagaType, stepName])
+  @@map("saga_step_configs")
+}
+
+model SagaCompensationConfig {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.VarChar(100)
+  organizationId   String   @map("organization_id") @db.VarChar(100)
+  sagaType         String   @map("saga_type") @db.VarChar(250)
+  failedStep       String   @map("failed_step") @db.VarChar(250)
+  compensationStep String   @map("compensation_step") @db.VarChar(250)
+  order            Int      @default(0)
+  enabled          Boolean  @default(true)
+  configJson       Json?    @map("config_json")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, organizationId, sagaType, failedStep, compensationStep])
+  @@map("saga_compensation_configs")
+}
