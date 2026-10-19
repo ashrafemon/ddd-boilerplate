@@ -15,6 +15,8 @@ export interface RecordStockMovementInput {
   companyId: string;
   tenantId: string;
   actorId?: string;
+  /** Original movement this entry compensates (GOODS_RECEIPT_REVERSAL only). */
+  reversalOfId?: string;
 }
 
 @Injectable()

@@ -6,11 +6,14 @@ import { PurchaseOrderController } from './presentation/http/purchase-order.cont
 import { PurchaseOrderForGrnFacade } from './application/facades/purchase-order-for-grn.facade';
 import { CreatePurchaseOrderUseCase } from './application/usecases/create-purchase-order.usecase';
 import { AddPurchaseOrderLineUseCase } from './application/usecases/add-purchase-order-line.usecase';
+import { UpdatePurchaseOrderUseCase } from './application/usecases/update-purchase-order.usecase';
+import { UpdatePurchaseOrderLineUseCase } from './application/usecases/update-purchase-order-line.usecase';
 import { RemovePurchaseOrderLineUseCase } from './application/usecases/remove-purchase-order-line.usecase';
 import { PurchaseOrderTransitionUseCase } from './application/usecases/purchase-order-transition.usecase';
 import { IssuePurchaseOrderUseCase } from './application/usecases/issue-purchase-order.usecase';
 import { ClosePurchaseOrderUseCase } from './application/usecases/close-purchase-order.usecase';
 import { GetPurchaseOrderReceiptsUseCase } from './application/usecases/get-purchase-order-receipts.usecase';
+import { GetPurchaseOrderRemainingQuantitiesUseCase } from './application/usecases/get-purchase-order-remaining-quantities.usecase';
 import { RegisterPurchaseOrderReceiptUseCase } from './application/usecases/register-purchase-order-receipt.usecase';
 import { HasPurchaseOrderReceiptsUseCase } from './application/usecases/has-purchase-order-receipts.usecase';
 import { ImportPurchaseOrderUseCase } from './application/usecases/import-purchase-order.usecase';
@@ -37,6 +40,7 @@ import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
 import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
+import { PurchaseOrderReadCacheAdapter } from './infrastructure/adapters/platform/purchase-order-read-cache.adapter';
 import { PurchasableProductAdapter } from './infrastructure/adapters/module/purchasable-product.adapter';
 import { OrderableVendorAdapter } from './infrastructure/adapters/module/orderable-vendor.adapter';
 import { PurchaseOrderBatchOperationAdapter } from './infrastructure/adapters/platform/purchase-order-batch-operation.adapter';
@@ -50,17 +54,24 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     PurchaseOrderBatchOperationAdapter,
     PurchaseOrderNotificationAdapter,
     PurchaseOrderImportHandler,
+    PurchaseOrderReadCacheAdapter,
     CreatePurchaseOrderUseCase,
     ImportPurchaseOrderUseCase,
     AddPurchaseOrderLineUseCase,
+    UpdatePurchaseOrderUseCase,
+    UpdatePurchaseOrderLineUseCase,
     RemovePurchaseOrderLineUseCase,
     PurchaseOrderTransitionUseCase,
     IssuePurchaseOrderUseCase,
     ClosePurchaseOrderUseCase,
     RegisterPurchaseOrderReceiptUseCase,
     HasPurchaseOrderReceiptsUseCase,
+    // Read-model cache (plan §1.6): every consumer of this token — controller,
+    // batch adapter, GRN facade — reads through the caching decorator, and
+    // command use cases invalidate through the same port.
     GetPurchaseOrderUseCase,
     GetPurchaseOrderReceiptsUseCase,
+    GetPurchaseOrderRemainingQuantitiesUseCase,
     ListPurchaseOrdersUseCase,
     CreateRecurringPurchaseOrderUseCase,
     CreateRecurringFromPurchaseOrderUseCase,

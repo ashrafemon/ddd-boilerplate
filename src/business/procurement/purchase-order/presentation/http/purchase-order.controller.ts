@@ -14,6 +14,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
 import type { RecurringTemplateRecord } from '@platform/recurring/recurring-template.types';
 import { AddPurchaseOrderLineUseCase } from '../../application/usecases/add-purchase-order-line.usecase';
+import { UpdatePurchaseOrderUseCase } from '../../application/usecases/update-purchase-order.usecase';
+import { UpdatePurchaseOrderLineUseCase } from '../../application/usecases/update-purchase-order-line.usecase';
+import { GetPurchaseOrderReceiptsUseCase } from '../../application/usecases/get-purchase-order-receipts.usecase';
+import { GetPurchaseOrderRemainingQuantitiesUseCase } from '../../application/usecases/get-purchase-order-remaining-quantities.usecase';
 import { CreatePurchaseOrderUseCase } from '../../application/usecases/create-purchase-order.usecase';
 import { CreateRecurringPurchaseOrderUseCase } from '../../application/usecases/create-recurring-purchase-order.usecase';
 import { CreateRecurringFromPurchaseOrderUseCase } from '../../application/usecases/create-recurring-from-purchase-order.usecase';
@@ -25,6 +29,8 @@ import { ClosePurchaseOrderUseCase } from '../../application/usecases/close-purc
 import { RemovePurchaseOrderLineUseCase } from '../../application/usecases/remove-purchase-order-line.usecase';
 import { CreatePurchaseOrderDto } from './requests/create-purchase-order.request.dto';
 import { AddLineDto } from './requests/add-purchase-order-line.request.dto';
+import { UpdatePurchaseOrderDto } from './requests/update-purchase-order.request.dto';
+import { UpdatePurchaseOrderLineDto } from './requests/update-purchase-order-line.request.dto';
 import { PurchaseOrderQueryDto } from './requests/query-purchase-orders.request.dto';
 import { RejectPurchaseOrderDto } from './requests/reject-purchase-order.request.dto';
 import { CreateRecurringPurchaseOrderDto } from './requests/create-recurring-purchase-order.request.dto';
@@ -51,6 +57,12 @@ import { ApiResponse } from '@shared-kernel/types/api-response.type';
 
 type PurchaseOrderGetResponse = GetPurchaseOrderMobileResponse | GetPurchaseOrderWebResponse;
 type PurchaseOrderListResponse = ListPurchaseOrdersMobileResponse | ListPurchaseOrdersWebResponse;
+type PurchaseOrderReceiptsResponse = Awaited<
+  ReturnType<GetPurchaseOrderReceiptsUseCase['execute']>
+>;
+type PurchaseOrderRemainingQuantitiesResponse = Awaited<
+  ReturnType<GetPurchaseOrderRemainingQuantitiesUseCase['execute']>
+>;
 
 @ApiTags('purchase-orders')
 @ApiBearerAuth()
@@ -59,7 +71,11 @@ export class PurchaseOrderController {
   constructor(
     private readonly createPurchaseOrderUseCase: CreatePurchaseOrderUseCase,
     private readonly addPurchaseOrderLineUseCase: AddPurchaseOrderLineUseCase,
+    private readonly updatePurchaseOrderUseCase: UpdatePurchaseOrderUseCase,
+    private readonly updatePurchaseOrderLineUseCase: UpdatePurchaseOrderLineUseCase,
     private readonly removePurchaseOrderLineUseCase: RemovePurchaseOrderLineUseCase,
+    private readonly getPurchaseOrderReceiptsUseCase: GetPurchaseOrderReceiptsUseCase,
+    private readonly getPurchaseOrderRemainingQuantitiesUseCase: GetPurchaseOrderRemainingQuantitiesUseCase,
     private readonly purchaseOrderTransitionUseCase: PurchaseOrderTransitionUseCase,
     private readonly issuePurchaseOrderUseCase: IssuePurchaseOrderUseCase,
     private readonly closePurchaseOrderUseCase: ClosePurchaseOrderUseCase,
@@ -75,6 +91,33 @@ export class PurchaseOrderController {
   async create(@Body() dto: CreatePurchaseOrderDto): Promise<ApiResponse<IdResponse>> {
     const id = await this.createPurchaseOrderUseCase.execute({ ...dto });
     return { data: { id: id.toString() }, message: 'Purchase order created' };
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a draft purchase order header' })
+  @HttpCode(HttpStatus.OK)
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePurchaseOrderDto,
+  ): Promise<ApiResponse<IdResponse>> {
+    const poId = await this.updatePurchaseOrderUseCase.execute({ id, ...dto });
+    return { data: { id: poId.toString() }, message: 'Purchase order updated' };
+  }
+
+  @Get(':id/receipts')
+  @ApiOperation({ summary: 'Get receipt status and per-line received/remaining for a PO' })
+  async receipts(@Param('id') id: string): Promise<ApiResponse<PurchaseOrderReceiptsResponse>> {
+    const receipts = await this.getPurchaseOrderReceiptsUseCase.execute(id);
+    return { data: receipts, message: 'Purchase order receipts fetched' };
+  }
+
+  @Get(':id/remaining-quantities')
+  @ApiOperation({ summary: 'Get remaining receivable quantities per PO line' })
+  async remainingQuantities(
+    @Param('id') id: string,
+  ): Promise<ApiResponse<PurchaseOrderRemainingQuantitiesResponse>> {
+    const remaining = await this.getPurchaseOrderRemainingQuantitiesUseCase.execute(id);
+    return { data: remaining, message: 'Purchase order remaining quantities fetched' };
   }
 
   @Post('recurring')
@@ -144,6 +187,22 @@ export class PurchaseOrderController {
   ): Promise<ApiResponse<IdResponse>> {
     const poId = await this.addPurchaseOrderLineUseCase.execute({ id, ...dto });
     return { data: { id: poId.toString() }, message: 'Line added' };
+  }
+
+  @Patch(':id/lines/:productId')
+  @ApiOperation({ summary: 'Rewrite a draft purchase order line' })
+  @HttpCode(HttpStatus.OK)
+  async updateLine(
+    @Param('id') id: string,
+    @Param('productId') productId: string,
+    @Body() dto: UpdatePurchaseOrderLineDto,
+  ): Promise<ApiResponse<IdResponse>> {
+    const poId = await this.updatePurchaseOrderLineUseCase.execute({
+      id,
+      productId,
+      ...dto,
+    });
+    return { data: { id: poId.toString() }, message: 'Purchase order line updated' };
   }
 
   @Delete(':id/lines/:productId')

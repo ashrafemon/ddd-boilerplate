@@ -10,6 +10,7 @@ export interface CompanyConfig {
   companyName: string;
   defaultCurrency: string;
   autoApproveThreshold: number;
+  overReceiptTolerance: number;
   isActive: boolean;
 }
 

@@ -42,6 +42,7 @@ export class PrismaCompanyConfigRepository implements CompanyConfigPort {
         companyName: row.companyName,
         defaultCurrency: row.defaultCurrency,
         autoApproveThreshold: Number(row.autoApproveThreshold),
+        overReceiptTolerance: Number(row.overReceiptTolerance ?? 0.1),
         isActive: row.isActive,
       };
     }
@@ -62,6 +63,7 @@ export class PrismaCompanyConfigRepository implements CompanyConfigPort {
       companyName: this.configService.appName,
       defaultCurrency: 'USD',
       autoApproveThreshold: 10_000,
+      overReceiptTolerance: 0.1,
       isActive: true,
     };
   }

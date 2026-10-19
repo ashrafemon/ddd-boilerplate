@@ -18,6 +18,7 @@ import { CompleteGrnUseCase } from './application/usecases/complete-grn.usecase'
 import { CancelGrnUseCase } from './application/usecases/cancel-grn.usecase';
 import { PostGrnUseCase } from './application/usecases/post-grn.usecase';
 import { ReverseGrnUseCase } from './application/usecases/reverse-grn.usecase';
+import { RecordInspectionResultUseCase } from './application/usecases/record-inspection-result.usecase';
 import { GetGrnUseCase } from './application/usecases/get-grn.usecase';
 import { ListGrnsUseCase } from './application/usecases/list-grns.usecase';
 import { GrnCommandRepository } from './domain/repositories/grn-command.repository';
@@ -30,21 +31,28 @@ import { PrismaGrnQueryRepository } from './infrastructure/persistence/prisma-gr
 import { GrnController } from './presentation/http/grn.controller';
 import { GrnForPurchaseOrderPort } from '@business/procurement/good-receipt-note/public';
 import { GrnBatchOperationAdapter } from './infrastructure/adapters/platform/grn-batch-operation.adapter';
+import { GrnNotificationAdapter } from './infrastructure/adapters/platform/grn-notification.adapter';
+import { GrnReadCacheAdapter } from './infrastructure/adapters/platform/grn-read-cache.adapter';
 
 @Module({
   imports: [PlatformModule, PurchaseOrderModule],
   controllers: [GrnController],
   providers: [
     GrnBatchOperationAdapter,
+    GrnNotificationAdapter,
+    GrnReadCacheAdapter,
     CreateGrnUseCase,
     AddGrnLineUseCase,
     ReceiveGrnUseCase,
     CompleteGrnUseCase,
+    // Read-model cache (plan §1.6): controllers, batch adapter and the PO-facing
+    // facade all read through the caching decorator; commands invalidate.
     GetGrnUseCase,
     ListGrnsUseCase,
     CancelGrnUseCase,
     PostGrnUseCase,
     ReverseGrnUseCase,
+    RecordInspectionResultUseCase,
     GrnEventEmitterListener,
     GrnKafkaListener,
     GrnRabbitMQListener,

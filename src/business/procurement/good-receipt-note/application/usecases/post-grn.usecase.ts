@@ -6,7 +6,9 @@ import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-po
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 import { IdempotencyPort } from '@platform/idempotency/ports/idempotency.port';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { AuditPort } from '@platform/audit/ports/audit.port';
 import { GoodsReceiptPosted } from '../../domain/events/grn.posted.event';
+import { GrnReadCache } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class PostGrnUseCase {
@@ -16,12 +18,15 @@ export class PostGrnUseCase {
     private readonly integrationEvent: GrnIntegrationPort,
     private readonly idempotency: IdempotencyPort,
     private readonly requestContext: RequestContextPort,
+    private readonly audit: AuditPort,
+    private readonly readCache: GrnReadCache,
   ) {}
 
   @Transactional()
-  async execute(input: { id: string; idempotencyKey?: string }): Promise<GrnId> {
+  async execute(input: { id: string; idempotencyKey?: string; actorId?: string }): Promise<GrnId> {
     const tenantId = this.requestContext.getTenantId() ?? '';
     const companyId = this.requestContext.getCompanyId() ?? '';
+    const actorId = input.actorId ?? this.requestContext.getUserId();
     const key = input.idempotencyKey ?? input.id;
 
     const reserveResult = await this.idempotency.reserve({
@@ -53,7 +58,7 @@ export class PostGrnUseCase {
         throw new ConflictException(`GRN cannot be posted from status ${grn.status}`);
       }
 
-      // Register receipt on the PO (atomic receiving balance).
+      // Register receipt on the PO (atomic receiving balance, PO-07).
       await this.purchaseOrderPort.registerReceipt({
         purchaseOrderId: grn.purchaseOrderId,
         lines: grn.lines.map(l => ({
@@ -62,8 +67,19 @@ export class PostGrnUseCase {
         })),
       });
 
-      grn.complete();
+      grn.complete(actorId);
       await this.grnRepository.update(grn);
+      await this.readCache.invalidate(grn.id.toString());
+
+      await this.audit.record({
+        action: 'grn.post',
+        entityType: 'GoodReceiptNote',
+        entityId: grn.id.toString(),
+        actorId,
+        tenantId,
+        companyId,
+        changes: { status: grn.status },
+      });
 
       for (const event of grn.pullEvents()) {
         await this.integrationEvent.send(event, grn.id.toString());

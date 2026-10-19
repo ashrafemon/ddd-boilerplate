@@ -40,10 +40,10 @@ invariantRegistry.register<{ status: PurchaseOrderStatus; to: PurchaseOrderStatu
           PurchaseOrderStatus.CANCELLED,
         ],
         [PurchaseOrderStatus.APPROVED]: [PurchaseOrderStatus.ISSUED, PurchaseOrderStatus.CANCELLED],
-        [PurchaseOrderStatus.ISSUED]: [
-          PurchaseOrderStatus.COMPLETED,
-          PurchaseOrderStatus.CANCELLED,
-        ],
+        // E-1: cancel is allowed from DRAFT/SUBMITTED/APPROVED only; an ISSUED
+        // order is no longer freely cancelable — it closes (or is corrected
+        // through the receipt-reversal workflow once goods arrived).
+        [PurchaseOrderStatus.ISSUED]: [PurchaseOrderStatus.COMPLETED],
         [PurchaseOrderStatus.REJECTED]: [],
         [PurchaseOrderStatus.CANCELLED]: [],
         [PurchaseOrderStatus.COMPLETED]: [],

@@ -1,5 +1,11 @@
 // PurchaseOrder aggregate persistence model. Owns its lines; references
 // products and vendors only by id (aggregate boundary).
+//
+// Table contract — commercial + actor columns (plan Phase 1.2 / 2.2 / 2.3):
+//   orderDate / expectedDeliveryDate — commercial header, nullable, editable only in DRAFT.
+//   createdBy/approvedBy/rejectedBy/issuedBy/cancelledBy + approval timestamps/reason —
+//   actor trail written from RequestContextPort; nullable, never backfilled (E-4).
+//   approval record: approvedAt/rejectedAt/rejectionReason (Phase 2.3, minimal).
 model PurchaseOrder {
   id          String                @id @default(uuid()) @db.Uuid
   orderNumber String                @unique
@@ -11,6 +17,18 @@ model PurchaseOrder {
   currency    String                @default("USD") @db.VarChar(3)
   subtotal    Decimal               @default(0) @db.Decimal(18, 2)
   total       Decimal               @default(0) @db.Decimal(18, 2)
+  // Commercial header (spec §3.1).
+  orderDate            DateTime?
+  expectedDeliveryDate DateTime?
+  // Actor & approval trail (plan §1.2 / §2.3) — nullable, no backfill.
+  createdBy       String?
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  issuedBy        String?
+  cancelledBy     String?
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
   version     Int                   @default(1)
@@ -28,6 +46,9 @@ model PurchaseOrderLine {
   productId     String        @db.Uuid
   quantity      Int
   receivedQuantity Int        @default(0)
+  // Commercial snapshot from the product master at add/issue time (spec §3.2/§3.3):
+  // a later product rename must not silently change this PO's agreed description.
+  descriptionSnapshot String?
   unitPrice     Decimal       @db.Decimal(18, 2)
   total         Decimal       @db.Decimal(18, 2)
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
