@@ -9,7 +9,7 @@ import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
 import { PurchaseOrderApproved } from '../events/purchase-order.approved.event';
 import { PurchaseOrderCancelled } from '../events/purchase-order.cancelled.event';
 import { PurchaseOrderIssued } from '../events/purchase-order.issued.event';
-import { PurchaseOrderClosed } from '../events/purchase-order.closed.event';
+import { PurchaseOrderCompleted } from '../events/purchase-order.completed.event';
 import './purchase-order.invariants';
 import '../policies/approval.policy';
 import '../policies/cancellation.policy';
@@ -318,11 +318,12 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     });
     this.props.status = PurchaseOrderStatus.COMPLETED;
     this.props.updatedAt = new Date();
-    this.addEvent(new PurchaseOrderClosed(this.id));
+    this.addEvent(new PurchaseOrderCompleted(this.id));
   }
 
   complete(): void {
-    // Legacy alias: delegates to close.
+    // Legacy alias: the business verb is "close", the resulting status and
+    // event are COMPLETED / `PurchaseOrderCompleted`.
     this.close();
   }
 
