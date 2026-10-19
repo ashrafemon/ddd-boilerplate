@@ -10,7 +10,7 @@ model Invoice {
   postedAt    DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
-  version     Int           @default(0)
+  version     Int           @default(1)
 
   @@index([customerId, status])
   @@index([status, createdAt])
