@@ -27,6 +27,7 @@ model PurchaseOrderLine {
   purchaseOrderId String      @db.Uuid
   productId     String        @db.Uuid
   quantity      Int
+  receivedQuantity Int        @default(0)
   unitPrice     Decimal       @db.Decimal(18, 2)
   total         Decimal       @db.Decimal(18, 2)
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
@@ -40,6 +41,7 @@ enum PurchaseOrderStatus {
   DRAFT
   SUBMITTED
   APPROVED
+  ISSUED
   REJECTED
   CANCELLED
   COMPLETED

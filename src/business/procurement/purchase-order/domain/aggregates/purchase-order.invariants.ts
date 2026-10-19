@@ -39,7 +39,8 @@ invariantRegistry.register<{ status: PurchaseOrderStatus; to: PurchaseOrderStatu
           PurchaseOrderStatus.REJECTED,
           PurchaseOrderStatus.CANCELLED,
         ],
-        [PurchaseOrderStatus.APPROVED]: [
+        [PurchaseOrderStatus.APPROVED]: [PurchaseOrderStatus.ISSUED, PurchaseOrderStatus.CANCELLED],
+        [PurchaseOrderStatus.ISSUED]: [
           PurchaseOrderStatus.COMPLETED,
           PurchaseOrderStatus.CANCELLED,
         ],

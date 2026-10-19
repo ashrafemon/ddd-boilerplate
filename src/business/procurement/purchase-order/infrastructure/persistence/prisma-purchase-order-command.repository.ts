@@ -24,8 +24,8 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
   }
 
   async update(purchaseOrder: PurchaseOrder): Promise<PurchaseOrder> {
-    await this.txHost.tx.purchaseOrder.update({
-      where: { id: purchaseOrder.id.toString() },
+    const result = await this.txHost.tx.purchaseOrder.updateMany({
+      where: { id: purchaseOrder.id.toString(), version: purchaseOrder.getVersion() },
       data: {
         ...PrismaPurchaseOrderMapper.toRow(purchaseOrder),
         lines: {
@@ -34,6 +34,9 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
         },
       } as never,
     });
+    if (result.count === 0) {
+      throw new Error('Purchase order was modified concurrently (optimistic concurrency conflict)');
+    }
     return purchaseOrder;
   }
 
@@ -59,16 +62,6 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
       include: { lines: true },
     });
     return row ? PrismaPurchaseOrderMapper.toDomain(row) : null;
-  }
-
-  async nextOrderSequence(): Promise<number> {
-    const last = await this.txHost.tx.purchaseOrder.findFirst({
-      orderBy: { createdAt: 'desc' },
-      select: { orderNumber: true },
-    });
-    if (!last) return 1;
-    const match = /^PO-(\d+)$/.exec(last.orderNumber);
-    return match ? parseInt(match[1], 10) + 1 : 0;
   }
 
   async findAll(query: PageQuery) {

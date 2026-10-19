@@ -17,12 +17,15 @@ export class PrismaGrnMapper {
       productId: string;
       orderedQuantity: number;
       receivedQuantity: number;
+      acceptedQuantity: number;
+      rejectedQuantity: number;
       unitPrice: number;
       total: number;
     }[];
-    receivedAt: Date;
+    receivedAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
+    version: number;
   }): GoodReceiptNote {
     return GoodReceiptNote.instantiate(
       GrnId.fromString(row.id),
@@ -39,13 +42,15 @@ export class PrismaGrnMapper {
             line.orderedQuantity,
             line.receivedQuantity,
             line.unitPrice,
+            line.acceptedQuantity,
+            line.rejectedQuantity,
           ),
         ),
         receivedAt: row.receivedAt,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       } satisfies GrnProps,
-      1,
+      row.version,
     );
   }
 
@@ -59,17 +64,23 @@ export class PrismaGrnMapper {
       currency: grn.currency,
       subtotal: grn.subtotal,
       total: grn.total,
-      lines: grn.lines.map(line => ({
-        productId: line.productId,
-        orderedQuantity: line.orderedQuantity,
-        receivedQuantity: line.receivedQuantity,
-        unitPrice: line.unitPrice,
-        total: line.total,
-      })),
       receivedAt: grn.receivedAt,
       createdAt: grn.createdAt,
       updatedAt: grn.updatedAt,
+      version: grn.getVersion(),
     };
+  }
+
+  static toLinesCreateInput(grn: GoodReceiptNote) {
+    return grn.lines.map(line => ({
+      productId: line.productId,
+      orderedQuantity: line.orderedQuantity,
+      receivedQuantity: line.receivedQuantity,
+      acceptedQuantity: line.acceptedQuantity,
+      rejectedQuantity: line.rejectedQuantity,
+      unitPrice: line.unitPrice,
+      total: line.total,
+    }));
   }
 
   static toRecord(row: never): GrnQueryRecord {
@@ -86,10 +97,12 @@ export class PrismaGrnMapper {
         productId: string;
         orderedQuantity: number;
         receivedQuantity: number;
+        acceptedQuantity: number;
+        rejectedQuantity: number;
         unitPrice: number;
         total: number;
       }[];
-      receivedAt: Date;
+      receivedAt: Date | null;
       createdAt: Date;
       updatedAt: Date;
     };

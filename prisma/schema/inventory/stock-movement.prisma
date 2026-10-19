@@ -1,0 +1,25 @@
+// Inventory — StockMovement ledger (design common, Phase 5).
+// Balances are a projection updated in the same transaction as the movement insert.
+// @@unique([grnLineId, movementType]) = natural idempotency for redelivery.
+
+model StockMovement {
+  id                String        @id @default(uuid()) @db.Uuid
+  grnLineId         String        @map("grn_line_id") @db.Uuid
+  productId         String        @map("product_id") @db.Uuid
+  quantity          Int
+  movementType      String        @map("movement_type") @db.VarChar(50)
+  sourceDocumentId  String        @map("source_document_id") @db.VarChar(200)
+  sourceDocumentType String       @map("source_document_type") @db.VarChar(100)
+  companyId         String        @map("company_id") @db.VarChar(100)
+  tenantId          String        @map("tenant_id") @db.VarChar(100)
+  actorId           String?       @map("actor_id") @db.VarChar(200)
+  effectiveDate     DateTime      @map("effective_date")
+  reversalOfId      String?       @map("reversal_of_id") @db.Uuid
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  @@unique([grnLineId, movementType])
+  @@index([productId])
+  @@index([companyId])
+  @@index([tenantId])
+  @@map("inventory_movements")
+}

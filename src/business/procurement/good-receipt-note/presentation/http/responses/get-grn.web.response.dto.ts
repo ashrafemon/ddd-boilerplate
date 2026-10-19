@@ -19,7 +19,7 @@ const getGrnWebSchema = z.object({
   subtotal: z.number(),
   total: z.number(),
   lines: z.array(grnLineWebSchema),
-  receivedAt: z.date(),
+  receivedAt: z.date().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

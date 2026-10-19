@@ -5,5 +5,4 @@ export abstract class GrnCommandRepository {
   abstract update(grn: GoodReceiptNote): Promise<GoodReceiptNote>;
   abstract findById(id: string): Promise<GoodReceiptNote | null>;
   abstract findByGrnNumber(grnNumber: string): Promise<GoodReceiptNote | null>;
-  abstract nextGrnSequence(): Promise<number>;
 }

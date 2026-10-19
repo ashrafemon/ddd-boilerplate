@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { PurchaseOrderTransitionRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
@@ -29,9 +29,10 @@ export class PurchaseOrderTransitionUseCase {
         purchaseOrder.submit();
         break;
       case 'approve': {
-        if (!purchaseOrder.requiresManualApproval(company.autoApproveThreshold)) {
-          purchaseOrder.approve();
+        if (purchaseOrder.requiresManualApproval(company.autoApproveThreshold)) {
+          throw new ConflictException('Manual approval required for this purchase order');
         }
+        purchaseOrder.approve();
         break;
       }
       case 'reject':

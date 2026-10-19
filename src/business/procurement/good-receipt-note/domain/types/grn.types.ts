@@ -5,6 +5,8 @@ export class GrnLine {
     public readonly productId: string,
     public readonly orderedQuantity: number,
     public readonly receivedQuantity: number,
+    public readonly acceptedQuantity: number,
+    public readonly rejectedQuantity: number,
     public readonly unitPrice: number,
   ) {}
 
@@ -13,16 +15,42 @@ export class GrnLine {
     orderedQuantity: number,
     receivedQuantity: number,
     unitPrice: number,
+    acceptedQuantity?: number,
+    rejectedQuantity?: number,
   ): GrnLine {
-    return new GrnLine(productId, orderedQuantity, receivedQuantity, unitPrice);
+    const accepted = acceptedQuantity ?? receivedQuantity;
+    const rejected = rejectedQuantity ?? 0;
+    return new GrnLine(productId, orderedQuantity, receivedQuantity, accepted, rejected, unitPrice);
   }
 
   get total(): number {
     return this.receivedQuantity * this.unitPrice;
   }
 
+  get acceptedTotal(): number {
+    return this.acceptedQuantity * this.unitPrice;
+  }
+
   withReceivedQuantity(receivedQuantity: number): GrnLine {
-    return new GrnLine(this.productId, this.orderedQuantity, receivedQuantity, this.unitPrice);
+    return new GrnLine(
+      this.productId,
+      this.orderedQuantity,
+      receivedQuantity,
+      this.acceptedQuantity,
+      this.rejectedQuantity,
+      this.unitPrice,
+    );
+  }
+
+  withInspection(acceptedQuantity: number, rejectedQuantity: number): GrnLine {
+    return new GrnLine(
+      this.productId,
+      this.orderedQuantity,
+      this.receivedQuantity,
+      acceptedQuantity,
+      rejectedQuantity,
+      this.unitPrice,
+    );
   }
 }
 
@@ -34,12 +62,13 @@ export interface GrnProps {
   status: string;
   currency: string;
   lines: GrnLine[];
-  receivedAt: Date;
+  receivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CreateGrnInput {
+  grnNumber: string;
   purchaseOrderId: string;
   vendorId: string;
   currency: string;
@@ -76,17 +105,19 @@ export interface GrnQueryRecord {
     productId: string;
     orderedQuantity: number;
     receivedQuantity: number;
+    acceptedQuantity: number;
+    rejectedQuantity: number;
     unitPrice: number;
     total: number;
   }[];
-  receivedAt: Date;
+  receivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CreateGrnRequest {
   purchaseOrderId: string;
-  vendorId: string;
+  vendorId?: string;
   currency?: string;
   lines: {
     productId: string;

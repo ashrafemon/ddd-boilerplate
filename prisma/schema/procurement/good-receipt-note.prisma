@@ -9,7 +9,7 @@ model GoodReceiptNote {
   currency        String       @default("USD") @db.VarChar(3)
   subtotal        Decimal      @default(0) @db.Decimal(18, 2)
   total           Decimal      @default(0) @db.Decimal(18, 2)
-  receivedAt      DateTime
+  receivedAt      DateTime?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   version         Int          @default(1)
@@ -28,6 +28,8 @@ model GrnLine {
   productId         String          @db.Uuid
   orderedQuantity   Int
   receivedQuantity  Int
+  acceptedQuantity  Int             @default(0)
+  rejectedQuantity  Int             @default(0)
   unitPrice         Decimal         @db.Decimal(18, 2)
   total             Decimal         @db.Decimal(18, 2)
   goodReceiptNote   GoodReceiptNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
