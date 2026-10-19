@@ -1,26 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { CacheStoragePort } from '../ports/cache-storage.port';
+import { Injectable } from '@nestjs/common';
+import { RedisCacheAdapter } from '../adapters/redis-cache.adapter';
 
 /**
- * Use case: store a value with a bounded TTL (seconds).
+ * Use case: store a value with a bounded TTL (ms).
  *
- * Serialization/write failures are logged but do not propagate.
+ * A failed write is logged and never rolls back the caller's DB transaction.
  */
 @Injectable()
 export class SetCacheValueUseCase {
-  private readonly logger = new Logger(SetCacheValueUseCase.name);
+  constructor(private readonly cache: RedisCacheAdapter) {}
 
-  constructor(private readonly storage: CacheStoragePort) {}
-
-  async execute<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
-    try {
-      const raw = JSON.stringify(value);
-      await this.storage.set(key, raw, ttlSeconds ?? 300);
-    } catch (error) {
-      this.logger.warn('cache-set-failed', {
-        key,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+  execute<T>(key: string, value: T, ttlMs?: number): Promise<void> {
+    return this.cache.set<T>(key, value, ttlMs);
   }
 }

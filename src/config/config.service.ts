@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
-import { ICacheDriver, IMemcachedConfig, IRedisConfig } from './cache.config';
+import { ICacheConfig, ICacheDriver, IMemcachedConfig, IRedisConfig } from './cache.config';
 import { ILockingConfig } from './locking.config';
 import { IIdempotencyConfig } from '../platform/idempotency/idempotency.types';
 import { IEventBusConfig } from '../platform/events/event-bus.types';
@@ -64,6 +64,16 @@ export class ConfigService {
   /** Cache Environment Variables */
   public getCacheDriver(): ICacheDriver {
     return this.config.get<ICacheDriver>('cache.driver', 'redis');
+  }
+  /** Cache behaviour (design common/01-cache). */
+  public getCache(): ICacheConfig {
+    return {
+      enabled: this.config.get<boolean>('cache.enabled', true),
+      defaultTtlMs: this.config.get<number>('cache.defaultTtlMs', 300_000),
+      maxValueBytes: this.config.get<number>('cache.maxValueBytes', 1_048_576),
+      keyPrefix: this.config.get<string>('cache.keyPrefix', 'cache'),
+      keyVersion: this.config.get<string>('cache.keyVersion', 'v1'),
+    };
   }
   public getRedis(): IRedisConfig {
     return this.config.get('cache.redis', {

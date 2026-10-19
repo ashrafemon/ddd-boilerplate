@@ -1,136 +1,77 @@
-# platform/cache — Disposable cache boundary
+# Platform — Cache Service
 
-> Fast, non-authoritative key/value caching with tenant-safe key building,
-> cache-aside convenience, and driver-agnostic storage (Redis or Memcached).
+## 1. Purpose
 
-## What it does
+Disposable key-value speed layer (Redis) for hot reads. Never the source of
+truth — the database/repository is always authoritative, and the app stays
+correct with the cache disabled.
 
-Provides `CachePort` — the only cache capability business/application modules
-should inject. Backed by `CacheStoragePort` (internal) → Redis or Memcached
-adapter, selected by `CACHE_DRIVER` at module load. Exactly one adapter is
-ever instantiated.
+| Concern | Handled here |
+|---|---|
+| Key convention (`buildKey`) | ✅ `CachePort` / `CacheService` |
+| Redis get/set/delete | ✅ `RedisCacheAdapter` |
+| Business modules talk to | `CachePort` only |
 
-Key capabilities:
-- `get<T>(key)` — retrieve cached value, null on miss (fail-open)
-- `getWithResult<T>(key)` — explicit HIT/MISS discrimination
-- `set<T>(key, value, ttlSeconds)` — store with bounded TTL
-- `delete(key)` — idempotent removal
-- `exists(key)` — check key presence
-- `getOrSet<T>({ key, ttlSeconds, factory })` — cache-aside convenience
-
-No use-case layer — the service directly delegates to the adapter. The cache
-is a simple platform primitive, not a business domain.
-
-**Cache is not the source of truth.** Business correctness remains in
-PostgreSQL / the authoritative repository.
-
-## Public API
+## 2. API
 
 ```ts
-import { CachePort } from '@platform/cache/ports/cache.port';
-import { CacheKeyBuilderPort } from '@platform/cache/ports/cache-key-builder.port';
-
-@Injectable()
-export class GetProductUseCase {
-  constructor(
-    private readonly cache: CachePort,
-    private readonly cacheKeys: CacheKeyBuilderPort,
-    private readonly products: ProductQueryRepository,
-  ) {}
-
-  async execute(productId: string) {
-    const key = this.cacheKeys.build({
-      tenantId: 'tenant-001',
-      organizationId: 'company-001',
-      namespace: 'product',
-      resource: productId,
-      variant: 'summary',
-    });
-
-    // Cache-aside pattern
-    return this.cache.getOrSet({
-      key,
-      ttlSeconds: 300,
-      factory: () => this.products.findSummaryById(productId),
-    });
-  }
+const cacheKey = this.cache.buildKey({
+  tenantId, organizationId, namespace: 'client', resource: clientId,
+});
+const cached = await this.cache.get<ClientView>(cacheKey);
+if (cached.status === 'MISS') {
+  const clientView = await this.clientRepository.find(clientId);
+  await this.cache.set(cacheKey, clientView, 300_000); // ttlMs
+  return clientView;
 }
+return cached.value;
 ```
 
-## Layout
+- `buildKey(identity)` → `cache:v1:{tenant}:{company}:{namespace}:{resource}:{variant}`
+- `get(cacheKey)` → `HIT + value` or `MISS` (MISS also covers Redis down/corrupt)
+- `set(cacheKey, value, ttlMs?)` → stores JSON; default TTL from config
+- `delete(cacheKey)` → removes one key; missing counts as success
+
+## 3. Layout
 
 ```
-platform/cache/
-├── ports/
-│   ├── cache.port.ts                    Public port — business injects this
-│   ├── cache-storage.port.ts            Internal storage abstraction
-│   └── cache-key-builder.port.ts        Deterministic key builder port
-├── adapters/
-│   ├── redis-cache.adapter.ts           Redis → CacheStoragePort
-│   └── memcached-cache.adapter.ts       Memcached → CacheStoragePort
-├── __testing__/
-│   ├── in-memory-cache.adapter.ts       Fake for unit tests
-│   └── fake-cache-key-builder.ts        Fake key builder for tests
-├── cache-key.builder.ts                 Deterministic key builder impl
-├── cache.service.ts                     Facade → CachePort (direct adapter call)
-├── cache.types.ts                       CacheKey, requests, results
-├── cache.module.ts                      Module wiring
+src/platform/cache/
+├── ports/cache.port.ts                    # the only port
+├── services/cache.service.ts              # implements CachePort; buildKey lives here
+├── usecases/
+│   ├── get-cache-value.usecase.ts
+│   ├── set-cache-value.usecase.ts
+│   └── delete-cache-value.usecase.ts
+├── adapters/redis-cache.adapter.ts        # concrete; JSON serialize, SET PX ttl
+├── cache.types.ts
+├── cache.module.ts
 └── README.md
+src/config/cache.config.ts                 # getCache()
 ```
 
-## Who calls it / how called
+**No Prisma schema. No storage port. No registry.**
 
-| Consumer                      | How                                               |
-| ----------------------------- | ------------------------------------------------- |
-| Business application use case | `CachePort.get()` / `CachePort.getOrSet()`        |
-| Business application use case | `CachePort.set()` / `CachePort.delete()`          |
-| Event handler                 | `CachePort.delete()` for invalidation             |
-| Message consumer              | `CachePort.delete()` for cross-process invalidation |
-| Platform service              | Internal use as explicitly documented             |
+## 4. Invalidation
 
-Business modules do not access Redis/Memcached directly.
+Cross-process invalidation goes through the Outbox: the write transaction
+commits, a change-consumer calls `delete(cacheKey)`. Same-process code may also
+delete after commit — never inside the transaction.
 
-## Data & config
+## 5. Config (`src/config/cache.config.ts`)
 
-No database tables — Redis/Memcached owns the disposable entries.
+| Env | Default | Meaning |
+|---|---|---|
+| `CACHE_ENABLED` | `true` | `false` ⇒ get MISS, set/delete no-op |
+| `CACHE_DEFAULT_TTL_MS` | `300000` | default per-entry life |
+| `CACHE_MAX_VALUE_BYTES` | `1048576` | entries above 1 MB stay in the DB |
+| `CACHE_KEY_PREFIX` / `CACHE_KEY_VERSION` | `cache` / `v1` | bump the version, never scan-delete |
 
-Config: `src/config/cache.config.ts` + typed `ConfigService.getCache()`.
+## 6. Rules
 
-Environment variables:
-```
-CACHE_DRIVER=redis | memcache
-REDIS_URL=redis://localhost:6379
-MEMCACHED_HOST=localhost
-MEMCACHED_PORT=11211
-CACHE_KEY_PREFIX=cache
-CACHE_KEY_VERSION=v1
-```
-
-## Tenancy behaviour
-
-No built-in tenancy logic — use `CacheKeyBuilderPort` which includes
-`tenantId` and `organizationId` in the key:
-
-```
-cache:v1:{tenantId}:{organizationId}:{namespace}:{resource}:{variant}
-```
-
-Platform-owned entries use `platform` as tenant/org:
-```
-cache:v1:platform:platform:exchange-rate:USD-BDT
-```
-
-## Rules & gotchas
-
-- **Cache is not a database.** Never design business invariants around cache existence.
-- **Cache is not a lock.** Use `DistributedLockPort` for exclusive ownership.
-- **Cache is not idempotency.** Use `IdempotencyPort` for duplicate suppression.
-- **Cache is not an outbox.** Use `OutboxWriterPort` for reliable event publication.
-- **Cache is not a session store.** Session storage has its own boundary.
-- Every cache entry should have a bounded TTL.
-- Cross-process invalidation goes through Outbox → event handler → `CachePort.delete()`.
-- Cache write failures are observable but must not roll back database writes.
-- Business modules consume only `CachePort` — never `CacheStoragePort` or Redis directly.
-- `CacheModule` is not `@Global()` — business modules must `imports: [PlatformModule]`.
-- Use `useExisting` for port aliases — no duplicate class bindings.
-- Do not expose Redis-specific types through public ports.
+- Cache read models (`XxxView` / `LookupItem`), never live aggregates; never
+  passwords/secrets.
+- Keyspace `cache:*` only; tenant/company always in the key for tenant data;
+  no `KEYS` scans (explicit keys + TTL + version bump).
+- Never use cache for locks or dedupe.
+- Fail-open everywhere: Redis errors degrade to the authoritative source and
+  never roll back a DB transaction.

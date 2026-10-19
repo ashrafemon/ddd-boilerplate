@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { numericEnv } from './env.util';
+import { booleanEnv, numericEnv, stringEnv } from './env.util';
 
 export type ICacheDriver = 'redis' | 'memcache';
 export type IRedisConfig = { url: string };
@@ -12,7 +12,22 @@ export type IMemcachedConfig = {
 };
 
 /**
- * Redis config — used for caching, distributed locks and rate limiting.
+ * Cache behaviour config (design `common/01-cache`).
+ *
+ * `CACHE_ENABLED=false` turns get into MISS and set/delete into no-ops; the
+ * app stays correct because the database is always authoritative.
+ */
+export interface ICacheConfig {
+  enabled: boolean;
+  defaultTtlMs: number;
+  maxValueBytes: number;
+  keyPrefix: string;
+  keyVersion: string;
+}
+
+/**
+ * Cache config — driver selection + behaviour. Redis is used for caching,
+ * distributed locks and rate limiting.
  */
 export default registerAs('cache', () => ({
   driver: process.env.CACHE_DRIVER ?? 'redis',
@@ -26,4 +41,9 @@ export default registerAs('cache', () => ({
     password: process.env.MEMCACHED_PASSWORD ?? '',
     ttl: numericEnv('MEMCACHED_TTL_SECONDS', 300),
   },
+  enabled: booleanEnv('CACHE_ENABLED', true),
+  defaultTtlMs: numericEnv('CACHE_DEFAULT_TTL_MS', 300_000),
+  maxValueBytes: numericEnv('CACHE_MAX_VALUE_BYTES', 1_048_576),
+  keyPrefix: stringEnv('CACHE_KEY_PREFIX', 'cache'),
+  keyVersion: stringEnv('CACHE_KEY_VERSION', 'v1'),
 }));
