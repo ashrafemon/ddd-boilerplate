@@ -25,6 +25,7 @@ import { CreateRecurringFromPurchaseOrderUseCase } from '../../application/useca
 import { GetPurchaseOrderUseCase } from '../../application/usecases/get-purchase-order.usecase';
 import { ListPurchaseOrdersUseCase } from '../../application/usecases/list-purchase-orders.usecase';
 import { PurchaseOrderTransitionUseCase } from '../../application/usecases/purchase-order-transition.usecase';
+import { AmendPurchaseOrderUseCase } from '../../application/usecases/amend-purchase-order.usecase';
 import { IssuePurchaseOrderUseCase } from '../../application/usecases/issue-purchase-order.usecase';
 import { ClosePurchaseOrderUseCase } from '../../application/usecases/close-purchase-order.usecase';
 import { RemovePurchaseOrderLineUseCase } from '../../application/usecases/remove-purchase-order-line.usecase';
@@ -34,6 +35,7 @@ import { UpdatePurchaseOrderDto } from './requests/update-purchase-order.request
 import { UpdatePurchaseOrderLineDto } from './requests/update-purchase-order-line.request.dto';
 import { PurchaseOrderQueryDto } from './requests/query-purchase-orders.request.dto';
 import { RejectPurchaseOrderDto } from './requests/reject-purchase-order.request.dto';
+import { AmendPurchaseOrderDto } from './requests/amend-purchase-order.request.dto';
 import { CreateRecurringPurchaseOrderDto } from './requests/create-recurring-purchase-order.request.dto';
 import { CreateRecurringFromPurchaseOrderDto } from './requests/create-recurring-from-purchase-order.request.dto';
 import {
@@ -79,6 +81,7 @@ export class PurchaseOrderController {
     private readonly getPurchaseOrderReceiptsUseCase: GetPurchaseOrderReceiptsUseCase,
     private readonly getPurchaseOrderRemainingQuantitiesUseCase: GetPurchaseOrderRemainingQuantitiesUseCase,
     private readonly purchaseOrderTransitionUseCase: PurchaseOrderTransitionUseCase,
+    private readonly amendPurchaseOrderUseCase: AmendPurchaseOrderUseCase,
     private readonly issuePurchaseOrderUseCase: IssuePurchaseOrderUseCase,
     private readonly closePurchaseOrderUseCase: ClosePurchaseOrderUseCase,
     private readonly getPurchaseOrderUseCase: GetPurchaseOrderUseCase,
@@ -235,6 +238,22 @@ export class PurchaseOrderController {
   async approve(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.purchaseOrderTransitionUseCase.execute({ id, transition: 'approve' });
     return { data: { id: poId.toString() }, message: 'Purchase order approved' };
+  }
+
+  @Patch(':id/amend')
+  @ApiOperation({ summary: 'Amend an issued purchase order (controlled change)' })
+  @HttpCode(HttpStatus.OK)
+  async amend(
+    @Param('id') id: string,
+    @Body() dto: AmendPurchaseOrderDto,
+  ): Promise<ApiResponse<IdResponse>> {
+    const poId = await this.amendPurchaseOrderUseCase.execute({
+      id,
+      expectedDeliveryDate: dto.expectedDeliveryDate,
+      lineUnitPrices: dto.lineUnitPrices,
+      reason: dto.reason,
+    });
+    return { data: { id: poId.toString() }, message: 'Purchase order amended' };
   }
 
   @Patch(':id/reject')

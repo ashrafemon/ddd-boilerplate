@@ -28,6 +28,9 @@ export class PrismaPurchaseOrderMapper {
     rejectionReason?: string | null;
     issuedBy?: string | null;
     cancelledBy?: string | null;
+    amendedBy?: string | null;
+    amendedAt?: Date | null;
+    amendmentReason?: string | null;
     lines: {
       productId: string;
       quantity: number;
@@ -70,6 +73,9 @@ export class PrismaPurchaseOrderMapper {
         rejectionReason: row.rejectionReason ?? null,
         issuedBy: row.issuedBy ?? null,
         cancelledBy: row.cancelledBy ?? null,
+        amendedBy: row.amendedBy ?? null,
+        amendedAt: row.amendedAt ?? null,
+        amendmentReason: row.amendmentReason ?? null,
         lines,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -96,6 +102,9 @@ export class PrismaPurchaseOrderMapper {
       rejectionReason: purchaseOrder.rejectionReason,
       issuedBy: purchaseOrder.issuedBy,
       cancelledBy: purchaseOrder.cancelledBy,
+      amendedBy: purchaseOrder.amendedBy,
+      amendedAt: purchaseOrder.amendedAt,
+      amendmentReason: purchaseOrder.amendmentReason,
       subtotal: purchaseOrder.subtotal.toDecimal(),
       total: purchaseOrder.total.toDecimal(),
       // `version` is intentionally NOT written here: the command repository

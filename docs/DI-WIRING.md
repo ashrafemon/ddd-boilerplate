@@ -394,6 +394,8 @@ flowchart LR
     PurchaseOrderController -->|injects| GetPurchaseOrderRemainingQuantitiesUseCase
     PurchaseOrderTransitionUseCase["PurchaseOrderTransitionUseCase"]
     PurchaseOrderController -->|injects| PurchaseOrderTransitionUseCase
+    AmendPurchaseOrderUseCase["AmendPurchaseOrderUseCase"]
+    PurchaseOrderController -->|injects| AmendPurchaseOrderUseCase
     IssuePurchaseOrderUseCase["IssuePurchaseOrderUseCase"]
     PurchaseOrderController -->|injects| IssuePurchaseOrderUseCase
     ClosePurchaseOrderUseCase["ClosePurchaseOrderUseCase"]
@@ -454,6 +456,11 @@ flowchart LR
     AuditPort["AuditPort"]
     PurchaseOrderTransitionUseCase -->|injects via AuditModule| AuditPort
     PurchaseOrderTransitionUseCase -->|injects| ReadCachePort
+    AmendPurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
+    AmendPurchaseOrderUseCase -->|injects| PurchaseOrderIntegrationPort
+    AmendPurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
+    AmendPurchaseOrderUseCase -->|injects via AuditModule| AuditPort
+    AmendPurchaseOrderUseCase -->|injects| ReadCachePort
     IssuePurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
     IssuePurchaseOrderUseCase -->|injects| PurchaseOrderIntegrationPort
     IssuePurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort

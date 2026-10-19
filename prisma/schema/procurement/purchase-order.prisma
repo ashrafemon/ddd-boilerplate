@@ -29,6 +29,11 @@ model PurchaseOrder {
   rejectionReason String?
   issuedBy        String?
   cancelledBy     String?
+  // Amendment trail (spec §4 "AmendPurchaseOrder", PO-06): an ISSUED order is
+  // not freely editable — a controlled amendment records who, when and why.
+  amendedBy        String?
+  amendedAt        DateTime?
+  amendmentReason  String?
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
   version     Int                   @default(1)

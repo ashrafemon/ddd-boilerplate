@@ -434,6 +434,7 @@ Evidence column: the file that implements the item, or the reason it is still op
 | 5 | Over-receipt policy is configurable | ✅ | `purchase-order.over-receipt` policy; tolerance from `company_configs.overReceiptTolerance` (default 0.1) |
 | 6 | Stock movements traceable and idempotent | ✅ | `inventory_movements @@unique([grnLineId, movementType])`; `goods-receipt-posted.consumer.ts` wraps the handler in `InboxPort.receive/complete/fail` |
 | 7 | Concurrent receiving is safe | ✅ | CAS on `(id, version)` in the PO command repo. **Proven** by `test/receiving-concurrency.e2e-spec.ts` — two concurrent posts, exactly one wins, the balance records one receipt |
+| 7c | Issued terms change only through an authorised amendment (PO-06) | ✅ | `PurchaseOrder.amend` + `PATCH /purchase-orders/:id/amend` + `PurchaseOrderAmended`; reason mandatory, trail recorded, received lines cannot be re-priced. **Proven** by `test/purchase-order-amendment.e2e-spec.ts` |
 | 7b | Cross-tenant isolation (AGENTS.md rule 1) | ✅ | `tenantId`/`companyId` on every business table, stamped on create and filtered on every read/write. **Proven** by `test/tenant-isolation.e2e-spec.ts` — another tenant's purchase order is 404 and cannot be mutated |
 | 8 | Posted transactions cannot be silently changed | ✅ | `grn.editable` → DRAFT only; `purchase-order.editable` → DRAFT only; a posted GRN is corrected by a reversal |
 | 9 | Reversals preserve historical records | ✅ | `reverse-grn.usecase.ts` creates a compensating document (`reversalOfId`); the original rows are never mutated |
@@ -444,7 +445,7 @@ Evidence column: the file that implements the item, or the reason it is still op
 | 14 | Integration tests cover rollback, retries and concurrency | ⚠️ | Concurrency and idempotent-replay are covered by the e2e suite (5 tests). Rollback and retry coverage of the unit suite is not in the repo |
 | 15 | Operational reconciliation and failure monitoring | ⚠️ | The platform provides outbox `DEAD_LETTER` + per-service reconciler crons and a `/metrics` endpoint. **PO↔receipt and stock↔ledger reconciliation jobs do not exist** |
 
-**Result: 10 met, 4 partial, 1 open.** The one open item (12) is the deferred
+**Result: 11 met, 4 partial, 1 open.** The one open item (12) is the deferred
 AP / three-way-matching scope, not a defect in the purchasing module.
 
 ### Still open against the spec (beyond the agreed plan scope)
@@ -452,8 +453,12 @@ AP / three-way-matching scope, not a defect in the purchasing module.
 These are in `update/BusinessAggregate.md` but were never in the plan's scope
 (workstreams **H**, **E**) — they are new features, not gaps in what was built:
 
-- `AmendPurchaseOrder` command + `PurchaseOrderAmended` event (spec §4, §8) — PO-06
-  currently means "an issued PO cannot be amended at all".
+- ~~`AmendPurchaseOrder` command + `PurchaseOrderAmended` event (spec §4, §8)~~ —
+  **CLOSED**. `PATCH /purchase-orders/:id/amend` amends an ISSUED order: the
+  expected delivery date and the unit price of lines without a receipt. The reason
+  is mandatory, the trail (who / when / why) lands on the order and in the audit log,
+  and `PurchaseOrderAmended` carries the changed fields. Proven by
+  `test/purchase-order-amendment.e2e-spec.ts`.
 - GRN `UpdateGoodsReceiptDraft` / `SubmitGoodsReceipt` / `ApproveGoodsReceipt`
   (spec §5 command list) — the code uses `receive` in place of `submit`, and GRN
   approval is not modelled.

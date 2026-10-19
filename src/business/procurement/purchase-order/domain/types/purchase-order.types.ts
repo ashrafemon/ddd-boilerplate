@@ -22,6 +22,10 @@ export interface PurchaseOrderProps {
   rejectionReason?: string | null;
   issuedBy?: string | null;
   cancelledBy?: string | null;
+  // Amendment trail (spec §4 AmendPurchaseOrder, PO-06) — nullable.
+  amendedBy?: string | null;
+  amendedAt?: Date | null;
+  amendmentReason?: string | null;
   lastReceiptBy?: string | null;
   lastReceiptAt?: Date | null;
   createdAt: Date;

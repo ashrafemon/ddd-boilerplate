@@ -29,6 +29,22 @@ export class PurchaseOrderLine {
     );
   }
 
+  /**
+   * Amended unit price (spec §4 AmendPurchaseOrder). Only legal on a line
+   * that has NOT been received yet — a price that was already invoiced or
+   * received against must not move. The line total is recomputed.
+   */
+  withAmendedUnitPrice(unitPrice: Money, total: Money): PurchaseOrderLine {
+    return new PurchaseOrderLine(
+      this.productId,
+      this.quantity,
+      unitPrice,
+      total,
+      this.receivedQuantity,
+      this.descriptionSnapshot,
+    );
+  }
+
   withReceivedQuantity(receivedQuantity: number): PurchaseOrderLine {
     return new PurchaseOrderLine(
       this.productId,

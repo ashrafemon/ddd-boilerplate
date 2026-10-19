@@ -10,6 +10,7 @@ import { PurchaseOrderApproved } from '../events/purchase-order.approved.event';
 import { PurchaseOrderCancelled } from '../events/purchase-order.cancelled.event';
 import { PurchaseOrderIssued } from '../events/purchase-order.issued.event';
 import { PurchaseOrderCompleted } from '../events/purchase-order.completed.event';
+import { PurchaseOrderAmended } from '../events/purchase-order.amended.event';
 import './purchase-order.invariants';
 import '../policies/approval.policy';
 import '../policies/cancellation.policy';
@@ -82,6 +83,18 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
 
   get issuedBy(): string | null {
     return this.props.issuedBy ?? null;
+  }
+
+  get amendedBy(): string | null {
+    return this.props.amendedBy ?? null;
+  }
+
+  get amendedAt(): Date | null {
+    return this.props.amendedAt ?? null;
+  }
+
+  get amendmentReason(): string | null {
+    return this.props.amendmentReason ?? null;
   }
 
   get cancelledBy(): string | null {
@@ -295,6 +308,83 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     this.props.cancelledBy = actorId ?? null;
     this.props.updatedAt = new Date();
     this.addEvent(new PurchaseOrderCancelled(this.id));
+  }
+
+  /**
+   * Controlled amendment of an ISSUED purchase order (spec §4
+   * "AmendPurchaseOrder", PO-06).
+   *
+   * An issued order is NOT freely editable: only the commercial terms listed
+   * here may change, the reason is mandatory, and the amendment is recorded
+   * (who / when / why) and published as `PurchaseOrderAmended` with the
+   * fields that actually moved.
+   *
+   * A line price may only be amended while nothing has been received against
+   * that line — a price that was already received or invoiced must not move.
+   * The received QUANTITY is never amended: it is owned by the receiving
+   * balance (PO-07).
+   *
+   * Returns the applied changes (what actually moved).
+   */
+  amend(changes: {
+    expectedDeliveryDate?: Date | null;
+    /** productId -> new unit price, in minor units. */
+    lineUnitPrices?: Record<string, number>;
+    reason: string;
+    actorId?: string;
+  }): Record<string, unknown> {
+    invariantRegistry.enforce('purchase-order.amendable', { status: this.props.status });
+
+    const reason = changes.reason?.trim();
+    if (!reason) {
+      throw Object.assign(new Error('An amendment requires a reason'), { statusCode: 422 });
+    }
+
+    const applied: Record<string, unknown> = {};
+
+    if (changes.expectedDeliveryDate !== undefined) {
+      this.props.expectedDeliveryDate = changes.expectedDeliveryDate;
+      applied['expectedDeliveryDate'] = changes.expectedDeliveryDate;
+    }
+
+    if (changes.lineUnitPrices && Object.keys(changes.lineUnitPrices).length > 0) {
+      const prices: Record<string, string> = {};
+      for (const [productId, minorUnits] of Object.entries(changes.lineUnitPrices)) {
+        const line = this.props.lines.find(l => l.productId.toString() === productId);
+        if (!line) {
+          throw Object.assign(new Error(`Purchase order has no line for product ${productId}`), {
+            statusCode: 404,
+          });
+        }
+        if (line.receivedQuantity > 0) {
+          throw Object.assign(
+            new Error(
+              `Line ${productId} already has a receipt and cannot be re-priced (${line.receivedQuantity} received)`,
+            ),
+            { statusCode: 422 },
+          );
+        }
+        const unitPrice = Money.fromMinorUnits(minorUnits, this.props.currency);
+        const total = unitPrice.multiply(line.quantity);
+        this.props.lines = this.props.lines.map(l =>
+          l.productId.toString() === productId ? l.withAmendedUnitPrice(unitPrice, total) : l,
+        );
+        prices[productId] = unitPrice.toDecimal().toString();
+      }
+      applied['lineUnitPrices'] = prices;
+    }
+
+    if (Object.keys(applied).length === 0) {
+      throw Object.assign(new Error('An amendment must change something'), { statusCode: 422 });
+    }
+
+    this.props.amendedBy = changes.actorId ?? this.props.amendedBy ?? null;
+    this.props.amendedAt = new Date();
+    this.props.amendmentReason = reason;
+    this.props.updatedAt = new Date();
+
+    this.addEvent(new PurchaseOrderAmended(this.id.toString(), applied, reason, changes.actorId));
+    return applied;
   }
 
   issue(actorId?: string): void {

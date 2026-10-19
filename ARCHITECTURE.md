@@ -476,8 +476,13 @@ DRAFT ── submit ─▶ SUBMITTED ── approve ─▶ APPROVED ── issue
 ```
 
 - Behavior: `addLine`, `removeLine`, `setLine`, `submit`, `approve`, `reject(reason)`, `cancel`,
-  `issue`, `close` (status → `COMPLETED`, event `PurchaseOrderCompleted`; `complete()` is a
+  `issue`, `amend`, `close` (status → `COMPLETED`, event `PurchaseOrderCompleted`; `complete()` is a
   legacy alias), `requiresManualApproval(threshold)`, computed `subtotal`/`total` (`Money`).
+- **Amendment** (`amend`): an ISSUED order is not freely editable. Only the commercial terms
+  may move — the expected delivery date and the unit price of lines that have **no receipt
+  against them** — the reason is mandatory, and the trail (who / when / why) is stored on the
+  order and written to the audit log in the same transaction. The received quantity is never
+  amended: it is owned by the receiving balance (PO-07).
 - Invariants: editable only in `DRAFT`, ≥1 line before submit, positive quantity, legal
   transitions.
 - Policy: `purchase-order.approval` — submitted orders with `total > autoApproveThreshold`
@@ -486,7 +491,7 @@ DRAFT ── submit ─▶ SUBMITTED ── approve ─▶ APPROVED ── issue
 - Order number: `PO-00000001` style, allocated through the platform `NumberingPort`
   (sequence key `purchase-order.number`, prefix `PO-`, padding 8) — race-safe, and the
   only place a PO number is minted.
-- Events: `PurchaseOrderCreated/Submitted/Approved/Rejected/Issued/Cancelled/Completed` +
+- Events: `PurchaseOrderCreated/Submitted/Approved/Rejected/Issued/Cancelled/Completed/Amended` +
   `LineAdded/LineRemoved`.
 
 ### GoodReceiptNote (procurement) — `domain/aggregates/grn.aggregate.ts`

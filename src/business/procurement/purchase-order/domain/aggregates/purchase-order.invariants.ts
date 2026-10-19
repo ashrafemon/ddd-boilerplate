@@ -3,6 +3,18 @@ import { PurchaseOrderStatus } from '../types/purchase-order.enum';
 
 export type { PurchaseOrderStatus };
 
+invariantRegistry.register<{ status: string }>('purchase-order.amendable', {
+  name: 'purchase-order-amendable',
+  check: ({ status }) => {
+    if (status !== 'ISSUED') {
+      throw Object.assign(
+        new Error('Only an issued purchase order can be amended — amend before issuing'),
+        { statusCode: 422 },
+      );
+    }
+  },
+});
+
 invariantRegistry.register<{ orderNumber: string; vendorId: string }>('purchase-order.create', {
   name: 'purchase-order-create-required-fields',
   check: ({ orderNumber, vendorId }) => {
