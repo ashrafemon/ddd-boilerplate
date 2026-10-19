@@ -69,13 +69,15 @@ port → `outbox.append`; query repositories read through `PrismaReadPort`
 ```bash
 npx tsc --noEmit -p tsconfig.json     # types (generated client: npx prisma generate)
 npm run lint:check                    # ESLint incl. architecture boundaries
-npm test                              # unit tests (fake-based; no DB)
 npm run format:check                  # prettier
 npm run docs:di                       # Regenerate docs/DI-WIRING.md when modules/providers change
+npm run build && NODE_ENV=test node -e "(async()=>{const{NestFactory}=require('@nestjs/core');const{AppModule}=require('./dist/app.module.js');const a=await NestFactory.create(AppModule,{preview:true});await a.init();await a.close();})()"  # DI graph smoke
 ```
 
-DB-backed e2e (`npm run test:e2e`) needs `docker compose up -d` + `.env`;
-it must not be marked passing without running it.
+There are **no unit specs in `src/`** (they were removed in `0f32e4d`; `npm test`
+runs with `--passWithNoTests` and reports "No tests found"). The DB-backed e2e
+suite is the executable check: `npm run test:e2e` needs `docker compose up -d` +
+`.env`, and it must not be marked passing without running it.
 
 ## Open work — build next
 

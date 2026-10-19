@@ -19,8 +19,11 @@
 
 ### 0.1 Platform baseline this plan builds on (verified committed & green at `ee27c99`)
 
-The platform design-alignment is **done**: `npx tsc` exit 0, `npm test` 187/187. The
-purchasing work starts from these exact, source-verified shapes:
+The platform design-alignment is **done**: `npx tsc` exit 0, `npm run lint:check` clean.
+(The `npm test` 187/187 figure below is from `ee27c99`; the unit specs were
+removed in `0f32e4d`, so the suite no longer exists — the DB-backed e2e suite
+is the executable check today.) The purchasing work starts from these exact,
+source-verified shapes:
 
 | Service                | Shape business code consumes                                                                                                                                                                                                                                                      |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

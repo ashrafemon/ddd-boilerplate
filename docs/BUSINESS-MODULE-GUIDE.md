@@ -256,7 +256,7 @@ export class XModule {}
 - [ ] cross-module ONLY via `public/` contract + local outbound port (lint-enforced)
 - [ ] module added to `businessModules` in eslint.config.mjs + to context root
 - [ ] new module listed in §4/§7 docs (`ARCHITECTURE.md`) when it joins a context
-- [ ] `npm run lint:check && npx tsc --noEmit && npm test` green; add aggregate spec + use case spec
+- [ ] `npm run lint:check && npx tsc --noEmit` green; add a colocated aggregate spec + use case spec **if** the module warrants one (the repo currently ships no unit specs)
 - [ ] `npm run docs:di` regenerated if the module graph changed
 
 ## 6. Known gaps in current modules (fix, don't copy)

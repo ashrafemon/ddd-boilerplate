@@ -17,7 +17,7 @@ if it needs an aggregate's rules, it is a business module (§3 + §15).
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | module                              | `<service>.module.ts`                                                                                                                         | `locking/locking.module.ts`                                                                |
 | shared module types (records/enums) | `<service>.types.ts` at module root                                                                                                           | `scheduler/scheduler.types.ts`, `batch-operation/batch-operation.types.ts`                 |
-| specs                               | colocated `<impl>.spec.ts` next to the file they test (NEVER in the module root)                                                              | `idempotency/repositories/prisma-idempotency.repository.spec.ts`                           |
+| specs                               | colocated `<impl>.spec.ts` next to the file they test (NEVER in the module root) — **optional**: the repo currently ships no unit specs, so a new service may be merged without one                                                                 | `idempotency/repositories/prisma-idempotency.repository.spec.ts` (pattern only)              |
 | README                              | `README.md` (mandatory, §5 template)                                                                                                          | `idempotency/README.md`                                                                    |
 | DI token port                       | `<what>.port.ts` → `export abstract class <What>Port` (OUTBOUND repo ports: `<what>-repository.port.ts`)                                      | `recurring/ports/recurring-template-repository.port.ts`                                    |
 | use cases                           | `<verb>-<noun>.usecase.ts` → **ONE class per file** `class <VerbNoun>UseCase`                                                                 |
@@ -182,6 +182,11 @@ ship **no test doubles** — build mocks inline with `jest.fn()` (typed via
 `as unknown as Port`) rather than checking in `__testing__/` in-memory repos;
 assert the guard rails (CAS where-clause, ticket release, reserve outcomes), not
 the ORM.
+
+> The repo currently ships **no unit specs** — they were removed in `0f32e4d` and
+> `npm test` runs with `--passWithNoTests`. This section documents the pattern
+> for when a new service does bring a spec; the DB-backed e2e suite
+> (`npm run test:e2e`) is the executable check today.
 
 ## 4. Invariants checklist (enforced where noted)
 

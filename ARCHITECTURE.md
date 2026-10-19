@@ -975,9 +975,10 @@ stay as overrides for background executions that restored a different context).
 
 ## 14. Testing Strategy
 
-- **Unit tests** (`*.spec.ts`, colocated, Jest + `tsconfig.jest.json`): aggregate behavior,
-  invariants, policies — e.g. `purchase-order.aggregate.spec.ts` covers line math, submit/
-  approve/reject transitions, event raising and the approval threshold policy.
+- **Unit tests** — **the repo currently ships none.** The colocated `*.spec.ts` files
+  were removed in `0f32e4d`; `npm test` runs with `--passWithNoTests` and reports
+  "No tests found". The pattern for when a spec IS added: colocated `*.spec.ts`
+  (Jest + `tsconfig.jest.json`), aggregate behavior / invariants / policies.
   Use cases can be tested with fakes for the repository/query/integration ports; the
   `@Transactional()` decorator runs as no-op via `test/utils/noop-transaction-host.ts`
   (`initNoopTransactionHost()`), so no Postgres, no brokers, no Nest runtime.
@@ -1029,13 +1030,16 @@ stay as overrides for background executions that restored a different context).
    `src/bootstrap/configure-<feature>.ts` table (e.g. `BATCH_OPERATION_AGGREGATES`) —
    without it the registry stays empty and the opt-in is silently inert (§9.1).
 7. **Persistence schema** — `prisma/schema/<context>/<name>.prisma`, then
-   `npm run db:migrate` (client regenerates to `src/generated/`).
-8. **Listeners** — only if the module reacts to events; add `integrations/listeners/` classes
-   and register new fan-out targets in `FAN_OUT_EVENTS` (routing policy) when a Kafka/SQS
-   listener is added.
+   `npm run db:push` (client regenerates to `src/generated/`).
+8. **Listeners** — only if the module reacts to events; add `integrations/listeners/` classes.
+   The broker is chosen per event by the `broker` header on the outbox envelope
+   (`opts.broker` on `OutboxWriterPort.append`, default `rabbitmq`) — there is no
+   fan-out routing table to register a target in.
 9. **Enforcement list** — add `<context>/<module>` to `businessModules` in
    `eslint.config.mjs`.
-10. **Tests** — aggregate spec + use case fakes; `npm test`, then `npm run lint:check`.
+10. **Tests** — the repo currently ships no unit specs, so this step is optional;
+    if you add one, colocate it as `<impl>.spec.ts` next to the file it tests
+    (`npm test`), then run `npm run lint:check`.
 11. **Docs** — platform services additionally REQUIRE a module `README.md` following the
     template in `src/platform/README.md` (What it does · Public API · Layout ·
     Who calls it / how called · Data & config · Tenancy behaviour · Rules & gotchas);
@@ -1064,12 +1068,12 @@ npm run start:dev             # http://localhost:4000/api/v1, Swagger /api/docs
 ```bash
 npm run lint:check            # lint + architecture checks (no fixes)
 npm run lint                  # lint + auto-fix
-npm test                      # unit tests
+npm test                      # unit tests (repo currently ships none)
 npm run test:e2e              # e2e smoke (requires docker compose up -d)
 npm run build                 # compile to dist/
 npm run start:prod            # build + run compiled app (tsconfig-paths for aliases)
 npm run db:generate           # prisma generate
-npm run db:deploy             # apply migrations (staging/production)
+npm run db:push               # sync the database from prisma/schema (no migrations)
 npm run prisma:studio         # Prisma Studio UI
 ```
 
