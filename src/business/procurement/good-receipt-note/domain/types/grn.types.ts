@@ -1,5 +1,3 @@
-import { GrnId } from '../value-objects/grn.vos';
-
 export class GrnLine {
   private constructor(
     public readonly productId: string,
@@ -55,7 +53,6 @@ export class GrnLine {
 }
 
 export interface GrnProps {
-  id: GrnId;
   grnNumber: string;
   purchaseOrderId: string;
   vendorId: string;

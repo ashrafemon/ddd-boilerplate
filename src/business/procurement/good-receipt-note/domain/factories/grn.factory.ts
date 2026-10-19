@@ -16,7 +16,6 @@ export class GrnFactory {
     const grn = GoodReceiptNote.instantiate(
       GrnId.generate(),
       {
-        id: GrnId.generate(),
         grnNumber: input.grnNumber,
         purchaseOrderId: input.purchaseOrderId,
         vendorId: input.vendorId,
@@ -61,7 +60,6 @@ export class GrnFactory {
     const grn = GoodReceiptNote.instantiate(
       GrnId.generate(),
       {
-        id: GrnId.generate(),
         grnNumber: input.grnNumber,
         purchaseOrderId: input.purchaseOrderId,
         vendorId: input.vendorId,

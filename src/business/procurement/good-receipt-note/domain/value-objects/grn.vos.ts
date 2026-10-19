@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { ValueObject } from '@business/shared-business/domain/bases/value-object.base';
 
 export class GrnId {
@@ -7,8 +8,13 @@ export class GrnId {
     return new GrnId(value);
   }
 
+  /**
+   * A GRN id is a UUID: `good_receipt_notes.id` and `grn_lines.grnId` are
+   * `@db.Uuid` columns, so a non-UUID string (e.g. `GRN-1758...-a1b2c3`) is
+   * rejected by Postgres with `invalid input syntax for type uuid`.
+   */
   static generate(): GrnId {
-    return new GrnId(`GRN-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+    return new GrnId(randomUUID());
   }
 
   toString(): string {

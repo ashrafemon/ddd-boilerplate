@@ -35,7 +35,6 @@ export class PrismaGrnMapper {
     return GoodReceiptNote.instantiate(
       GrnId.fromString(row.id),
       {
-        id: GrnId.fromString(row.id),
         grnNumber: row.grnNumber,
         purchaseOrderId: row.purchaseOrderId,
         vendorId: row.vendorId,
