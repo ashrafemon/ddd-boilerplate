@@ -9,7 +9,7 @@ with the design docs in `~/Documents/Common/erp` (extracted to
 > `npm run lint:check` / `npm run format:check` failed on untouched files under
 > `platform/events`, `platform/messaging`, `platform/saga` and one `scheduler`
 > spec. As of the 04/05/06 cluster, **`tsc`, `lint:check`, `npm test` and
-> `format:check` are all green** (180 tests).
+> `format:check` are all green** (187 tests).
 
 ## Done
 
