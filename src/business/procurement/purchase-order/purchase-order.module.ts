@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
+import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { ProductModule } from '@business/procurement/product/product.module';
 import { VendorModule } from '@business/party/vendor/vendor.module';
 import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
@@ -68,6 +69,7 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     // batch adapter, GRN facade — reads through the caching decorator, and
     // command use cases invalidate through the same port.
     GetPurchaseOrderUseCase,
+    CacheResponseInterceptor,
     GetPurchaseOrderReceiptsUseCase,
     GetPurchaseOrderRemainingQuantitiesUseCase,
     ListPurchaseOrdersUseCase,

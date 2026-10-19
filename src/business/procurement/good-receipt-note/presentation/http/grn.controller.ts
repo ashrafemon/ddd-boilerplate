@@ -42,6 +42,8 @@ import {
 } from './responses/list-grns.web.response.dto';
 import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
+import { UseInterceptors } from '@nestjs/common';
+import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 
 type GrnGetResponse = GetGrnMobileResponse | GetGrnWebResponse;
@@ -73,6 +75,7 @@ export class GrnController {
   }
 
   @Get()
+  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'List GRNs' })
   @DeviceResponse(ListGrnsMobileResponseDto, ListGrnsWebResponseDto)
   async list(@Query() query: GrnQueryDto): Promise<ApiResponse<GrnListResponse>> {
@@ -85,6 +88,7 @@ export class GrnController {
   }
 
   @Get(':id')
+  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'Get a GRN by id' })
   @DeviceResponse(GetGrnMobileResponseDto, GetGrnWebResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<GrnGetResponse>> {
