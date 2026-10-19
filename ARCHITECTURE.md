@@ -536,7 +536,7 @@ Flow details:
   the concrete `PrismaOutboxRepository` on the caller's `TransactionHost`.
 - `PublishPendingBatchUseCase.execute()` (guarded against overlap, driven by `OutboxScheduler`)
   runs `claimBatch(batchSize, maxAttempts, claimLeaseMs)`: a single `UPDATE … WHERE id IN
-  (SELECT … FOR UPDATE SKIP LOCKED)` over due `PENDING` rows (`nextRetryAt <= now`, claim older
+(SELECT … FOR UPDATE SKIP LOCKED)` over due `PENDING` rows (`nextRetryAt <= now`, claim older
   than the lease) stamps `claimToken` + `claimedAt` and increments `attempts` **without
   changing status**. Each record is then published to `MessageQueuePort` (broker by
   `envelope.broker`), emitted on `InProcessEventBus` under a restored tenant CLS context, and
@@ -557,12 +557,12 @@ Flow details:
 
 ### 8.2 Domain events vs integration events
 
-|            | Domain event                                          | Integration event                                              |
-| ---------- | ----------------------------------------------------- | -------------------------------------------------------------- |
-| Scope      | In-process, same monolith                             | Across brokers/processes                                       |
-| Transport  | `InProcessEventBus` (EventEmitter2 adapter, wildcard) | RabbitMQ / Kafka / SQS                                         |
-| Durability | Best effort                                           | Transactional outbox (guaranteed at-least-once)                |
-| Persisted  | No                                                    | `outbox_messages`                                              |
+|            | Domain event                                          | Integration event                                      |
+| ---------- | ----------------------------------------------------- | ------------------------------------------------------ |
+| Scope      | In-process, same monolith                             | Across brokers/processes                               |
+| Transport  | `InProcessEventBus` (EventEmitter2 adapter, wildcard) | RabbitMQ / Kafka / SQS                                 |
+| Durability | Best effort                                           | Transactional outbox (guaranteed at-least-once)        |
+| Persisted  | No                                                    | `outbox_messages`                                      |
 | Example    | `ProductCreated` → `@OnEvent` listener                | Same event published as the canonical `OutboxEnvelope` |
 
 Each module's `integrations/publishes/*.integration-event.ts` files declare the typed wire
@@ -770,8 +770,26 @@ Non-negotiable invariants (all enforced or precedented in the current services):
    request tenant and enforce `TenantScope` (foreign ⇒ 404); background executions
    restore context with `RequestContextPort.run(payload)` before touching services
    that read CLS (numbering, company config, audit).
+
+   The **business** tables (`purchase_orders`, `good_receipt_notes`, `products`,
+   `vendors`, `invoices`) are scoped the same way — `tenantId`/`companyId` are
+   stamped from the request context on create, and every business repository
+   filters on them:
+
+   - **owned documents** (purchase order, GRN, invoice): a tenant-scoped request
+     sees only its own rows. An unscoped legacy row is invisible to it
+     (fail-closed).
+   - **shared master data** (product, vendor): a tenant-scoped request sees its
+     own rows **plus** rows that were never tenant-scoped (`NULL` = the shared
+     catalogue).
+
+   A row owned by another tenant is **NOT FOUND** — never a 403, so there is no
+   existence leak. `TenantScope.where(tenantId, { includeUnscoped })` builds the
+   filter; `TenantScope.assertVisible` is the single-row equivalent.
+   Proven by `test/tenant-isolation.e2e-spec.ts`.
+
 2. **Idempotent by construction**: claims use insert-as-claim or `FOR UPDATE
-   SKIP LOCKED`, terminal writes are CAS/token-fenced, and at-least-once redelivery
+SKIP LOCKED`, terminal writes are CAS/token-fenced, and at-least-once redelivery
    can only ever re-run, never double-apply. Cross-replica "one-winner-now" uses
    `DistributedLockPort` (`platform/locking`, fail-closed); request/effect
    dedupe-with-replay uses `IdempotencyPort` / `@Idempotent()` (`platform/idempotency`).
@@ -915,20 +933,20 @@ stay as overrides for background executions that restored a different context).
 
 ### REST surface (all under `/api/v1`)
 
-| Module           | Endpoints                                                                                                                                                                                                                                    |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| products         | `POST /products`, `GET /products` (paged), `GET /products/:id`, `PATCH /products/:id`, `PATCH /products/:id/change-price`, `PATCH /products/:id/{activate,deactivate,discontinue}`                                                           |
-| vendors          | `POST /vendors`, `GET /vendors` (paged), `GET /vendors/:id`, `PATCH /vendors/:id`, `PATCH /vendors/:id/{activate,deactivate,block}`                                                                                                          |
-| purchase-orders  | `POST /purchase-orders`, `GET /purchase-orders` (paged), `GET /purchase-orders/:id`, `POST /purchase-orders/:id/lines`, `DELETE /purchase-orders/:id/lines/:productId`, `PATCH /purchase-orders/:id/{submit,approve,reject,cancel,complete}` |
-| grn              | `POST /grn`, `GET /grn` (paged), `GET /grn/:id`, `POST /grn/:id/lines`, `PATCH /grn/:id/{receive,complete}`                                                                                                                                  |
-| invoices         | `POST /invoices`, `GET /invoices/:id`, `POST /invoices/:id/post` (sales demo)                                                                                                                                                                |
-| scheduler        | `GET /scheduled-jobs` (+`/:id`, `/:id/dispatch-log`), `PATCH /scheduled-jobs/:id`, `POST /scheduled-jobs/:id/cancel`, `POST /scheduled-jobs/:id/dispatch-now` (force due-now), `GET /scheduler/health`                                                                                                |
-| recurring        | `POST /recurring-templates`, `GET /recurring-templates` (+`/:id`), `POST /recurring-templates/:id/{pause,resume,cancel}`                                                                                                                     |
-| batch-operations | `GET /batch-operations/_registry`, `POST /batch-operations/validate`, `POST /batch-operations` (Sync 200 / Async 202), `GET /batch-operations` (+`/:id`, `/:id/rows`), `POST /batch-operations/:id/cancel`                                   |
-| import           | `GET /import/_registry`, `POST /import/uploads`, `POST /import/jobs`, `GET /import/jobs` (+`/:id`, `/:id/preview`, `/:id/report`), `PATCH /import/jobs/:id/mapping`, `POST /import/jobs/:id/{execute,cancel}`, `GET /import/:entityKey/init` |
-| notifications    | `GET /notifications/_registry`, `POST /notifications`, `GET /notifications` (+`/:id`), `GET /notifications/preferences/:recipientRef`, `PUT /notifications/preferences`, `POST /notifications/webhooks/:channel`                                                       |
+| Module           | Endpoints                                                                                                                                                                                                                                                                                                |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| products         | `POST /products`, `GET /products` (paged), `GET /products/:id`, `PATCH /products/:id`, `PATCH /products/:id/change-price`, `PATCH /products/:id/{activate,deactivate,discontinue}`                                                                                                                       |
+| vendors          | `POST /vendors`, `GET /vendors` (paged), `GET /vendors/:id`, `PATCH /vendors/:id`, `PATCH /vendors/:id/{activate,deactivate,block}`                                                                                                                                                                      |
+| purchase-orders  | `POST /purchase-orders`, `GET /purchase-orders` (paged), `GET /purchase-orders/:id`, `POST /purchase-orders/:id/lines`, `DELETE /purchase-orders/:id/lines/:productId`, `PATCH /purchase-orders/:id/{submit,approve,reject,cancel,complete}`                                                             |
+| grn              | `POST /grn`, `GET /grn` (paged), `GET /grn/:id`, `POST /grn/:id/lines`, `PATCH /grn/:id/{receive,complete}`                                                                                                                                                                                              |
+| invoices         | `POST /invoices`, `GET /invoices/:id`, `POST /invoices/:id/post` (sales demo)                                                                                                                                                                                                                            |
+| scheduler        | `GET /scheduled-jobs` (+`/:id`, `/:id/dispatch-log`), `PATCH /scheduled-jobs/:id`, `POST /scheduled-jobs/:id/cancel`, `POST /scheduled-jobs/:id/dispatch-now` (force due-now), `GET /scheduler/health`                                                                                                   |
+| recurring        | `POST /recurring-templates`, `GET /recurring-templates` (+`/:id`), `POST /recurring-templates/:id/{pause,resume,cancel}`                                                                                                                                                                                 |
+| batch-operations | `GET /batch-operations/_registry`, `POST /batch-operations/validate`, `POST /batch-operations` (Sync 200 / Async 202), `GET /batch-operations` (+`/:id`, `/:id/rows`), `POST /batch-operations/:id/cancel`                                                                                               |
+| import           | `GET /import/_registry`, `POST /import/uploads`, `POST /import/jobs`, `GET /import/jobs` (+`/:id`, `/:id/preview`, `/:id/report`), `PATCH /import/jobs/:id/mapping`, `POST /import/jobs/:id/{execute,cancel}`, `GET /import/:entityKey/init`                                                             |
+| notifications    | `GET /notifications/_registry`, `POST /notifications`, `GET /notifications` (+`/:id`), `GET /notifications/preferences/:recipientRef`, `PUT /notifications/preferences`, `POST /notifications/webhooks/:channel`                                                                                         |
 | webhooks         | `GET /webhooks/_registry`, `GET /webhooks/subscriptions` (+`/:id`), `POST /webhooks/subscriptions`, `PATCH /webhooks/subscriptions/:id`, `DELETE /webhooks/subscriptions/:id`, `GET /webhooks/subscriptions/:id/deliveries`, `POST /webhooks/deliveries/:id/redeliver`, `POST /webhooks/inbound/:source` |
-| metrics          | `GET /metrics` (Prometheus scrape)                                                                                                                                            |
+| metrics          | `GET /metrics` (Prometheus scrape)                                                                                                                                                                                                                                                                       |
 
 ---
 
@@ -1048,7 +1066,7 @@ stay as overrides for background executions that restored a different context).
 11. **Docs** — platform services additionally REQUIRE a module `README.md` following the
     template in `src/platform/README.md` (What it does · Public API · Layout ·
     Who calls it / how called · Data & config · Tenancy behaviour · Rules & gotchas);
-    new *platform* services follow the canonical anatomy of `§9.2` (checklist in
+    new _platform_ services follow the canonical anatomy of `§9.2` (checklist in
     `src/platform/README.md` — "Adding a new platform service"). A business module's
     contract lives in `public/index.ts` JSDoc; a README is optional there.
 

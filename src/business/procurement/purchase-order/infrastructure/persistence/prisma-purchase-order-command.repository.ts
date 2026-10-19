@@ -6,17 +6,33 @@ import { PurchaseOrderId } from '@business/procurement/purchase-order/domain/val
 import { PurchaseOrderCommandRepository } from '@business/procurement/purchase-order/domain/repositories/purchase-order-command.repository';
 import { PrismaPurchaseOrderMapper } from './prisma-purchase-order.mapper';
 import { PageQuery } from '@shared-kernel/types/pagination';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 
 @Injectable()
 export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRepository {
-  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {
+  constructor(
+    private readonly txHost: TransactionHost<TransactionalAdapterPrisma>,
+    private readonly requestContext: RequestContextPort,
+  ) {
     super();
+  }
+
+  /**
+   * Tenancy scope of the current request (ARCHITECTURE.md §5). A purchase
+   * order is an OWNED document: a tenant-scoped request sees only its own
+   * rows, and an unscoped request (single-tenant deployment) sees all.
+   */
+  private ownedScope(): { tenantId?: string } {
+    return TenantScope.where<{ tenantId?: string }>(this.requestContext.getTenantId());
   }
 
   async save(purchaseOrder: PurchaseOrder): Promise<PurchaseOrder> {
     await this.txHost.tx.purchaseOrder.create({
       data: {
         ...PrismaPurchaseOrderMapper.toRow(purchaseOrder),
+        tenantId: this.requestContext.getTenantId(),
+        companyId: this.requestContext.getCompanyId(),
         lines: { create: PrismaPurchaseOrderMapper.toLinesCreateInput(purchaseOrder) },
       } as never,
     });
@@ -33,7 +49,11 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
    */
   async update(purchaseOrder: PurchaseOrder): Promise<PurchaseOrder> {
     const cas = await this.txHost.tx.purchaseOrder.updateMany({
-      where: { id: purchaseOrder.id.toString(), version: purchaseOrder.getVersion() },
+      where: {
+        id: purchaseOrder.id.toString(),
+        version: purchaseOrder.getVersion(),
+        ...this.ownedScope(),
+      },
       data: {
         ...PrismaPurchaseOrderMapper.toRow(purchaseOrder),
         version: { increment: 1 },
@@ -58,24 +78,24 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
   }
 
   async findById(id: PurchaseOrderId): Promise<PurchaseOrder | null> {
-    const row = await this.txHost.tx.purchaseOrder.findUnique({
-      where: { id: id.toString() },
+    const row = await this.txHost.tx.purchaseOrder.findFirst({
+      where: { id: id.toString(), ...this.ownedScope() },
       include: { lines: true },
     });
     return row ? PrismaPurchaseOrderMapper.toDomain(row) : null;
   }
 
   async findByOrderNumber(orderNumber: string): Promise<PurchaseOrder | null> {
-    const row = await this.txHost.tx.purchaseOrder.findUnique({
-      where: { orderNumber },
+    const row = await this.txHost.tx.purchaseOrder.findFirst({
+      where: { orderNumber, ...this.ownedScope() },
       include: { lines: true },
     });
     return row ? PrismaPurchaseOrderMapper.toDomain(row) : null;
   }
 
   async findByExternalReference(externalReference: string): Promise<PurchaseOrder | null> {
-    const row = await this.txHost.tx.purchaseOrder.findUnique({
-      where: { externalReference },
+    const row = await this.txHost.tx.purchaseOrder.findFirst({
+      where: { externalReference, ...this.ownedScope() },
       include: { lines: true },
     });
     return row ? PrismaPurchaseOrderMapper.toDomain(row) : null;
@@ -85,12 +105,13 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
     const skip = (query.page - 1) * query.pageSize;
     const [rows, total] = await Promise.all([
       this.txHost.tx.purchaseOrder.findMany({
+        where: this.ownedScope(),
         skip,
         take: query.pageSize,
         orderBy: { createdAt: 'desc' },
         include: { lines: true },
       }),
-      this.txHost.tx.purchaseOrder.count(),
+      this.txHost.tx.purchaseOrder.count({ where: this.ownedScope() }),
     ]);
     return {
       items: rows.map((row: never) => PrismaPurchaseOrderMapper.toDomain(row)),

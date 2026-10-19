@@ -32,8 +32,15 @@ model PurchaseOrder {
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
   version     Int                   @default(1)
+  // Tenancy (ARCHITECTURE.md §5 / AGENTS.md rule 1): stamped from the request
+  // context on create, scoped on every read and write. NULL means the row was
+  // created outside a tenant-scoped request (single-tenant deployments).
+  tenantId    String?
+  companyId   String?
   lines       PurchaseOrderLine[]
 
+  @@index([tenantId])
+  @@index([companyId])
   @@index([vendorId])
   @@index([status])
   @@index([createdAt])

@@ -113,15 +113,15 @@ resolved via the Nest container — modules never import each other.
 
 ## Scripts
 
-| Command                  | Purpose                                             |
-| ------------------------ | --------------------------------------------------- |
-| `npm run start:dev`      | watch mode dev server                               |
-| `npm run build`          | compile to `dist/`                                  |
-| `npm run lint`           | ESLint + architecture import restrictions (`--fix`) |
-| `npm run lint:check`     | ESLint + architecture checks (read-only)            |
-| `npm test`               | unit tests — the repo currently ships none (`--passWithNoTests`) |
-| `npm run test:e2e`       | e2e smoke (requires `docker compose up -d`)         |
-| `npm run db:push`           | create/sync the database from `prisma/schema` (no migrations — see below) |
-| `npm run db:generate`       | regenerate the Prisma client into `src/generated/` |
-| `npm run db:seed`        | seed products/vendors                               |
-| `npm run prisma:studio`  | Prisma Studio UI                                    |
+| Command                 | Purpose                                                                   |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `npm run start:dev`     | watch mode dev server                                                     |
+| `npm run build`         | compile to `dist/`                                                        |
+| `npm run lint`          | ESLint + architecture import restrictions (`--fix`)                       |
+| `npm run lint:check`    | ESLint + architecture checks (read-only)                                  |
+| `npm test`              | unit tests — the repo currently ships none (`--passWithNoTests`)          |
+| `npm run test:e2e`      | e2e smoke (requires `docker compose up -d`)                               |
+| `npm run db:push`       | create/sync the database from `prisma/schema` (no migrations — see below) |
+| `npm run db:generate`   | regenerate the Prisma client into `src/generated/`                        |
+| `npm run db:seed`       | seed products/vendors                                                     |
+| `npm run prisma:studio` | Prisma Studio UI                                                          |

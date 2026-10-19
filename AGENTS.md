@@ -7,15 +7,22 @@ source of truth; this file is the load-bearing summary.
 
 ## Before writing any code
 
-| Doing… | You MUST read |
-| --- | --- |
-| a new **platform service** | `ARCHITECTURE.md` §4 + §9.2, then follow **`docs/PLATFORM-SERVICE-GUIDE.md` step by step** (naming map, code templates, invariants checklist) |
-| a new **business module** | `ARCHITECTURE.md` §3, §4, §5 + §15 checklist, then follow **`docs/BUSINESS-MODULE-GUIDE.md` step by step** (naming map, code templates, acceptance checklist); copy `src/business/procurement/product` as the reference layout |
-| touching an existing platform service | that service's own `src/platform/<x>/README.md` (who calls it / how — already documented per module) |
-| anything DB | `prisma/schema/<context>/*.prisma` header comments (table contracts). **There are no Prisma migrations** — edit the schema, then `npm run db:push` (creates/syncs the DB straight from the schema) and `npx prisma generate` (client → `src/generated/`) |
+| Doing…                                | You MUST read                                                                                                                                                                                                                                            |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a new **platform service**            | `ARCHITECTURE.md` §4 + §9.2, then follow **`docs/PLATFORM-SERVICE-GUIDE.md` step by step** (naming map, code templates, invariants checklist)                                                                                                            |
+| a new **business module**             | `ARCHITECTURE.md` §3, §4, §5 + §15 checklist, then follow **`docs/BUSINESS-MODULE-GUIDE.md` step by step** (naming map, code templates, acceptance checklist); copy `src/business/procurement/product` as the reference layout                           |
+| touching an existing platform service | that service's own `src/platform/<x>/README.md` (who calls it / how — already documented per module)                                                                                                                                                     |
+| anything DB                           | `prisma/schema/<context>/*.prisma` header comments (table contracts). **There are no Prisma migrations** — edit the schema, then `npm run db:push` (creates/syncs the DB straight from the schema) and `npx prisma generate` (client → `src/generated/`) |
 
 ## Hard rules (ESlint-enforced boundaries — `npm run lint:check` fails otherwise)
 
+0. **Business tables are tenant-scoped**: `purchase_orders`, `good_receipt_notes`,
+   `products`, `vendors` and `invoices` carry `tenantId`/`companyId`, stamped from
+   the request context on create and filtered on every read and write. Owned
+   documents are strict (`tenantId = request`); master data also includes
+   unscoped (shared) rows. A foreign row is **404**, never 403 — see
+   `TenantScope.where` in `src/shared-kernel/utils/tenant-scope.util.ts` and
+   `test/tenant-isolation.e2e-spec.ts`.
 1. `src/platform/**` may not import `@business/**` (platform owns its event
    contract: the structural `OutboxEvent` interface + `OutboxEventBase` in
    `src/platform/outbox/outbox.types.ts`; there is no event registry and no
@@ -41,8 +48,8 @@ source of truth; this file is the load-bearing summary.
 - Reuse the shared primitives instead of re-inventing: `platform/locking`
   (DistributedLockPort), `platform/idempotency` (IdempotencyPort +
   `@Idempotent()`), `platform/context` (`requestContext.run` in every worker),
-   `platform/numbering`, `platform/audit`, `platform/outbox` (+ stable-envelope
-   re-dispatch on the same `OutboxEnvelope`).
+  `platform/numbering`, `platform/audit`, `platform/outbox` (+ stable-envelope
+  re-dispatch on the same `OutboxEnvelope`).
 - Bounded retries with visible parked states (`FAILED`/`SUSPENDED`/
   `DEAD_LETTER`); every background state has a reconciler cron.
 - File pattern: **one use case per file** (`<verb>-<noun>.usecase.ts`),
@@ -79,8 +86,9 @@ runs with `--passWithNoTests` and reports "No tests found"). The DB-backed e2e
 suite is the executable check: `npm run test:e2e` needs `docker compose up -d` +
 `.env`, and it must not be marked passing without running it. It covers the DI
 graph, the error envelope, the PO-07 receiving concurrency (two concurrent
-receipts can never jointly exceed the over-receipt limit) and the `grn.post`
-idempotent replay.
+receipts can never jointly exceed the over-receipt limit), the `grn.post`
+idempotent replay, and cross-tenant isolation (another tenant's purchase order
+is 404 and cannot be mutated).
 
 ## Open work — build next
 

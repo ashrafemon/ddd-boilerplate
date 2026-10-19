@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -156,7 +157,9 @@ export class PurchaseOrderController {
   async get(@Param('id') id: string): Promise<ApiResponse<PurchaseOrderGetResponse>> {
     const purchaseOrder = await this.getPurchaseOrderUseCase.execute(id);
     if (!purchaseOrder) {
-      return { data: null as never, message: 'Purchase order fetched' };
+      // Missing or owned by another tenant — NOT FOUND either way, so a
+      // foreign row leaks no existence (plan §C: missing/foreign rows 404).
+      throw new NotFoundException('Purchase order not found');
     }
     return {
       data: purchaseOrder,

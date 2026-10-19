@@ -28,7 +28,7 @@ flowchart LR
     InboxModule["InboxModule"]
     StockMovementModule -->|InboxPort| InboxModule
     VendorModule["VendorModule"]
-    VendorModule -->|PrismaReadPort| ContextModule__src_platform_context__2
+    VendorModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
     OutboxModule["OutboxModule"]
     VendorModule -->|OutboxWriterPort| OutboxModule
     ConfigurationModule["ConfigurationModule"]
@@ -48,7 +48,7 @@ flowchart LR
     CacheModule["CacheModule"]
     GoodReceiptNoteModule -->|CachePort| CacheModule
     ProductModule["ProductModule"]
-    ProductModule -->|PrismaReadPort| ContextModule__src_platform_context__2
+    ProductModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
     ProductModule -->|OutboxWriterPort| OutboxModule
     ProductModule -->|CompanyConfigPort| ConfigurationModule
     PurchaseOrderModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
@@ -66,7 +66,7 @@ flowchart LR
     InvoiceModule["InvoiceModule"]
     InvoiceModule -->|RecurringExecutionPort| RecurringModule
     InvoiceModule -->|LoggerPort| ObservabilityModule
-    InvoiceModule -->|PrismaReadPort| ContextModule__src_platform_context__2
+    InvoiceModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
     InvoiceModule -->|OutboxWriterPort| OutboxModule
     InvoiceModule -->|CompanyConfigPort| ConfigurationModule
     InvoiceModule -->|NumberingPort| NumberingModule
@@ -210,8 +210,11 @@ flowchart LR
     VendorForPurchaseFacade -->|injects| FindOrderableVendorsByCodesUseCase
     TransactionHost__library_["TransactionHost (library)"]
     PrismaVendorCommandRepository -->|injects| TransactionHost__library_
+    RequestContextPort["RequestContextPort"]
+    PrismaVendorCommandRepository -->|injects via ContextModule| RequestContextPort
     PrismaReadPort["PrismaReadPort"]
     PrismaVendorQueryRepository -->|injects via ContextModule| PrismaReadPort
+    PrismaVendorQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
     CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
@@ -310,6 +313,7 @@ flowchart LR
     PostGrnUseCase -->|injects via ContextModule| RequestContextPort
     PostGrnUseCase -->|injects via AuditModule| AuditPort
     PostGrnUseCase -->|injects| ReadCachePort
+    PostGrnUseCase -->|injects via IdempotencyModule| IdempotencyPort
     ReverseGrnUseCase -->|injects| GrnCommandRepository
     ReverseGrnUseCase -->|injects| PurchaseOrderPort
     ReverseGrnUseCase -->|injects| GrnIntegrationPort
@@ -325,8 +329,10 @@ flowchart LR
     GrnForPurchaseOrderFacade -->|injects| GetGrnUseCase
     TransactionHost__library_["TransactionHost (library)"]
     PrismaGrnCommandRepository -->|injects| TransactionHost__library_
+    PrismaGrnCommandRepository -->|injects via ContextModule| RequestContextPort
     PrismaReadPort["PrismaReadPort"]
     PrismaGrnQueryRepository -->|injects via ContextModule| PrismaReadPort
+    PrismaGrnQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
     CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
@@ -497,7 +503,9 @@ flowchart LR
     PurchaseOrderForGrnFacade -->|injects| RegisterPurchaseOrderReceiptUseCase
     PurchaseOrderForGrnFacade -->|injects| HasPurchaseOrderReceiptsUseCase
     PrismaPurchaseOrderCommandRepository -->|injects| TransactionHost__library_
+    PrismaPurchaseOrderCommandRepository -->|injects via ContextModule| RequestContextPort
     PrismaPurchaseOrderQueryRepository -->|injects via ContextModule| PrismaReadPort
+    PrismaPurchaseOrderQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
     CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
@@ -568,8 +576,11 @@ flowchart LR
     InvoiceForReportsFacade -->|injects| GetInvoiceUseCase
     TransactionHost__library_["TransactionHost (library)"]
     PrismaInvoiceCommandRepository -->|injects| TransactionHost__library_
+    RequestContextPort["RequestContextPort"]
+    PrismaInvoiceCommandRepository -->|injects via ContextModule| RequestContextPort
     PrismaReadPort["PrismaReadPort"]
     PrismaInvoiceQueryRepository -->|injects via ContextModule| PrismaReadPort
+    PrismaInvoiceQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
     CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort

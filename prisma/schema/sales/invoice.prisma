@@ -11,7 +11,12 @@ model Invoice {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   version     Int           @default(1)
+  // Tenancy — see purchase_orders.prisma.
+  tenantId    String?
+  companyId   String?
 
+  @@index([tenantId])
+  @@index([companyId])
   @@index([customerId, status])
   @@index([status, createdAt])
   @@map("invoices")

@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -92,7 +93,9 @@ export class GrnController {
   async get(@Param('id') id: string): Promise<ApiResponse<GrnGetResponse>> {
     const grn = await this.getGrnUseCase.execute(id);
     if (!grn) {
-      return { data: null as never, message: 'GRN fetched' };
+      // Missing or owned by another tenant — NOT FOUND either way, so a
+      // foreign row leaks no existence (plan §C: missing/foreign rows 404).
+      throw new NotFoundException('GRN not found');
     }
     return {
       data: grn,

@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -65,7 +66,9 @@ export class ProductController {
   async get(@Param('id') id: string): Promise<ApiResponse<unknown>> {
     const product = await this.getProductUseCase.execute(id);
     if (!product) {
-      return { data: null, message: 'Product fetched' };
+      // Missing or owned by another tenant — NOT FOUND either way, so a
+      // foreign row leaks no existence (plan §C: missing/foreign rows 404).
+      throw new NotFoundException('Product not found');
     }
     return { data: product, message: 'Product fetched' };
   }

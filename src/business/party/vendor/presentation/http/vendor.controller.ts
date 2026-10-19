@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -80,7 +81,9 @@ export class VendorController {
   async get(@Param('id') id: string): Promise<ApiResponse<VendorGetResponse>> {
     const vendor = await this.getVendorUseCase.execute(id);
     if (!vendor) {
-      return { data: null as never, message: 'Vendor fetched' };
+      // Missing or owned by another tenant — NOT FOUND either way, so a
+      // foreign row leaks no existence (plan §C: missing/foreign rows 404).
+      throw new NotFoundException('Vendor not found');
     }
     return {
       data: vendor,

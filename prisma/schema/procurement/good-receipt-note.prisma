@@ -28,8 +28,13 @@ model GoodReceiptNote {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   version         Int          @default(1)
+  // Tenancy — see purchase_orders.prisma.
+  tenantId        String?
+  companyId       String?
   lines           GrnLine[]
 
+  @@index([tenantId])
+  @@index([companyId])
   @@index([reversalOfId])
   @@index([purchaseOrderId])
   @@index([vendorId])

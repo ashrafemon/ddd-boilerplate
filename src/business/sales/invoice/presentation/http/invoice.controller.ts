@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -74,7 +75,9 @@ export class InvoiceController {
   async get(@Param('id') id: string): Promise<ApiResponse<InvoiceGetResponse>> {
     const invoice = await this.getInvoiceUseCase.execute(id);
     if (!invoice) {
-      return { data: null as never, message: 'Invoice fetched' };
+      // Missing or owned by another tenant — NOT FOUND either way, so a
+      // foreign row leaks no existence (plan §C: missing/foreign rows 404).
+      throw new NotFoundException('Invoice not found');
     }
     return { data: invoice, message: 'Invoice fetched' };
   }

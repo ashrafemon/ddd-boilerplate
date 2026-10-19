@@ -434,6 +434,7 @@ Evidence column: the file that implements the item, or the reason it is still op
 | 5 | Over-receipt policy is configurable | ✅ | `purchase-order.over-receipt` policy; tolerance from `company_configs.overReceiptTolerance` (default 0.1) |
 | 6 | Stock movements traceable and idempotent | ✅ | `inventory_movements @@unique([grnLineId, movementType])`; `goods-receipt-posted.consumer.ts` wraps the handler in `InboxPort.receive/complete/fail` |
 | 7 | Concurrent receiving is safe | ✅ | CAS on `(id, version)` in the PO command repo. **Proven** by `test/receiving-concurrency.e2e-spec.ts` — two concurrent posts, exactly one wins, the balance records one receipt |
+| 7b | Cross-tenant isolation (AGENTS.md rule 1) | ✅ | `tenantId`/`companyId` on every business table, stamped on create and filtered on every read/write. **Proven** by `test/tenant-isolation.e2e-spec.ts` — another tenant's purchase order is 404 and cannot be mutated |
 | 8 | Posted transactions cannot be silently changed | ✅ | `grn.editable` → DRAFT only; `purchase-order.editable` → DRAFT only; a posted GRN is corrected by a reversal |
 | 9 | Reversals preserve historical records | ✅ | `reverse-grn.usecase.ts` creates a compensating document (`reversalOfId`); the original rows are never mutated |
 | 10 | Approval and authorization rules are tested | ⚠️ | Approval **policy** implemented and enforced (409 above the threshold). **Authorization** is the IAM build (`docs/IAM-BUILD-PLAN.md`) — not implemented, and the unit suite is not in the repo |
@@ -443,8 +444,8 @@ Evidence column: the file that implements the item, or the reason it is still op
 | 14 | Integration tests cover rollback, retries and concurrency | ⚠️ | Concurrency and idempotent-replay are covered by the e2e suite (5 tests). Rollback and retry coverage of the unit suite is not in the repo |
 | 15 | Operational reconciliation and failure monitoring | ⚠️ | The platform provides outbox `DEAD_LETTER` + per-service reconciler crons and a `/metrics` endpoint. **PO↔receipt and stock↔ledger reconciliation jobs do not exist** |
 
-**Result: 9 met, 4 partial, 2 open.** The two open items (12, 15) are the deferred
-AP/inventory-reconciliation scope, not defects in the purchasing module.
+**Result: 10 met, 4 partial, 1 open.** The one open item (12) is the deferred
+AP / three-way-matching scope, not a defect in the purchasing module.
 
 ### Still open against the spec (beyond the agreed plan scope)
 
@@ -462,11 +463,13 @@ These are in `update/BusinessAggregate.md` but were never in the plan's scope
   (spec §7) — only Approval, OverReceipt, Cancellation and Supplier exist.
 - Tables `receipt_inspections`, `supplier_returns`, `approval_records` (spec §12) —
   approval data lives as columns on the PO instead of a separate table.
-- **Tenant scoping of the business tables** — `purchase_orders`,
-  `good_receipt_notes`, `products`, `vendors` and `invoices` carry no
-  `tenantId`/`companyId` and the business query repositories never call
-  `TenantScope`. This is the deliberate IAM deferral (`docs/IAM-BUILD-PLAN.md`),
-  not an oversight, but it must be closed when IAM lands.
+- ~~**Tenant scoping of the business tables**~~ — **CLOSED**. `purchase_orders`,
+  `good_receipt_notes`, `products`, `vendors` and `invoices` now carry
+  `tenantId`/`companyId`; the context stamps them on create and every business
+  repository filters on them. Owned documents are strict, master data also
+  includes unscoped (shared) rows, and a foreign row is 404 — never 403.
+  Proven by `test/tenant-isolation.e2e-spec.ts`. What IAM still has to supply
+  is the tenant/centre/membership MODEL on top of this scoping.
 
 ## E. Pending decisions (blocking — implementation does not start until answered)
 
