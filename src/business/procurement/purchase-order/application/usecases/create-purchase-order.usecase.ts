@@ -1,5 +1,6 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { CreatePurchaseOrderRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
@@ -17,6 +18,7 @@ export class CreatePurchaseOrderUseCase {
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
     private readonly companyConfig: CompanyConfigPort,
     private readonly numbering: NumberingPort,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   @Transactional()
@@ -33,11 +35,15 @@ export class CreatePurchaseOrderUseCase {
       prefix: 'PO-',
       padding: 8,
     });
+    const actorId = input.actorId ?? this.requestContext.getUserId();
     const purchaseOrder = PurchaseOrderFactory.create({
       orderNumber,
       vendorId: input.vendorId,
       currency,
       externalReference: input.externalReference,
+      orderDate: input.orderDate,
+      expectedDeliveryDate: input.expectedDeliveryDate,
+      createdBy: actorId,
     });
 
     await this.purchaseOrderRepository.save(purchaseOrder);

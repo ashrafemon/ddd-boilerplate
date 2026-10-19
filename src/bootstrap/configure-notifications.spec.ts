@@ -15,6 +15,15 @@ jest.mock(
     PurchaseOrderNotificationAdapter: class PurchaseOrderNotificationAdapter {},
   }),
 );
+jest.mock('@business/procurement/good-receipt-note/good-receipt-note.module', () => ({
+  GoodReceiptNoteModule: class GoodReceiptNoteModule {},
+}));
+jest.mock(
+  '@business/procurement/good-receipt-note/infrastructure/adapters/platform/grn-notification.adapter',
+  () => ({
+    GrnNotificationAdapter: class GrnNotificationAdapter {},
+  }),
+);
 
 import { NOTIFICATION_HANDLERS, configureNotifications } from './configure-notifications';
 
@@ -108,6 +117,8 @@ describe('configureNotifications (composition-root bridge)', () => {
       ),
     ).toEqual([
       ['PurchaseOrderApproved', 'PurchaseOrderModule', 'PurchaseOrderNotificationAdapter'],
+      ['PurchaseOrderIssued', 'PurchaseOrderModule', 'PurchaseOrderNotificationAdapter'],
+      ['GoodsReceiptPosted', 'GoodReceiptNoteModule', 'GrnNotificationAdapter'],
     ]);
   });
 });

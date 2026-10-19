@@ -1,35 +1,24 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { GrnId } from '../../domain/value-objects/grn.vos';
-import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
-import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
-import { CompanyConfigPort } from '../outbound-ports/company-config.port';
+import { PostGrnUseCase } from './post-grn.usecase';
 
+/**
+ * Legacy `PATCH /grn/:id/complete` (and the batch `complete` operation).
+ *
+ * Delegates to `PostGrnUseCase` — the same single-record path a hand-posted
+ * GRN takes. This keeps the status model honest: COMPLETED now always means
+ * "posted", i.e. the PO receipt balance was registered atomically with the
+ * transition. Before, `complete` could reach COMPLETED without registering
+ * anything, which would have made a later reversal return quantities that
+ * were never received (GRN-05 / PO-07).
+ */
 @Injectable()
 export class CompleteGrnUseCase {
-  constructor(
-    private readonly grnRepository: GrnCommandRepository,
-    private readonly integrationEvent: GrnIntegrationPort,
-    private readonly companyConfig: CompanyConfigPort,
-  ) {}
+  constructor(private readonly postGrn: PostGrnUseCase) {}
 
   @Transactional()
-  async execute(id: string): Promise<GrnId> {
-    await this.companyConfig.getCompanyConfig();
-
-    const grnId = GrnId.fromString(id);
-    const grn = await this.grnRepository.findById(grnId.toString());
-    if (!grn) {
-      throw new NotFoundException('GRN not found');
-    }
-
-    grn.complete();
-    await this.grnRepository.update(grn);
-
-    for (const event of grn.pullEvents()) {
-      await this.integrationEvent.send(event, grn.id.toString());
-    }
-
-    return grn.id;
+  async execute(id: string, actorId?: string): Promise<GrnId> {
+    return this.postGrn.execute({ id, actorId });
   }
 }

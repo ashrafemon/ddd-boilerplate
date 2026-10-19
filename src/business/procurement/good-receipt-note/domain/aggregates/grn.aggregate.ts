@@ -48,6 +48,27 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
     return this.props.receivedAt;
   }
 
+  /** Original posted GRN this document compensates (null for originals). */
+  get reversalOfId(): string | null {
+    return this.props.reversalOfId ?? null;
+  }
+
+  get createdBy(): string | null {
+    return this.props.createdBy ?? null;
+  }
+
+  get receivedBy(): string | null {
+    return this.props.receivedBy ?? null;
+  }
+
+  get postedBy(): string | null {
+    return this.props.postedBy ?? null;
+  }
+
+  get cancelledBy(): string | null {
+    return this.props.cancelledBy ?? null;
+  }
+
   get createdAt(): Date {
     return this.props.createdAt;
   }
@@ -84,7 +105,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
     this.addEvent(new GrnLineAdded(this.id, productId));
   }
 
-  receive(): void {
+  receive(actorId?: string): void {
     invariantRegistry.enforce('grn.has-lines', { lineCount: this.props.lines.length });
     invariantRegistry.enforce('grn.status-transition', {
       status: this.props.status,
@@ -92,28 +113,74 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
     });
     this.props.status = GrnStatus.RECEIVED;
     this.props.receivedAt = new Date();
+    this.props.receivedBy = actorId ?? null;
     this.props.updatedAt = new Date();
     this.addEvent(new GrnReceived(this.id));
   }
 
-  complete(): void {
+  /**
+   * Post/complete transition. `actorId` is the poster (plan §1.2 `postedBy`);
+   * the legacy `PATCH /grn/:id/complete` path passes none and leaves it null.
+   */
+  complete(actorId?: string): void {
     invariantRegistry.enforce('grn.status-transition', {
       status: this.props.status,
       to: GrnStatus.COMPLETED,
     });
     this.props.status = GrnStatus.COMPLETED;
+    this.props.postedBy = actorId ?? null;
     this.props.updatedAt = new Date();
     this.addEvent(new GrnCompleted(this.id));
   }
 
-  cancel(): void {
+  cancel(actorId?: string): void {
     invariantRegistry.enforce('grn.status-transition', {
       status: this.props.status,
       to: GrnStatus.CANCELLED,
     });
     this.props.status = GrnStatus.CANCELLED;
+    this.props.cancelledBy = actorId ?? null;
     this.props.updatedAt = new Date();
     this.addEvent(new GrnCancelled(this.id));
+  }
+
+  /**
+   * Accepted/rejected split (plan Phase 3.2, invariant GRN-01/02): only on a
+   * RECEIVED document (inspection happens after receipt, before post);
+   * `received = accepted + rejected` is enforced per line — the same physical
+   * quantity can never be dispositioned twice.
+   */
+  recordInspectionResult(input: {
+    lines: { productId: string; acceptedQuantity: number; rejectedQuantity: number }[];
+  }): void {
+    if (this.props.status !== 'RECEIVED') {
+      throw Object.assign(
+        new Error(
+          `Inspection can only be recorded on a RECEIVED GRN (status: ${this.props.status})`,
+        ),
+        { statusCode: 422 },
+      );
+    }
+
+    for (const result of input.lines) {
+      const line = this.props.lines.find(l => l.productId === result.productId);
+      if (!line) {
+        throw Object.assign(new Error(`Product ${result.productId} is not on this GRN`), {
+          statusCode: 422,
+        });
+      }
+      invariantRegistry.enforce('grn.inspection-balance', {
+        receivedQuantity: line.receivedQuantity,
+        acceptedQuantity: result.acceptedQuantity,
+        rejectedQuantity: result.rejectedQuantity,
+      });
+      this.props.lines = this.props.lines.map(l =>
+        l.productId === result.productId
+          ? l.withInspection(result.acceptedQuantity, result.rejectedQuantity)
+          : l,
+      );
+    }
+    this.props.updatedAt = new Date();
   }
 
   get subtotal(): number {

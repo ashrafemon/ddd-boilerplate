@@ -45,6 +45,60 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     return this.props.externalReference;
   }
 
+  get orderDate(): Date | null {
+    return this.props.orderDate ?? null;
+  }
+
+  get expectedDeliveryDate(): Date | null {
+    return this.props.expectedDeliveryDate ?? null;
+  }
+
+  get createdBy(): string | null {
+    return this.props.createdBy ?? null;
+  }
+
+  get approvedBy(): string | null {
+    return this.props.approvedBy ?? null;
+  }
+
+  get approvedAt(): Date | null {
+    return this.props.approvedAt ?? null;
+  }
+
+  get rejectedBy(): string | null {
+    return this.props.rejectedBy ?? null;
+  }
+
+  get rejectedAt(): Date | null {
+    return this.props.rejectedAt ?? null;
+  }
+
+  get rejectionReason(): string | null {
+    return this.props.rejectionReason ?? null;
+  }
+
+  get issuedBy(): string | null {
+    return this.props.issuedBy ?? null;
+  }
+
+  get cancelledBy(): string | null {
+    return this.props.cancelledBy ?? null;
+  }
+
+  get lastReceiptBy(): string | null {
+    return this.props.lastReceiptBy ?? null;
+  }
+
+  get lastReceiptAt(): Date | null {
+    return this.props.lastReceiptAt ?? null;
+  }
+
+  recordReceipt(actorId?: string): void {
+    this.props.updatedAt = new Date();
+    this.props.lastReceiptBy = actorId ?? null;
+    this.props.lastReceiptAt = new Date();
+  }
+
   get status(): PurchaseOrderStatus {
     return this.props.status;
   }
@@ -80,7 +134,32 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     invariantRegistry.enforce('purchase-order.editable', { status: this.props.status });
   }
 
-  addLine(productId: string, quantity: number, unitPrice: Money): void {
+  /**
+   * Draft-header update (plan Phase 2.2 / spec §3.1): commercial fields only,
+   * DRAFT-only — issued commercial terms change through amendments, not PATCH.
+   */
+  updateHeader(input: {
+    orderDate?: Date;
+    expectedDeliveryDate?: Date;
+    externalReference?: string;
+  }): void {
+    this.assertEditable();
+    if (input.orderDate !== undefined) this.props.orderDate = input.orderDate;
+    if (input.expectedDeliveryDate !== undefined) {
+      this.props.expectedDeliveryDate = input.expectedDeliveryDate;
+    }
+    if (input.externalReference !== undefined) {
+      this.props.externalReference = input.externalReference;
+    }
+    this.props.updatedAt = new Date();
+  }
+
+  addLine(
+    productId: string,
+    quantity: number,
+    unitPrice: Money,
+    descriptionSnapshot?: string,
+  ): void {
     this.assertEditable();
     invariantRegistry.enforce('purchase-order.line-quantity', { quantity });
 
@@ -96,7 +175,14 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     } else {
       const total = unitPrice.multiply(quantity);
       this.props.lines.push(
-        new PurchaseOrderLine(new ProductIdRef(productId), quantity, unitPrice, total),
+        new PurchaseOrderLine(
+          new ProductIdRef(productId),
+          quantity,
+          unitPrice,
+          total,
+          0,
+          descriptionSnapshot ?? null,
+        ),
       );
     }
     this.props.updatedAt = new Date();
@@ -109,7 +195,12 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
    * so a redelivered import row can never double-count. Returns false (and raises
    * no event) when the line is already in that state.
    */
-  setLine(productId: string, quantity: number, unitPrice: Money): boolean {
+  setLine(
+    productId: string,
+    quantity: number,
+    unitPrice: Money,
+    descriptionSnapshot?: string,
+  ): boolean {
     this.assertEditable();
     invariantRegistry.enforce('purchase-order.line-quantity', { quantity });
 
@@ -124,7 +215,14 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
       );
     } else {
       this.props.lines.push(
-        new PurchaseOrderLine(new ProductIdRef(productId), quantity, unitPrice, total),
+        new PurchaseOrderLine(
+          new ProductIdRef(productId),
+          quantity,
+          unitPrice,
+          total,
+          0,
+          descriptionSnapshot ?? null,
+        ),
       );
     }
     this.props.updatedAt = new Date();
@@ -150,42 +248,62 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     this.addEvent(new PurchaseOrderSubmitted(this.id, this.props.orderNumber.value, this.vendorId));
   }
 
-  approve(): void {
+  approve(actorId?: string): void {
     invariantRegistry.enforce('purchase-order.status-transition', {
       status: this.props.status,
       to: PurchaseOrderStatus.APPROVED,
     });
     this.props.status = PurchaseOrderStatus.APPROVED;
+    this.props.approvedBy = actorId ?? null;
+    this.props.approvedAt = new Date();
     this.props.updatedAt = new Date();
     this.addEvent(new PurchaseOrderApproved(this.id));
   }
 
-  reject(reason: string): void {
+  reject(reason: string, actorId?: string): void {
     invariantRegistry.enforce('purchase-order.status-transition', {
       status: this.props.status,
       to: PurchaseOrderStatus.REJECTED,
     });
     this.props.status = PurchaseOrderStatus.REJECTED;
+    this.props.rejectedBy = actorId ?? null;
+    this.props.rejectedAt = new Date();
+    this.props.rejectionReason = reason;
     this.props.updatedAt = new Date();
     this.addEvent(new PurchaseOrderRejected(this.id, reason));
   }
 
-  cancel(): void {
+  /**
+   * Cancel (plan Phase 2.4): the CancellationPolicy is enforced inside the
+   * aggregate so the rule holds no matter where the command originates —
+   * HTTP, batch worker or import. `hasReceipts` is caller-supplied domain
+   * data (PO-owned projection), never queried by the domain itself.
+   */
+  cancel(actorId?: string, hasReceipts = false): void {
     invariantRegistry.enforce('purchase-order.status-transition', {
       status: this.props.status,
       to: PurchaseOrderStatus.CANCELLED,
     });
+    policyRegistry.enforce('purchase-order.cancellation', {
+      status: this.props.status,
+      hasReceipts,
+    });
     this.props.status = PurchaseOrderStatus.CANCELLED;
+    this.props.cancelledBy = actorId ?? null;
     this.props.updatedAt = new Date();
     this.addEvent(new PurchaseOrderCancelled(this.id));
   }
 
-  issue(): void {
+  issue(actorId?: string): void {
+    invariantRegistry.enforce('purchase-order.has-lines', {
+      lineCount: this.props.lines.length,
+    });
     invariantRegistry.enforce('purchase-order.status-transition', {
       status: this.props.status,
       to: PurchaseOrderStatus.ISSUED,
     });
     this.props.status = PurchaseOrderStatus.ISSUED;
+    this.props.issuedBy = actorId ?? null;
     this.props.updatedAt = new Date();
     this.addEvent(new PurchaseOrderIssued(this.id));
   }

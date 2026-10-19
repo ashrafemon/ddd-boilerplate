@@ -5,6 +5,7 @@ import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
+import { PurchaseOrderReadCache } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class RemovePurchaseOrderLineUseCase {
@@ -12,6 +13,7 @@ export class RemovePurchaseOrderLineUseCase {
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
     private readonly companyConfig: CompanyConfigPort,
+    private readonly readCache: PurchaseOrderReadCache,
   ) {}
 
   @Transactional()
@@ -26,6 +28,7 @@ export class RemovePurchaseOrderLineUseCase {
 
     purchaseOrder.removeLine(input.productId);
     await this.purchaseOrderRepository.update(purchaseOrder);
+    await this.readCache.invalidate(purchaseOrder.id.toString());
 
     for (const event of purchaseOrder.pullEvents()) {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());

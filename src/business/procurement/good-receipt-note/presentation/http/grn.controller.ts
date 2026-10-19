@@ -17,11 +17,15 @@ import { ReceiveGrnUseCase } from '../../application/usecases/receive-grn.usecas
 import { CompleteGrnUseCase } from '../../application/usecases/complete-grn.usecase';
 import { PostGrnUseCase } from '../../application/usecases/post-grn.usecase';
 import { ReverseGrnUseCase } from '../../application/usecases/reverse-grn.usecase';
+import { RecordInspectionResultUseCase } from '../../application/usecases/record-inspection-result.usecase';
 import { CancelGrnUseCase } from '../../application/usecases/cancel-grn.usecase';
 import { GetGrnUseCase } from '../../application/usecases/get-grn.usecase';
 import { ListGrnsUseCase } from '../../application/usecases/list-grns.usecase';
 import { CreateGrnDto } from './requests/create-grn.request.dto';
 import { AddGrnLineDto } from './requests/add-grn-line.request.dto';
+import { PostGrnDto } from './requests/post-grn.request.dto';
+import { ReverseGrnDto } from './requests/reverse-grn.request.dto';
+import { RecordInspectionResultDto } from './requests/record-inspection-result.request.dto';
 import { GrnQueryDto } from './requests/query-grns.request.dto';
 import {
   GetGrnMobileResponseDto,
@@ -54,6 +58,7 @@ export class GrnController {
     private readonly completeGrnUseCase: CompleteGrnUseCase,
     private readonly postGrnUseCase: PostGrnUseCase,
     private readonly reverseGrnUseCase: ReverseGrnUseCase,
+    private readonly recordInspectionResultUseCase: RecordInspectionResultUseCase,
     private readonly cancelGrnUseCase: CancelGrnUseCase,
     private readonly getGrnUseCase: GetGrnUseCase,
     private readonly listGrnsUseCase: ListGrnsUseCase,
@@ -128,19 +133,33 @@ export class GrnController {
     return { data: { id: grnId.toString() }, message: 'GRN cancelled' };
   }
 
+  @Patch(':id/inspection')
+  @ApiOperation({ summary: 'Record accepted/rejected quantities per GRN line' })
+  @HttpCode(HttpStatus.OK)
+  async recordInspection(
+    @Param('id') id: string,
+    @Body() dto: RecordInspectionResultDto,
+  ): Promise<ApiResponse<IdResponse>> {
+    const grnId = await this.recordInspectionResultUseCase.execute({ id, ...dto });
+    return { data: { id: grnId.toString() }, message: 'Inspection result recorded' };
+  }
+
   @Post(':id/post')
   @ApiOperation({ summary: 'Post a GRN (idempotent)' })
   @HttpCode(HttpStatus.OK)
-  async post(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
-    const grnId = await this.postGrnUseCase.execute({ id });
+  async post(@Param('id') id: string, @Body() dto: PostGrnDto): Promise<ApiResponse<IdResponse>> {
+    const grnId = await this.postGrnUseCase.execute({ id, ...dto });
     return { data: { id: grnId.toString() }, message: 'GRN posted' };
   }
 
   @Post(':id/reverse')
-  @ApiOperation({ summary: 'Reverse a GRN' })
+  @ApiOperation({ summary: 'Reverse a posted GRN via a compensating document' })
   @HttpCode(HttpStatus.OK)
-  async reverse(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
-    const grnId = await this.reverseGrnUseCase.execute({ id });
+  async reverse(
+    @Param('id') id: string,
+    @Body() dto: ReverseGrnDto,
+  ): Promise<ApiResponse<IdResponse>> {
+    const grnId = await this.reverseGrnUseCase.execute({ id, ...dto });
     return { data: { id: grnId.toString() }, message: 'GRN reversed' };
   }
 }

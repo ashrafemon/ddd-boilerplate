@@ -12,6 +12,14 @@ export class PrismaStockMovementCommandRepository extends StockMovementCommandRe
     super();
   }
 
+  /**
+   * Ledger insert + balance projection in ONE transaction (plan Phase 5.2 /
+   * GRN-04): the movement is authoritative, the balance is derived — every
+   * insert increments it by the movement quantity (reversals are negative, so
+   * they decrement), which makes "balance == sum(movements)" hold by
+   * construction and keeps redelivery idempotent through the caller's
+   * `grnLineId + movementType` natural key.
+   */
   async save(movement: StockMovement): Promise<StockMovement> {
     await this.txHost.tx.stockMovement.create({
       data: {
@@ -29,6 +37,24 @@ export class PrismaStockMovementCommandRepository extends StockMovementCommandRe
         reversalOfId: movement.reversalOfId ?? null,
       },
     });
+
+    await this.txHost.tx.stockBalance.upsert({
+      where: {
+        productId_companyId_tenantId: {
+          productId: movement.productId,
+          companyId: movement.companyId,
+          tenantId: movement.tenantId,
+        },
+      },
+      create: {
+        productId: movement.productId,
+        companyId: movement.companyId,
+        tenantId: movement.tenantId,
+        quantity: movement.quantity,
+      },
+      update: { quantity: { increment: movement.quantity } },
+    });
+
     return movement;
   }
 

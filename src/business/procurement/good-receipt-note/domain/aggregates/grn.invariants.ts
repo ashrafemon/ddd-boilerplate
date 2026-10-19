@@ -53,6 +53,44 @@ invariantRegistry.register<{
   },
 });
 
+invariantRegistry.register<{ reversalOfId: string }>('grn.reversal', {
+  name: 'grn-reversal-links-original',
+  check: ({ reversalOfId }) => {
+    if (!reversalOfId) {
+      throw Object.assign(new Error('A reversal document must reference its original GRN'), {
+        statusCode: 422,
+      });
+    }
+  },
+});
+
+/** GRN-05: a compensation mirrors the original as NEGATIVE quantities. */
+invariantRegistry.register<{
+  receivedQuantity: number;
+  acceptedQuantity: number;
+  rejectedQuantity: number;
+}>('grn.reversal-balance', {
+  name: 'grn-reversal-mirrors-original',
+  check: ({ receivedQuantity, acceptedQuantity, rejectedQuantity }) => {
+    if (acceptedQuantity + rejectedQuantity !== receivedQuantity) {
+      throw Object.assign(new Error('Reversal accepted + rejected must equal received quantity'), {
+        statusCode: 422,
+      });
+    }
+    if (receivedQuantity >= 0) {
+      throw Object.assign(
+        new Error('Reversal quantities must be negative (compensating document)'),
+        { statusCode: 422 },
+      );
+    }
+    if (acceptedQuantity > 0 || rejectedQuantity > 0) {
+      throw Object.assign(new Error('Reversal accepted/rejected cannot be positive'), {
+        statusCode: 422,
+      });
+    }
+  },
+});
+
 invariantRegistry.register<{ status: string }>('grn.editable', {
   name: 'grn-editable',
   check: ({ status }) => {

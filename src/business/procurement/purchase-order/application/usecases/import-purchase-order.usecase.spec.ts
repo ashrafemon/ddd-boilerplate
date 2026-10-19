@@ -4,6 +4,7 @@ import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.fact
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
+import { PurchaseOrderReadCache } from '../outbound-ports/read-cache.port';
 import { CreatePurchaseOrderUseCase } from './create-purchase-order.usecase';
 import { ImportPurchaseOrderUseCase } from './import-purchase-order.usecase';
 
@@ -66,7 +67,11 @@ describe('ImportPurchaseOrderUseCase', () => {
         return Promise.resolve();
       },
     } as PurchaseOrderIntegrationPort;
-    useCase = new ImportPurchaseOrderUseCase(repo, create, integration);
+    const readCache = {
+      getOrLoad: (_id: string, load: () => Promise<null>) => load(),
+      invalidate: () => Promise.resolve(),
+    } as unknown as PurchaseOrderReadCache;
+    useCase = new ImportPurchaseOrderUseCase(repo, create, integration, readCache);
   });
 
   const request = (overrides = {}) => ({

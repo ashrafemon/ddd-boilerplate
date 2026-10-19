@@ -7,6 +7,7 @@ import { PurchasableProductPort } from '../outbound-ports/product-query.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
+import { PurchaseOrderReadCache } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class AddPurchaseOrderLineUseCase {
@@ -15,6 +16,7 @@ export class AddPurchaseOrderLineUseCase {
     private readonly productQueryPort: PurchasableProductPort,
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
     private readonly companyConfig: CompanyConfigPort,
+    private readonly readCache: PurchaseOrderReadCache,
   ) {}
 
   @Transactional()
@@ -37,8 +39,12 @@ export class AddPurchaseOrderLineUseCase {
       input.productId,
       input.quantity,
       Money.fromDecimal(input.unitPrice, currency),
+      // Commercial snapshot (spec §3.2/§3.3): later product renames never
+      // rewrite this PO's agreed line description.
+      product.name,
     );
     await this.purchaseOrderRepository.update(purchaseOrder);
+    await this.readCache.invalidate(purchaseOrder.id.toString());
 
     for (const event of purchaseOrder.pullEvents()) {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());

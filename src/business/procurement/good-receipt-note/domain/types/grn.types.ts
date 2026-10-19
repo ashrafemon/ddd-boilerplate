@@ -63,6 +63,14 @@ export interface GrnProps {
   currency: string;
   lines: GrnLine[];
   receivedAt: Date | null;
+  // Compensating reversal link (plan Phase 4.1): set on the REVERSAL document,
+  // pointing at the original posted GRN; null for originals (GRN-05).
+  reversalOfId?: string | null;
+  // Actor trail (plan §1.2) — nullable, never backfilled (E-4).
+  createdBy?: string | null;
+  receivedBy?: string | null;
+  postedBy?: string | null;
+  cancelledBy?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -72,12 +80,42 @@ export interface CreateGrnInput {
   purchaseOrderId: string;
   vendorId: string;
   currency: string;
+  createdBy?: string;
   lines: {
     productId: string;
     orderedQuantity: number;
     receivedQuantity: number;
     unitPrice: number;
   }[];
+}
+
+/** Compensation document input (plan Phase 4.1). */
+export interface CreateGrnReversalInput {
+  grnNumber: string;
+  reversalOfId: string;
+  purchaseOrderId: string;
+  vendorId: string;
+  currency: string;
+  actorId?: string;
+  lines: {
+    productId: string;
+    orderedQuantity: number;
+    receivedQuantity: number;
+    acceptedQuantity: number;
+    rejectedQuantity: number;
+    unitPrice: number;
+  }[];
+}
+
+/** Inspection split per line (plan Phase 3.2 / invariant GRN-01). */
+export interface RecordInspectionResultRequest {
+  id: string;
+  lines: {
+    productId: string;
+    acceptedQuantity: number;
+    rejectedQuantity: number;
+  }[];
+  actorId?: string;
 }
 
 export interface AddGrnLineInput {
@@ -111,6 +149,11 @@ export interface GrnQueryRecord {
     total: number;
   }[];
   receivedAt: Date | null;
+  reversalOfId?: string | null;
+  createdBy?: string | null;
+  receivedBy?: string | null;
+  postedBy?: string | null;
+  cancelledBy?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -119,6 +162,8 @@ export interface CreateGrnRequest {
   purchaseOrderId: string;
   vendorId?: string;
   currency?: string;
+  idempotencyKey?: string;
+  actorId?: string;
   lines: {
     productId: string;
     orderedQuantity: number;
@@ -137,6 +182,7 @@ export interface AddGrnLineRequest {
 
 export interface ReceiveGrnRequest {
   id: string;
+  actorId?: string;
 }
 
 export enum GrnStatus {

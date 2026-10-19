@@ -4,6 +4,8 @@ import { NotificationHandler } from '@platform/notification/ports/notification-h
 import { NotificationPriority } from '@platform/notification/notification.types';
 import { PurchaseOrderModule } from '@business/procurement/purchase-order/purchase-order.module';
 import { PurchaseOrderNotificationAdapter } from '@business/procurement/purchase-order/infrastructure/adapters/platform/purchase-order-notification.adapter';
+import { GoodReceiptNoteModule } from '@business/procurement/good-receipt-note/good-receipt-note.module';
+import { GrnNotificationAdapter } from '@business/procurement/good-receipt-note/infrastructure/adapters/platform/grn-notification.adapter';
 
 /**
  * Composition-root bridge for the notification opt-in — same precedent as
@@ -34,6 +36,27 @@ export const NOTIFICATION_HANDLERS: readonly NotificationOptIn[] = [
     eventName: 'PurchaseOrderApproved',
     ownerModule: PurchaseOrderModule,
     notificationHandler: PurchaseOrderNotificationAdapter,
+  },
+  // Plan Phase 6.2 / §1.8: issuing a PO notifies the vendor through the same
+  // pure handler (payload-driven, vendor recipient + order model).
+  {
+    notificationType: 'PurchaseOrderIssued',
+    channels: ['EMAIL'],
+    priority: 'NORMAL',
+    eventName: 'PurchaseOrderIssued',
+    ownerModule: PurchaseOrderModule,
+    notificationHandler: PurchaseOrderNotificationAdapter,
+  },
+  // Plan Phase 6.2 / §1.8: posting a GRN targets warehouse/receiving — the
+  // recipient directory arrives with the deferred IAM build, so the handler
+  // resolves no addresses yet (platform: NO_RECIPIENTS, not a failure).
+  {
+    notificationType: 'GoodsReceiptPosted',
+    channels: ['EMAIL'],
+    priority: 'NORMAL',
+    eventName: 'GoodsReceiptPosted',
+    ownerModule: GoodReceiptNoteModule,
+    notificationHandler: GrnNotificationAdapter,
   },
 ];
 
