@@ -7,6 +7,7 @@ import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
 import { GoodsReceiptPosted } from '../../domain/events/grn.posted.event';
+import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class PostGrnUseCase {
@@ -16,6 +17,7 @@ export class PostGrnUseCase {
     private readonly integrationEvent: GrnIntegrationPort,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
+    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -73,6 +75,8 @@ export class PostGrnUseCase {
       ),
       grn.id.toString(),
     );
+
+    await this.readCache.invalidate(`grn:${grn.id.toString()}`);
 
     return grn.id;
   }

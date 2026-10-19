@@ -5,6 +5,7 @@ import { AuditPort } from '@platform/audit/ports/audit.port';
 import { GrnId } from '../../domain/value-objects/grn.vos';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
+import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class CancelGrnUseCase {
@@ -13,6 +14,7 @@ export class CancelGrnUseCase {
     private readonly integrationEvent: GrnIntegrationPort,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
+    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -40,6 +42,8 @@ export class CancelGrnUseCase {
     for (const event of grn.pullEvents()) {
       await this.integrationEvent.send(event, grn.id.toString());
     }
+
+    await this.readCache.invalidate(`grn:${id}`);
 
     return GrnId.fromString(id);
   }

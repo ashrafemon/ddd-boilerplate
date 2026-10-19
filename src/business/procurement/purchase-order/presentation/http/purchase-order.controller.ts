@@ -54,8 +54,6 @@ import {
 import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
 import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
-import { UseInterceptors } from '@nestjs/common';
-import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 
 type PurchaseOrderGetResponse = GetPurchaseOrderMobileResponse | GetPurchaseOrderWebResponse;
@@ -139,7 +137,6 @@ export class PurchaseOrderController {
   }
 
   @Get()
-  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'List purchase orders' })
   @DeviceResponse(ListPurchaseOrdersMobileResponseDto, ListPurchaseOrdersWebResponseDto)
   async list(
@@ -154,7 +151,6 @@ export class PurchaseOrderController {
   }
 
   @Get(':id')
-  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'Get a purchase order by id' })
   @DeviceResponse(GetPurchaseOrderMobileResponseDto, GetPurchaseOrderWebResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<PurchaseOrderGetResponse>> {

@@ -4,6 +4,7 @@ import { PurchaseOrderCommandRepository } from '../../domain/repositories/purcha
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
+import { ReadCachePort } from '../outbound-ports/read-cache.port';
 import {
   PurchaseOrderReceiptRequest,
   PurchaseOrderReceiptResult,
@@ -14,6 +15,7 @@ export class RegisterPurchaseOrderReceiptUseCase {
   constructor(
     private readonly repository: PurchaseOrderCommandRepository,
     private readonly companyConfig: CompanyConfigPort,
+    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -36,6 +38,8 @@ export class RegisterPurchaseOrderReceiptUseCase {
     );
 
     await this.repository.update(po);
+
+    await this.readCache.invalidate(`purchase-order:${po.id.toString()}`);
 
     const fullyReceived = po.lines.every(l => l.receivedQuantity >= l.quantity);
     const anyReceived = po.lines.some(l => l.receivedQuantity > 0);

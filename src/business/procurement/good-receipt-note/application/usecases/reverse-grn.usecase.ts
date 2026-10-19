@@ -9,6 +9,7 @@ import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GoodsReceiptReversed } from '../../domain/events/grn.reversed.event';
+import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 /** The quantity `post` registered on the PO — a reversal returns exactly this. */
 const postedQuantity = (line: { acceptedQuantity: number; receivedQuantity: number }): number =>
@@ -37,6 +38,7 @@ export class ReverseGrnUseCase {
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
     private readonly numbering: NumberingPort,
+    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -98,6 +100,7 @@ export class ReverseGrnUseCase {
     await this.grnRepository.save(reversal);
     // The ORIGINAL's read model changed (it is now reversed); the new
     // reversal document has never been cached.
+    await this.readCache.invalidate(`grn:${original.id.toString()}`);
 
     await this.audit.record({
       action: 'grn.reverse',

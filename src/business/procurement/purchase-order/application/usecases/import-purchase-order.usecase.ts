@@ -5,6 +5,7 @@ import { PurchaseOrder } from '../../domain/aggregates/purchase-order.aggregate'
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
+import { ReadCachePort } from '../outbound-ports/read-cache.port';
 import { CreatePurchaseOrderUseCase } from './create-purchase-order.usecase';
 
 export interface ImportPurchaseOrderRequest {
@@ -27,6 +28,7 @@ export class ImportPurchaseOrderUseCase {
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
     private readonly createPurchaseOrder: CreatePurchaseOrderUseCase,
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
+    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -49,6 +51,7 @@ export class ImportPurchaseOrderUseCase {
     for (const event of purchaseOrder.pullEvents()) {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());
     }
+    await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
     return purchaseOrder.id;
   }
 

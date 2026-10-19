@@ -5,6 +5,7 @@ import { AuditPort } from '@platform/audit/ports/audit.port';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
+import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class IssuePurchaseOrderUseCase {
@@ -13,6 +14,7 @@ export class IssuePurchaseOrderUseCase {
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
+    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -41,6 +43,8 @@ export class IssuePurchaseOrderUseCase {
     for (const event of purchaseOrder.pullEvents()) {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());
     }
+
+    await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
 
     return purchaseOrder.id;
   }

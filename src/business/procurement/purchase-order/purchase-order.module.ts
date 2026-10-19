@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
-import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { ProductModule } from '@business/procurement/product/product.module';
 import { VendorModule } from '@business/party/vendor/vendor.module';
 import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
@@ -35,12 +34,14 @@ import { PurchasableProductPort } from './application/outbound-ports/product-que
 import { OrderableVendorPort } from './application/outbound-ports/vendor-query.port';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { NumberingPort } from './application/outbound-ports/numbering.port';
+import { ReadCachePort } from './application/outbound-ports/read-cache.port';
 import { PurchaseOrderForGrnPort } from '@business/procurement/purchase-order/public';
 import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence/prisma-purchase-order-command.repository';
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence/prisma-purchase-order-query.repository';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
 import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
+import { ReadCacheAdapter } from './infrastructure/adapters/platform/read-cache.adapter';
 import { PurchasableProductAdapter } from './infrastructure/adapters/module/purchasable-product.adapter';
 import { OrderableVendorAdapter } from './infrastructure/adapters/module/orderable-vendor.adapter';
 import { PurchaseOrderBatchOperationAdapter } from './infrastructure/adapters/platform/purchase-order-batch-operation.adapter';
@@ -65,11 +66,10 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     ClosePurchaseOrderUseCase,
     RegisterPurchaseOrderReceiptUseCase,
     HasPurchaseOrderReceiptsUseCase,
-    // Read-model cache (plan §1.6): every consumer of this token — controller,
-    // batch adapter, GRN facade — reads through the caching decorator, and
-    // command use cases invalidate through the same port.
+    // Read-model cache (plan §1.6): the query use case reads through the
+    // module-local read cache, and every command use case that mutates a
+    // purchase order invalidates the same key after a successful write.
     GetPurchaseOrderUseCase,
-    CacheResponseInterceptor,
     GetPurchaseOrderReceiptsUseCase,
     GetPurchaseOrderRemainingQuantitiesUseCase,
     ListPurchaseOrdersUseCase,
@@ -88,6 +88,7 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     { provide: PurchaseOrderIntegrationPort, useClass: OutboxAdapter },
     { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
     { provide: NumberingPort, useClass: NumberingAdapter },
+    { provide: ReadCachePort, useClass: ReadCacheAdapter },
     { provide: PurchasableProductPort, useClass: PurchasableProductAdapter },
     { provide: OrderableVendorPort, useClass: OrderableVendorAdapter },
   ],

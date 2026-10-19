@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
-import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { PurchaseOrderModule } from '@business/procurement/purchase-order/purchase-order.module';
 import { GrnForPurchaseOrderFacade } from './application/facades/grn-for-purchase-order.facade';
 import { GrnEventEmitterListener } from './application/integrations/listeners/grn.created.event-emitter.listener-event';
@@ -11,7 +10,9 @@ import { GrnIntegrationPort } from './application/integrations/publishes/grn.int
 import { PurchaseOrderPort } from './application/outbound-ports/purchase-order-query.port';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { NumberingPort } from './application/outbound-ports/numbering.port';
+import { ReadCachePort } from './application/outbound-ports/read-cache.port';
 import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
+import { ReadCacheAdapter } from './infrastructure/adapters/platform/read-cache.adapter';
 import { CreateGrnUseCase } from './application/usecases/create-grn.usecase';
 import { AddGrnLineUseCase } from './application/usecases/add-grn-line.usecase';
 import { ReceiveGrnUseCase } from './application/usecases/receive-grn.usecase';
@@ -47,7 +48,6 @@ import { GrnNotificationAdapter } from './infrastructure/adapters/platform/grn-n
     // Read-model cache (plan §1.6): controllers, batch adapter and the PO-facing
     // facade all read through the caching decorator; commands invalidate.
     GetGrnUseCase,
-    CacheResponseInterceptor,
     ListGrnsUseCase,
     CancelGrnUseCase,
     PostGrnUseCase,
@@ -65,6 +65,7 @@ import { GrnNotificationAdapter } from './infrastructure/adapters/platform/grn-n
     { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
     { provide: PurchaseOrderPort, useClass: PurchaseOrderAdapter },
     { provide: NumberingPort, useClass: NumberingAdapter },
+    { provide: ReadCachePort, useClass: ReadCacheAdapter },
   ],
   exports: [GrnForPurchaseOrderPort],
 })
