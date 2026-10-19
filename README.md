@@ -21,7 +21,7 @@ Documentation:
 cp .env.example .env
 docker compose up -d          # PostgreSQL, Redis, RabbitMQ, Kafka
 npm install                   # also runs prisma generate (postinstall)
-npx prisma migrate dev        # create + apply the initial migration
+npm run db:push               # create the database straight from prisma/schema
 npm run db:seed               # sample products & vendors
 npm run start:dev             # API + Swagger
 ```
@@ -31,6 +31,12 @@ Then:
 - REST API: <http://localhost:4000/api/v1>
 - Swagger: <http://localhost:4000/api/docs>
 - RabbitMQ UI: <http://localhost:15672> (guest/guest)
+
+> **No Prisma migrations.** The database is created straight from `prisma/schema`
+> with `prisma db push` — there is no `prisma/migrations/` folder and no
+> `db:migrate` / `db:deploy` script. Change the schema, then re-run
+> `npm run db:push`. Introduce a versioned migration folder only when a
+> released schema needs a forward-only rollout.
 
 ---
 
@@ -115,7 +121,7 @@ resolved via the Nest container — modules never import each other.
 | `npm run lint:check`     | ESLint + architecture checks (read-only)            |
 | `npm test`               | unit tests (aggregates, use cases with fakes)       |
 | `npm run test:e2e`       | e2e smoke (requires `docker compose up -d`)         |
-| `npx prisma migrate dev` | create/apply migration + regenerate client          |
-| `npm run db:deploy`      | apply migrations in staging/production              |
+| `npm run db:push`           | create/sync the database from `prisma/schema` (no migrations — see below) |
+| `npm run db:generate`       | regenerate the Prisma client into `src/generated/` |
 | `npm run db:seed`        | seed products/vendors                               |
 | `npm run prisma:studio`  | Prisma Studio UI                                    |

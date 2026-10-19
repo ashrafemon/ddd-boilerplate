@@ -67,7 +67,7 @@ src/business/<ctx>/<name>/
 
 ```bash
 # 1) schema FIRST (table contract before code): prisma/schema/<ctx>/<name>.prisma
-#    + hand-written migration prisma/migrations/<ts>_<name>/migration.sql
+#    (no migration folder — the DB is synced with `npm run db:push`)
 npx prisma generate
 # 2) domain leaf-to-root: types → enums → VOs (+id) → invariants → events
 #    → policies → aggregate → factory

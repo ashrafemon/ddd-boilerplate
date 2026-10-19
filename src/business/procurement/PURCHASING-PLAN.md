@@ -58,7 +58,7 @@ purchasing work starts from these exact, source-verified shapes:
 
 | Exception                                                                                                                | Why unavoidable                                                                                                                          | Phases     |
 | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| `prisma/schema/procurement/purchase-order.prisma` + `good-receipt-note.prisma` + hand-written `prisma/migrations/<ts>_*` | New columns/enum values (actor fields, `ISSUED`, accepted/rejected qty, reversal link, nullable `receivedAt`) are module table contracts | 0, 2, 3, 4 |
+| `prisma/schema/procurement/purchase-order.prisma` + `good-receipt-note.prisma` | New columns/enum values (actor fields, `ISSUED`, accepted/rejected qty, reversal link, nullable `receivedAt`) are module table contracts; the schema file IS the table contract (no migration folder — `npm run db:push`) | 0, 2, 3, 4 |
 | `prisma/schema/inventory/*.prisma` (new)                                                                                 | Inventory ledger table contract                                                                                                          | 5          |
 | `eslint.config.mjs` `businessModules` entry                                                                              | New `inventory` context module                                                                                                           | 5          |
 | `src/bootstrap/configure-notifications.ts` bridge rows                                                                   | New `NotificationHandler` opt-ins are registered by the composition root (§9.1 standard) — file confirmed to exist                       | 6          |
@@ -385,8 +385,8 @@ FULLY_RECEIVED` (computed, never manually set).
 
 ## C. Cross-cutting conventions (every phase, every PR)
 
-- New tables/columns → header-comment table contracts in `.prisma` files; hand-written SQL
-  in `prisma/migrations/<ts>_<name>/migration.sql`; additive, backward-compatible,
+- New tables/columns → header-comment table contracts in `.prisma` files, applied with
+  `npm run db:push` (there is no migration folder); additive, backward-compatible,
   backfill-before-mandatory; never reinterpret historical rows.
 - Every new use case: one file, `@Transactional()` on commands only, factory for
   construction, `pullEvents()` → integration port (existing `OutboxAdapter` pattern —

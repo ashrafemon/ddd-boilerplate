@@ -3,11 +3,12 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+// Schema-only project: there are currently NO Prisma migrations.
+// The database is created/synchronised straight from `prisma/schema` with
+// `prisma db push` (npm run db:push). Introduce `prisma/migrations/` only
+// when a released schema needs a versioned, forward-only rollout.
 export default defineConfig({
   schema: './prisma/schema',
-  migrations: {
-    path: "prisma/migrations",
-  },
   datasource: {
     url: process.env["DATABASE_URL"],
   },

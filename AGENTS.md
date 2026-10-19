@@ -12,14 +12,14 @@ source of truth; this file is the load-bearing summary.
 | a new **platform service** | `ARCHITECTURE.md` §4 + §9.2, then follow **`docs/PLATFORM-SERVICE-GUIDE.md` step by step** (naming map, code templates, invariants checklist) |
 | a new **business module** | `ARCHITECTURE.md` §3, §4, §5 + §15 checklist, then follow **`docs/BUSINESS-MODULE-GUIDE.md` step by step** (naming map, code templates, acceptance checklist); copy `src/business/procurement/product` as the reference layout |
 | touching an existing platform service | that service's own `src/platform/<x>/README.md` (who calls it / how — already documented per module) |
-| anything DB | `prisma/schema/<context>/*.prisma` header comments (table contracts), existing migrations; write hand-authored SQL into `prisma/migrations/<ts>_<name>/migration.sql`, run `npx prisma generate` |
+| anything DB | `prisma/schema/<context>/*.prisma` header comments (table contracts). **There are no Prisma migrations** — edit the schema, then `npm run db:push` (creates/syncs the DB straight from the schema) and `npx prisma generate` (client → `src/generated/`) |
 
 ## Hard rules (ESlint-enforced boundaries — `npm run lint:check` fails otherwise)
 
 1. `src/platform/**` may not import `@business/**` (platform owns its event
-   contract: `@platform/events/bases/outbox-event.base.ts` +
-   `outboxEventRegistry`; the composition root `src/bootstrap/` bridges
-   business rehydrators in as delegates — never the other way).
+   contract: the structural `OutboxEvent` interface + `OutboxEventBase` in
+   `src/platform/outbox/outbox.types.ts`; there is no event registry and no
+   rehydration step — the outbox stores the payload verbatim).
 2. Business modules import ONLY: `@platform` exported tokens via
    `imports: [PlatformModule]`, another module's `public/**` or
    `application/outbound-ports/**` contract, and `shared-business` primitives.

@@ -31,7 +31,7 @@ if it needs an aggregate's rules, it is a business module (§3 + §15).
 | cron converger                      | `<service>-reconciliation.ts` (or `usecases/sweep-<x>.usecase.ts` w/ `@Cron`)                                                                 | `idempotency/idempotency-reconciliation.ts`                                                |
 | in-memory fakes                     | `__testing__/in-memory-<thing>.repository.ts`                                                                                                 | `batch-operation/__testing__/…`                                                            |
 | prisma schema                       | `prisma/schema/platform/<service>.prisma` (header comment = table contract)                                                                   | `platform/idempotency.prisma`                                                              |
-| migration                           | `prisma/migrations/<YYYYMMDDHHMMSS>_<snake_name>/migration.sql` (hand-written SQL)                                                            | `20260915025800_idempotency_ledger`                                                        |
+| db sync                            | `npm run db:push` — there is **no** `prisma/migrations/` folder; the schema file IS the migration                                                 | `prisma/schema/platform/idempotency.prisma`                                               |
 | config                              | `src/config/<service>.config.ts` + `ConfigService.get<Upper>()` facade getter + `.env.example` comment                                        | `src/config/idempotency.config.ts`                                                         |
 
 ## 2. Build order (do not reorder — each step keeps gates green)
@@ -39,8 +39,8 @@ if it needs an aggregate's rules, it is a business module (§3 + §15).
 ```bash
 # 1) contract first — ports define the product
 mkdir -p src/platform/<svc>/{ports,repositories,usecases,http/requests}
-# 2) schema + migration (if the service owns tables)
-#    edit prisma/schema/platform/<svc>.prisma, write migrations/<ts>_<name>/migration.sql
+# 2) schema (if the service owns tables)
+#    edit prisma/schema/platform/<svc>.prisma, then `npm run db:push` (no migration folder)
 npx prisma generate                      # client -> src/generated (offline-safe)
 # 3) config (only if tunables exist)  -> src/config + ConfigService getter + .env.example
 # 4) repository impl + colocated spec (fakes only, no DB)
