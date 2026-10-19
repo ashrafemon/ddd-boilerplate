@@ -16,6 +16,7 @@ import { AddGrnLineUseCase } from '../../application/usecases/add-grn-line.useca
 import { ReceiveGrnUseCase } from '../../application/usecases/receive-grn.usecase';
 import { CompleteGrnUseCase } from '../../application/usecases/complete-grn.usecase';
 import { PostGrnUseCase } from '../../application/usecases/post-grn.usecase';
+import { ReverseGrnUseCase } from '../../application/usecases/reverse-grn.usecase';
 import { CancelGrnUseCase } from '../../application/usecases/cancel-grn.usecase';
 import { GetGrnUseCase } from '../../application/usecases/get-grn.usecase';
 import { ListGrnsUseCase } from '../../application/usecases/list-grns.usecase';
@@ -52,6 +53,7 @@ export class GrnController {
     private readonly receiveGrnUseCase: ReceiveGrnUseCase,
     private readonly completeGrnUseCase: CompleteGrnUseCase,
     private readonly postGrnUseCase: PostGrnUseCase,
+    private readonly reverseGrnUseCase: ReverseGrnUseCase,
     private readonly cancelGrnUseCase: CancelGrnUseCase,
     private readonly getGrnUseCase: GetGrnUseCase,
     private readonly listGrnsUseCase: ListGrnsUseCase,
@@ -132,5 +134,13 @@ export class GrnController {
   async post(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const grnId = await this.postGrnUseCase.execute({ id });
     return { data: { id: grnId.toString() }, message: 'GRN posted' };
+  }
+
+  @Post(':id/reverse')
+  @ApiOperation({ summary: 'Reverse a GRN' })
+  @HttpCode(HttpStatus.OK)
+  async reverse(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
+    const grnId = await this.reverseGrnUseCase.execute({ id });
+    return { data: { id: grnId.toString() }, message: 'GRN reversed' };
   }
 }
