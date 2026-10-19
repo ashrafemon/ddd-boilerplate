@@ -13,7 +13,6 @@ export class CancelGrnUseCase {
 
   @Transactional()
   async execute(id: string): Promise<GrnId> {
-    const grnId = GrnId.fromString(id);
     const grn = await this.grnRepository.findById(id);
     if (!grn) {
       throw new NotFoundException('GRN not found');
@@ -27,6 +26,6 @@ export class CancelGrnUseCase {
       await this.integrationEvent.send(event, grn.id.toString());
     }
 
-    return grn.id;
+    return GrnId.fromString(id);
   }
 }

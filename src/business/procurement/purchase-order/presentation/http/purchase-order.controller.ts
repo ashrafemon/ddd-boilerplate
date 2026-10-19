@@ -20,6 +20,8 @@ import { CreateRecurringFromPurchaseOrderUseCase } from '../../application/useca
 import { GetPurchaseOrderUseCase } from '../../application/usecases/get-purchase-order.usecase';
 import { ListPurchaseOrdersUseCase } from '../../application/usecases/list-purchase-orders.usecase';
 import { PurchaseOrderTransitionUseCase } from '../../application/usecases/purchase-order-transition.usecase';
+import { IssuePurchaseOrderUseCase } from '../../application/usecases/issue-purchase-order.usecase';
+import { ClosePurchaseOrderUseCase } from '../../application/usecases/close-purchase-order.usecase';
 import { RemovePurchaseOrderLineUseCase } from '../../application/usecases/remove-purchase-order-line.usecase';
 import { CreatePurchaseOrderDto } from './requests/create-purchase-order.request.dto';
 import { AddLineDto } from './requests/add-purchase-order-line.request.dto';
@@ -59,6 +61,8 @@ export class PurchaseOrderController {
     private readonly addPurchaseOrderLineUseCase: AddPurchaseOrderLineUseCase,
     private readonly removePurchaseOrderLineUseCase: RemovePurchaseOrderLineUseCase,
     private readonly purchaseOrderTransitionUseCase: PurchaseOrderTransitionUseCase,
+    private readonly issuePurchaseOrderUseCase: IssuePurchaseOrderUseCase,
+    private readonly closePurchaseOrderUseCase: ClosePurchaseOrderUseCase,
     private readonly getPurchaseOrderUseCase: GetPurchaseOrderUseCase,
     private readonly listPurchaseOrdersUseCase: ListPurchaseOrdersUseCase,
     private readonly createRecurringPurchaseOrderUseCase: CreateRecurringPurchaseOrderUseCase,
@@ -198,5 +202,21 @@ export class PurchaseOrderController {
   async complete(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.purchaseOrderTransitionUseCase.execute({ id, transition: 'complete' });
     return { data: { id: poId.toString() }, message: 'Purchase order completed' };
+  }
+
+  @Post(':id/issue')
+  @ApiOperation({ summary: 'Issue a purchase order' })
+  @HttpCode(HttpStatus.OK)
+  async issue(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
+    const poId = await this.issuePurchaseOrderUseCase.execute(id);
+    return { data: { id: poId.toString() }, message: 'Purchase order issued' };
+  }
+
+  @Post(':id/close')
+  @ApiOperation({ summary: 'Close a purchase order' })
+  @HttpCode(HttpStatus.OK)
+  async close(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
+    const poId = await this.closePurchaseOrderUseCase.execute(id);
+    return { data: { id: poId.toString() }, message: 'Purchase order closed' };
   }
 }

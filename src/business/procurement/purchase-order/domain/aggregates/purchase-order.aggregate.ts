@@ -8,7 +8,8 @@ import { ProductIdRef } from '../value-objects/purchase-order.vos';
 import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
 import { PurchaseOrderApproved } from '../events/purchase-order.approved.event';
 import { PurchaseOrderCancelled } from '../events/purchase-order.cancelled.event';
-import { PurchaseOrderCompleted } from '../events/purchase-order.completed.event';
+import { PurchaseOrderIssued } from '../events/purchase-order.issued.event';
+import { PurchaseOrderClosed } from '../events/purchase-order.closed.event';
 import { PurchaseOrderLineAdded } from '../events/purchase-order.line-added.event';
 import { PurchaseOrderLineRemoved } from '../events/purchase-order.line-removed.event';
 import { PurchaseOrderRejected } from '../events/purchase-order.rejected.event';
@@ -179,14 +180,29 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     this.addEvent(new PurchaseOrderCancelled(this.id));
   }
 
-  complete(): void {
+  issue(): void {
+    invariantRegistry.enforce('purchase-order.status-transition', {
+      status: this.props.status,
+      to: PurchaseOrderStatus.ISSUED,
+    });
+    this.props.status = PurchaseOrderStatus.ISSUED;
+    this.props.updatedAt = new Date();
+    this.addEvent(new PurchaseOrderIssued(this.id));
+  }
+
+  close(): void {
     invariantRegistry.enforce('purchase-order.status-transition', {
       status: this.props.status,
       to: PurchaseOrderStatus.COMPLETED,
     });
     this.props.status = PurchaseOrderStatus.COMPLETED;
     this.props.updatedAt = new Date();
-    this.addEvent(new PurchaseOrderCompleted(this.id));
+    this.addEvent(new PurchaseOrderClosed(this.id));
+  }
+
+  complete(): void {
+    // Legacy alias: delegates to close.
+    this.close();
   }
 
   /**
