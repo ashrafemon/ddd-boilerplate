@@ -6,6 +6,7 @@ import { GrnCommandRepository } from '../../domain/repositories/grn-command.repo
 import { PrismaGrnMapper } from './prisma-grn.mapper';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { resolveCompanyId } from '@shared-kernel/constants/company';
 
 @Injectable()
 export class PrismaGrnCommandRepository extends GrnCommandRepository {
@@ -29,7 +30,7 @@ export class PrismaGrnCommandRepository extends GrnCommandRepository {
       data: {
         ...PrismaGrnMapper.toRow(grn),
         tenantId: this.requestContext.getTenantId(),
-        companyId: this.requestContext.getCompanyId(),
+        companyId: resolveCompanyId(this.requestContext.get()),
         lines: { create: PrismaGrnMapper.toLinesCreateInput(grn) },
       } as never,
     });

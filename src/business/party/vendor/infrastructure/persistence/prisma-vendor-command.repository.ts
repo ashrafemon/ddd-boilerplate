@@ -6,6 +6,7 @@ import { VendorCommandRepository } from '../../domain/repositories/vendor-comman
 import { PrismaVendorMapper } from './prisma-vendor.mapper';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { resolveCompanyId } from '@shared-kernel/constants/company';
 
 @Injectable()
 export class PrismaVendorCommandRepository extends VendorCommandRepository {
@@ -33,7 +34,7 @@ export class PrismaVendorCommandRepository extends VendorCommandRepository {
       data: {
         ...PrismaVendorMapper.toRow(vendor),
         tenantId: this.requestContext.getTenantId(),
-        companyId: this.requestContext.getCompanyId(),
+        companyId: resolveCompanyId(this.requestContext.get()),
       } as never,
     });
     return vendor;

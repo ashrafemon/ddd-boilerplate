@@ -1,7 +1,8 @@
 // Invoice aggregate — minimal sales document for recurring-generation E2E tests.
 model Invoice {
   id          String        @id @default(uuid()) @db.Uuid
-  invoiceNo   String        @unique
+  // Unique WITHIN the company — the numbering series is company-scoped.
+  invoiceNo   String
   customerId  String        @db.Uuid
   status      InvoiceStatus @default(DRAFT)
   currency    String        @default("USD") @db.VarChar(3)
@@ -13,10 +14,11 @@ model Invoice {
   version     Int           @default(1)
   // Tenancy — see purchase_orders.prisma.
   tenantId    String?
-  companyId   String?
+  companyId   String        @default("00000000-0000-0000-0000-000000000000")
 
   @@index([tenantId])
   @@index([companyId])
+  @@unique([companyId, invoiceNo])
   @@index([customerId, status])
   @@index([status, createdAt])
   @@map("invoices")

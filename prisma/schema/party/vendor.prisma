@@ -1,7 +1,8 @@
 // Vendor aggregate persistence model.
 model Vendor {
   id        String       @id @default(uuid()) @db.Uuid
-  code      String       @unique
+  // Unique WITHIN the company — the same code may exist in two companies.
+  code      String
   name      String
   email     String?
   phone     String?
@@ -12,10 +13,11 @@ model Vendor {
   version   Int          @default(1)
   // Tenancy — NULL = shared master data, visible to every tenant.
   tenantId  String?
-  companyId String?
+  companyId String       @default("00000000-0000-0000-0000-000000000000")
 
   @@index([tenantId])
   @@index([companyId])
+  @@unique([companyId, code])
   @@index([status])
   @@index([createdAt])
   @@map("vendors")

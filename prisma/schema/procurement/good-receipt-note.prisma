@@ -8,7 +8,8 @@
 //     nullable, never backfilled (E-4).
 model GoodReceiptNote {
   id              String       @id @default(uuid()) @db.Uuid
-  grnNumber       String       @unique
+  // Unique WITHIN the company — the numbering series is company-scoped.
+  grnNumber       String
   purchaseOrderId String       @db.Uuid
   vendorId        String       @db.Uuid
   status          GrnStatus    @default(DRAFT)
@@ -30,11 +31,12 @@ model GoodReceiptNote {
   version         Int          @default(1)
   // Tenancy — see purchase_orders.prisma.
   tenantId        String?
-  companyId       String?
+  companyId       String       @default("00000000-0000-0000-0000-000000000000")
   lines           GrnLine[]
 
   @@index([tenantId])
   @@index([companyId])
+  @@unique([companyId, grnNumber])
   @@index([reversalOfId])
   @@index([purchaseOrderId])
   @@index([vendorId])

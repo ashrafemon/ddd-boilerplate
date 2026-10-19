@@ -1,4 +1,5 @@
 import { PrismaClient } from '../src/generated/client';
+import { DEFAULT_COMPANY_ID } from '../src/shared-kernel/constants/company';
 import { PrismaPg } from '@prisma/adapter-pg';
 import 'dotenv/config';
 
@@ -38,8 +39,10 @@ async function main() {
     },
   ];
   for (const p of products) {
+    // The natural key is per COMPANY (the numbering/master data scope), so
+    // the upsert keys on the compound unique, not on the sku alone.
     await prisma.product.upsert({
-      where: { sku: p.sku },
+      where: { companyId_sku: { companyId: DEFAULT_COMPANY_ID, sku: p.sku } },
       create: p,
       update: p,
     });
@@ -52,7 +55,7 @@ async function main() {
   ];
   for (const v of vendors) {
     await prisma.vendor.upsert({
-      where: { code: v.code },
+      where: { companyId_code: { companyId: DEFAULT_COMPANY_ID, code: v.code } },
       create: v,
       update: v,
     });

@@ -12,6 +12,13 @@ export class DeviceResponseInterceptor implements NestInterceptor {
   constructor(private readonly cls: ClsService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    // The device shape is chosen from an HTTP header, so it does not apply to
+    // a message handler (and there is no CLS context to write the device
+    // context into).
+    if (context.getType() !== 'http') {
+      return next.handle();
+    }
+
     const request = context.switchToHttp().getRequest<{
       headers?: Record<string, string | undefined>;
     }>();

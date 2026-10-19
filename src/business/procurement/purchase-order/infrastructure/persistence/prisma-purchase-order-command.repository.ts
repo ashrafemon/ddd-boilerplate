@@ -8,6 +8,7 @@ import { PrismaPurchaseOrderMapper } from './prisma-purchase-order.mapper';
 import { PageQuery } from '@shared-kernel/types/pagination';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { resolveCompanyId } from '@shared-kernel/constants/company';
 
 @Injectable()
 export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRepository {
@@ -32,7 +33,7 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
       data: {
         ...PrismaPurchaseOrderMapper.toRow(purchaseOrder),
         tenantId: this.requestContext.getTenantId(),
-        companyId: this.requestContext.getCompanyId(),
+        companyId: resolveCompanyId(this.requestContext.get()),
         lines: { create: PrismaPurchaseOrderMapper.toLinesCreateInput(purchaseOrder) },
       } as never,
     });

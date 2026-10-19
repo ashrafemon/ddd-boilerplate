@@ -6,6 +6,7 @@ import { InvoiceCommandRepository } from '../../domain/repositories/invoice-comm
 import { PrismaInvoiceMapper } from './prisma-invoice.mapper';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { resolveCompanyId } from '@shared-kernel/constants/company';
 
 @Injectable()
 export class PrismaInvoiceCommandRepository extends InvoiceCommandRepository {
@@ -33,7 +34,7 @@ export class PrismaInvoiceCommandRepository extends InvoiceCommandRepository {
       data: {
         ...PrismaInvoiceMapper.toRow(invoice),
         tenantId: this.requestContext.getTenantId(),
-        companyId: this.requestContext.getCompanyId(),
+        companyId: resolveCompanyId(this.requestContext.get()),
       } as never,
     });
     return invoice;

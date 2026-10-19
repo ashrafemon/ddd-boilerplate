@@ -63,6 +63,14 @@ export class TenancyAuthGuard implements CanActivate {
       headers?: Record<string, string | string[] | undefined>;
       [VERIFIED_IDENTITY_REQUEST_KEY]?: VerifiedIdentity;
     }
+    // The guard is global, so it also sees the platform's non-HTTP
+    // transports (RabbitMQ/Kafka/SQS handlers, workers, crons). There is no
+    // bearer token on a message — the identity travels in the envelope — so
+    // the HTTP trust boundary simply does not apply there.
+    if (context.getType() !== 'http') {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest<HeaderedRequest>();
     const auth = request.headers?.['authorization'];
     const header = Array.isArray(auth) ? auth[0] : auth;

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { resolveCompanyId } from '@shared-kernel/constants/company';
 import { NextNumberOptions, NumberingPort } from '../ports/numbering.port';
 
 /**
@@ -49,9 +50,13 @@ export class PrismaNumberingRepository implements NumberingPort {
     return `${updated.prefix}${numberText}`;
   }
 
+  /**
+   * The series is scoped by the effective COMPANY, exactly like the business
+   * tables' natural keys: two companies each get their own `PO-00000001`.
+   * The scope must be the same value the row is stamped with, or the two
+   * would drift apart.
+   */
   private scopedKey(sequenceKey: string): string {
-    const ctx = this.requestContext.get();
-    const scope = ctx?.companyId ?? ctx?.tenantId;
-    return scope ? `${scope}:${sequenceKey}` : sequenceKey;
+    return `${resolveCompanyId(this.requestContext.get())}:${sequenceKey}`;
   }
 }

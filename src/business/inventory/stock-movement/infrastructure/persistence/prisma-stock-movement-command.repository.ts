@@ -19,24 +19,44 @@ export class PrismaStockMovementCommandRepository extends StockMovementCommandRe
    * they decrement), which makes "balance == sum(movements)" hold by
    * construction and keeps redelivery idempotent through the caller's
    * `grnLineId + movementType` natural key.
+   *
+   * The insert is `createMany({ skipDuplicates: true })` — INSERT … ON CONFLICT
+   * DO NOTHING — so the natural key is enforced by the DATABASE, not by a
+   * find-then-insert race. The same event reaches this consumer twice (the
+   * in-process listener and the broker consumer), and a find-then-insert
+   * would let both through and fail one of them with a unique violation. The
+   * balance is only touched when the movement was genuinely inserted, so a
+   * redelivery never double-counts.
    */
   async save(movement: StockMovement): Promise<StockMovement> {
-    await this.txHost.tx.stockMovement.create({
-      data: {
-        id: movement.id.toString(),
-        grnLineId: movement.grnLineId,
-        productId: movement.productId,
-        quantity: movement.quantity,
-        movementType: movement.movementType,
-        sourceDocumentId: movement.sourceDocumentId,
-        sourceDocumentType: movement.sourceDocumentType,
-        companyId: movement.companyId,
-        tenantId: movement.tenantId,
-        actorId: movement.actorId ?? null,
-        effectiveDate: movement.effectiveDate,
-        reversalOfId: movement.reversalOfId ?? null,
-      },
+    const inserted = await this.txHost.tx.stockMovement.createMany({
+      data: [
+        {
+          id: movement.id.toString(),
+          grnLineId: movement.grnLineId,
+          productId: movement.productId,
+          quantity: movement.quantity,
+          movementType: movement.movementType,
+          sourceDocumentId: movement.sourceDocumentId,
+          sourceDocumentType: movement.sourceDocumentType,
+          companyId: movement.companyId,
+          tenantId: movement.tenantId,
+          actorId: movement.actorId ?? null,
+          effectiveDate: movement.effectiveDate,
+          reversalOfId: movement.reversalOfId ?? null,
+        },
+      ],
+      skipDuplicates: true,
     });
+
+    if (inserted.count === 0) {
+      // Already recorded by a concurrent or earlier delivery: the movement is
+      // immutable, so return the stored one and leave the balance alone.
+      const existing = await this.findByGrnLineAndType(movement.grnLineId, movement.movementType);
+      if (existing) {
+        return existing;
+      }
+    }
 
     await this.txHost.tx.stockBalance.upsert({
       where: {

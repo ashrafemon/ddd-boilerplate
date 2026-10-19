@@ -136,12 +136,18 @@ export class PrismaInboxRepository {
     const base = Math.max(retryBaseDelayMs, 0);
     const max = Math.max(retryMaxDelayMs, base);
     const now = new Date();
+    // The numeric casts matter: Prisma sends JS numbers as untyped parameters,
+    // and `LEAST($1, $2)` then resolves to `interval` — which Postgres refuses
+    // to add to a `timestamp` column ("expression is of type interval").
     return this.txHost.tx.$executeRaw`
       UPDATE "inbox_messages"
       SET "claimed_at" = NULL,
           "last_error" = ${lastError},
-          "next_attempt_at" = ${now} + (
-            LEAST(${base} * POWER(2, GREATEST("attempts" - 1, 0)), ${max})
+          "next_attempt_at" = ${now}::timestamp + (
+            LEAST(
+              ${base}::numeric * POWER(2, GREATEST("attempts" - 1, 0)),
+              ${max}::numeric
+            )
             * INTERVAL '1 millisecond'
           )
       WHERE "id" = ${id}::uuid

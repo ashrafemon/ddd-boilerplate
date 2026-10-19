@@ -32,6 +32,12 @@ function isNestLensRequest(request: FastifyRequest): boolean {
 @Injectable()
 export class ResponseInterceptor<T = unknown> implements NestInterceptor<T, SuccessResponse<T>> {
   intercept(context: ExecutionContext, next: CallHandler<T>): Observable<SuccessResponse<T>> {
+    // The envelope is an HTTP-transport concern: a message handler returns
+    // its own value (usually nothing) and must not be wrapped in it.
+    if (context.getType() !== 'http') {
+      return next.handle() as Observable<SuccessResponse<T>>;
+    }
+
     const http = context.switchToHttp();
     const request = http.getRequest<FastifyRequest>();
     const response = http.getResponse<FastifyReply>();

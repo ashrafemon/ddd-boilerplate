@@ -2,7 +2,8 @@
 // Mapped by infrastructure/database/mappers/ProductMapper into the domain aggregate.
 model Product {
   id          String        @id @default(uuid()) @db.Uuid
-  sku         String        @unique
+  // Unique WITHIN the company — the same SKU may exist in two companies.
+  sku         String
   name        String
   description String?
   status      ProductStatus @default(ACTIVE)
@@ -14,10 +15,11 @@ model Product {
   // Tenancy — NULL = shared master data, visible to every tenant
   // (see shared-kernel/utils/tenant-scope.util.ts).
   tenantId    String?
-  companyId   String?
+  companyId   String        @default("00000000-0000-0000-0000-000000000000")
 
   @@index([tenantId])
   @@index([companyId])
+  @@unique([companyId, sku])
   @@index([status])
   @@index([createdAt])
   @@map("products")

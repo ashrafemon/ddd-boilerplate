@@ -784,6 +784,14 @@ Non-negotiable invariants (all enforced or precedented in the current services):
    - **owned documents** (purchase order, GRN, invoice): a tenant-scoped request
      sees only its own rows. An unscoped legacy row is invisible to it
      (fail-closed).
+
+   A business document also belongs to a **company** (`companyId`, never null —
+   the default company when the request names none), and its natural key
+   (order number, GRN number, SKU, vendor code, invoice number) is unique
+   **within that company**, not globally. The numbering series is scoped by
+   the same value, so two companies each have a `PO-00000001` — a global
+   unique index would make the second company permanently unable to create a
+   document.
    - **shared master data** (product, vendor): a tenant-scoped request sees its
      own rows **plus** rows that were never tenant-scoped (`NULL` = the shared
      catalogue).

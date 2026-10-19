@@ -6,6 +6,7 @@ import { ProductCommandRepository } from '@business/procurement/product/domain/r
 import { PrismaProductMapper } from './prisma-product.mapper';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { resolveCompanyId } from '@shared-kernel/constants/company';
 
 @Injectable()
 export class PrismaProductCommandRepository extends ProductCommandRepository {
@@ -47,7 +48,7 @@ export class PrismaProductCommandRepository extends ProductCommandRepository {
       data: {
         ...PrismaProductMapper.toRow(product),
         tenantId: this.requestContext.getTenantId(),
-        companyId: this.requestContext.getCompanyId(),
+        companyId: resolveCompanyId(this.requestContext.get()),
       } as never,
     });
     return product;

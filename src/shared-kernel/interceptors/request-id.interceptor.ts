@@ -35,6 +35,16 @@ export class RequestIdInterceptor implements NestInterceptor {
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    // The interceptor is global, so it also sees the platform's non-HTTP
+    // transports. A message handler has no HTTP request, no headers to read a
+    // correlation id from, and — outside a request — no CLS context to write
+    // into. The identity and the correlation of a message travel in the
+    // envelope and are restored by the platform before the handler runs
+    // (`RequestContextPort.run`), so there is nothing to do here.
+    if (context.getType() !== 'http') {
+      return next.handle();
+    }
+
     const http = context.switchToHttp();
     const request = http.getRequest<FastifyRequest>();
 
@@ -77,7 +87,9 @@ export class RequestIdInterceptor implements NestInterceptor {
       return { roles: [] };
     }
 
-    const headers = request.headers;
+    // Outside HTTP there are no headers: the identity travels in the envelope
+    // and is restored by the platform before the handler runs.
+    const headers = request?.headers ?? {};
     return {
       tenantId: (headers['x-tenant-id'] as string) ?? undefined,
       companyId: (headers['x-company-id'] as string) ?? undefined,

@@ -8,10 +8,12 @@
 //   approval record: approvedAt/rejectedAt/rejectionReason (Phase 2.3, minimal).
 model PurchaseOrder {
   id          String                @id @default(uuid()) @db.Uuid
-  orderNumber String                @unique
+  // Unique WITHIN the company, not globally: the numbering series is
+  // company-scoped, so two companies each have a PO-00000001.
+  orderNumber String
   // Caller-supplied reference (import poReference). Groups import rows into one PO and
   // makes re-imports find-or-create; NULL for POs created any other way.
-  externalReference String?           @unique @db.VarChar(128)
+  externalReference String?           @db.VarChar(128)
   vendorId    String                @db.Uuid
   status      PurchaseOrderStatus   @default(DRAFT)
   currency    String                @default("USD") @db.VarChar(3)
@@ -41,11 +43,13 @@ model PurchaseOrder {
   // context on create, scoped on every read and write. NULL means the row was
   // created outside a tenant-scoped request (single-tenant deployments).
   tenantId    String?
-  companyId   String?
+  companyId   String                @default("00000000-0000-0000-0000-000000000000")
   lines       PurchaseOrderLine[]
 
   @@index([tenantId])
   @@index([companyId])
+  @@unique([companyId, orderNumber])
+  @@unique([companyId, externalReference])
   @@index([vendorId])
   @@index([status])
   @@index([createdAt])

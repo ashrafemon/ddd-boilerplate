@@ -1,6 +1,6 @@
 import { BusinessModule } from '@business/business.module';
 import { Module } from '@nestjs/common';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ConfigService } from './config/config.service';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from './config/config.module';
@@ -11,6 +11,7 @@ import { DeviceResponseInterceptor } from './shared-kernel/interceptors/device-r
 import { LoggingInterceptor } from './shared-kernel/interceptors/logging.interceptor';
 import { RequestIdInterceptor } from './shared-kernel/interceptors/request-id.interceptor';
 import { ResponseInterceptor } from './shared-kernel/interceptors/response.interceptor';
+import { HttpThrottlerGuard } from './shared-kernel/guards/http-throttler.guard';
 import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
 import { TenancyAuthGuard } from '@platform/context/guards/tenancy-auth.guard';
 
@@ -31,7 +32,7 @@ import { TenancyAuthGuard } from '@platform/context/guards/tenancy-auth.guard';
   controllers: [],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: HttpThrottlerGuard },
     { provide: APP_GUARD, useClass: TenancyAuthGuard },
     { provide: APP_FILTER, useClass: HttpExceptionsFilter },
     { provide: APP_PIPE, useClass: AppValidationPipe },

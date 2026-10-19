@@ -4,6 +4,7 @@ import {
   Catch,
   ExceptionFilter,
   HttpException,
+  Logger,
 } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
 
@@ -30,7 +31,25 @@ interface ServerErrorResponse {
 
 @Catch()
 export class HttpExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger('HttpExceptionsFilter');
+
   catch(exception: unknown, host: ArgumentsHost) {
+    // This filter is registered globally, so it also sees exceptions raised in
+    // NON-HTTP contexts — a RabbitMQ/Kafka/SQS message handler, a cron, a
+    // queue worker. Those have no HTTP response to write to: calling
+    // `response.status(...)` there throws "response.status is not a function"
+    // and MASKS the real error. For a non-HTTP context we log and rethrow so
+    // the caller (the broker, the inbox) can see — and act on — the failure.
+    if (host.getType() !== 'http') {
+      this.logger.error(
+        `Unhandled exception outside an HTTP request: ${
+          exception instanceof Error ? exception.message : String(exception)
+        }`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+      throw exception;
+    }
+
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<FastifyReply>();
 

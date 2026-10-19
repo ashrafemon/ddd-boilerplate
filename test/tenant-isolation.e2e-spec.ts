@@ -43,6 +43,7 @@ describe('tenant isolation (e2e)', () => {
     url: string,
     tenant: string,
     payload?: unknown,
+    headerOverrides?: Record<string, string>,
   ) => {
     const res = await app.inject({
       method,
@@ -50,10 +51,24 @@ describe('tenant isolation (e2e)', () => {
       headers: {
         ...headersFor(tenant),
         'idempotency-key': `iso-${stamp}-${++idempotencySeq}`,
+        ...(headerOverrides ?? {}),
       },
       ...(payload === undefined ? {} : { payload: payload as object }),
     });
     return { status: res.statusCode, body: parseJson(res.body) };
+  };
+
+  /** Assert an HTTP status, printing the response body when it does not match. */
+  const expectStatus = (
+    res: { status: number; body: unknown },
+    expected: number,
+    what: string,
+  ): void => {
+    if (res.status !== expected) {
+      throw new Error(
+        `${what}: expected HTTP ${expected}, got ${res.status} — ${JSON.stringify(res.body)}`,
+      );
+    }
   };
 
   const parseJson = (raw: string): unknown => {
@@ -223,6 +238,83 @@ describe('tenant isolation (e2e)', () => {
     });
     expect(row.status).toBe('DRAFT');
     expect(row.lines).toHaveLength(0);
+  }, 60_000);
+
+  it('lets two companies each have their own PO-00000001', async () => {
+    // The document-number series is company-scoped, so two companies each
+    // start at PO-00000001. The natural key is unique WITHIN the company — a
+    // global unique index on the number would make the second company
+    // permanently unable to create a purchase order.
+    const companyA = '00000000-0000-4000-8000-00000000a11f';
+    const companyB = '00000000-0000-4000-8000-00000000b022';
+
+    await seedTenantAMasterData();
+
+    // A SHARED vendor (no tenant) — visible to every company. Tenant A's own
+    // vendor is deliberately invisible to tenant B.
+    const sharedVendor = await prisma.vendor.create({
+      data: {
+        code: `ISO-SHARED-${stamp}`,
+        name: 'Shared Vendor',
+        email: `iso-shared-${stamp}@example.com`,
+      },
+      select: { id: true },
+    });
+
+    const createdA = await call(
+      'POST',
+      '/api/v1/purchase-orders',
+      tenantA,
+      { vendorId: sharedVendor.id, currency: 'USD' },
+      { 'x-company-id': companyA },
+    );
+    expectStatus(createdA, 201, 'create purchase order in company A');
+    const idA = (createdA.body as { data: { id: string } }).data.id;
+
+    const rowA = await prisma.purchaseOrder.findUniqueOrThrow({
+      where: { id: idA },
+      select: { orderNumber: true, companyId: true },
+    });
+    expect(rowA.companyId).toBe(companyA);
+
+    // The SAME number in another company must be allowed — that is what the
+    // per-company natural key means. A global unique index would reject it.
+    const sameNumberInCompanyB = await prisma.purchaseOrder.create({
+      data: {
+        orderNumber: rowA.orderNumber,
+        vendorId: sharedVendor.id,
+        status: 'DRAFT',
+        currency: 'USD',
+        subtotal: 0,
+        total: 0,
+        tenantId: tenantB,
+        companyId: companyB,
+        version: 1,
+      },
+      select: { id: true, orderNumber: true, companyId: true },
+    });
+    expect(sameNumberInCompanyB.orderNumber).toBe(rowA.orderNumber);
+    expect(sameNumberInCompanyB.companyId).toBe(companyB);
+
+    // …and the SAME number twice in the SAME company is still refused.
+    await expect(
+      prisma.purchaseOrder.create({
+        data: {
+          orderNumber: rowA.orderNumber,
+          vendorId: sharedVendor.id,
+          status: 'DRAFT',
+          currency: 'USD',
+          subtotal: 0,
+          total: 0,
+          tenantId: tenantB,
+          companyId: companyB,
+          version: 1,
+        },
+      }),
+    ).rejects.toThrow();
+
+    await prisma.purchaseOrder.deleteMany({ where: { id: sameNumberInCompanyB.id } });
+    await prisma.vendor.deleteMany({ where: { id: sharedVendor.id } });
   }, 60_000);
 
   it("keeps a tenant-owned master-data row out of another tenant's reach", async () => {

@@ -1416,8 +1416,8 @@ flowchart LR
     ResponseInterceptor["ResponseInterceptor"]
     APP_INTERCEPTOR -.->|useClass| ResponseInterceptor
     APP_GUARD["APP_GUARD"]
-    ThrottlerGuard["ThrottlerGuard"]
-    APP_GUARD -.->|useClass| ThrottlerGuard
+    HttpThrottlerGuard["HttpThrottlerGuard"]
+    APP_GUARD -.->|useClass| HttpThrottlerGuard
     TenancyAuthGuard["TenancyAuthGuard"]
     APP_GUARD -.->|useClass| TenancyAuthGuard
     APP_FILTER["APP_FILTER"]

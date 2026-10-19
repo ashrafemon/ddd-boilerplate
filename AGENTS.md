@@ -22,7 +22,9 @@ source of truth; this file is the load-bearing summary.
    documents are strict (`tenantId = request`); master data also includes
    unscoped (shared) rows. A foreign row is **404**, never 403 — see
    `TenantScope.where` in `src/shared-kernel/utils/tenant-scope.util.ts` and
-   `test/tenant-isolation.e2e-spec.ts`.
+   `test/tenant-isolation.e2e-spec.ts`. A document's **natural key is unique
+   within its company**, not globally — the numbering series is company-scoped,
+   so two companies each have a `PO-00000001`.
 1. `src/platform/**` may not import `@business/**` (platform owns its event
    contract: the structural `OutboxEvent` interface + `OutboxEventBase` in
    `src/platform/outbox/outbox.types.ts`; there is no event registry and no
