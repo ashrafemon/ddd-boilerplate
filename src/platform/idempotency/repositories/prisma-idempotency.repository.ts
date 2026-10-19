@@ -38,9 +38,9 @@ export class PrismaIdempotencyRepository {
   async findByIdentity(identity: IdempotencyIdentity): Promise<IdempotencyRowView | null> {
     const row = await this.prisma.idempotencyKey.findUnique({
       where: {
-        tenantId_organizationId_scope_key: {
+        tenantId_companyId_scope_key: {
           tenantId: identity.tenantId,
-          organizationId: identity.organizationId,
+          companyId: identity.companyId,
           scope: identity.scope,
           key: identity.key,
         },
@@ -78,7 +78,7 @@ export class PrismaIdempotencyRepository {
     const row = await this.prisma.idempotencyKey.create({
       data: {
         tenantId: identity.tenantId,
-        organizationId: identity.organizationId,
+        companyId: identity.companyId,
         scope: identity.scope,
         key: identity.key,
         claimToken,
@@ -105,7 +105,7 @@ export class PrismaIdempotencyRepository {
     const updated = await this.prisma.idempotencyKey.updateMany({
       where: {
         tenantId: identity.tenantId,
-        organizationId: identity.organizationId,
+        companyId: identity.companyId,
         scope: identity.scope,
         key: identity.key,
         status: 'IN_PROGRESS',
@@ -124,9 +124,9 @@ export class PrismaIdempotencyRepository {
 
     const row = await this.prisma.idempotencyKey.findUnique({
       where: {
-        tenantId_organizationId_scope_key: {
+        tenantId_companyId_scope_key: {
           tenantId: identity.tenantId,
-          organizationId: identity.organizationId,
+          companyId: identity.companyId,
           scope: identity.scope,
           key: identity.key,
         },

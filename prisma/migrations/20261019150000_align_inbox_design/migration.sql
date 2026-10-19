@@ -11,7 +11,7 @@ CREATE TYPE "inbox_message_status" AS ENUM ('IN_PROGRESS', 'PROCESSED', 'SUSPEND
 CREATE TABLE "inbox_messages" (
   "id"              UUID         NOT NULL,
   "tenant_id"       VARCHAR(100) NOT NULL DEFAULT '',
-  "organization_id" VARCHAR(100) NOT NULL DEFAULT '',
+  "company_id" VARCHAR(100) NOT NULL DEFAULT '',
   "consumer"        VARCHAR(250) NOT NULL,
   "message_id"      VARCHAR(500) NOT NULL,
   "message_type"    VARCHAR(250) NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE "inbox_messages" (
   CONSTRAINT "inbox_messages_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "inbox_messages_tenant_id_organization_id_consumer_message_i_key"
-  ON "inbox_messages" ("tenant_id", "organization_id", "consumer", "message_id");
+CREATE UNIQUE INDEX "inbox_messages_tenant_id_company_id_consumer_message_id_key"
+  ON "inbox_messages" ("tenant_id", "company_id", "consumer", "message_id");
 CREATE INDEX "inbox_messages_status_next_attempt_at_idx"
   ON "inbox_messages" ("status", "next_attempt_at");

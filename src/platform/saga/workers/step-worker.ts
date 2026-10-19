@@ -71,7 +71,7 @@ export class SagaStepWorker {
     await this.requestContext.run(
       {
         tenantId: instance.tenantId,
-        organizationId: instance.organizationId,
+        companyId: instance.companyId,
         correlationId: instance.id,
       },
       () => this.run(step, instance),
@@ -89,7 +89,7 @@ export class SagaStepWorker {
 
     const context: SagaActionContext = {
       tenantId: instance.tenantId,
-      organizationId: instance.organizationId,
+      companyId: instance.companyId,
       sagaKey: instance.sagaKey,
       instanceId: instance.id,
       stepId: step.stepId,

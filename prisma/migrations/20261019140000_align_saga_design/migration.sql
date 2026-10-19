@@ -45,7 +45,7 @@ CREATE UNIQUE INDEX "saga_definitions_one_active"
 CREATE TABLE "saga_company_configs" (
   "id"              UUID         NOT NULL,
   "tenant_id"       VARCHAR(100) NOT NULL,
-  "organization_id" VARCHAR(100) NOT NULL,
+  "company_id" VARCHAR(100) NOT NULL,
   "definition_id"   UUID         NOT NULL,
   "saga_key"        VARCHAR(200) NOT NULL,
   "version"         INTEGER      NOT NULL DEFAULT 1,
@@ -56,19 +56,19 @@ CREATE TABLE "saga_company_configs" (
   "updated_at"      TIMESTAMP(3) NOT NULL,
   CONSTRAINT "saga_company_configs_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "saga_company_configs_organization_id_saga_key_version_key"
-  ON "saga_company_configs" ("organization_id", "saga_key", "version");
-CREATE INDEX "saga_company_configs_tenant_id_organization_id_saga_key_sta_idx"
-  ON "saga_company_configs" ("tenant_id", "organization_id", "saga_key", "status");
+CREATE UNIQUE INDEX "saga_company_configs_company_id_saga_key_version_key"
+  ON "saga_company_configs" ("company_id", "saga_key", "version");
+CREATE INDEX "saga_company_configs_tenant_id_company_id_saga_key_status_idx"
+  ON "saga_company_configs" ("tenant_id", "company_id", "saga_key", "status");
 -- one ACTIVE overlay per (company, saga key)
 CREATE UNIQUE INDEX "saga_company_configs_one_active"
-  ON "saga_company_configs" ("organization_id", "saga_key") WHERE "status" = 'ACTIVE';
+  ON "saga_company_configs" ("company_id", "saga_key") WHERE "status" = 'ACTIVE';
 
 -- ─── saga_instances ─────────────────────────────────────────────────────────
 CREATE TABLE "saga_instances" (
   "id"                  UUID         NOT NULL,
   "tenant_id"           VARCHAR(100) NOT NULL,
-  "organization_id"     VARCHAR(100) NOT NULL,
+  "company_id"     VARCHAR(100) NOT NULL,
   "saga_key"            VARCHAR(200) NOT NULL,
   "definition_id"       UUID         NOT NULL,
   "config_id"           UUID,
@@ -89,22 +89,22 @@ CREATE TABLE "saga_instances" (
   "updated_at"          TIMESTAMP(3) NOT NULL,
   CONSTRAINT "saga_instances_pkey" PRIMARY KEY ("id")
 );
-CREATE INDEX "saga_instances_tenant_id_organization_id_status_idx"
-  ON "saga_instances" ("tenant_id", "organization_id", "status");
-CREATE INDEX "saga_instances_tenant_id_organization_id_saga_key_status_idx"
-  ON "saga_instances" ("tenant_id", "organization_id", "saga_key", "status");
+CREATE INDEX "saga_instances_tenant_id_company_id_status_idx"
+  ON "saga_instances" ("tenant_id", "company_id", "status");
+CREATE INDEX "saga_instances_tenant_id_company_id_saga_key_status_idx"
+  ON "saga_instances" ("tenant_id", "company_id", "saga_key", "status");
 CREATE INDEX "saga_instances_saga_key_correlation_key_idx"
   ON "saga_instances" ("saga_key", "correlation_key");
 -- one live instance per (tenant, company, saga key, correlation key)
 CREATE UNIQUE INDEX "saga_instances_one_live"
-  ON "saga_instances" ("tenant_id", "organization_id", "saga_key", "correlation_key")
+  ON "saga_instances" ("tenant_id", "company_id", "saga_key", "correlation_key")
   WHERE "status" IN ('RUNNING', 'WAITING', 'COMPENSATING');
 
 -- ─── saga_steps ─────────────────────────────────────────────────────────────
 CREATE TABLE "saga_steps" (
   "id"              UUID         NOT NULL,
   "tenant_id"       VARCHAR(100) NOT NULL,
-  "organization_id" VARCHAR(100) NOT NULL,
+  "company_id" VARCHAR(100) NOT NULL,
   "instance_id"     UUID         NOT NULL,
   "step_id"         VARCHAR(200) NOT NULL,
   "kind"            "saga_step_kind" NOT NULL,
@@ -125,8 +125,8 @@ CREATE TABLE "saga_steps" (
 CREATE UNIQUE INDEX "saga_steps_instance_id_step_id_kind_key"
   ON "saga_steps" ("instance_id", "step_id", "kind");
 CREATE INDEX "saga_steps_status_run_at_idx" ON "saga_steps" ("status", "run_at");
-CREATE INDEX "saga_steps_organization_id_status_idx"
-  ON "saga_steps" ("organization_id", "status");
+CREATE INDEX "saga_steps_company_id_status_idx"
+  ON "saga_steps" ("company_id", "status");
 -- runnable queue scan
 CREATE INDEX "saga_steps_pending_run_at" ON "saga_steps" ("run_at") WHERE "status" = 'PENDING';
 
@@ -134,7 +134,7 @@ CREATE INDEX "saga_steps_pending_run_at" ON "saga_steps" ("run_at") WHERE "statu
 CREATE TABLE "saga_inbox" (
   "id"              UUID         NOT NULL,
   "tenant_id"       VARCHAR(100) NOT NULL,
-  "organization_id" VARCHAR(100) NOT NULL,
+  "company_id" VARCHAR(100) NOT NULL,
   "consumer"        VARCHAR(200) NOT NULL,
   "event_id"        UUID         NOT NULL,
   "event_name"      VARCHAR(250) NOT NULL,
@@ -148,6 +148,6 @@ CREATE TABLE "saga_inbox" (
   "processed_at"    TIMESTAMP(3),
   CONSTRAINT "saga_inbox_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "saga_inbox_tenant_id_organization_id_consumer_event_id_key"
-  ON "saga_inbox" ("tenant_id", "organization_id", "consumer", "event_id");
+CREATE UNIQUE INDEX "saga_inbox_tenant_id_company_id_consumer_event_id_key"
+  ON "saga_inbox" ("tenant_id", "company_id", "consumer", "event_id");
 CREATE INDEX "saga_inbox_instance_id_status_idx" ON "saga_inbox" ("instance_id", "status");

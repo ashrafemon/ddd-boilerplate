@@ -98,7 +98,7 @@ describe('batch-operation DI wiring', () => {
             getTenantId: () => 't1',
             getUserId: () => 'u1',
             getCorrelationId: () => 'corr-1',
-          } as unknown as RequestContextPort,
+          },
         },
         {
           provide: NumberingPort,

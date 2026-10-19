@@ -6,7 +6,7 @@
 /** Logical identity for an inbox message. NULLs normalise to '' at the repo edge. */
 export interface InboxIdentity {
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   consumer: string;
   messageId: string;
 }
@@ -14,7 +14,7 @@ export interface InboxIdentity {
 /** Request to receive/claim an inbound message. */
 export interface InboxReceiveRequest {
   tenantId?: string;
-  organizationId?: string;
+  companyId?: string;
 
   consumer: string;
   messageId: string;
@@ -59,7 +59,7 @@ export interface InboxFailRequest {
 export interface InboxMessage {
   id: string;
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   consumer: string;
   messageId: string;
   messageType: string;

@@ -84,7 +84,7 @@ export class PublishPendingBatchUseCase {
       await this.requestContext.run(
         {
           tenantId: record.tenantId ?? undefined,
-          organizationId: record.organizationId ?? undefined,
+          companyId: record.companyId ?? undefined,
           correlationId: envelope.correlationId,
         },
         () => this.eventBus.emit(envelope),
@@ -126,7 +126,7 @@ export class PublishPendingBatchUseCase {
       eventType: record.eventType,
       eventVersion: record.eventVersion,
       tenantId: record.tenantId,
-      organizationId: record.organizationId,
+      companyId: record.companyId,
       aggregateType: record.aggregateType,
       aggregateId: record.aggregateId,
       payload: record.payload,

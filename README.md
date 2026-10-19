@@ -101,7 +101,7 @@ resolved via the Nest container — modules never import each other.
 - `single` (default): `x-tenant-id`/`x-organization-id` headers are trusted — for dev,
   internal deployments, or when a verified gateway sits in front.
 - `multi`: every request needs `Authorization: Bearer <JWT>` signed with `JWT_ACCESS_SECRET`
-  and carrying a `tenantId` claim (`organizationId`, `sub`, `roles` optional). Raw identity
+  and carrying a `tenantId` claim (`companyId`, `sub`, `roles` optional). Raw identity
   headers are ignored, anonymous requests are rejected (except `@SkipTenancy()` routes such
   as `GET /api/v1/metrics`), and missing tenant/company config rows fail hard instead of
   falling back to defaults.

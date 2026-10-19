@@ -116,7 +116,7 @@ export class SagaDefinitionRepository {
 interface ConfigRaw {
   id: string;
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   definitionId: string;
   sagaKey: string;
   baseVersion: number;
@@ -130,11 +130,11 @@ export class SagaCompanyConfigRepository {
 
   async findActive(
     tenantId: string,
-    organizationId: string,
+    companyId: string,
     sagaKey: string,
   ): Promise<SagaCompanyConfigRecord | null> {
     const row = await this.txHost.tx.sagaCompanyConfig.findFirst({
-      where: { tenantId, organizationId, sagaKey, status: SagaCompanyConfigStatus.ACTIVE },
+      where: { tenantId, companyId, sagaKey, status: SagaCompanyConfigStatus.ACTIVE },
     });
     return row ? this.toRecord(row) : null;
   }
@@ -151,7 +151,7 @@ export class SagaCompanyConfigRepository {
     return {
       id: row.id,
       tenantId: row.tenantId,
-      organizationId: row.organizationId,
+      companyId: row.companyId,
       definitionId: row.definitionId,
       sagaKey: row.sagaKey,
       baseVersion: row.baseVersion,
@@ -166,7 +166,7 @@ export class SagaCompanyConfigRepository {
 interface InstanceRaw {
   id: string;
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   sagaKey: string;
   definitionId: string;
   configId: string | null;
@@ -187,7 +187,7 @@ interface InstanceRaw {
 
 export interface InsertInstanceInput {
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   sagaKey: string;
   definitionId: string;
   configId: string | null;
@@ -210,7 +210,7 @@ export class SagaInstanceRepository {
         data: {
           id: randomUUID(),
           tenantId: input.tenantId,
-          organizationId: input.organizationId,
+          companyId: input.companyId,
           sagaKey: input.sagaKey,
           definitionId: input.definitionId,
           configId: input.configId,
@@ -312,7 +312,7 @@ export class SagaInstanceRepository {
     return {
       id: row.id,
       tenantId: row.tenantId,
-      organizationId: row.organizationId,
+      companyId: row.companyId,
       sagaKey: row.sagaKey,
       definitionId: row.definitionId,
       configId: row.configId,
@@ -338,7 +338,7 @@ export class SagaInstanceRepository {
 interface StepRaw {
   id: string;
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   instanceId: string;
   stepId: string;
   kind: string;
@@ -356,7 +356,7 @@ interface StepRaw {
 
 export interface InsertStepInput {
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   instanceId: string;
   stepId: string;
   kind: SagaStepKind;
@@ -391,7 +391,7 @@ export class SagaStepRepository {
         data: {
           id: randomUUID(),
           tenantId: input.tenantId,
-          organizationId: input.organizationId,
+          companyId: input.companyId,
           instanceId: input.instanceId,
           stepId: input.stepId,
           kind: input.kind,
@@ -544,12 +544,12 @@ export class SagaStepRepository {
     const claimed: StepRaw[] = [];
     const overflow: StepRaw[] = [];
     for (const row of rows) {
-      const count = perCompany.get(row.organizationId) ?? 0;
+      const count = perCompany.get(row.companyId) ?? 0;
       if (count >= fairnessCap) {
         overflow.push(row);
         continue;
       }
-      perCompany.set(row.organizationId, count + 1);
+      perCompany.set(row.companyId, count + 1);
       claimed.push(row);
     }
     return { claimed, overflow };
@@ -559,7 +559,7 @@ export class SagaStepRepository {
     return {
       id: row.id,
       tenantId: row.tenantId,
-      organizationId: row.organizationId,
+      companyId: row.companyId,
       instanceId: row.instanceId,
       stepId: row.stepId,
       kind: row.kind as SagaStepKind,
@@ -582,7 +582,7 @@ export class SagaStepRepository {
 interface InboxRaw {
   id: string;
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   consumer: string;
   eventId: string;
   eventName: string;
@@ -596,7 +596,7 @@ interface InboxRaw {
 
 export interface InsertInboxInput {
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   consumer: string;
   eventId: string;
   eventName: string;
@@ -617,7 +617,7 @@ export class SagaInboxRepository {
         data: {
           id: randomUUID(),
           tenantId: input.tenantId,
-          organizationId: input.organizationId,
+          companyId: input.companyId,
           consumer: input.consumer,
           eventId: input.eventId,
           eventName: input.eventName,
@@ -694,7 +694,7 @@ export class SagaInboxRepository {
     return {
       id: row.id,
       tenantId: row.tenantId,
-      organizationId: row.organizationId,
+      companyId: row.companyId,
       consumer: row.consumer,
       eventId: row.eventId,
       eventName: row.eventName,

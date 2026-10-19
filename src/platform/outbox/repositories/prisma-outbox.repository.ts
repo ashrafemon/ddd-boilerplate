@@ -15,7 +15,7 @@ interface OutboxRawRow {
   id: string;
   eventId: string;
   tenantId: string | null;
-  organizationId: string | null;
+  companyId: string | null;
   eventType: string;
   eventVersion: number;
   aggregateType: string;
@@ -58,7 +58,7 @@ export class PrismaOutboxRepository {
         aggregateType: request.aggregateType,
         aggregateId: request.aggregateId,
         tenantId: request.tenantId ?? null,
-        organizationId: request.organizationId ?? null,
+        companyId: request.companyId ?? null,
         payload: PrismaJson.toInput(request.payload) as object,
         headers: request.headers ? (request.headers as object) : undefined,
         occurredAt,
@@ -168,7 +168,7 @@ export class PrismaOutboxRepository {
       id: row.id,
       eventId: row.eventId,
       tenantId: row.tenantId,
-      organizationId: row.organizationId,
+      companyId: row.companyId,
       eventType: row.eventType,
       eventVersion: row.eventVersion,
       aggregateType: row.aggregateType,
@@ -195,7 +195,7 @@ export class PrismaOutboxRepository {
       id: row.id,
       eventId: row.eventId,
       tenantId: row.tenantId,
-      organizationId: row.organizationId,
+      companyId: row.companyId,
       eventType: row.eventType,
       eventVersion: row.eventVersion,
       aggregateType: row.aggregateType,

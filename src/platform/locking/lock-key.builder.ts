@@ -6,7 +6,7 @@ import { DistributedLockIdentity } from './locking.types';
  *
  * Produces keys in the format:
  * ```
- * {tenantId}:{organizationId}:{scope}:{resource}
+ * {tenantId}:{companyId}:{scope}:{resource}
  * ```
  *
  * Example:
@@ -17,8 +17,6 @@ import { DistributedLockIdentity } from './locking.types';
 @Injectable()
 export class LockKeyBuilder {
   build(identity: DistributedLockIdentity): string {
-    return [identity.tenantId, identity.organizationId, identity.scope, identity.resource].join(
-      ':',
-    );
+    return [identity.tenantId, identity.companyId, identity.scope, identity.resource].join(':');
   }
 }

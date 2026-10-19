@@ -27,7 +27,7 @@ export class CacheService implements CachePort {
       keyPrefix,
       keyVersion,
       identity.tenantId ?? 'platform',
-      identity.organizationId ?? 'platform',
+      identity.companyId ?? 'platform',
       identity.namespace,
       identity.resource,
       identity.variant ?? 'default',

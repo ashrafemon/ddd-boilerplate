@@ -172,7 +172,7 @@ function makeInstance(overrides: Partial<SagaInstanceRecord> = {}): SagaInstance
   return {
     id: 'inst-1',
     tenantId: 't1',
-    organizationId: 'c1',
+    companyId: 'c1',
     sagaKey: 'goods-receipt-valuation',
     definitionId: 'def-1',
     configId: null,
@@ -212,7 +212,7 @@ function makeStep(overrides: Partial<SagaStepRecord> = {}): SagaStepRecord {
   return {
     id: 'row-1',
     tenantId: 't1',
-    organizationId: 'c1',
+    companyId: 'c1',
     instanceId: 'inst-1',
     stepId: 'valuate',
     kind: SagaStepKind.DO,
@@ -281,7 +281,7 @@ describe('SagaEngine', () => {
 
     await engine.createAndAdvance({
       tenantId: 't1',
-      organizationId: 'c1',
+      companyId: 'c1',
       sagaKey: instance.sagaKey,
       definitionId: 'def-1',
       configId: null,
@@ -423,7 +423,7 @@ function envelope(overrides: Partial<OutboxEnvelope> = {}): OutboxEnvelope {
     eventType: 'GoodsReceived',
     eventVersion: 1,
     tenantId: 't1',
-    organizationId: 'c1',
+    companyId: 'c1',
     aggregateType: 'GoodsReceiptNote',
     aggregateId: 'grn-1',
     payload: { grnId: 'G-1' },

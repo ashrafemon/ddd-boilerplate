@@ -31,7 +31,7 @@ export class AppendOutboxEventUseCase {
 
     await this.repository.append({
       tenantId: context?.tenantId,
-      organizationId: context?.organizationId,
+      companyId: context?.companyId,
       eventId: event.eventId,
       eventType: event.constructor.name,
       eventVersion: event.version ?? 1,
@@ -47,7 +47,7 @@ export class AppendOutboxEventUseCase {
         ...(correlationId ? { 'correlation-id': correlationId } : {}),
         ...(causationId ? { 'causation-id': causationId } : {}),
         ...(context?.tenantId ? { 'tenant-id': context.tenantId } : {}),
-        ...(context?.organizationId ? { 'organization-id': context.organizationId } : {}),
+        ...(context?.companyId ? { 'company-id': context.companyId } : {}),
         broker,
       },
       broker,

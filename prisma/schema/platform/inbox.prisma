@@ -5,7 +5,7 @@
 // logical message + the same consumer gives exactly one business execution
 // under at-least-once redelivery. No business rules, no broker knowledge.
 //
-// Identity is (tenantId, organizationId, consumer, messageId); NULLs are
+// Identity is (tenantId, companyId, consumer, messageId); NULLs are
 // normalized to '' at the repository edge so the unique constraint still bites.
 //
 // Statuses: IN_PROGRESS | PROCESSED | SUSPENDED. `fail` keeps a row IN_PROGRESS
@@ -25,7 +25,7 @@ model InboxMessage {
   id             String            @id @default(uuid()) @db.Uuid
 
   tenantId       String            @default("") @map("tenant_id") @db.VarChar(100)
-  organizationId String            @default("") @map("organization_id") @db.VarChar(100)
+  companyId String            @default("") @map("company_id") @db.VarChar(100)
   consumer       String            @db.VarChar(250)
   messageId      String            @map("message_id") @db.VarChar(500)
 
@@ -47,7 +47,7 @@ model InboxMessage {
   createdAt      DateTime          @default(now()) @map("created_at")
   updatedAt      DateTime          @updatedAt @map("updated_at")
 
-  @@unique([tenantId, organizationId, consumer, messageId])
+  @@unique([tenantId, companyId, consumer, messageId])
   @@index([status, nextAttemptAt])
   @@map("inbox_messages")
 }

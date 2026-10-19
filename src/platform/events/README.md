@@ -57,7 +57,7 @@ No `repositories/`, no config file, no routing table.
 
 ## Tenancy behaviour
 
-None of its own — the envelope carries `tenantId`/`organizationId`; the outbox
+None of its own — the envelope carries `tenantId`/`companyId`; the outbox
 restores CLS before emitting.
 
 ## Rules & gotchas

@@ -7,7 +7,7 @@
 //   saga_steps            durable work queue + execution log + audit (id = idempotency key)
 //   saga_inbox            dedupe by (tenant, company, consumer, event)
 // Partial uniques are hand-written in the migration (Prisma cannot express them).
-// Tenancy: every row is scoped by (tenantId, organizationId); every query filters both.
+// Tenancy: every row is scoped by (tenantId, companyId); every query filters both.
 // ============================================================================
 
 enum SagaDefinitionStatus {
@@ -94,7 +94,7 @@ model SagaDefinition {
 model SagaCompanyConfig {
   id           String                  @id @default(uuid()) @db.Uuid
   tenantId     String                  @map("tenant_id") @db.VarChar(100)
-  organizationId String                @map("organization_id") @db.VarChar(100)
+  companyId String                @map("company_id") @db.VarChar(100)
   definitionId String                  @map("definition_id") @db.Uuid
   sagaKey      String                  @map("saga_key") @db.VarChar(200)
   version      Int                     @default(1)
@@ -104,15 +104,15 @@ model SagaCompanyConfig {
   createdAt    DateTime                @default(now()) @map("created_at")
   updatedAt    DateTime                @updatedAt @map("updated_at")
 
-  @@unique([organizationId, sagaKey, version])
-  @@index([tenantId, organizationId, sagaKey, status])
+  @@unique([companyId, sagaKey, version])
+  @@index([tenantId, companyId, sagaKey, status])
   @@map("saga_company_configs")
 }
 
 model SagaInstance {
   id                String             @id @default(uuid()) @db.Uuid
   tenantId          String             @map("tenant_id") @db.VarChar(100)
-  organizationId    String             @map("organization_id") @db.VarChar(100)
+  companyId    String             @map("company_id") @db.VarChar(100)
   sagaKey           String             @map("saga_key") @db.VarChar(200)
   definitionId      String             @map("definition_id") @db.Uuid
   configId          String?            @map("config_id") @db.Uuid
@@ -132,8 +132,8 @@ model SagaInstance {
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
 
-  @@index([tenantId, organizationId, status])
-  @@index([tenantId, organizationId, sagaKey, status])
+  @@index([tenantId, companyId, status])
+  @@index([tenantId, companyId, sagaKey, status])
   @@index([sagaKey, correlationKey])
   @@map("saga_instances")
 }
@@ -141,7 +141,7 @@ model SagaInstance {
 model SagaStep {
   id          String        @id @default(uuid()) @db.Uuid
   tenantId    String        @map("tenant_id") @db.VarChar(100)
-  organizationId String     @map("organization_id") @db.VarChar(100)
+  companyId String     @map("company_id") @db.VarChar(100)
   instanceId  String        @map("instance_id") @db.Uuid
   stepId      String        @map("step_id") @db.VarChar(200)
   kind        SagaStepKind
@@ -160,14 +160,14 @@ model SagaStep {
 
   @@unique([instanceId, stepId, kind])
   @@index([status, runAt])
-  @@index([organizationId, status])
+  @@index([companyId, status])
   @@map("saga_steps")
 }
 
 model SagaInbox {
   id            String          @id @default(uuid()) @db.Uuid
   tenantId      String          @map("tenant_id") @db.VarChar(100)
-  organizationId String         @map("organization_id") @db.VarChar(100)
+  companyId String         @map("company_id") @db.VarChar(100)
   consumer      String          @db.VarChar(200)
   eventId       String          @map("event_id") @db.Uuid
   eventName     String          @map("event_name") @db.VarChar(250)
@@ -180,7 +180,7 @@ model SagaInbox {
   receivedAt    DateTime        @default(now()) @map("received_at")
   processedAt   DateTime?       @map("processed_at")
 
-  @@unique([tenantId, organizationId, consumer, eventId])
+  @@unique([tenantId, companyId, consumer, eventId])
   @@index([instanceId, status])
   @@map("saga_inbox")
 }

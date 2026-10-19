@@ -34,7 +34,7 @@ Imports `ContextModule` for identity fill-in.
 State-change ops in `scheduler` (cancel, dispatch-now), `recurring`
 (pause/resume/cancel), `batch-operation` (cancel), `import` (cancel/execute):
 inject `AuditPort`.
-- Reads `tenantId`/`organizationId` from `RequestContextPort` (`multi` mode ⇒
+- Reads `tenantId`/`companyId` from `RequestContextPort` (`multi` mode ⇒
   JWT-verified).
 - Not for logging/metrics — use observability. Redaction key list lives in
   the repository; extend it, don't redact in callers.

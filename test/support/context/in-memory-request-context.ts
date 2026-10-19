@@ -58,8 +58,8 @@ export class InMemoryRequestContextService implements RequestContextPort {
     return this.context?.tenantId;
   }
 
-  public getOrganizationId(): string | undefined {
-    return this.context?.organizationId;
+  public getCompanyId(): string | undefined {
+    return this.context?.companyId;
   }
 
   public getUserId(): string | undefined {

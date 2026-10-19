@@ -8,7 +8,7 @@
 // mirrored to Redis for fast replay; Postgres stays authoritative for claims.
 // Expired rows are purged hourly by IdempotencyReconciliation.
 //
-// Multi-tenancy: (tenantId, organizationId, scope, key) is the natural
+// Multi-tenancy: (tenantId, companyId, scope, key) is the natural
 // identity. The same key in another tenant/company is a different record.
 // ============================================================================
 
@@ -23,7 +23,7 @@ model IdempotencyKey {
   id             String   @id @default(uuid()) @db.Uuid
 
   tenantId       String   @map("tenant_id") @db.VarChar(100)
-  organizationId String   @map("organization_id") @db.VarChar(100)
+  companyId String   @map("company_id") @db.VarChar(100)
   scope          String   @db.VarChar(200)
   key            String   @db.VarChar(500)
 
@@ -44,9 +44,9 @@ model IdempotencyKey {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  @@unique([tenantId, organizationId, scope, key])
+  @@unique([tenantId, companyId, scope, key])
   @@index([expiresAt])
   @@index([status, claimedAt])
-  @@index([tenantId, organizationId])
+  @@index([tenantId, companyId])
   @@map("idempotency_keys")
 }

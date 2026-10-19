@@ -26,7 +26,7 @@ export interface OutboxEnvelope {
   eventVersion?: number;
 
   tenantId?: string | null;
-  organizationId?: string | null;
+  companyId?: string | null;
 
   aggregateType: string;
   aggregateId: string;
@@ -101,7 +101,7 @@ export enum OutboxStatus {
 /** Append a single event to the outbox (inside the caller's transaction). */
 export interface AppendOutboxEventRequest {
   tenantId?: string;
-  organizationId?: string;
+  companyId?: string;
 
   eventId: string;
   eventType: string;
@@ -132,7 +132,7 @@ export interface OutboxMessage {
   eventId: string;
 
   tenantId: string | null;
-  organizationId: string | null;
+  companyId: string | null;
 
   eventType: string;
   eventVersion: number;
@@ -177,7 +177,7 @@ export interface OutboxClaimedRecord {
   eventId: string;
 
   tenantId: string | null;
-  organizationId: string | null;
+  companyId: string | null;
 
   eventType: string;
   eventVersion: number;

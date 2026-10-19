@@ -16,7 +16,7 @@ correct with the cache disabled.
 
 ```ts
 const cacheKey = this.cache.buildKey({
-  tenantId, organizationId, namespace: 'client', resource: clientId,
+  tenantId, companyId, namespace: 'client', resource: clientId,
 });
 const cached = await this.cache.get<ClientView>(cacheKey);
 if (cached.status === 'MISS') {

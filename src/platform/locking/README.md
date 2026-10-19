@@ -19,7 +19,7 @@ Inject `DistributedLockPort` and control the sequence:
 
 ```ts
 const lock = await this.distributedLock.acquire({
-  tenantId, organizationId, scope: 'numbering.invoice', resource: sequenceId,
+  tenantId, companyId, scope: 'numbering.invoice', resource: sequenceId,
 });
 if (lock.status === 'BUSY') throw new ConflictException();
 try {
@@ -29,7 +29,7 @@ try {
 }
 ```
 
-- `acquire({ tenantId, organizationId, scope, resource, leaseMs? })`
+- `acquire({ tenantId, companyId, scope, resource, leaseMs? })`
   → `ACQUIRED + ticket` or `BUSY + retryAfterMs`. Never waits/blocks.
 - `renew({ ticket, leaseMs? })` → `RENEWED` or `LOST` (stop work immediately).
 - `release({ ticket })` → `void`. Always in a `finally`.
@@ -66,7 +66,7 @@ fencing-token counter live in Redis (`lock:*` and `lock:fence:*`).
 
 | Store | What it holds |
 |---|---|
-| Redis `lock:{tenant}:{organizationId}:{scope}:{resource}` | active owner token, PX lease |
+| Redis `lock:{tenant}:{companyId}:{scope}:{resource}` | active owner token, PX lease |
 | Redis `lock:fence:{tenant}:…` | monotonic fencing counter (INCR) |
 
 The adapter uses the shared infrastructure Redis client (the same one the Cache

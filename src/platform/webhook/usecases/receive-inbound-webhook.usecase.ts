@@ -33,7 +33,7 @@ export class ReceiveInboundWebhookUseCase {
     const key = idempotencyKey ?? hashBody(rawBody);
     const result = await this.idempotency.reserve({
       tenantId: '',
-      organizationId: '',
+      companyId: '',
       scope: `webhook.inbound.${source}`,
       key,
     });

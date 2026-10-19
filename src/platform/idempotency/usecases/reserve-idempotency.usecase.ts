@@ -35,7 +35,7 @@ export class ReserveIdempotencyUseCase {
 
     const identity: IdempotencyIdentity = {
       tenantId: request.tenantId,
-      organizationId: request.organizationId,
+      companyId: request.companyId,
       scope: request.scope,
       key: request.key,
     };

@@ -8,7 +8,7 @@
 /** Logical identity used to build a deterministic cache key. */
 export interface CacheKey {
   tenantId?: string;
-  organizationId?: string;
+  companyId?: string;
   namespace: string;
   resource: string;
   variant?: string;

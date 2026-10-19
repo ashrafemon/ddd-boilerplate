@@ -28,7 +28,7 @@ class FakeIdempotencyPort implements IdempotencyPort {
         claimToken: randomUUID(),
         version: 1,
         tenantId: request.tenantId,
-        organizationId: request.organizationId,
+        companyId: request.companyId,
         scope: request.scope,
         key: request.key,
       },

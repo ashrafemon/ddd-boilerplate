@@ -9,7 +9,7 @@
 /** Logical identity for an idempotency key. */
 export interface IdempotencyIdentity {
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   scope: string;
   key: string;
 }

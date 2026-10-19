@@ -56,7 +56,7 @@ action.undo(ctx): Promise<{ outcome: 'ok' | 'retry' | 'fail'; error? }>;
 sagaInbound.accept(envelope: OutboxEnvelope): Promise<void>;
 ```
 
-`ctx` carries `tenantId`, `organizationId`, `sagaKey`, `instanceId`, `stepId`,
+`ctx` carries `tenantId`, `companyId`, `sagaKey`, `instanceId`, `stepId`,
 `idempotencyKey` (= the `saga_steps` row id), `correlationKey`, `input`;
 `undo` also gets `doOutput`.
 
@@ -116,7 +116,7 @@ in the migration. Config namespace `saga.*` → `ConfigService.getSaga()`; env:
 
 ## Tenancy behaviour
 
-Every row is scoped by `tenantId` + `organizationId`; the router runs the whole
+Every row is scoped by `tenantId` + `companyId`; the router runs the whole
 route inside `RequestContextPort.run` with the event's tenant/company, and the
 worker does the same per step. The correlation key is scoped per company, so two
 companies never share an instance.

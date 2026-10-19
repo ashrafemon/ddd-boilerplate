@@ -17,7 +17,7 @@ class FakeInboxRepository {
   private readonly rows = new Map<string, InboxMessage>();
 
   private key(identity: InboxIdentity): string {
-    return `${identity.tenantId}|${identity.organizationId}|${identity.consumer}|${identity.messageId}`;
+    return `${identity.tenantId}|${identity.companyId}|${identity.consumer}|${identity.messageId}`;
   }
 
   private byId(id: string): InboxMessage | undefined {
@@ -118,7 +118,7 @@ describe('Inbox (design 07) — consumer-side deduplication', () => {
 
   const request = (messageId: string) => ({
     tenantId: 't1',
-    organizationId: 'c1',
+    companyId: 'c1',
     consumer: 'grn-cache',
     messageId,
     messageType: 'inventory.grn.created',

@@ -58,7 +58,7 @@ export class SagaRouter extends SagaInboundPort {
     if (envelope.aggregateType === 'Saga') {
       return;
     }
-    if (!envelope.tenantId || !envelope.organizationId) {
+    if (!envelope.tenantId || !envelope.companyId) {
       this.logger.warn(`Saga event ${envelope.eventType} has no tenant/company — ignored`);
       return;
     }
@@ -68,7 +68,7 @@ export class SagaRouter extends SagaInboundPort {
       eventName: envelope.eventType,
       eventVersion: envelope.eventVersion ?? 1,
       tenantId: envelope.tenantId,
-      organizationId: envelope.organizationId,
+      companyId: envelope.companyId,
       correlationId: envelope.correlationId,
       causationId: envelope.causationId,
       payload: envelope.payload,
@@ -77,7 +77,7 @@ export class SagaRouter extends SagaInboundPort {
     await this.requestContext.run(
       {
         tenantId: event.tenantId,
-        organizationId: event.organizationId,
+        companyId: event.companyId,
         correlationId: event.correlationId,
       },
       () => this.route(event),
@@ -105,8 +105,8 @@ export class SagaRouter extends SagaInboundPort {
     let features: ReadonlySet<string>;
     let settings: Record<string, unknown>;
     try {
-      features = await this.featureGate.enabled(event.organizationId);
-      settings = await this.settings.get(event.organizationId);
+      features = await this.featureGate.enabled(event.companyId);
+      settings = await this.settings.get(event.companyId);
     } catch (err) {
       this.logger.error(
         `Saga ${definition.sagaKey}: gating lookup failed — ${(err as Error).message}`,
@@ -125,7 +125,7 @@ export class SagaRouter extends SagaInboundPort {
     }
 
     const overlay =
-      (await this.configs.findActive(event.tenantId, event.organizationId, definition.sagaKey))
+      (await this.configs.findActive(event.tenantId, event.companyId, definition.sagaKey))
         ?.overlay ?? null;
 
     const plan = this.planBuilder.build({
@@ -148,7 +148,7 @@ export class SagaRouter extends SagaInboundPort {
 
     const instance = await this.engine.createAndAdvance({
       tenantId: event.tenantId,
-      organizationId: event.organizationId,
+      companyId: event.companyId,
       sagaKey: definition.sagaKey,
       definitionId: definition.id,
       configId: null,

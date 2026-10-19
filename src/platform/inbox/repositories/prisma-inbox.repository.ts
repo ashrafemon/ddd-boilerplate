@@ -14,7 +14,7 @@ function isUniqueViolation(err: unknown): boolean {
 interface InboxRawRow {
   id: string;
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   consumer: string;
   messageId: string;
   messageType: string;
@@ -55,7 +55,7 @@ export class PrismaInboxRepository {
       const row = await this.txHost.tx.inboxMessage.create({
         data: {
           tenantId: input.identity.tenantId,
-          organizationId: input.identity.organizationId,
+          companyId: input.identity.companyId,
           consumer: input.identity.consumer,
           messageId: input.identity.messageId,
           messageType: input.messageType,
@@ -80,9 +80,9 @@ export class PrismaInboxRepository {
   async findUnique(identity: InboxIdentity): Promise<InboxMessage | null> {
     const row = await this.txHost.tx.inboxMessage.findUnique({
       where: {
-        tenantId_organizationId_consumer_messageId: {
+        tenantId_companyId_consumer_messageId: {
           tenantId: identity.tenantId,
-          organizationId: identity.organizationId,
+          companyId: identity.companyId,
           consumer: identity.consumer,
           messageId: identity.messageId,
         },
@@ -197,7 +197,7 @@ export class PrismaInboxRepository {
     return {
       id: row.id,
       tenantId: row.tenantId,
-      organizationId: row.organizationId,
+      companyId: row.companyId,
       consumer: row.consumer,
       messageId: row.messageId,
       messageType: row.messageType,

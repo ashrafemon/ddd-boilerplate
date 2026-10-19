@@ -55,7 +55,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
     const reservation = await this.idempotency.reserve({
       tenantId: this.requestContext.getTenantId() ?? '',
-      organizationId: this.requestContext.getOrganizationId() ?? '',
+      companyId: this.requestContext.getCompanyId() ?? '',
       scope: `${context.getClass().name}.${context.getHandler().name}`,
       key: key.trim().slice(0, 255),
       ttlMs: this.config.getIdempotency().ttlMs,

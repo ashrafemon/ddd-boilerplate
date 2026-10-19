@@ -16,7 +16,7 @@ replay the stored result. Postgres owns the claims; Redis speeds up replays.
 
 ```ts
 const claim = await this.idempotency.reserve({
-  tenantId, organizationId, scope: 'sales.order.create', key: idempotencyKey,
+  tenantId, companyId, scope: 'sales.order.create', key: idempotencyKey,
 });
 if (claim.status === 'REPLAY') return claim.result;
 if (claim.status === 'BUSY') throw new ConflictException();          // 409
@@ -76,7 +76,7 @@ src/config/idempotency.config.ts
 | Store | What it holds |
 |---|---|
 | PostgreSQL `idempotency_keys` | claim (`IN_PROGRESS`) + completed result + `expiresAt` |
-| Redis `idempotency:{tenant}:{organizationId}:{scope}:{key}` | COMPLETED result, TTL copied from the row |
+| Redis `idempotency:{tenant}:{companyId}:{scope}:{key}` | COMPLETED result, TTL copied from the row |
 
 Statuses are only `IN_PROGRESS | COMPLETED`. Same key in another tenant or
 company is a different record.

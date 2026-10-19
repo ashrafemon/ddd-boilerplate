@@ -6,7 +6,7 @@ export interface AuditEntry {
   actorType?: string;
   actorId?: string;
   tenantId?: string;
-  organizationId?: string;
+  companyId?: string;
 }
 
 export abstract class AuditPort {

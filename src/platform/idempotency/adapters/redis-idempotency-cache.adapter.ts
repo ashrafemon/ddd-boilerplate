@@ -27,13 +27,9 @@ export class RedisIdempotencyCacheAdapter {
 
   buildKey(identity: IdempotencyIdentity): string {
     const { redisPrefix } = this.configService.getIdempotency();
-    return [
-      redisPrefix,
-      identity.tenantId,
-      identity.organizationId,
-      identity.scope,
-      identity.key,
-    ].join(':');
+    return [redisPrefix, identity.tenantId, identity.companyId, identity.scope, identity.key].join(
+      ':',
+    );
   }
 
   async get(key: string): Promise<IdempotencyCacheLookup> {

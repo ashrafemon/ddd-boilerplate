@@ -31,7 +31,7 @@ export class AcquireDistributedLockUseCase {
 
     const identity = {
       tenantId: request.tenantId,
-      organizationId: request.organizationId,
+      companyId: request.companyId,
       scope: request.scope,
       resource: request.resource,
     };

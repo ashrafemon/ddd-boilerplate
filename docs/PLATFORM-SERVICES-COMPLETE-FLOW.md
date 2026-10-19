@@ -67,11 +67,11 @@ abstract class RequestContextPort {
   getRequestId(): string | undefined;
   getCorrelationId(): string | undefined;
   getTenantId(): string | undefined;
-  getOrganizationId(): string | undefined;
+  getCompanyId(): string | undefined;
   getUserId(): string | undefined;
 }
 // impl: adapters/cls-request-context.service.ts (over nestjs-cls, key CLS_REQUEST_CONTEXT_KEY)
-// ports/request-context.ts: RequestContextData{requestId,correlationId,tenantId?,organizationId?,userId?,roles[],locale,ip?,userAgent?}
+// ports/request-context.ts: RequestContextData{requestId,correlationId,tenantId?,companyId?,userId?,roles[],locale,ip?,userAgent?}
 // ports/prisma-read.port.ts: abstract class PrismaReadPort extends PrismaClient
 // impl binding: useExisting PrismaReadService (infrastructure/database/prisma)
 // guards/tenancy-auth.guard.ts: TenancyAuthGuard (APP_GUARD in app.module), @SkipTenancy() opt-out
@@ -82,7 +82,7 @@ abstract class RequestContextPort {
 1. HTTP: `RequestIdInterceptor` creates one CLS context per request (`requestId`, `x-correlation-id`).
 2. `TenancyAuthGuard`: `TENANCY_MODE=single` → trust `x-tenant-id` headers (pass-through). `multi` → require `Authorization: Bearer <jwt>` signed with `JWT_ACCESS_SECRET`, extract `tenantId` claim → stash `VerifiedIdentity` on request; interceptor ignores raw headers. Missing/invalid → 401; missing `tenantId` claim → 403.
 3. Any layer: `requestContextPort.get()/require()/getTenantId()` — no param threading.
-4. Background (BullMQ workers, outbox re-dispatch, scheduler/recurring/batch/import): `requestContextPort.run({tenantId, organizationId, correlationId}, fn)` — the **only** sanctioned child-context mechanism. `require()` throws if forgotten.
+4. Background (BullMQ workers, outbox re-dispatch, scheduler/recurring/batch/import): `requestContextPort.run({tenantId, companyId, correlationId}, fn)` — the **only** sanctioned child-context mechanism. `require()` throws if forgotten.
 5. Queries: business `*QueryRepository` injects `PrismaReadPort` (replica pool; falls back to write pool when no replica URL).
 
 **Who calls / how:**
@@ -123,7 +123,7 @@ abstract class OutboxWriterPort {
 // usecases/publish-pending-batch.usecase.ts — claim → publish → emit → CAS settle
 ```
 
-Types (`outbox.types.ts`): `BrokerTarget='rabbitmq'|'kafka'|'sqs'`; `OutboxEnvelope` (the single canonical transport envelope); `OutboxEvent`/`OutboxEventBase` (platform event contract); `OutboxStatus=PENDING|PUBLISHED|DEAD_LETTER`; `AppendOutboxEventRequest{tenantId?,organizationId?,eventId,eventType,eventVersion?,aggregateType,aggregateId,payload,occurredAt?,correlationId?,causationId?,headers?,broker?,nextRetryAt?}`.
+Types (`outbox.types.ts`): `BrokerTarget='rabbitmq'|'kafka'|'sqs'`; `OutboxEnvelope` (the single canonical transport envelope); `OutboxEvent`/`OutboxEventBase` (platform event contract); `OutboxStatus=PENDING|PUBLISHED|DEAD_LETTER`; `AppendOutboxEventRequest{tenantId?,companyId?,eventId,eventType,eventVersion?,aggregateType,aggregateId,payload,occurredAt?,correlationId?,causationId?,headers?,broker?,nextRetryAt?}`.
 
 **Complete flow:**
 
@@ -140,7 +140,7 @@ flowchart LR
   PUB --> BUS[InProcessEventBus.emit<br/>canonical envelope]
 ```
 
-1. **Append (in business tx):** use case → `<Aggregate>IntegrationPort` → `OutboxAdapter` → `OutboxWriterPort.append(event, aggregateType, aggregateId, opts?)` → `AppendOutboxEventUseCase` → concrete `PrismaOutboxRepository.append` on the caller's `TransactionHost`. `tenantId/organizationId/eventId/correlationId/causationId` stamped from CLS; `opts.broker` (default `rabbitmq`) written into `headers.broker`. COMMIT is atomic (data + event). Nothing is published here.
+1. **Append (in business tx):** use case → `<Aggregate>IntegrationPort` → `OutboxAdapter` → `OutboxWriterPort.append(event, aggregateType, aggregateId, opts?)` → `AppendOutboxEventUseCase` → concrete `PrismaOutboxRepository.append` on the caller's `TransactionHost`. `tenantId/companyId/eventId/correlationId/causationId` stamped from CLS; `opts.broker` (default `rabbitmq`) written into `headers.broker`. COMMIT is atomic (data + event). Nothing is published here.
 2. **Poll:** `outbox.scheduler.ts` `setInterval(pollIntervalMs)` → `PublishPendingBatchUseCase.execute()` (overlap-guarded); cron `EVERY_HOUR` deletes `PUBLISHED` rows past retention.
 3. **Claim:** `claimBatch({batchSize,maxAttempts,claimLeaseMs})` runs a single `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` over due `PENDING` rows (`nextRetryAt<=now` and claim missing or older than the lease), stamps `claimToken+claimedAt`, bumps `attempts` — **status stays `PENDING`** (the lease is the in-flight marker). Concurrent replicas claim disjoint rows; order is `createdAt` asc.
 4. **Dispatch per record:** build the canonical `OutboxEnvelope` (broker read from `headers.broker`, default `rabbitmq`) → `MessageQueuePort.publish(envelope)` → then `RequestContextPort.run({tenantId,…})` → `InProcessEventBus.emit(envelope)`. In-process throw = log-only (the broker already holds it).
@@ -155,7 +155,7 @@ flowchart LR
 | `OutboxScheduler` (internal cron + tick)            | `PublishPendingBatchUseCase`, `PrismaOutboxRepository` |
 | Nobody publishes brokers directly                   | `MessageQueuePort` only via the dispatcher             |
 
-**Data & config:** `outbox_messages` (`prisma/schema/platform/outbox.prisma`, indexes `[status,nextRetryAt]`, `[tenantId,organizationId,status]`). `src/config/outbox.config.ts` (`ConfigService.getOutbox()`): `OUTBOX_POLL_INTERVAL_MS=10000`, `OUTBOX_BATCH_SIZE=100`, `OUTBOX_MAX_ATTEMPTS=10`, `OUTBOX_RETRY_BASE_DELAY_MS=1000`, `OUTBOX_RETRY_MAX_DELAY_MS=600000`, `OUTBOX_CLAIM_LEASE_MS=60000`, `OUTBOX_CLEANUP_OLDER_THAN_HOURS=24`.
+**Data & config:** `outbox_messages` (`prisma/schema/platform/outbox.prisma`, indexes `[status,nextRetryAt]`, `[tenantId,companyId,status]`). `src/config/outbox.config.ts` (`ConfigService.getOutbox()`): `OUTBOX_POLL_INTERVAL_MS=10000`, `OUTBOX_BATCH_SIZE=100`, `OUTBOX_MAX_ATTEMPTS=10`, `OUTBOX_RETRY_BASE_DELAY_MS=1000`, `OUTBOX_RETRY_MAX_DELAY_MS=600000`, `OUTBOX_CLAIM_LEASE_MS=60000`, `OUTBOX_CLEANUP_OLDER_THAN_HOURS=24`.
 **Tenancy:** stamped at append, restored on in-process CLS + carried in broker headers; the dispatcher claims globally (stateless).
 **Rules:** Never publish inside business tx; every settle is CAS on `claimToken`; stable `eventId` for consumer dedupe; in-process delivery is best-effort and never reflected onto the row.
 
@@ -237,7 +237,7 @@ abstract class InboxPort {
   complete(req: InboxCompleteRequest): Promise<void>;
   fail(req: InboxFailRequest): Promise<void>;
 }
-// InboxReceiveRequest={tenantId?,organizationId?,consumer,messageId,messageType,payload,correlationId?,causationId?}
+// InboxReceiveRequest={tenantId?,companyId?,consumer,messageId,messageType,payload,correlationId?,causationId?}
 // InboxReceiveResult= ACQUIRED{reservation:{id,claimToken}} | DUPLICATE | BUSY
 // impl: InboxService → Receive/Complete/FailUseCase → PrismaInboxRepository (concrete)
 ```
@@ -250,7 +250,7 @@ abstract class InboxPort {
 4. Failure → `fail` keeps the row `IN_PROGRESS` with an exponential `nextAttemptAt` + `lastError`; the broker NACK drives redelivery.
 5. `InboxReconciler` (@Cron 60s): an expired claim with `attempts > INBOX_MAX_ATTEMPTS` parks `SUSPENDED` (alertable, never purged); the rest get a fresh backoff; the same sweep deletes `PROCESSED` rows past `INBOX_PROCESSED_RETENTION_MS`.
 
-**Data & config:** `inbox_messages` (`prisma/schema/platform/inbox.prisma`; `@@unique([tenantId,organizationId,consumer,messageId])` with NULLs normalized to `''` at the repo edge; `IN_PROGRESS|PROCESSED|SUSPENDED`; CAS on `claimToken`). `src/config/inbox.config.ts`: `INBOX_CLAIM_LEASE_MS=300000`, `INBOX_MAX_ATTEMPTS=5`, `INBOX_RETRY_BASE_DELAY_MS=5000`, `INBOX_RETRY_MAX_DELAY_MS=600000`, `INBOX_RECONCILIATION_INTERVAL_MS=60000`, `INBOX_PROCESSED_RETENTION_MS=2592000000`.
+**Data & config:** `inbox_messages` (`prisma/schema/platform/inbox.prisma`; `@@unique([tenantId,companyId,consumer,messageId])` with NULLs normalized to `''` at the repo edge; `IN_PROGRESS|PROCESSED|SUSPENDED`; CAS on `claimToken`). `src/config/inbox.config.ts`: `INBOX_CLAIM_LEASE_MS=300000`, `INBOX_MAX_ATTEMPTS=5`, `INBOX_RETRY_BASE_DELAY_MS=5000`, `INBOX_RETRY_MAX_DELAY_MS=600000`, `INBOX_RECONCILIATION_INTERVAL_MS=60000`, `INBOX_PROCESSED_RETENTION_MS=2592000000`.
 **Tenancy:** the natural key is tenant + company + consumer + message id; different consumers process the same `messageId` independently.
 **Rules:** Business consumes only `InboxPort`; ACK only after `complete`; every write CAS; poison is parked, never dropped; events a consumer produces leave via the outbox in the same transaction.
 
@@ -275,7 +275,7 @@ abstract class DistributedLockPort {
 // internal ports/distributed-lock-repository.port.ts → PrismaDistributedLockRepository (getOrCreate, nextFencingToken)
 ```
 
-Types (`locking.types.ts`): identity `{tenantId,organizationId,scope,resource}`, `AcquireResult={ACQUIRED,ticket}|{BUSY,retryAfterMs}`, ticket `{lockId,lockKey,ownerToken,fencingToken,acquiredAt,expiresAt}`. Key: `LockKeyBuilder` → `{tenantId}:{organizationId}:{scope}:{resource}`, adapter prepends `lock:`.
+Types (`locking.types.ts`): identity `{tenantId,companyId,scope,resource}`, `AcquireResult={ACQUIRED,ticket}|{BUSY,retryAfterMs}`, ticket `{lockId,lockKey,ownerToken,fencingToken,acquiredAt,expiresAt}`. Key: `LockKeyBuilder` → `{tenantId}:{companyId}:{scope}:{resource}`, adapter prepends `lock:`.
 
 **Complete flow:**
 
@@ -284,7 +284,7 @@ Types (`locking.types.ts`): identity `{tenantId,organizationId,scope,resource}`,
 3. `release({ticket})` in `finally` → Lua ownership+DEL, idempotent best-effort (TTL is the backstop).
 
 **Who calls / how:** scheduler ticker per `jobId`, import stage locks (`StageLock`), any "one-winner" worker — all via `DistributedLockPort`. Fail-closed: BUSY ⇒ skip work, never speculative.
-**Data & config:** `distributed_locks` (`prisma/schema/platform/locking.prisma`, `@@unique[tenantId,organizationId,scope,resource]`, `fencingToken BigInt`). `src/config/locking.config.ts`: `LOCK_DEFAULT_LEASE_MS=30000`, `MIN=5000`, `MAX=300000`, `RENEW_INTERVAL=10000`. Redis via `InfraCacheModule`.
+**Data & config:** `distributed_locks` (`prisma/schema/platform/locking.prisma`, `@@unique[tenantId,companyId,scope,resource]`, `fencingToken BigInt`). `src/config/locking.config.ts`: `LOCK_DEFAULT_LEASE_MS=30000`, `MIN=5000`, `MAX=300000`, `RENEW_INTERVAL=10000`. Redis via `InfraCacheModule`.
 **Rules:** Redis down on acquire → `BUSY` (logged); PG down → throw (no fencing token = unsafe); never inject `RedisService` directly, never hand-build keys, never use as cache/idempotency; always release in `finally`; downstream rejects stale owners via fencing token.
 
 ---
@@ -304,14 +304,14 @@ abstract class IdempotencyPort {
   fail(req: IdempotencyFailRequest): Promise<void>;
 }
 // impl: IdempotencyService → Reserve/Complete/FailIdempotencyUseCase
-// IdempotencyIdentity={tenantId,organizationId,scope,key}
+// IdempotencyIdentity={tenantId,companyId,scope,key}
 // ReserveResult= {ACQUIRED,reservation:{id,claimToken,version}} | {REPLAY,result} | {IN_PROGRESS} | {SUSPENDED} | {KEY_REUSED}
 // http/idempotent.decorator.ts: @Idempotent() + IDEMPOTENCY_HEADER='idempotency-key'
 ```
 
 **Complete flow (programmatic):**
 
-1. `reserve({scope,key,tenantId,organizationId,requestHash?,ttlMs?})` → `INSERT IN_PROGRESS` (insert-as-claim on `@@unique[tenantId,organizationId,scope,key]`) → `ACQUIRED` → execute → `complete({reservation,result})` (CAS `version+token` → `COMPLETED+resultJson`) or `fail` (→ `FAILED`, re-arms immediately).
+1. `reserve({scope,key,tenantId,companyId,requestHash?,ttlMs?})` → `INSERT IN_PROGRESS` (insert-as-claim on `@@unique[tenantId,companyId,scope,key]`) → `ACQUIRED` → execute → `complete({reservation,result})` (CAS `version+token` → `COMPLETED+resultJson`) or `fail` (→ `FAILED`, re-arms immediately).
 2. Retried `COMPLETED` → `REPLAY+result`; concurrent `IN_PROGRESS` → `IN_PROGRESS`; `requestHash` mismatch → `KEY_REUSED`; `FAILED/SUSPENDED/expired` → atomic `takeover` → `ACQUIRED`.
 
 **Complete flow (HTTP):** `IdempotencyInterceptor`: metadata check → require non-blank `Idempotency-Key` (else 400) → `reserve({scope: Controller.method, key, tenant/org from RequestContextPort})` → `REPLAY`→return stored result (handler never runs); `IN_PROGRESS/SUSPENDED/KEY_REUSED`→409; `ACQUIRED`→`next.handle().pipe(complete on success, fail+rethrow on error)`.
@@ -586,7 +586,7 @@ abstract class SagaInboundPort {
 5. `SagaScheduler` tick: worker → expire `WAIT` timeouts (`skip` default / `compensate`) → re-queue stale leases. Hourly: purge inbox past retention. **No reconciler.**
 
 **Data & config:** `saga_definitions` (one ACTIVE per key; found by `(event_name,event_version)`), `saga_company_configs` (one ACTIVE overlay per company+key), `saga_instances` (one live instance per tenant+company+key+correlation), `saga_steps` (unique `(instance,step,kind)`; `id` = action idempotency key), `saga_inbox` (dedupe on tenant+company+consumer+event). Partial uniques live in the migration. `src/config/saga.config.ts`: `SAGA_WORKER_LEASE_SECONDS=60`, `SAGA_CLAIM_BATCH_SIZE=20`, `SAGA_FAIRNESS_CAP=5`, `SAGA_SWEEP_INTERVAL_MS=10000`, `SAGA_RETRY_BASE_DELAY_MS=1000`, `SAGA_RETRY_MAX_DELAY_MS=600000`, `SAGA_DEFAULT_MAX_ATTEMPTS=5`, `SAGA_INBOX_RETENTION_DAYS=30`.
-**Tenancy:** every row `(tenantId,organizationId)`; the router and the worker both run in `RequestContextPort.run`; the correlation key scoped per company.
+**Tenancy:** every row `(tenantId,companyId)`; the router and the worker both run in `RequestContextPort.run`; the correlation key scoped per company.
 **Rules:** orchestrator, not domain — never imports business (actions arrive through `SAGA_ACTION`); overlays only narrow; the plan is frozen at build; every settle CAS; the saga's own `aggregateType='Saga'` events are dropped as a loop guard. Default `FeatureGate` is fail-closed (`EmptyFeatureGate`).
 
 ---
@@ -686,7 +686,7 @@ abstract class NumberingPort {
 **Complete flow:**
 
 1. Caller: `await numbering.nextNumber('purchase-order',{prefix:'PO-',padding:6})`. Callers: `platform/import`, `platform/batch-operation`, purchase-order/invoice via module-local port + `NumberingAdapter`.
-2. `scopedKey()`: `${organizationId ?? tenantId}:${key}` from CLS (unscoped → raw key).
+2. `scopedKey()`: `${companyId ?? tenantId}:${key}` from CLS (unscoped → raw key).
 3. Single `tx.numberSequence.upsert({where:{key},create:{key,prefix,padding,currentValue:1},update:{currentValue:{increment:1}}})` — no read-then-write window.
 4. Format `prefix + currentValue.padStart(padding,'0')`. `prefix/padding` frozen at creation.
 
@@ -713,7 +713,7 @@ interface AuditEntry {
   actorType?: string;
   actorId?: string;
   tenantId?: string;
-  organizationId?: string;
+  companyId?: string;
 }
 abstract class AuditPort {
   record(entry: AuditEntry): Promise<void>;
@@ -723,7 +723,7 @@ abstract class AuditPort {
 **Complete flow:**
 
 1. Caller (scheduler cancel/dispatch-now, recurring pause/resume/cancel, batch cancel, import cancel/execute) injects `AuditPort`, calls `record({action,entityType,entityId,changes})` inside `@Transactional()`.
-2. `PrismaAuditRepository.record`: fills `actorId=userId`, `actorType=user|system`, `tenantId/organizationId/requestId/correlationId` from CLS if omitted.
+2. `PrismaAuditRepository.record`: fills `actorId=userId`, `actorType=user|system`, `tenantId/companyId/requestId/correlationId` from CLS if omitted.
 3. `redact()`: keys matching `/(password|secret|token|authorization|pin|otp)/i` → `[redacted]`; per-field cap 4000 chars.
 4. `txHost.tx.auditLog.create()` — commits/rolls back atomically with business change.
 
@@ -758,7 +758,7 @@ abstract class CompanyConfigPort {
 **Complete flow:**
 
 1. Business modules (party/product/purchase-order/GRN/invoice) via own module-local `CompanyConfigPort` → `CompanyConfigAdapter` → here.
-2. Resolve: `companyId ?? ctx.organizationId ?? DEFAULT_COMPANY_ID`.
+2. Resolve: `companyId ?? ctx.companyId ?? DEFAULT_COMPANY_ID`.
 3. `tx.companyConfig.findUnique({where:{companyId:resolved}})` (joins caller txn). Hit → map (`Decimal→Number`).
 4. Miss + explicit/context-resolved + `tenancy.mode==='multi'` → `NotFoundException` (never cross-bill). Else warn + built-in defaults (`DEFAULT/USD/10000/true`).
 
@@ -821,9 +821,9 @@ abstract class CachePort {
   getOrSet<T>(req: { key; ttlSeconds; factory: () => Promise<T> }): Promise<T>;
 }
 // impl: CacheService → Get/GetWithResult/Set/Delete/Exists/GetOrSetCacheValueUseCase
-// ports/cache-key-builder.port.ts → CacheKeyBuilder.build({tenantId?,organizationId?,namespace,resource,variant?})
+// ports/cache-key-builder.port.ts → CacheKeyBuilder.build({tenantId?,companyId?,namespace,resource,variant?})
 // internal ports/cache-storage.port.ts → exactly one of RedisCacheAdapter|MemcachedCacheAdapter (CACHE_DRIVER)
-// key format: cache:v1:{tenantId}:{organizationId}:{namespace}:{resource}:{variant}
+// key format: cache:v1:{tenantId}:{companyId}:{namespace}:{resource}:{variant}
 ```
 
 **Complete flow:**
@@ -853,7 +853,7 @@ abstract class LoggerPort { debug/info/warn/error/fatal(msg: string, fields?: Lo
 abstract class MetricsPort { incrementCounter(name,labels?,value?); observeHistogram(name,value,labels?); setGauge(name,value,labels?); registerCounter/registerHistogram/registerGauge; getMetrics():Promise<string>; getMetricsContentType():Promise<string>; }
 // impl: PrometheusMetricsAdapter (own Registry, app=erp-api, prefix erp_, collectDefaultMetrics; unregistered increment = no-op)
 // ports/error-tracking.port.ts
-abstract class ErrorTrackingPort { captureException(err,ctx?:{requestId,correlationId,tenantId,organizationId,userId,tags,extra}); captureMessage(msg,ctx?): void; }
+abstract class ErrorTrackingPort { captureException(err,ctx?:{requestId,correlationId,tenantId,companyId,userId,tags,extra}); captureMessage(msg,ctx?): void; }
 // impl: SentryErrorTrackingAdapter (self-disables without DSN; Sentry.init in bootstrap)
 // http/metrics.controller.ts: GET /api/v1/metrics (@SkipTenancy())
 ```

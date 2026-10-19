@@ -12,7 +12,7 @@ export interface RequestContextData {
   requestId: string;
   correlationId: string;
   tenantId?: string;
-  organizationId?: string;
+  companyId?: string;
   userId?: string;
   roles: string[];
   locale: string;
@@ -27,7 +27,7 @@ export class RequestContext {
   public readonly requestId: string;
   public readonly correlationId: string;
   public readonly tenantId?: string;
-  public readonly organizationId?: string;
+  public readonly companyId?: string;
   public readonly userId?: string;
   public readonly roles: string[];
   public readonly locale: string;
@@ -38,7 +38,7 @@ export class RequestContext {
     this.requestId = data.requestId;
     this.correlationId = data.correlationId;
     this.tenantId = data.tenantId;
-    this.organizationId = data.organizationId;
+    this.companyId = data.companyId;
     this.userId = data.userId;
     this.roles = data.roles;
     this.locale = data.locale;
@@ -59,7 +59,7 @@ export class RequestContext {
       requestId: this.requestId,
       correlationId: this.correlationId,
       tenantId: this.tenantId,
-      organizationId: this.organizationId,
+      companyId: this.companyId,
       userId: this.userId,
       roles: this.roles,
       locale: this.locale,

@@ -24,7 +24,7 @@ export class ReceiveInboxMessageUseCase {
   async execute(request: InboxReceiveRequest): Promise<InboxReceiveResult> {
     const identity: InboxIdentity = {
       tenantId: request.tenantId ?? '',
-      organizationId: request.organizationId ?? '',
+      companyId: request.companyId ?? '',
       consumer: request.consumer,
       messageId: request.messageId,
     };

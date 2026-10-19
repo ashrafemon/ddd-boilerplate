@@ -287,7 +287,7 @@ export class ConfigService {
       throttler: { ttlMs: 60_000, limit: 120 },
       settingsEncryptionKey: '',
       tenantHeader: 'x-tenant-id',
-      organizationHeader: 'x-organization-id',
+      companyHeader: 'x-company-id',
       tenancy: { mode: 'single' },
     });
   }

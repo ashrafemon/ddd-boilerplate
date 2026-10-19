@@ -130,7 +130,7 @@ export class SagaEngine {
           : this.configService.getSaga().workerLeaseSeconds * 1000;
         await this.steps.createIfAbsent({
           tenantId: instance.tenantId,
-          organizationId: instance.organizationId,
+          companyId: instance.companyId,
           instanceId: instance.id,
           stepId: step.id,
           kind: SagaStepKind.WAIT,
@@ -149,7 +149,7 @@ export class SagaEngine {
       const input = buildInput(step, scope);
       const created = await this.steps.createIfAbsent({
         tenantId: instance.tenantId,
-        organizationId: instance.organizationId,
+        companyId: instance.companyId,
         instanceId: instance.id,
         stepId: step.id,
         kind: SagaStepKind.DO,
@@ -306,7 +306,7 @@ export class SagaEngine {
   ): Promise<boolean> {
     const inserted = await this.inbox.tryInsert({
       tenantId: instance.tenantId,
-      organizationId: instance.organizationId,
+      companyId: instance.companyId,
       consumer: `${instance.sagaKey}:${instance.id}`,
       eventId,
       eventName,
@@ -332,7 +332,7 @@ export class SagaEngine {
   ): Promise<void> {
     await this.steps.createIfAbsent({
       tenantId: instance.tenantId,
-      organizationId: instance.organizationId,
+      companyId: instance.companyId,
       instanceId: instance.id,
       stepId: step.id,
       kind: step.kind === SagaStepKind.WAIT ? SagaStepKind.WAIT : SagaStepKind.DO,
@@ -368,7 +368,7 @@ export class SagaEngine {
       }
       await this.steps.createIfAbsent({
         tenantId: instance.tenantId,
-        organizationId: instance.organizationId,
+        companyId: instance.companyId,
         instanceId: instance.id,
         stepId: step.id,
         kind: SagaStepKind.WAIT,
@@ -447,7 +447,7 @@ export class SagaEngine {
       }
       await this.steps.createIfAbsent({
         tenantId: instance.tenantId,
-        organizationId: instance.organizationId,
+        companyId: instance.companyId,
         instanceId: instance.id,
         stepId: step.id,
         kind: SagaStepKind.UNDO,

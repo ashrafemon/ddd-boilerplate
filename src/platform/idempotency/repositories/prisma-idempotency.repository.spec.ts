@@ -18,7 +18,7 @@ const freshTx = (overrides: Partial<FakeTx> = {}): FakeTx => ({
 const repoFor = (tx: FakeTx) => new PrismaIdempotencyRepository({ idempotencyKey: tx } as never);
 
 describe('PrismaIdempotencyRepository', () => {
-  const identity = { tenantId: 't1', organizationId: 'o1', scope: 'test', key: 'k1' };
+  const identity = { tenantId: 't1', companyId: 'o1', scope: 'test', key: 'k1' };
   const reservation = { ...identity, id: 'row-1', claimToken: 'tok', version: 1 };
 
   it('inserts a claim and returns id + version', async () => {
@@ -33,7 +33,7 @@ describe('PrismaIdempotencyRepository', () => {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data: expect.objectContaining({
           tenantId: 't1',
-          organizationId: 'o1',
+          companyId: 'o1',
           scope: 'test',
           key: 'k1',
           claimToken: 'tok',

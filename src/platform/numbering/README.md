@@ -7,7 +7,7 @@
 
 `NumberingPort.nextNumber(key, {prefix, padding})` runs a single
 `upsert` on `number_sequences` keyed by a **tenant/company-namespaced**
-key (`${organizationId ?? tenantId}:${key}` from CLS) — so no read-then-write
+key (`${companyId ?? tenantId}:${key}` from CLS) — so no read-then-write
 window, no double-issued number, and each company gets its own independent
 stream. `prefix`/`padding` freeze when a sequence is first created; `padding`
 zero-pads, default 0. First value = 1.

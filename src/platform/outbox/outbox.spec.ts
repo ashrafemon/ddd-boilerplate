@@ -24,7 +24,7 @@ function context(): RequestContext {
     requestId: 'req-1',
     correlationId: 'corr-1',
     tenantId: 't1',
-    organizationId: 'o1',
+    companyId: 'o1',
     roles: [],
     locale: 'en',
   });
@@ -35,7 +35,7 @@ function makeRecord(overrides: Partial<OutboxClaimedRecord> = {}): OutboxClaimed
     id: 'ob-1',
     eventId: 'evt-1',
     tenantId: 't1',
-    organizationId: 'o1',
+    companyId: 'o1',
     eventType: 'SalesOrderCreated',
     eventVersion: 1,
     aggregateType: 'SalesOrder',
@@ -75,7 +75,7 @@ describe('AppendOutboxEventUseCase', () => {
     expect(request.aggregateType).toBe('SalesOrder');
     expect(request.aggregateId).toBe('order-1');
     expect(request.tenantId).toBe('t1');
-    expect(request.organizationId).toBe('o1');
+    expect(request.companyId).toBe('o1');
     expect(request.correlationId).toBe('corr-1');
     expect(request.broker).toBe('rabbitmq');
     expect(request.headers?.['event-id']).toBe('evt-1');

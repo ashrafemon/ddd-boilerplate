@@ -9,7 +9,7 @@
 Inject `InboxPort` at the top of every broker or event consumer. **Only
 `ACQUIRED` proceeds to the listener.**
 
-1. **receive** — INSERT-as-claim on `(tenantId, organizationId, consumer,
+1. **receive** — INSERT-as-claim on `(tenantId, companyId, consumer,
    messageId)`. A unique-constraint violation means the row already exists:
    `PROCESSED` → `DUPLICATE`, `SUSPENDED` → `BUSY`, `IN_PROGRESS` not due for
    retry → `BUSY`. An `IN_PROGRESS` row whose retry is due is CAS re-claimed on
@@ -90,7 +90,7 @@ the **Outbox** in the same transaction.
 
 ## Tenancy behaviour
 
-`(tenantId, organizationId, consumer, messageId)` is the identity, so the same
+`(tenantId, companyId, consumer, messageId)` is the identity, so the same
 `messageId` is independently processed by different consumers and never shared
 across companies.
 

@@ -858,7 +858,7 @@ Request → RequestIdInterceptor → LoggingInterceptor → DeviceResponseInterc
 
 - **RequestIdInterceptor** — generates `requestId`, propagates `x-correlation-id`, and seeds
   the immutable `RequestContext` snapshot in CLS from headers (`x-tenant-id`,
-  `x-organization-id`, `x-user-id`, `x-roles`, `accept-language`) — consumed by outbox,
+  `x-company-id`, `x-user-id`, `x-roles`, `accept-language`) — consumed by outbox,
   audit, logging and `RequestContextPort`.
 - **DeviceResponseInterceptor** — reads `x-device-type` (`mobile` | default `web`) into CLS;
   when the handler is annotated `@DeviceResponse(MobileDto, WebDto)`, maps `data` through the

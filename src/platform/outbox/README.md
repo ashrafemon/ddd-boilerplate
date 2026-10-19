@@ -10,7 +10,7 @@
 1. **Append** (`OutboxWriterPort.append(event, aggregateType, aggregateId, opts?)`)
    — called by command use cases *inside* their `@Transactional()`. Persists
    the event type, payload, the stable `eventId`, correlation/causation and a
-   `tenantId`/`organizationId` stamp from CLS. `opts.broker` defaults to
+   `tenantId`/`companyId` stamp from CLS. `opts.broker` defaults to
    `rabbitmq` and is stored in `headers.broker`.
 2. **Claim + publish** (`PublishPendingBatchUseCase`, driven by
    `OutboxScheduler`) — race-safe claim via
@@ -89,7 +89,7 @@ Business modules never touch the repository or the dispatcher.
 
 ## Tenancy behaviour
 
-`tenantId` and `organizationId` are stamped at append from CLS and restored into
+`tenantId` and `companyId` are stamped at append from CLS and restored into
 CLS before in-process re-dispatch. Rows are global-claimable by design (the
 scheduler is stateless); the envelope + headers are what consumers filter on.
 

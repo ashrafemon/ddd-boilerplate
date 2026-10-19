@@ -36,7 +36,7 @@ const cache = (): jest.Mocked<Pick<RedisIdempotencyCacheAdapter, 'buildKey' | 'g
 
 const baseRequest = {
   tenantId: 't1',
-  organizationId: 'o1',
+  companyId: 'o1',
   scope: 'test',
   key: 'k1',
   requestHash: 'hash-1',
@@ -65,7 +65,7 @@ describe('ReserveIdempotencyUseCase', () => {
         claimToken: expect.any(String),
         version: 1,
         tenantId: 't1',
-        organizationId: 'o1',
+        companyId: 'o1',
         scope: 'test',
         key: 'k1',
       });

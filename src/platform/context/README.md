@@ -10,7 +10,7 @@
    nestjs-cls): immutable per-request snapshot with `get()/require()/set()`
    and `run(patch, fn)` — `run` restores a *background* context (tenant,
    correlation) for BullMQ workers and outbox re-dispatch that have no HTTP
-   request. Getters: requestId / correlationId / tenantId / organizationId /
+   request. Getters: requestId / correlationId / tenantId / companyId /
    userId / roles.
 2. **Identity trust (`TenancyAuthGuard`)** — registered as `APP_GUARD` in
    `src/app.module.ts` (not from this module on purpose). `TENANCY_MODE=single`:
@@ -44,7 +44,7 @@ Import via `ContextModule` (exported through `PlatformModule`).
 ## Config / tenancy behaviour
 
 Reads `security.tenancy.mode`, ` security.tenancy.{ttl, headers}`, `auth.jwt`.
-Header names (`x-tenant-id`, `x-organization-id`, …) are configurable only
+Header names (`x-tenant-id`, `x-company-id`, …) are configurable only
 through the interceptor's documented contract; in multi mode headers are
 never trusted.
 

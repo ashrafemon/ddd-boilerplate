@@ -169,7 +169,7 @@ export interface SagaDefinitionRecord {
 export interface SagaCompanyConfigRecord {
   id: string;
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   definitionId: string;
   sagaKey: string;
   baseVersion: number;
@@ -180,7 +180,7 @@ export interface SagaCompanyConfigRecord {
 export interface SagaInstanceRecord {
   id: string;
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   sagaKey: string;
   definitionId: string;
   configId: string | null;
@@ -202,7 +202,7 @@ export interface SagaInstanceRecord {
 export interface SagaStepRecord {
   id: string;
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   instanceId: string;
   stepId: string;
   kind: SagaStepKind;
@@ -221,7 +221,7 @@ export interface SagaStepRecord {
 export interface SagaInboxRecord {
   id: string;
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   consumer: string;
   eventId: string;
   eventName: string;
@@ -240,7 +240,7 @@ export interface SagaTriggerEvent {
   eventName: string;
   eventVersion: number;
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   /** correlation id of the originating process (loop guard via causationId). */
   correlationId?: string;
   causationId?: string;
@@ -253,7 +253,7 @@ export type SagaActionOutcome = 'ok' | 'retry' | 'fail';
 
 export interface SagaActionContext {
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   sagaKey: string;
   instanceId: string;
   /** plan step id. */
