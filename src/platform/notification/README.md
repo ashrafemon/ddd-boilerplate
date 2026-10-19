@@ -17,7 +17,7 @@ minutes, sometimes never.
 
 Flat platform-service layout — same convention as `platform/recurring`: root
 classes + `events/`, `http/`, `ports/`, `usecases/`, `repositories/`,
-`adapters/`, `__testing__/`. No business-module DDD layering — this module
+`adapters/`. No business-module DDD layering — this module
 has no aggregate of its own.
 
 ```
@@ -59,7 +59,7 @@ adapters/                              non-DB transports only
   ses-email-channel.adapter.ts          EMAIL, over the existing SesService
   sns-channel.adapter.ts                SMS + PUSH, over the existing SnsService
   webhook-signature.util.ts
-events/ · __testing__/
+
 http/
   requests/    one DTO per file — notify.request.dto.ts ·
                notification-query.request.dto.ts ·

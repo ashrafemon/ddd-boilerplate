@@ -2,7 +2,7 @@ import { ConfigService } from '@config/config.service';
 import { BatchOperationWorker } from './batch-operation.worker';
 import { BatchOperationHandlerRegistry } from './batch-operation-handler.registry';
 import { ProcessBatchOperationRowUseCase } from './usecases/process-batch-operation-row.usecase';
-import { InMemoryBatchOperationJobRepository } from './__testing__/in-memory-batch-operation-job.repository';
+import { InMemoryBatchOperationJobRepository } from '@test/support/batch-operation/in-memory-batch-operation-job.repository';
 import { BatchOperationHandler } from './ports/batch-operation-handler.port';
 import { BatchOperationJobOutboxWriterPort } from './ports/batch-operation-job-outbox-writer.port';
 import { BatchOperationDispatch } from './batch-operation.types';

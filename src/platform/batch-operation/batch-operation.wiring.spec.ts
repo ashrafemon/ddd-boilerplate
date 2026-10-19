@@ -1,7 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { InMemoryRequestContextService } from '@platform/context/__testing__/in-memory-request-context';
 import { BatchOperationHandlerRegistry } from './batch-operation-handler.registry';
 import { BatchOperationHandler } from './ports/batch-operation-handler.port';
 import { BatchOperationWorker } from './batch-operation.worker';
@@ -20,7 +19,7 @@ import { ListBatchOperationJobRowsUseCase } from './usecases/list-batch-operatio
 import { CancelBatchOperationJobUseCase } from './usecases/cancel-batch-operation-job.usecase';
 import { NumberingPort } from '@platform/numbering/ports/numbering.port';
 import { BatchOperationController } from './http/batch-operation.controller';
-import { InMemoryBatchOperationJobRepository } from './__testing__/in-memory-batch-operation-job.repository';
+import { InMemoryBatchOperationJobRepository } from '@test/support/batch-operation/in-memory-batch-operation-job.repository';
 
 const configStub = {
   getBatchOperation: () => ({
@@ -95,7 +94,11 @@ describe('batch-operation DI wiring', () => {
         { provide: ConfigService, useValue: configStub },
         {
           provide: RequestContextPort,
-          useValue: new InMemoryRequestContextService({ tenantId: 't1', userId: 'u1' }),
+          useValue: {
+            getTenantId: () => 't1',
+            getUserId: () => 'u1',
+            getCorrelationId: () => 'corr-1',
+          } as unknown as RequestContextPort,
         },
         {
           provide: NumberingPort,

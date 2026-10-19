@@ -44,7 +44,7 @@ external boundary needs a transport port too) and an outward
 
 | Port(s)                        | Test double                     | Path                                                |
 | ------------------------------- | -------------------------------- | ----------------------------------------------------- |
-| All five repository ports       | `InMemoryNotificationRepository` | `__testing__/in-memory-notification.repository.ts`  |
+| All five repository ports       | `InMemoryNotificationRepository` | `test/support/notification/in-memory-notification.repository.ts`  |
 
 ---
 

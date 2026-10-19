@@ -78,7 +78,7 @@ repositories/                         DB-backed
 adapters/                             non-DB transports only
   bullmq-webhook-queue.adapter.ts · bullmq-webhook.worker.ts
   http-webhook-transport.adapter.ts · webhook-signature.util.ts
-events/ · __testing__/
+
 http/
   requests/    one DTO per file
 ```

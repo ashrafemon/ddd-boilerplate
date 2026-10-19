@@ -1,6 +1,6 @@
 import { WebhookQueuePublisherPort } from '../ports/webhook-queue-publisher.port';
-import { InMemoryWebhookDeliveryRepository } from '../__testing__/in-memory-webhook-delivery.repository';
-import { InMemoryWebhookSubscriptionRepository } from '../__testing__/in-memory-webhook-subscription.repository';
+import { InMemoryWebhookDeliveryRepository } from '@test/support/webhook/in-memory-webhook-delivery.repository';
+import { InMemoryWebhookSubscriptionRepository } from '@test/support/webhook/in-memory-webhook-subscription.repository';
 import { DispatchWebhookEventUseCase } from './dispatch-webhook-event.usecase';
 
 class StubQueuePublisher implements WebhookQueuePublisherPort {

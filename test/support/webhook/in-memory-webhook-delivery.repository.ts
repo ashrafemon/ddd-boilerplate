@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/require-await -- in-memory test double: the port is async, the storage is a Map */
 import { randomUUID } from 'crypto';
 import { PageResult } from '@shared-kernel/types/pagination';
-import { WebhookDeliveryRepositoryPort } from '../ports/webhook-delivery-repository.port';
-import { NewWebhookDelivery, WebhookDeliveryQuery, WebhookDeliveryRecord } from '../webhook.types';
-import { WebhookDeliveryNotFoundError } from '../webhook.errors';
+import { WebhookDeliveryRepositoryPort } from '@platform/webhook/ports/webhook-delivery-repository.port';
+import {
+  NewWebhookDelivery,
+  WebhookDeliveryQuery,
+  WebhookDeliveryRecord,
+} from '@platform/webhook/webhook.types';
+import { WebhookDeliveryNotFoundError } from '@platform/webhook/webhook.errors';
 
 /** No DB, no BullMQ — plain in-memory fake for use-case specs. */
 export class InMemoryWebhookDeliveryRepository implements WebhookDeliveryRepositoryPort {

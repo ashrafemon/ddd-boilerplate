@@ -36,7 +36,7 @@ Called **out** of the pipeline toward persistence, queue, outbox, or domain adap
 
 | Port(s)              | Test double                           | Path                                                      |
 | -------------------- | ------------------------------------- | --------------------------------------------------------- |
-| Job + Row repository | `InMemoryBatchOperationJobRepository` | `__testing__/in-memory-batch-operation-job.repository.ts` |
+| Job + Row repository | `InMemoryBatchOperationJobRepository` | `test/support/batch-operation/in-memory-batch-operation-job.repository.ts` |
 
 ---
 

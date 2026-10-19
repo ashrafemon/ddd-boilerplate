@@ -9,7 +9,7 @@ import { GetSchedulerHealthMetricsUseCase } from '../usecases/get-scheduler-heal
 import { SchedulerTickHeartbeat } from '../scheduler-tick.heartbeat';
 import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
 import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
-import { InMemoryRequestContextService } from '@platform/context/__testing__/in-memory-request-context';
+import { InMemoryRequestContextService } from '@test/support/context/in-memory-request-context';
 import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
 import { RescheduleExternalJobUseCase } from '../usecases/reschedule-external-job.usecase';
 import { ConflictException, NotFoundException } from '@nestjs/common';

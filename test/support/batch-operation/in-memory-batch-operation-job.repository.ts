@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/require-await -- in-memory test double: the port is async, the storage is a Map */
 import { randomUUID } from 'crypto';
 import { PageResult } from '@shared-kernel/types/pagination';
-import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
-import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
+import { BatchOperationJobRepositoryPort } from '@platform/batch-operation/ports/batch-operation-job-repository.port';
+import { BatchOperationJobRowRepositoryPort } from '@platform/batch-operation/ports/batch-operation-job-row-repository.port';
 import {
   BatchOperationJobRecord,
   BatchOperationListQuery,
@@ -10,7 +10,7 @@ import {
   BatchOperationRowSettlement,
   ClaimedBatchOperationRow,
   NewBatchOperationJob,
-} from '../batch-operation.types';
+} from '@platform/batch-operation/batch-operation.types';
 
 /**
  * In-memory dual-port repository for unit tests. The claim/step mirrors

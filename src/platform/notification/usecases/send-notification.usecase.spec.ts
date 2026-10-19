@@ -5,7 +5,7 @@ import { NotificationWorker } from '../notification.worker';
 import { NotificationQueuePublisherPort } from '../ports/notification-queue-publisher.port';
 import { ChannelProvider } from '../ports/channel-provider.port';
 import { NotificationHandler } from '../ports/notification-handler.port';
-import { InMemoryNotificationRepository } from '../__testing__/in-memory-notification.repository';
+import { InMemoryNotificationRepository } from '@test/support/notification/in-memory-notification.repository';
 import { SendNotificationUseCase } from './send-notification.usecase';
 import { Recipient } from '../notification.types';
 

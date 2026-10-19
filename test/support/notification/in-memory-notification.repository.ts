@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/require-await -- in-memory test double: the ports are async, the storage is a Map */
 import { randomUUID } from 'crypto';
 import { PageResult } from '@shared-kernel/types/pagination';
-import { NotificationMessageRepositoryPort } from '../ports/notification-message-repository.port';
-import { NotificationPreferenceRepositoryPort } from '../ports/notification-preference-repository.port';
+import { NotificationMessageRepositoryPort } from '@platform/notification/ports/notification-message-repository.port';
+import { NotificationPreferenceRepositoryPort } from '@platform/notification/ports/notification-preference-repository.port';
 import {
   NewNotificationRequest,
   NotificationRequestRepositoryPort,
-} from '../ports/notification-request-repository.port';
-import { NotificationSuppressionRepositoryPort } from '../ports/notification-suppression-repository.port';
-import { NotificationTemplateRepositoryPort } from '../ports/notification-template-repository.port';
+} from '@platform/notification/ports/notification-request-repository.port';
+import { NotificationSuppressionRepositoryPort } from '@platform/notification/ports/notification-suppression-repository.port';
+import { NotificationTemplateRepositoryPort } from '@platform/notification/ports/notification-template-repository.port';
 import {
   advancesNotificationMessageStatus,
   ClaimedNotificationMessage,
@@ -21,7 +21,7 @@ import {
   NotificationSuppressionRecord,
   NotificationTemplateVersion,
   UpsertNotificationPreferenceInput,
-} from '../notification.types';
+} from '@platform/notification/notification.types';
 
 /**
  * In-memory double for all five notification ports, for unit tests. The

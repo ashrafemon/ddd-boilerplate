@@ -1,5 +1,5 @@
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { InMemoryWebhookSubscriptionRepository } from '../__testing__/in-memory-webhook-subscription.repository';
+import { InMemoryWebhookSubscriptionRepository } from '@test/support/webhook/in-memory-webhook-subscription.repository';
 import { WebhookEventTypeRegistry } from '../webhook-event-type.registry';
 import { WebhookEventTypeNotAllowedError } from '../webhook.errors';
 import { CreateWebhookSubscriptionUseCase } from './create-webhook-subscription.usecase';

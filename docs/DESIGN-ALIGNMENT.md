@@ -145,9 +145,10 @@ FAILED_MANUAL`; ports `FeatureGate`, `CompanySettingsReader`, `SagaAction`
 
 ### Cross-cutting
 
-- Remove the remaining `__testing__` doubles (notification, context,
-  batch-operation, webhook) — design: "common services ship no test doubles".
-  Specs that rely on them must be rewritten with inline mocks.
+- `__testing__/` doubles removed from `src/platform/` (lock, idempotency,
+  cache, event bus, messaging, outbox, inbox, notification, context,
+  batch-operation, webhook) — moved to `test/support/` so they are no longer
+  shipped as platform code. Specs import them via `@test/support/...`.
 - Wire the saga to a broker consumer: `SagaInboundPort` is the seam, but
   nothing calls `accept` yet (and no business `SagaAction`s are registered), so
   the saga is inert until an owner wires actions + a consumer.
