@@ -103,6 +103,7 @@ export interface CreatePurchaseOrderRequest {
   orderDate?: Date;
   expectedDeliveryDate?: Date;
   actorId?: string;
+  idempotencyKey?: string;
 }
 
 export interface AddLineRequest {
