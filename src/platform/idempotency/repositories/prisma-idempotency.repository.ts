@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../generated/client';
 import { PrismaWriteService } from '@infrastructure/database/prisma/prisma-write.service';
 import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { IdempotencyIdentity, IdempotencyReservation } from '../idempotency.types';
