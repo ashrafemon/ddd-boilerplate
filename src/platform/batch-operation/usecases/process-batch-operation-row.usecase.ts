@@ -2,12 +2,15 @@ import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
+import { BatchOperationHandler } from '../ports/batch-operation-handler.port';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import {
   BatchOperationContext,
   BatchOperationDispatch,
   BatchOperationSkipReason,
+  ClaimedBatchOperationRow,
 } from '../batch-operation.types';
 
 const KNOWN_SKIP_REASONS: readonly BatchOperationSkipReason[] = [
@@ -29,6 +32,7 @@ export class ProcessBatchOperationRowUseCase {
     private readonly rows: BatchOperationJobRowRepositoryPort,
     private readonly registry: BatchOperationHandlerRegistry,
     private readonly configService: ConfigService,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(
@@ -60,9 +64,38 @@ export class ProcessBatchOperationRowUseCase {
       requestedBy: dispatch.requestedBy,
       traceId: dispatch.traceId,
     };
-    const { resultSnapshotMaxBytes } = this.configService.getBatchOperation();
     const startedAt = Date.now();
 
+    try {
+      // The worker has no HTTP request, so the CLS context must be restored
+      // before the handler touches business repositories: without it the
+      // tenant scope would be empty and the batch would run UNSCOPED.
+      return await this.requestContext.run(
+        { tenantId: dispatch.tenantId, companyId: dispatch.companyId },
+        () => this.runHandler(handler, claimed, dispatch, context, startedAt),
+      );
+    } catch (err) {
+      const message = FailureMessage.of(err);
+      this.logger.warn(
+        `Batch row ${claimed.id} (${dispatch.aggregateType}/${dispatch.operationCode}) failed: ${message}`,
+      );
+      await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+        outcome: 'FAILED',
+        errorMessage: message,
+        processingTimeMs: Date.now() - startedAt,
+      });
+      return 'PROCESSED';
+    }
+  }
+
+  private async runHandler(
+    handler: BatchOperationHandler,
+    claimed: ClaimedBatchOperationRow,
+    dispatch: BatchOperationDispatch,
+    context: BatchOperationContext,
+    startedAt: number,
+  ): Promise<'PROCESSED'> {
+    const { resultSnapshotMaxBytes } = this.configService.getBatchOperation();
     try {
       const verdict = await handler.validate(
         claimed.entityId,
@@ -109,6 +142,7 @@ export class ProcessBatchOperationRowUseCase {
       return 'PROCESSED';
     }
   }
+
   private static normaliseSkipReason(reason: string | undefined): string {
     if (reason && (KNOWN_SKIP_REASONS as readonly string[]).includes(reason)) {
       return reason;

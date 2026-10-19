@@ -149,6 +149,8 @@ export interface BatchOperationDispatch {
   operationCode: string;
   params: Record<string, unknown> | undefined;
   tenantId: string | undefined;
+  /** Restored into the CLS context so business writes stay tenant-scoped. */
+  companyId: string | undefined;
   requestedBy: string | undefined;
   traceId: string | undefined;
   rowIds: string[];

@@ -97,6 +97,7 @@ export class BatchOperationReconciliationConsumer {
           operationCode: job.operationCode,
           params: job.operationParams ?? undefined,
           tenantId: job.tenantId ?? undefined,
+          companyId: job.companyId ?? undefined,
           requestedBy: job.requestedBy ?? undefined,
           traceId: undefined,
           rowIds,

@@ -1,6 +1,7 @@
 import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { LoggerPort } from '@platform/observability/ports/logger.port';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { RecurringExecutionPort } from '@platform/recurring/ports/recurring-execution.port';
 import { asPurchaseOrderLines } from '../integrations/publishes/recurring-purchase-order.mapper';
 import { RecurringOccurrenceRequestedPayload } from '../integrations/publishes/recurring-occurrence.types';
@@ -23,9 +24,17 @@ export class GenerateRecurringPurchaseOrderUseCase {
     private readonly purchaseOrderTransition: PurchaseOrderTransitionUseCase,
     private readonly recurringExecution: RecurringExecutionPort,
     private readonly logger: LoggerPort,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(command: RecurringOccurrenceRequestedPayload): Promise<void> {
+    // The consumer runs outside any HTTP request: restore the tenant into the
+    // CLS context so the generated purchase order is stamped with — and
+    // scoped to — the template's tenant.
+    await this.requestContext.run({ tenantId: command.tenantId }, () => this.generate(command));
+  }
+
+  private async generate(command: RecurringOccurrenceRequestedPayload): Promise<void> {
     if (command.targetEntityType && command.targetEntityType !== 'PurchaseOrder') {
       return;
     }

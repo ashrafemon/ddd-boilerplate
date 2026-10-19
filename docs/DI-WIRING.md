@@ -494,6 +494,7 @@ flowchart LR
     GenerateRecurringPurchaseOrderUseCase -->|injects via RecurringModule| RecurringExecutionPort
     LoggerPort["LoggerPort"]
     GenerateRecurringPurchaseOrderUseCase -->|injects via ObservabilityModule| LoggerPort
+    GenerateRecurringPurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
     RecurringOccurrenceRequestedRabbitMQListener["RecurringOccurrenceRequestedRabbitMQListener"]
     RecurringOccurrenceRequestedRabbitMQListener -->|injects| GenerateRecurringPurchaseOrderUseCase
     PurchaseOrderForGrnFacade -->|injects| GetPurchaseOrderUseCase
@@ -570,13 +571,14 @@ flowchart LR
     GenerateRecurringInvoiceUseCase -->|injects via RecurringModule| RecurringExecutionPort
     LoggerPort["LoggerPort"]
     GenerateRecurringInvoiceUseCase -->|injects via ObservabilityModule| LoggerPort
+    RequestContextPort["RequestContextPort"]
+    GenerateRecurringInvoiceUseCase -->|injects via ContextModule| RequestContextPort
     RecurringOccurrenceRequestedRabbitMQListener["RecurringOccurrenceRequestedRabbitMQListener"]
     RecurringOccurrenceRequestedRabbitMQListener -->|injects| GenerateRecurringInvoiceUseCase
     InvoiceForReportsFacade -->|injects| GetInvoiceUseCase
     InvoiceForReportsFacade -->|injects| GetInvoiceUseCase
     TransactionHost__library_["TransactionHost (library)"]
     PrismaInvoiceCommandRepository -->|injects| TransactionHost__library_
-    RequestContextPort["RequestContextPort"]
     PrismaInvoiceCommandRepository -->|injects via ContextModule| RequestContextPort
     PrismaReadPort["PrismaReadPort"]
     PrismaInvoiceQueryRepository -->|injects via ContextModule| PrismaReadPort
@@ -1023,6 +1025,7 @@ flowchart LR
     ProcessBatchOperationRowUseCase -->|injects| BatchOperationJobRowRepositoryPort
     ProcessBatchOperationRowUseCase -->|injects| BatchOperationHandlerRegistry
     ProcessBatchOperationRowUseCase -->|injects via ConfigModule| ConfigService
+    ProcessBatchOperationRowUseCase -->|injects via ContextModule| RequestContextPort
     GetBatchOperationJobStatusUseCase -->|injects| BatchOperationJobRepositoryPort
     GetBatchOperationJobStatusUseCase -->|injects via ContextModule| RequestContextPort
     ListBatchOperationJobsUseCase -->|injects| BatchOperationJobRepositoryPort

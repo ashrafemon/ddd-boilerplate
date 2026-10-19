@@ -87,6 +87,7 @@ export class CreateBatchOperationJobUseCase {
       operationCode: job.operationCode,
       params: job.operationParams ?? undefined,
       tenantId: job.tenantId ?? undefined,
+      companyId: job.companyId ?? undefined,
       requestedBy: job.requestedBy ?? undefined,
       traceId: input.traceId,
       rowIds: (job.rows ?? []).map(row => row.id),
