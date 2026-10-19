@@ -298,8 +298,14 @@ Forbidden:
           business `DomainEvent` satisfies `OutboxEvent` STRUCTURALLY (same
           envelope fields), so the outbox pipes it with no shared type and no
           rehydration step — the payload is persisted and delivered verbatim
-  raw client libs (Prisma, @prisma/adapter-pg, amqplib, kafkajs, ioredis/redis,
-  @golevelup/nestjs-rabbitmq, @ssut/nestjs-sqs) → infrastructure/config/bootstrap/platform only
+  raw client libs (Prisma, @prisma/adapter-pg, amqplib, kafkajs, ioredis/redis)
+  → infrastructure/config/bootstrap only. The platform layer may ALSO use
+  @golevelup/nestjs-rabbitmq and @ssut/nestjs-sqs (the adapters it wraps) and
+  @nestjs/schedule (the platform owns cron); business listeners may import the
+  broker packages ONLY to obtain the subscribe decorators.
+  the BARE `@prisma/client` specifier → nowhere: import the generated client by
+  relative path ('../../../generated/client'). The bare specifier resolves to
+  the npm stub at runtime and breaks the compiled build.
   @nestjs/schedule → platform only (the outbox scheduler owns cron)
 ```
 
@@ -462,14 +468,15 @@ cross-import aggregates.
 - Status machine:
 
 ```text
-DRAFT ── submit ─▶ SUBMITTED ── approve ─▶ APPROVED ── complete ─▶ COMPLETED
-                     │             │
-                     ├─ reject ──▶ REJECTED
+DRAFT ── submit ─▶ SUBMITTED ── approve ─▶ APPROVED ── issue ─▶ ISSUED ── close ─▶ COMPLETED
+                     │             │                                              │
+                     ├─ reject ──▶ REJECTED                                       │
                      └──────── cancel ─────▶ CANCELLED (from DRAFT/SUBMITTED/APPROVED)
 ```
 
-- Behavior: `addLine`, `removeLine`, `submit`, `approve`, `reject(reason)`, `cancel`,
-  `complete`, `requiresManualApproval(threshold)`, computed `subtotal`/`total` (`Money`).
+- Behavior: `addLine`, `removeLine`, `setLine`, `submit`, `approve`, `reject(reason)`, `cancel`,
+  `issue`, `close` (status → `COMPLETED`, event `PurchaseOrderCompleted`; `complete()` is a
+  legacy alias), `requiresManualApproval(threshold)`, computed `subtotal`/`total` (`Money`).
 - Invariants: editable only in `DRAFT`, ≥1 line before submit, positive quantity, legal
   transitions.
 - Policy: `purchase-order.approval` — submitted orders with `total > autoApproveThreshold`
@@ -608,6 +615,9 @@ platform/
 │                    wrapper over EventEmitter2, no routing table, no rehydration
 ├── messaging/       MessagingModule — MessageQueuePort (+ MessageQueueService), routing on
 │                    envelope.broker across RabbitMq/Kafka/Sqs publisher adapters
+├── inbox/           InboxModule — InboxPort (receive→complete/fail): consumer-side dedupe,
+│                    insert-as-claim on (tenant, company, consumer, messageId) + per-minute
+│                    reconciler that parks exhausted messages in SUSPENDED
 ├── context/         ContextModule — ClsRequestContextService (RequestContextPort: per-request
 │                    identity/trace, set/get/require + run() for background context),
 │                    PrismaReadPort (bound to the infra PrismaReadService); TenancyAuthGuard
@@ -647,9 +657,16 @@ platform/
 ├── batch-operation/ BatchOperationModule — Sync/Async bulk transitions, job+row tables,
 │                    BatchOperationHandlerRegistry, BullMQ chunk fan-out, claim-token fencing,
 │                    reconcile (reset/recount/finalise/resume); HTTP /batch-operations (@Idempotent submit)
-└── import/          ImportModule — upload→parse→mapping→validation→execution over S3,
-                     BullMQ fan-out, ImportHandlerRegistry, stage locks + row claim tokens,
-                     resume-not-kill reconciliation, storage purge; HTTP /import (@Idempotent create)
+├── import/          ImportModule — upload→parse→mapping→validation→execution over S3,
+│                    BullMQ fan-out, ImportHandlerRegistry, stage locks + row claim tokens,
+│                    resume-not-kill reconciliation, storage purge; HTTP /import (@Idempotent create)
+├── saga/            SagaModule — SagaInboundPort (SagaRouter) + SagaActionRegistry: company-
+│                    configurable DO/UNDO orchestration over a frozen plan, SKIP-LOCKED step
+│                    claim + lease, DO/UNDO compensation, per-company fairness cap
+├── webhook/         WebhookModule — outbound delivery to subscriber URLs (signature-verified,
+│                    per-delivery rows, BullMQ retries, circuit breaker auto-pause) and inbound
+│                    provider webhooks (idempotency-reserved); HTTP /webhooks
+└── (end)
 ```
 
 Business code injects the **port abstractions** and never imports concrete platform services
@@ -806,9 +823,13 @@ persistence stays encapsulated with it.
 
 - **Prisma 7**, `prisma-client` generator (CJS module format) output to `src/generated/` —
   import through the `@prisma/client` alias (`src/generated/client.ts`). Generated code is
-  ESLint-ignored.
-- `prisma.config.ts` points at `prisma/schema` (folder) + `prisma/migrations`; the datasource
-  URL comes from `DATABASE_URL` via the config file (no `env()` in the schema).
+  ESLint-ignored. **At runtime the alias does not resolve**: import the generated client by
+  its **relative path** (`'../../../generated/client'`). The bare `@prisma/client` specifier
+  points at the npm stub, which expects a client at `.prisma/client/default` and throws
+  `Cannot find module '.prisma/client/default'` in the compiled build.
+- `prisma.config.ts` points at `prisma/schema` (folder); the datasource URL comes from
+  `DATABASE_URL` via the config file (no `env()` in the schema). There is no
+  `prisma/migrations` path — the schema folder is the whole contract.
 - Schema is **split per aggregate** under `prisma/schema/<context>/<module>.prisma`:
 
 | Model                                             | Table                                                   | Notes                                                                                  |
@@ -831,9 +852,11 @@ persistence stays encapsulated with it.
 | `StorageObject` / `ImportJob` / `ImportJobRow`    | `storage_objects` / `import_jobs` / `import_job_rows`   | upload + job (descriptor snapshot, statusHistory) + row outcomes                       |
 
 All money columns are `Decimal(18,2)`; domain converts through `Money` (minor units).
-Migrations: `init`, `add_platform_numbering_audit`, `add_company_config`,
-`add_platform_services_and_invoice` (scheduler/recurring/batch-operation/import + invoice) under
-`prisma/migrations/`.
+**No migration folder.** The database is created straight from `prisma/schema`
+(`prisma db push`, `npm run db:push`) — there is currently no
+`prisma/migrations/` directory and no `db:migrate` / `db:deploy` script. The
+schema files under `prisma/schema/<context>/` are the single source of truth
+for the table contracts (each carries a header comment documenting them).
 
 - **Command side** (`*CommandRepository` impls) injects `TransactionHost<TransactionalAdapterPrisma>`
   so every read-modify-save participates in the use case's `@Transactional()` boundary — and
@@ -898,6 +921,9 @@ stay as overrides for background executions that restored a different context).
 | recurring        | `POST /recurring-templates`, `GET /recurring-templates` (+`/:id`), `POST /recurring-templates/:id/{pause,resume,cancel}`                                                                                                                     |
 | batch-operations | `GET /batch-operations/_registry`, `POST /batch-operations/validate`, `POST /batch-operations` (Sync 200 / Async 202), `GET /batch-operations` (+`/:id`, `/:id/rows`), `POST /batch-operations/:id/cancel`                                   |
 | import           | `GET /import/_registry`, `POST /import/uploads`, `POST /import/jobs`, `GET /import/jobs` (+`/:id`, `/:id/preview`, `/:id/report`), `PATCH /import/jobs/:id/mapping`, `POST /import/jobs/:id/{execute,cancel}`, `GET /import/:entityKey/init` |
+| notifications    | `GET /notifications/_registry`, `POST /notifications`, `GET /notifications` (+`/:id`), `GET /notifications/preferences/:recipientRef`, `PUT /notifications/preferences`, `POST /notifications/webhooks/:channel`                                                       |
+| webhooks         | `GET /webhooks/_registry`, `GET /webhooks/subscriptions` (+`/:id`), `POST /webhooks/subscriptions`, `PATCH /webhooks/subscriptions/:id`, `DELETE /webhooks/subscriptions/:id`, `GET /webhooks/subscriptions/:id/deliveries`, `POST /webhooks/deliveries/:id/redeliver`, `POST /webhooks/inbound/:source` |
+| metrics          | `GET /metrics` (Prometheus scrape)                                                                                                                                            |
 
 ---
 
@@ -1030,7 +1056,7 @@ never import the other module's internals.
 cp .env.example .env
 docker compose up -d          # PostgreSQL, Redis, RabbitMQ, Kafka (KRaft single node)
 npm install                   # also runs prisma generate (postinstall)
-npm run db:migrate            # create/apply migrations + regenerate client
+npm run db:push               # create/sync the database from prisma/schema
 npm run db:seed               # sample products & vendors
 npm run start:dev             # http://localhost:4000/api/v1, Swagger /api/docs
 ```

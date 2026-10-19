@@ -1,7 +1,10 @@
 # Purchasing Upgrade — Phase Plan (PurchaseOrder + GoodReceiptNote)
 
-> **STATUS: PLAN ONLY — NOTHING HERE IS IMPLEMENTED.** No phase starts without the
-> owner's explicit go-ahead per phase (see §E Pending Decisions).
+> **STATUS: MOSTLY IMPLEMENTED — this file is the historical design record.**
+> Phases 0–5 landed in the code; Phase 6 (events/side-effects/docs) and the
+> three-way matching of §10 are still open. The phase descriptions below are
+> kept as written so the intent stays traceable — **the code is the source of
+> truth**, and this plan no longer matches it line for line.
 >
 > **Source spec:** `update/BusinessAggregate.md` (repo root) — "ERP Purchasing Module —
 > DDD Update Specification" (PO/GRN lifecycles, partial receipts, over-receipt, inventory

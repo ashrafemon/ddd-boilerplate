@@ -110,7 +110,8 @@ OutboxScheduler (tick 10s) → PublishPendingBatchUseCase
     @OnEvent / @RabbitSubscribe / @KafkaEvent / @SqsMessageHandler — delegate to use cases only
 ```
 
-Status machine: `PENDING → PUBLISHING → PUBLISHED | FAILED`.
+Status machine: `PENDING → PUBLISHED | DEAD_LETTER` (the claim stamps
+`claimedAt` + `claimToken` on the row; it does not change the status).
 
 ## 4. Read request (query path)
 
@@ -162,14 +163,16 @@ vendors are orderable (non-orderable ⇒ `ConflictException`).
 
 ### 6.1 Outbox, events & messaging
 
-Covered in [§3](#3-write-request-end-to-end-the-golden-path). One addition — fan-out is explicit
-in exactly one file, `platform/events/message-routing.policy.ts`:
+Covered in [§3](#3-write-request-end-to-end-the-golden-path). One addition — the transport is
+chosen per event by the `broker` field on the outbox envelope, not by a central routing table:
 
 ```text
-FAN_OUT_EVENTS: ProductCreated/VendorCreated/PurchaseOrderCreated/GrnCreated/InvoiceCreated
-              → ['rabbitmq','kafka','sqs']        everything else → ['rabbitmq']
+envelope.broker = 'rabbitmq' (default) | 'kafka' | 'sqs'
+  → MessageQueuePort.publish(envelope) → the matching publisher adapter
 ```
 
+There is no `FAN_OUT_EVENTS` list: a business module picks the broker when it appends the event
+(`OutboxWriterPort.append(event, aggregateType, aggregateId, { broker })`).
 Kafka/SQS adapters self-disable until `KAFKA_BROKERS` / `SQS_URL` are configured.
 The same envelope shape rides all three transports.
 
@@ -288,8 +291,8 @@ sales/invoice module:
         └▶ RecurringExecutionPort.complete(exec-1, {generatedDocumentId, snapshot})
         └▶ autoPost → PostInvoiceUseCase (DRAFT→POSTED, raises InvoicePosted, outbox)
 
-then:       InvoiceCreated itself fans out rabbit+kafka+sqs per FAN_OUT_EVENTS for any external
-            subscriber; the user sees the result via GET /invoices, /scheduled-jobs,
+then:       InvoiceCreated is published to the broker named on its envelope (default rabbitmq) for
+            any external subscriber; the user sees the result via GET /invoices, /scheduled-jobs,
             /scheduled-jobs/:id/dispatch-log, /scheduler/health.
 ```
 

@@ -41,8 +41,8 @@ source of truth; this file is the load-bearing summary.
 - Reuse the shared primitives instead of re-inventing: `platform/locking`
   (DistributedLockPort), `platform/idempotency` (IdempotencyPort +
   `@Idempotent()`), `platform/context` (`requestContext.run` in every worker),
-  `platform/numbering`, `platform/audit`, `platform/outbox` (+ stable-envelope
-  re-dispatch and `outboxEventRegistry`).
+   `platform/numbering`, `platform/audit`, `platform/outbox` (+ stable-envelope
+   re-dispatch on the same `OutboxEnvelope`).
 - Bounded retries with visible parked states (`FAILED`/`SUSPENDED`/
   `DEAD_LETTER`); every background state has a reconciler cron.
 - File pattern: **one use case per file** (`<verb>-<noun>.usecase.ts`),
@@ -86,9 +86,11 @@ it must not be marked passing without running it.
   authorization + SoD) lives in
   `~/Documents/Common/erp/iam/{index,iam,authorization}.html` and is distilled
   into **`docs/IAM-BUILD-PLAN.md`** — read that before starting.
+- **Optimistic concurrency** is implemented on PurchaseOrder and GRN only.
+  Vendor, Product and Invoice command repositories are still last-write-wins.
 
 ## Commit/PR hygiene
 
-Do not commit secrets or `.env`; SQL migrations are hand-written and reviewed
-against the schema; public contracts only change with explicit owner approval;
-never edit `src/generated/**`.
+Do not commit secrets or `.env`; the Prisma schema files are the table
+contracts — review them against the code that reads them; public contracts
+only change with explicit owner approval; never edit `src/generated/**`.
