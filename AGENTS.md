@@ -93,8 +93,14 @@ suite is the executable check: `npm run test:e2e` needs `docker compose up -d` +
 `.env`, and it must not be marked passing without running it. It covers the DI
 graph, the error envelope, the PO-07 receiving concurrency (two concurrent
 receipts can never jointly exceed the over-receipt limit), the `grn.post`
-idempotent replay, and cross-tenant isolation (another tenant's purchase order
-is 404 and cannot be mutated).
+idempotent replay, cross-tenant isolation (another tenant's purchase order
+is 404 and cannot be mutated), the controlled amendment of an issued order, and
+the background services (the notification pipeline, the batch-operation engine,
+the outbox dispatch and the inventory consumer).
+
+The suites build the app through `test/utils/create-test-app.ts`, which applies
+the same composition-root bridges as `src/main.ts` — without them the
+notification, import, batch and webhook handlers are never registered.
 
 ## Open work — build next
 

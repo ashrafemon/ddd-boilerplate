@@ -1,8 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
-import { AppModule } from './../src/app.module';
+import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { PrismaWriteService } from '../src/infrastructure/database/prisma/prisma-write.service';
-import { configureHttp } from '../src/bootstrap/configure-http';
+import { createTestApp } from './utils/create-test-app';
 
 /**
  * Controlled amendment of an ISSUED purchase order (spec §4
@@ -68,13 +66,7 @@ describe('purchase order amendment (e2e)', () => {
   };
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
-    configureHttp(app);
-    await app.init();
+    ({ app } = await createTestApp());
     prisma = app.get(PrismaWriteService);
   }, 60_000);
 

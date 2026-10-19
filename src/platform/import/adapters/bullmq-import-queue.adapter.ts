@@ -44,8 +44,9 @@ export class BullMqImportQueueAdapter implements ImportQueuePublisherPort {
         {
           // Cycle-stamped id so a reconciliation re-enqueue is never blocked by
           // a retained failed message for the same stage (stage use cases carry
-          // their own status CAS + lock, making duplicates harmless).
-          jobId: `${name}:${jobId}:${Date.now()}`,
+          // their own status CAS + lock, making duplicates harmless). BullMQ job
+          // ids must NOT contain ':' ("Custom Id cannot contain :").
+          jobId: `${name}-${jobId}-${Date.now()}`,
           attempts: jobAttempts,
           backoff: { type: 'exponential', delay: 1_000 },
           removeOnComplete: true,

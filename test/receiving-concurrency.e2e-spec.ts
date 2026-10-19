@@ -1,8 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
-import { AppModule } from './../src/app.module';
+import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { PrismaWriteService } from '../src/infrastructure/database/prisma/prisma-write.service';
-import { configureHttp } from '../src/bootstrap/configure-http';
+import { createTestApp } from './utils/create-test-app';
 
 /**
  * PO-07 receiving concurrency (PURCHASING-PLAN §3.7).
@@ -95,14 +93,7 @@ describe('PO-07 receiving concurrency (e2e)', () => {
   };
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
-    // The same routing setup main.ts applies: global prefix + URI versioning.
-    configureHttp(app);
-    await app.init();
+    ({ app } = await createTestApp());
 
     // The app's own write client — same pool and config as the code under test.
     prisma = app.get(PrismaWriteService);

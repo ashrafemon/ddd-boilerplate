@@ -27,7 +27,10 @@ export class BullMqNotificationQueueAdapter implements NotificationQueuePublishe
     for (let i = 0; i < chunks.length; i++) {
       const messageIds = chunks[i];
       // Include first message id so reconciliation re-partitions stay unique vs prior chunks.
-      const jobId = `${dispatch.notificationRequestId}:chunk:${i}:${messageIds[0]}`;
+      // BullMQ job ids must NOT contain ':' ("Custom Id cannot contain :"), so the
+      // parts are joined with '-'. The parts are uuids / indexes, so the id stays
+      // unique and stable across a re-partition.
+      const jobId = `${dispatch.notificationRequestId}-chunk-${i}-${messageIds[0]}`;
       try {
         await this.queue.add(
           NOTIFICATION_CHUNK_JOB_NAME,

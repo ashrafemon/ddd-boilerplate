@@ -33,8 +33,9 @@ export class BullMqBatchOperationQueueAdapter implements BatchOperationQueuePubl
       const rowIds = chunks[i];
       // Cycle-stamped id: re-dispatch after reconciliation must not collide
       // with a retained failed chunk (row claims, not queue dedupe, provide
-      // the double-execution guard).
-      const jobId = `${dispatch.jobId}:chunk:${i}:${Date.now()}`;
+      // the double-execution guard). BullMQ job ids must NOT contain ':'
+      // ("Custom Id cannot contain :"), so the parts are joined with '-'.
+      const jobId = `${dispatch.jobId}-chunk-${i}-${Date.now()}`;
       try {
         await this.queue.add(
           BATCH_OPERATION_CHUNK_JOB_NAME,

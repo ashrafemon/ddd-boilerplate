@@ -14,6 +14,7 @@ import { PublishPendingBatchUseCase } from './usecases/publish-pending-batch.use
 export class OutboxScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OutboxScheduler.name);
   private timer: NodeJS.Timeout | undefined;
+  private inFlight: Promise<void> | undefined;
 
   constructor(
     private readonly publishPendingBatch: PublishPendingBatchUseCase,
@@ -26,21 +27,28 @@ export class OutboxScheduler implements OnModuleInit, OnModuleDestroy {
     this.timer = setInterval(() => void this.dispatch(), pollIntervalMs);
   }
 
-  onModuleDestroy(): void {
+  async onModuleDestroy(): Promise<void> {
     if (this.timer) {
       clearInterval(this.timer);
+      this.timer = undefined;
     }
+    // A tick that is still running would keep using the Prisma pool after the
+    // container closed it ("Cannot use a pool after calling end on the pool").
+    await this.inFlight?.catch(() => undefined);
   }
 
   private async dispatch(): Promise<void> {
-    try {
-      const published = await this.publishPendingBatch.execute();
-      if (published > 0) {
-        this.logger.log(`Claimed and dispatched ${published} outbox messages`);
+    this.inFlight = (async () => {
+      try {
+        const published = await this.publishPendingBatch.execute();
+        if (published > 0) {
+          this.logger.log(`Claimed and dispatched ${published} outbox messages`);
+        }
+      } catch (err) {
+        this.logger.error(`Outbox dispatch tick failed: ${(err as Error).message}`);
       }
-    } catch (err) {
-      this.logger.error(`Outbox dispatch tick failed: ${(err as Error).message}`);
-    }
+    })();
+    await this.inFlight;
   }
 
   @Cron(CronExpression.EVERY_HOUR, { name: 'cleanup-outbox' })
