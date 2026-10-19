@@ -1,32 +1,26 @@
 import { Module } from '@nestjs/common';
 import { CacheModule as InfraCacheModule } from '@infrastructure/cache/cache.module';
-import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { DistributedLockPort } from './ports/distributed-lock.port';
-import { DistributedLockRepositoryPort } from './ports/distributed-lock-repository.port';
 import { RedisLockPort } from './ports/redis-lock.port';
-import { PrismaDistributedLockRepository } from './repositories/prisma-distributed-lock.repository';
 import { RedisDistributedLockAdapter } from './adapters/redis-distributed-lock.adapter';
 import { AcquireDistributedLockUseCase } from './usecases/acquire-distributed-lock.usecase';
 import { RenewDistributedLockUseCase } from './usecases/renew-distributed-lock.usecase';
 import { ReleaseDistributedLockUseCase } from './usecases/release-distributed-lock.usecase';
-import { DistributedLockService } from './distributed-lock.service';
+import { LockingService } from './services/locking.service';
 import { LockKeyBuilder } from './lock-key.builder';
 
 /**
- * Platform distributed lock module — cross-instance mutual exclusion with
- * PostgreSQL fencing tokens and Redis lease ownership.
+ * Platform distributed lock module — Redis-only cross-instance mutual
+ * exclusion (design `common/03-lock`).
  *
- * Business modules inject DistributedLockPort and control the sequence:
- * acquire → execute → renew (optional) → release.
+ * No Prisma schema and no repository: ownership, lease TTL and the fencing
+ * token sequence all live in Redis. Business modules inject DistributedLockPort
+ * and control the sequence: acquire → execute → renew (optional) → release.
  */
 @Module({
-  imports: [InfraCacheModule.forRoot(), PrismaModule],
+  imports: [InfraCacheModule.forRoot()],
   providers: [
-    // Repository — PostgreSQL fencing token sequence
-    PrismaDistributedLockRepository,
-    { provide: DistributedLockRepositoryPort, useExisting: PrismaDistributedLockRepository },
-
-    // Redis adapter — atomic lock operations
+    // Redis adapter — atomic lock operations (shared infra Redis client)
     RedisDistributedLockAdapter,
     { provide: RedisLockPort, useExisting: RedisDistributedLockAdapter },
 
@@ -39,8 +33,8 @@ import { LockKeyBuilder } from './lock-key.builder';
     ReleaseDistributedLockUseCase,
 
     // Facade → public port
-    DistributedLockService,
-    { provide: DistributedLockPort, useExisting: DistributedLockService },
+    LockingService,
+    { provide: DistributedLockPort, useExisting: LockingService },
   ],
   exports: [DistributedLockPort],
 })

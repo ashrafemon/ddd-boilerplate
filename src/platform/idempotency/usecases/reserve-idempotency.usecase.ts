@@ -1,102 +1,122 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { IdempotencyRepositoryPort } from '../ports/idempotency-repository.port';
+import { ConfigService } from '@config/config.service';
+import { PrismaIdempotencyRepository } from '../repositories/prisma-idempotency.repository';
+import { RedisIdempotencyCacheAdapter } from '../adapters/redis-idempotency-cache.adapter';
 import {
+  IdempotencyIdentity,
+  IdempotencyReservation,
   IdempotencyReserveRequest,
   IdempotencyReserveResult,
 } from '../idempotency.types';
 
-const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
-
 /**
- * Use case: reserve an idempotency key.
+ * Use case: reserve an idempotency key (design `common/02-idempotency`).
  *
- * 1. Check Redis cache for COMPLETED result (fast replay)
- * 2. Find existing row in PostgreSQL
- * 3. If not found → INSERT as IN_PROGRESS → ACQUIRED
- * 4. If COMPLETED → REPLAY with stored result
- * 5. If IN_PROGRESS → IN_PROGRESS (concurrent request)
- * 6. If FAILED/SUSPENDED/expired → atomic takeover → ACQUIRED
- * 7. If requestHash mismatch → KEY_REUSED
+ * 1. Redis result cache HIT → REPLAY without touching Postgres
+ * 2. Otherwise INSERT-as-claim on the unique identity → ACQUIRED
+ * 3. Row COMPLETED with the same hash → REPLAY (cache it back)
+ * 4. Row COMPLETED with a different hash → KEY_MISMATCH
+ * 5. Row IN_PROGRESS with a live lease → BUSY
+ * 6. Row IN_PROGRESS with an expired lease → CAS takeover → ACQUIRED
  */
 @Injectable()
 export class ReserveIdempotencyUseCase {
-  constructor(private readonly repository: IdempotencyRepositoryPort) {}
+  constructor(
+    private readonly repository: PrismaIdempotencyRepository,
+    private readonly cache: RedisIdempotencyCacheAdapter,
+    private readonly configService: ConfigService,
+  ) {}
 
   async execute(request: IdempotencyReserveRequest): Promise<IdempotencyReserveResult> {
-    const identity = {
+    const { ttlMs: defaultTtlMs, claimLeaseMs } = this.configService.getIdempotency();
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + (request.ttlMs ?? defaultTtlMs));
+
+    const identity: IdempotencyIdentity = {
       tenantId: request.tenantId,
       organizationId: request.organizationId,
       scope: request.scope,
       key: request.key,
     };
-    const ttlMs = request.ttlMs ?? DEFAULT_TTL_MS;
-    const expiresAt = new Date(Date.now() + ttlMs);
+    const cacheKey = this.cache.buildKey(identity);
+
+    // 1. Fast replay path — COMPLETED results only.
+    const cached = await this.cache.get(cacheKey);
+    if (cached.hit) {
+      return { status: 'REPLAY', result: cached.value };
+    }
+
+    // 2. Insert-as-claim. The unique index is the concurrent-reserve guard.
     const claimToken = randomUUID();
-
-    // Try to insert as new claim
     try {
-      const inserted = await this.repository.insert(identity, claimToken, expiresAt, request.requestHash);
-      return {
-        status: 'ACQUIRED',
-        reservation: {
-          id: inserted.id,
-          claimToken,
-          version: inserted.version,
-        },
-      };
+      const inserted = await this.repository.insertClaim(
+        identity,
+        claimToken,
+        expiresAt,
+        request.requestHash,
+      );
+      return this.acquired(identity, inserted.id, claimToken, inserted.version);
     } catch {
-      // Unique constraint violation — row already exists
+      // Unique violation — a row already exists; fall through to inspect it.
     }
 
-    // Find the existing row
-    const existing = await this.repository.findUnique(identity);
+    const existing = await this.repository.findByIdentity(identity);
     if (!existing) {
-      // Should not happen after constraint violation, but handle gracefully
-      const inserted = await this.repository.insert(identity, claimToken, expiresAt, request.requestHash);
-      return {
-        status: 'ACQUIRED',
-        reservation: {
-          id: inserted.id,
-          claimToken,
-          version: inserted.version,
-        },
-      };
+      // Row vanished between insert and read (fail/expiry). Retry once.
+      const inserted = await this.repository.insertClaim(
+        identity,
+        claimToken,
+        expiresAt,
+        request.requestHash,
+      );
+      return this.acquired(identity, inserted.id, claimToken, inserted.version);
     }
 
-    // Check request hash mismatch (same key, different payload)
-    if (existing.requestHash && request.requestHash && existing.requestHash !== request.requestHash) {
-      return { status: 'KEY_REUSED' };
+    // 3/4. Same key, different payload is a client error.
+    if (
+      existing.requestHash &&
+      request.requestHash &&
+      existing.requestHash !== request.requestHash
+    ) {
+      return { status: 'KEY_MISMATCH' };
     }
 
-    // Handle based on current status
-    switch (existing.status) {
-      case 'COMPLETED':
-        return { status: 'REPLAY', result: existing.resultJson };
-
-      case 'IN_PROGRESS':
-        return { status: 'IN_PROGRESS' };
-
-      case 'FAILED':
-      case 'SUSPENDED': {
-        // Atomic takeover of failed/suspended rows
-        const taken = await this.repository.takeover(identity, claimToken, expiresAt);
-        if (taken) {
-          const updated = await this.repository.findUnique(identity);
-          return {
-            status: 'ACQUIRED',
-            reservation: {
-              id: existing.id,
-              claimToken,
-              version: (updated?.version ?? existing.version) + 1,
-            },
-          };
-        }
-        return { status: 'IN_PROGRESS' };
+    if (existing.status === 'COMPLETED') {
+      const remainingMs = existing.expiresAt.getTime() - Date.now();
+      if (remainingMs > 0) {
+        await this.cache.set(cacheKey, existing.resultJson, remainingMs);
       }
-
-      default:
-        return { status: 'IN_PROGRESS' };
+      return { status: 'REPLAY', result: existing.resultJson };
     }
+
+    // 5/6. IN_PROGRESS: BUSY while the lease is live, otherwise take over.
+    const cutoff = new Date(now.getTime() - claimLeaseMs);
+    const taken = await this.repository.takeoverExpiredClaim(
+      identity,
+      claimToken,
+      cutoff,
+      expiresAt,
+    );
+    if (taken) {
+      return this.acquired(identity, taken.id, claimToken, taken.version);
+    }
+
+    return { status: 'BUSY' };
+  }
+
+  private acquired(
+    identity: IdempotencyIdentity,
+    id: string,
+    claimToken: string,
+    version: number,
+  ): IdempotencyReserveResult {
+    const reservation: IdempotencyReservation = {
+      ...identity,
+      id,
+      claimToken,
+      version,
+    };
+    return { status: 'ACQUIRED', reservation };
   }
 }

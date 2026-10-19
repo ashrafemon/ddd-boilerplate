@@ -1,20 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { IdempotencyPort } from './ports/idempotency.port';
-import { ReserveIdempotencyUseCase } from './usecases/reserve-idempotency.usecase';
-import { CompleteIdempotencyUseCase } from './usecases/complete-idempotency.usecase';
-import { FailIdempotencyUseCase } from './usecases/fail-idempotency.usecase';
+import { IdempotencyPort } from '../ports/idempotency.port';
+import { ReserveIdempotencyUseCase } from '../usecases/reserve-idempotency.usecase';
+import { CompleteIdempotencyUseCase } from '../usecases/complete-idempotency.usecase';
+import { FailIdempotencyUseCase } from '../usecases/fail-idempotency.usecase';
 import {
   IdempotencyCompleteRequest,
   IdempotencyFailRequest,
   IdempotencyReserveRequest,
   IdempotencyReserveResult,
-} from './idempotency.types';
+} from '../idempotency.types';
 
 /**
- * Idempotency service facade — the single entry point for all idempotency operations.
- *
- * Delegates to individual use cases (one per file) without containing
- * business rules itself. This class implements the public IdempotencyPort.
+ * Idempotency service — the single public entry point (design
+ * `common/02-idempotency`). Delegates to one use case per operation.
  */
 @Injectable()
 export class IdempotencyService implements IdempotencyPort {

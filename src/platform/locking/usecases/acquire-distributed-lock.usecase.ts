@@ -1,29 +1,34 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { ConfigService } from '@config/config.service';
 import { RedisLockPort } from '../ports/redis-lock.port';
-import { DistributedLockRepositoryPort } from '../ports/distributed-lock-repository.port';
 import { LockKeyBuilder } from '../lock-key.builder';
 import { DistributedLockAcquireRequest, DistributedLockAcquireResult } from '../locking.types';
-
-const DEFAULT_LEASE_MS = 30_000;
 
 /**
  * Use case: acquire a distributed lock.
  *
- * 1. Build the lock key from identity
- * 2. Generate fencing token from PostgreSQL
- * 3. Attempt Redis SET NX PX
- * 4. Return ACQUIRED with ticket or BUSY
+ * Redis-only (design `common/03-lock`):
+ * 1. Build the deterministic lock key from identity
+ * 2. Attempt Redis SET NX PX — fast fail, no DB round-trip
+ * 3. Allocate a monotonic fencing token from Redis (INCR)
+ * 4. Return ACQUIRED with the ticket, or BUSY with retryAfterMs
+ *
+ * The client always decides what BUSY means (409 / retry / queue); the service
+ * never waits or blocks.
  */
 @Injectable()
 export class AcquireDistributedLockUseCase {
   constructor(
     private readonly redisLock: RedisLockPort,
-    private readonly repository: DistributedLockRepositoryPort,
     private readonly keyBuilder: LockKeyBuilder,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(request: DistributedLockAcquireRequest): Promise<DistributedLockAcquireResult> {
+    const { defaultLeaseMs, minLeaseMs, maxLeaseMs } = this.configService.getLocking();
+    const leaseMs = this.clamp(request.leaseMs ?? defaultLeaseMs, minLeaseMs, maxLeaseMs);
+
     const identity = {
       tenantId: request.tenantId,
       organizationId: request.organizationId,
@@ -32,29 +37,24 @@ export class AcquireDistributedLockUseCase {
     };
 
     const lockKey = this.keyBuilder.build(identity);
-    const leaseMs = request.leaseMs ?? DEFAULT_LEASE_MS;
     const ownerToken = randomUUID();
 
-    // 1. Try to acquire in Redis first (fast fail — no DB round-trip on BUSY)
     const acquired = await this.redisLock.acquire(lockKey, ownerToken, leaseMs);
 
     if (!acquired) {
       return { status: 'BUSY', retryAfterMs: leaseMs };
     }
 
-    // 2. Only NOW get fencing token from PostgreSQL (we own the lock)
-    const fencingToken = await this.repository.nextFencingToken(identity);
+    // We own the lease now; the fencing token orders us after earlier holders.
+    const fencingToken = await this.redisLock.nextFencingToken(lockKey);
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + leaseMs);
 
-    // 3. Fetch the lock record (nextFencingToken upserts it)
-    const record = await this.repository.getOrCreate(identity);
-
     return {
       status: 'ACQUIRED',
       ticket: {
-        lockId: record.id,
+        lockId: randomUUID(),
         lockKey,
         ownerToken,
         fencingToken,
@@ -62,5 +62,9 @@ export class AcquireDistributedLockUseCase {
         expiresAt,
       },
     };
+  }
+
+  private clamp(value: number, min: number, max: number): number {
+    return Math.min(Math.max(value, min), max);
   }
 }

@@ -2,22 +2,19 @@
 // Platform — Idempotency (idempotency.prisma)
 // ============================================================================
 // Reservation ledger backing the IdempotencyPort and the @Idempotent()
-// HTTP decorator. A key is reserved (INSERT) before the operation runs, then
-// marked COMPLETED (with the response snapshot for replay) or FAILED
-// (releasable for retry). Expired IN_PROGRESS claims are reconciled to
-// SUSPENDED. Expiry is swept by the idempotency reconciler.
+// HTTP decorator. A key is inserted as IN_PROGRESS before the operation runs,
+// then CAS-marked COMPLETED (with the response snapshot for replay) or
+// CAS-deleted by fail() so the next call starts clean. COMPLETED results are
+// mirrored to Redis for fast replay; Postgres stays authoritative for claims.
+// Expired rows are purged hourly by IdempotencyReconciliation.
 //
 // Multi-tenancy: (tenantId, organizationId, scope, key) is the natural
-// identity — callers encode the operation key (e.g. a client Idempotency-Key
-// header); tenantId + organizationId scopes it so two tenants/organizations
-// may reuse the same key string.
+// identity. The same key in another tenant/company is a different record.
 // ============================================================================
 
 enum IdempotencyStatus {
   IN_PROGRESS
   COMPLETED
-  FAILED
-  SUSPENDED
 
   @@map("idempotency_status")
 }
@@ -38,9 +35,6 @@ model IdempotencyKey {
   version        Int      @default(1)
 
   resultJson     Json?    @map("result_json")
-
-  errorCode      String?  @map("error_code") @db.VarChar(100)
-  errorMessage   String?  @map("error_message") @db.Text
 
   claimedAt      DateTime? @map("claimed_at")
   completedAt    DateTime? @map("completed_at")

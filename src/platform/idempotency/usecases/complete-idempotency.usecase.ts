@@ -1,33 +1,37 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { IdempotencyRepositoryPort } from '../ports/idempotency-repository.port';
+import { PrismaIdempotencyRepository } from '../repositories/prisma-idempotency.repository';
+import { RedisIdempotencyCacheAdapter } from '../adapters/redis-idempotency-cache.adapter';
 import { IdempotencyCompleteRequest } from '../idempotency.types';
 
 /**
- * Use case: mark an idempotency key as COMPLETED.
+ * Use case: mark an idempotency claim COMPLETED and mirror the result to Redis.
  *
- * CAS update: IN_PROGRESS → COMPLETED with claim token + version.
- * Returns silently if ownership lost (another worker took over).
+ * CAS on id + claimToken + version + IN_PROGRESS. If ownership was lost, the
+ * operation is a no-op (the winner already stored the authoritative result).
  */
 @Injectable()
 export class CompleteIdempotencyUseCase {
   private readonly logger = new Logger(CompleteIdempotencyUseCase.name);
 
-  constructor(private readonly repository: IdempotencyRepositoryPort) {}
+  constructor(
+    private readonly repository: PrismaIdempotencyRepository,
+    private readonly cache: RedisIdempotencyCacheAdapter,
+  ) {}
 
   async execute(request: IdempotencyCompleteRequest): Promise<void> {
     const { reservation, result } = request;
 
-    const success = await this.repository.complete(
-      reservation.id,
-      reservation.claimToken,
-      reservation.version,
-      result,
-    );
-
-    if (!success) {
+    const completed = await this.repository.completeCas(reservation, result);
+    if (!completed) {
       this.logger.warn(
-        `Idempotency complete failed — ownership lost for reservation ${reservation.id}`,
+        `Idempotency complete skipped — ownership lost for reservation ${reservation.id}`,
       );
+      return;
+    }
+
+    const ttlMs = completed.expiresAt.getTime() - Date.now();
+    if (ttlMs > 0) {
+      await this.cache.set(this.cache.buildKey(reservation), result, ttlMs);
     }
   }
 }

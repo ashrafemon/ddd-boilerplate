@@ -1,91 +1,176 @@
 import { ReserveIdempotencyUseCase } from './reserve-idempotency.usecase';
-import { InMemoryIdempotencyRepository } from '../__testing__/in-memory-idempotency.repository';
+import { PrismaIdempotencyRepository } from '../repositories/prisma-idempotency.repository';
+import { RedisIdempotencyCacheAdapter } from '../adapters/redis-idempotency-cache.adapter';
+import { ConfigService } from '@config/config.service';
+import { IIdempotencyConfig } from '../idempotency.types';
+
+const config = {
+  ttlMs: 86_400_000,
+  claimLeaseMs: 300_000,
+  reconciliationIntervalMs: 3_600_000,
+  redisPrefix: 'idempotency',
+} satisfies IIdempotencyConfig;
+
+const configService = {
+  getIdempotency: () => config,
+} as unknown as ConfigService;
+
+type RepoMock = {
+  insertClaim: jest.Mock;
+  findByIdentity: jest.Mock;
+  takeoverExpiredClaim: jest.Mock;
+};
+
+const repo = (overrides: Partial<RepoMock> = {}): RepoMock => ({
+  insertClaim: jest.fn().mockResolvedValue({ id: 'row-1', version: 1 }),
+  findByIdentity: jest.fn().mockResolvedValue(null),
+  takeoverExpiredClaim: jest.fn().mockResolvedValue(null),
+  ...overrides,
+});
+
+const cache = (): jest.Mocked<Pick<RedisIdempotencyCacheAdapter, 'buildKey' | 'get' | 'set'>> => ({
+  buildKey: jest.fn().mockReturnValue('idempotency:t1:o1:test:k1'),
+  get: jest.fn().mockResolvedValue({ hit: false }),
+  set: jest.fn().mockResolvedValue(undefined),
+});
+
+const baseRequest = {
+  tenantId: 't1',
+  organizationId: 'o1',
+  scope: 'test',
+  key: 'k1',
+  requestHash: 'hash-1',
+};
+
+const makeUseCase = (
+  repository: RepoMock,
+  cacheAdapter: ReturnType<typeof cache>,
+): ReserveIdempotencyUseCase =>
+  new ReserveIdempotencyUseCase(
+    repository as unknown as PrismaIdempotencyRepository,
+    cacheAdapter as unknown as RedisIdempotencyCacheAdapter,
+    configService,
+  );
 
 describe('ReserveIdempotencyUseCase', () => {
-  let repo: InMemoryIdempotencyRepository;
-  let useCase: ReserveIdempotencyUseCase;
+  it('inserts a new claim and returns ACQUIRED with identity in the reservation', async () => {
+    const repository = repo();
+    const result = await makeUseCase(repository, cache()).execute(baseRequest);
 
-  beforeEach(() => {
-    repo = new InMemoryIdempotencyRepository();
-    useCase = new ReserveIdempotencyUseCase(repo);
-  });
-
-  const baseRequest = {
-    tenantId: 'tenant-001',
-    organizationId: 'org-001',
-    scope: 'sales.order.create',
-    key: 'idem-key-1',
-  };
-
-  it('first request returns ACQUIRED', async () => {
-    const result = await useCase.execute(baseRequest);
     expect(result.status).toBe('ACQUIRED');
     if (result.status === 'ACQUIRED') {
-      expect(result.reservation.id).toBeDefined();
-      expect(result.reservation.claimToken).toBeDefined();
-      expect(result.reservation.version).toBe(1);
+      expect(result.reservation).toMatchObject({
+        id: 'row-1',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        claimToken: expect.any(String),
+        version: 1,
+        tenantId: 't1',
+        organizationId: 'o1',
+        scope: 'test',
+        key: 'k1',
+      });
     }
   });
 
-  it('same key returns IN_PROGRESS for concurrent request', async () => {
-    await useCase.execute(baseRequest);
-    const result = await useCase.execute(baseRequest);
-    expect(result.status).toBe('IN_PROGRESS');
+  it('returns REPLAY from the Redis result cache without touching Postgres', async () => {
+    const repository = repo();
+    const cacheAdapter = cache();
+    cacheAdapter.get.mockResolvedValue({ hit: true, value: { id: 'o-1' } });
+
+    const result = await makeUseCase(repository, cacheAdapter).execute(baseRequest);
+
+    expect(result).toEqual({ status: 'REPLAY', result: { id: 'o-1' } });
+    expect(repository.insertClaim).not.toHaveBeenCalled();
   });
 
-  it('COMPLETED row returns REPLAY with stored result', async () => {
-    const first = await useCase.execute(baseRequest);
-    expect(first.status).toBe('ACQUIRED');
-    if (first.status === 'ACQUIRED') {
-      await repo.complete(first.reservation.id, first.reservation.claimToken, first.reservation.version, { id: 'order-1' });
-    }
+  it('returns REPLAY for a COMPLETED row with the same hash and re-warms Redis', async () => {
+    const repository = repo({
+      insertClaim: jest.fn().mockRejectedValue(new Error('unique')),
+      findByIdentity: jest.fn().mockResolvedValue({
+        id: 'row-1',
+        status: 'COMPLETED',
+        claimToken: 'tok',
+        version: 2,
+        resultJson: { id: 'o-1' },
+        requestHash: 'hash-1',
+        claimedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+      }),
+    });
+    const cacheAdapter = cache();
 
-    const result = await useCase.execute(baseRequest);
-    expect(result.status).toBe('REPLAY');
-    if (result.status === 'REPLAY') {
-      expect(result.result).toEqual({ id: 'order-1' });
-    }
+    const result = await makeUseCase(repository, cacheAdapter).execute(baseRequest);
+
+    expect(result).toEqual({ status: 'REPLAY', result: { id: 'o-1' } });
+    expect(cacheAdapter.set).toHaveBeenCalledWith(
+      'idempotency:t1:o1:test:k1',
+      { id: 'o-1' },
+      expect.any(Number),
+    );
   });
 
-  it('FAILED row can be re-acquired', async () => {
-    const first = await useCase.execute(baseRequest);
-    expect(first.status).toBe('ACQUIRED');
-    if (first.status === 'ACQUIRED') {
-      await repo.fail(first.reservation.id, first.reservation.claimToken, first.reservation.version);
-    }
+  it('returns KEY_MISMATCH when the same key carries a different hash', async () => {
+    const repository = repo({
+      insertClaim: jest.fn().mockRejectedValue(new Error('unique')),
+      findByIdentity: jest.fn().mockResolvedValue({
+        id: 'row-1',
+        status: 'COMPLETED',
+        claimToken: 'tok',
+        version: 2,
+        resultJson: { id: 'o-1' },
+        requestHash: 'other-hash',
+        claimedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+      }),
+    });
 
-    const result = await useCase.execute(baseRequest);
+    const result = await makeUseCase(repository, cache()).execute(baseRequest);
+
+    expect(result).toEqual({ status: 'KEY_MISMATCH' });
+  });
+
+  it('returns BUSY while an IN_PROGRESS claim lease is live', async () => {
+    const repository = repo({
+      insertClaim: jest.fn().mockRejectedValue(new Error('unique')),
+      findByIdentity: jest.fn().mockResolvedValue({
+        id: 'row-1',
+        status: 'IN_PROGRESS',
+        claimToken: 'tok',
+        version: 1,
+        resultJson: null,
+        requestHash: 'hash-1',
+        claimedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+      }),
+    });
+
+    const result = await makeUseCase(repository, cache()).execute(baseRequest);
+
+    expect(result).toEqual({ status: 'BUSY' });
+    expect(repository.takeoverExpiredClaim).toHaveBeenCalled();
+  });
+
+  it('takes over an expired IN_PROGRESS claim and returns ACQUIRED', async () => {
+    const repository = repo({
+      insertClaim: jest.fn().mockRejectedValue(new Error('unique')),
+      findByIdentity: jest.fn().mockResolvedValue({
+        id: 'row-1',
+        status: 'IN_PROGRESS',
+        claimToken: 'old-token',
+        version: 3,
+        resultJson: null,
+        requestHash: 'hash-1',
+        claimedAt: new Date(Date.now() - 3_600_000),
+        expiresAt: new Date(Date.now() + 60_000),
+      }),
+      takeoverExpiredClaim: jest.fn().mockResolvedValue({ id: 'row-1', version: 4 }),
+    });
+
+    const result = await makeUseCase(repository, cache()).execute(baseRequest);
+
     expect(result.status).toBe('ACQUIRED');
     if (result.status === 'ACQUIRED') {
-      expect(result.reservation.version).toBeGreaterThan(1);
+      expect(result.reservation.version).toBe(4);
     }
-  });
-
-  it('requestHash mismatch returns KEY_REUSED', async () => {
-    const first = await useCase.execute({ ...baseRequest, requestHash: 'hash-A' });
-    expect(first.status).toBe('ACQUIRED');
-    if (first.status === 'ACQUIRED') {
-      await repo.complete(first.reservation.id, first.reservation.claimToken, first.reservation.version, { id: 'order-1' });
-    }
-
-    const result = await useCase.execute({ ...baseRequest, requestHash: 'hash-B' });
-    expect(result.status).toBe('KEY_REUSED');
-  });
-
-  it('SUSPENDED row can be re-acquired', async () => {
-    const first = await useCase.execute(baseRequest);
-    expect(first.status).toBe('ACQUIRED');
-    if (first.status === 'ACQUIRED') {
-      // Directly set claimedAt to the past so suspendExpiredClaims catches it
-      const identity = { tenantId: 'tenant-001', organizationId: 'org-001', scope: 'sales.order.create', key: 'idem-key-1' };
-      const row = (repo as unknown as { rows: Array<{ claimedAt: Date | null; status: string }> }).rows.find(
-        (r) => r.status === 'IN_PROGRESS',
-      );
-      if (row) row.claimedAt = new Date(Date.now() - 600_000);
-      await repo.suspendExpiredClaims(300_000);
-    }
-
-    const result = await useCase.execute(baseRequest);
-    expect(result.status).toBe('ACQUIRED');
   });
 });

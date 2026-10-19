@@ -174,6 +174,7 @@ export class ConfigService {
       ttlMs: 86_400_000,
       claimLeaseMs: 300_000,
       reconciliationIntervalMs: 3_600_000,
+      redisPrefix: 'idempotency',
     });
   }
 

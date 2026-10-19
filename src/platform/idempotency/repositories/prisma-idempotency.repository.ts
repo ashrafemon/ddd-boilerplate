@@ -1,21 +1,41 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaWriteService } from '@infrastructure/database/prisma/prisma-write.service';
-import { IdempotencyRepositoryPort } from '../ports/idempotency-repository.port';
-import { IdempotencyIdentity } from '../idempotency.types';
+import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { IdempotencyIdentity, IdempotencyReservation } from '../idempotency.types';
+
+/** Read model of an idempotency row. */
+export interface IdempotencyRowView {
+  id: string;
+  status: 'IN_PROGRESS' | 'COMPLETED';
+  claimToken: string;
+  version: number;
+  resultJson: unknown;
+  requestHash: string | null;
+  claimedAt: Date | null;
+  expiresAt: Date;
+}
+
+/** Result of a successful complete CAS — carries the row TTL for Redis. */
+export interface IdempotencyCompletedView {
+  expiresAt: Date;
+}
 
 /**
- * PostgreSQL-backed idempotency repository.
+ * PostgreSQL-backed idempotency repository (design `common/02-idempotency`).
  *
- * - Insert-as-claim on (tenantId, organizationId, scope, key)
- * - Atomic takeover of FAILED/SUSPENDED/expired rows
- * - CAS updates with claim token + version for ownership validation
- * - Reconciliation of expired IN_PROGRESS claims
+ * Concrete class injected directly into the use cases — no internal
+ * repository port. All state transitions are CAS:
+ *   insert-as-claim on the unique identity
+ *   takeover only when the live claim lease has expired
+ *   complete on id + claimToken + version + IN_PROGRESS
+ *   fail deletes the same guarded row
  */
 @Injectable()
-export class PrismaIdempotencyRepository implements IdempotencyRepositoryPort {
+export class PrismaIdempotencyRepository {
   constructor(private readonly prisma: PrismaWriteService) {}
 
-  async findUnique(identity: IdempotencyIdentity) {
+  async findByIdentity(identity: IdempotencyIdentity): Promise<IdempotencyRowView | null> {
     const row = await this.prisma.idempotencyKey.findUnique({
       where: {
         tenantId_organizationId_scope_key: {
@@ -24,6 +44,16 @@ export class PrismaIdempotencyRepository implements IdempotencyRepositoryPort {
           scope: identity.scope,
           key: identity.key,
         },
+      },
+      select: {
+        id: true,
+        status: true,
+        claimToken: true,
+        version: true,
+        resultJson: true,
+        requestHash: true,
+        claimedAt: true,
+        expiresAt: true,
       },
     });
     if (!row) return null;
@@ -39,7 +69,7 @@ export class PrismaIdempotencyRepository implements IdempotencyRepositoryPort {
     };
   }
 
-  async insert(
+  async insertClaim(
     identity: IdempotencyIdentity,
     claimToken: string,
     expiresAt: Date,
@@ -56,103 +86,103 @@ export class PrismaIdempotencyRepository implements IdempotencyRepositoryPort {
         expiresAt,
         claimedAt: new Date(),
       },
+      select: { id: true, version: true },
     });
     return { id: row.id, version: row.version };
   }
 
-  async takeover(
+  /**
+   * CAS-takeover of an IN_PROGRESS row whose claim lease expired. The
+   * `claimedAt < cutoff` guard is what makes concurrent takeovers safe: only
+   * one update can observe the stale lease.
+   */
+  async takeoverExpiredClaim(
     identity: IdempotencyIdentity,
     claimToken: string,
+    cutoff: Date,
     expiresAt: Date,
-  ): Promise<boolean> {
-    const result = await this.prisma.idempotencyKey.updateMany({
+  ): Promise<{ id: string; version: number } | null> {
+    const updated = await this.prisma.idempotencyKey.updateMany({
       where: {
         tenantId: identity.tenantId,
         organizationId: identity.organizationId,
         scope: identity.scope,
         key: identity.key,
-        OR: [{ status: 'FAILED' }, { status: 'SUSPENDED' }, { expiresAt: { lt: new Date() } }],
+        status: 'IN_PROGRESS',
+        claimedAt: { lt: cutoff },
       },
       data: {
-        status: 'IN_PROGRESS',
         claimToken,
-        resultJson: undefined,
-        errorCode: undefined,
-        errorMessage: undefined,
+        resultJson: Prisma.DbNull,
         expiresAt,
         claimedAt: new Date(),
         version: { increment: 1 },
       },
     });
-    return result.count > 0;
+
+    if (updated.count === 0) return null;
+
+    const row = await this.prisma.idempotencyKey.findUnique({
+      where: {
+        tenantId_organizationId_scope_key: {
+          tenantId: identity.tenantId,
+          organizationId: identity.organizationId,
+          scope: identity.scope,
+          key: identity.key,
+        },
+      },
+      select: { id: true, version: true },
+    });
+    return row ? { id: row.id, version: row.version } : null;
   }
 
-  async complete(
-    id: string,
-    claimToken: string,
-    version: number,
+  /** CAS: IN_PROGRESS → COMPLETED. Returns the row TTL on success. */
+  async completeCas(
+    reservation: IdempotencyReservation,
     result: unknown,
-  ): Promise<boolean> {
-    const update = await this.prisma.idempotencyKey.updateMany({
+  ): Promise<IdempotencyCompletedView | null> {
+    const updated = await this.prisma.idempotencyKey.updateMany({
       where: {
-        id,
-        claimToken,
-        version,
+        id: reservation.id,
+        claimToken: reservation.claimToken,
+        version: reservation.version,
         status: 'IN_PROGRESS',
       },
       data: {
         status: 'COMPLETED',
-        resultJson: result as Record<string, unknown>,
+        resultJson: PrismaJson.toInput(result as object) ?? Prisma.JsonNull,
         completedAt: new Date(),
         version: { increment: 1 },
       },
     });
-    return update.count > 0;
+
+    if (updated.count === 0) return null;
+
+    const row = await this.prisma.idempotencyKey.findUnique({
+      where: { id: reservation.id },
+      select: { expiresAt: true },
+    });
+    return row ? { expiresAt: row.expiresAt } : null;
   }
 
-  async fail(
-    id: string,
-    claimToken: string,
-    version: number,
-    errorCode?: string,
-    errorMessage?: string,
-  ): Promise<boolean> {
-    const update = await this.prisma.idempotencyKey.updateMany({
+  /** CAS-delete: releases the claim so the next reserve starts clean. */
+  async failDeleteCas(reservation: IdempotencyReservation): Promise<boolean> {
+    const deleted = await this.prisma.idempotencyKey.deleteMany({
       where: {
-        id,
-        claimToken,
-        version,
+        id: reservation.id,
+        claimToken: reservation.claimToken,
+        version: reservation.version,
         status: 'IN_PROGRESS',
       },
-      data: {
-        status: 'FAILED',
-        errorCode: errorCode ?? null,
-        errorMessage: errorMessage ?? null,
-        version: { increment: 1 },
-      },
     });
-    return update.count > 0;
+    return deleted.count > 0;
   }
 
-  async suspendExpiredClaims(claimLeaseMs: number): Promise<number> {
-    const cutoff = new Date(Date.now() - claimLeaseMs);
-    const result = await this.prisma.idempotencyKey.updateMany({
-      where: {
-        status: 'IN_PROGRESS',
-        claimedAt: { lt: cutoff },
-      },
-      data: {
-        status: 'SUSPENDED',
-        version: { increment: 1 },
-      },
+  /** Hourly reconciliation: delete expired IN_PROGRESS + COMPLETED rows. */
+  async purgeExpired(now: Date): Promise<number> {
+    const deleted = await this.prisma.idempotencyKey.deleteMany({
+      where: { expiresAt: { lt: now } },
     });
-    return result.count;
-  }
-
-  async purgeExpired(): Promise<number> {
-    const result = await this.prisma.idempotencyKey.deleteMany({
-      where: { expiresAt: { lt: new Date() } },
-    });
-    return result.count;
+    return deleted.count;
   }
 }

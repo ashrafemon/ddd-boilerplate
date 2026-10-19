@@ -1,21 +1,25 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@config/config.service';
 import { RedisLockPort } from '../ports/redis-lock.port';
 import { DistributedLockRenewRequest, DistributedLockRenewResult } from '../locking.types';
-
-const DEFAULT_LEASE_MS = 30_000;
 
 /**
  * Use case: renew a held distributed lock.
  *
  * Validates ownership atomically via Redis Lua script.
- * Returns RENEWED with updated ticket or LOST.
+ * Returns RENEWED with updated ticket or LOST. LOST means another owner holds
+ * the resource now — the caller must stop work immediately.
  */
 @Injectable()
 export class RenewDistributedLockUseCase {
-  constructor(private readonly redisLock: RedisLockPort) {}
+  constructor(
+    private readonly redisLock: RedisLockPort,
+    private readonly configService: ConfigService,
+  ) {}
 
   async execute(request: DistributedLockRenewRequest): Promise<DistributedLockRenewResult> {
-    const leaseMs = request.leaseMs ?? DEFAULT_LEASE_MS;
+    const { defaultLeaseMs, minLeaseMs, maxLeaseMs } = this.configService.getLocking();
+    const leaseMs = Math.min(Math.max(request.leaseMs ?? defaultLeaseMs, minLeaseMs), maxLeaseMs);
 
     const renewed = await this.redisLock.renew(
       request.ticket.lockKey,

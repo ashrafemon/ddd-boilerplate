@@ -1,24 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { DistributedLockPort } from './ports/distributed-lock.port';
-import { AcquireDistributedLockUseCase } from './usecases/acquire-distributed-lock.usecase';
-import { RenewDistributedLockUseCase } from './usecases/renew-distributed-lock.usecase';
-import { ReleaseDistributedLockUseCase } from './usecases/release-distributed-lock.usecase';
+import { DistributedLockPort } from '../ports/distributed-lock.port';
+import { AcquireDistributedLockUseCase } from '../usecases/acquire-distributed-lock.usecase';
+import { RenewDistributedLockUseCase } from '../usecases/renew-distributed-lock.usecase';
+import { ReleaseDistributedLockUseCase } from '../usecases/release-distributed-lock.usecase';
 import {
   DistributedLockAcquireRequest,
   DistributedLockAcquireResult,
   DistributedLockRenewRequest,
   DistributedLockRenewResult,
   DistributedLockReleaseRequest,
-} from './locking.types';
+} from '../locking.types';
 
 /**
- * Distributed lock service facade — the single entry point for all lock operations.
+ * Distributed lock service — the single public entry point for all lock
+ * operations (design `common/03-lock`).
  *
- * Delegates to individual use cases (one per file) without containing
- * business rules itself. This class implements the public DistributedLockPort.
+ * Delegates to individual use cases (one per file) without containing business
+ * rules itself. This class implements the public DistributedLockPort.
  */
 @Injectable()
-export class DistributedLockService implements DistributedLockPort {
+export class LockingService implements DistributedLockPort {
   constructor(
     private readonly acquireUseCase: AcquireDistributedLockUseCase,
     private readonly renewUseCase: RenewDistributedLockUseCase,

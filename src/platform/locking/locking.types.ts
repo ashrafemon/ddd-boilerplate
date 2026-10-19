@@ -64,15 +64,3 @@ export type DistributedLockRenewResult =
   | {
       status: 'LOST';
     };
-
-/** Persistent lock record in PostgreSQL. */
-export interface DistributedLockRecord {
-  id: string;
-  tenantId: string;
-  organizationId: string;
-  scope: string;
-  resource: string;
-  fencingToken: number;
-  createdAt: Date;
-  updatedAt: Date;
-}

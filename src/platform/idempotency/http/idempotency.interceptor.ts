@@ -18,8 +18,13 @@ import { IDEMPOTENCY_HEADER, IDEMPOTENT_KEY } from './idempotent.decorator';
  * Enforces `@Idempotent()` routes. Global APP_INTERCEPTOR installed by
  * IdempotencyModule but a no-op unless the route carries the decorator, so
  * non-idempotent endpoints pay nothing. The stored snapshot is whatever the
- * handler pipeline returned (post ResponseInterceptor wrapping on this
- * instance), which keeps replays byte-identical to the original response.
+ * handler pipeline returned, which keeps replays byte-identical to the
+ * original response.
+ *
+ * Status mapping (design `common/02-idempotency`):
+ *  - REPLAY       → return the stored result, run nothing
+ *  - BUSY         → 409 (another attempt is running)
+ *  - KEY_MISMATCH → 400 (same key, different payload)
  */
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
@@ -59,18 +64,13 @@ export class IdempotencyInterceptor implements NestInterceptor {
     if (reservation.status === 'REPLAY') {
       return of(reservation.result);
     }
-    if (reservation.status === 'IN_PROGRESS') {
+    if (reservation.status === 'BUSY') {
       throw new ConflictException(
         `An operation with Idempotency-Key '${key.trim()}' is still in progress; retry later`,
       );
     }
-    if (reservation.status === 'SUSPENDED') {
-      throw new ConflictException(
-        `An operation with Idempotency-Key '${key.trim()}' requires reconciliation`,
-      );
-    }
-    if (reservation.status === 'KEY_REUSED') {
-      throw new ConflictException(
+    if (reservation.status === 'KEY_MISMATCH') {
+      throw new BadRequestException(
         `Idempotency-Key '${key.trim()}' is associated with another request`,
       );
     }
