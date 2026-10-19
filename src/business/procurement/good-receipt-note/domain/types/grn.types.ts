@@ -161,6 +161,8 @@ export interface CreateGrnRequest {
   vendorId?: string;
   currency?: string;
   actorId?: string;
+  /** Optional client key — makes the command replay-safe (scope `grn.create`). */
+  idempotencyKey?: string;
   lines: {
     productId: string;
     orderedQuantity: number;

@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
@@ -10,6 +15,7 @@ import { NumberingPort } from '../outbound-ports/numbering.port';
 import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GoodsReceiptReversed } from '../../domain/events/grn.reversed.event';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
+import { IdempotencyPort } from '@platform/idempotency/ports/idempotency.port';
 
 /** The quantity `post` registered on the PO — a reversal returns exactly this. */
 const postedQuantity = (line: { acceptedQuantity: number; receivedQuantity: number }): number =>
@@ -39,10 +45,54 @@ export class ReverseGrnUseCase {
     private readonly audit: AuditPort,
     private readonly numbering: NumberingPort,
     private readonly readCache: ReadCachePort,
+    private readonly idempotency: IdempotencyPort,
   ) {}
 
   @Transactional()
-  async execute(input: { id: string; actorId?: string }): Promise<GrnId> {
+  async execute(input: { id: string; actorId?: string; idempotencyKey?: string }): Promise<GrnId> {
+    // Guarded by `IdempotencyPort` scope `grn.reverse`: a redelivered request
+    // replays the original reversal id instead of compensating twice. Without
+    // a key the command still runs — the "one reversal per original" check
+    // below is the natural guard.
+    const key = input.idempotencyKey;
+    if (!key) {
+      return this.reverse(input);
+    }
+
+    const tenantId = this.requestContext.getTenantId() ?? '';
+    const companyId = this.requestContext.getCompanyId() ?? '';
+
+    const reservation = await this.idempotency.reserve({
+      tenantId,
+      companyId,
+      scope: 'grn.reverse',
+      key,
+    });
+
+    if (reservation.status === 'REPLAY') {
+      return GrnId.fromString(String(reservation.result));
+    }
+    if (reservation.status === 'BUSY') {
+      throw new ConflictException('A reversal with this idempotency key is already in progress');
+    }
+    if (reservation.status === 'KEY_MISMATCH') {
+      throw new BadRequestException('This idempotency key was used for a different request');
+    }
+
+    try {
+      const id = await this.reverse(input);
+      await this.idempotency.complete({
+        reservation: reservation.reservation,
+        result: id.toString(),
+      });
+      return id;
+    } catch (error) {
+      await this.idempotency.fail({ reservation: reservation.reservation });
+      throw error;
+    }
+  }
+
+  private async reverse(input: { id: string; actorId?: string }): Promise<GrnId> {
     const tenantId = this.requestContext.getTenantId() ?? '';
     const companyId = this.requestContext.getCompanyId() ?? '';
     const actorId = input.actorId ?? this.requestContext.getUserId();
