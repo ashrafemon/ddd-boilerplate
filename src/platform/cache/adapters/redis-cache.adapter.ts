@@ -1,58 +1,78 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { CacheStoragePort } from '@platform/cache/ports/cache-storage.port';
-import { RedisService } from '@infrastructure/cache/redis/redis.service';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@config/config.service';
+import { RedisService } from '@infrastructure/redis/redis.service';
+import { CacheGetResult } from '../cache.types';
 
 /**
- * Redis-backed cache storage adapter.
+ * Redis cache adapter (design `common/01-cache`).
  *
- * Implements CacheStoragePort (the internal storage abstraction), NOT the
- * public CachePort. Business modules never see this class.
+ * Concrete class injected directly into the use cases — no internal storage
+ * port. JSON serialize on write, `SET … PX ttlMs`.
  *
- * Works with raw strings only — serialization is handled by the CacheService.
+ * Fail-open: a Redis error on get is a MISS; a failed set/delete is logged and
+ * never propagates (it must never roll back a DB transaction).
  */
 @Injectable()
-export class RedisCacheAdapter implements CacheStoragePort {
+export class RedisCacheAdapter {
   private readonly logger = new Logger(RedisCacheAdapter.name);
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly redisService: RedisService,
+  ) {}
 
-  public async get(key: string): Promise<string | null> {
+  async get<T>(key: string): Promise<CacheGetResult<T>> {
+    if (!this.configService.getCache().enabled) return { status: 'MISS' };
+    const client = this.clientOrNull();
+    if (!client) return { status: 'MISS' };
     try {
-      return await this.redisService.client.get(key);
+      const raw = await client.get(key);
+      if (raw === null || raw === undefined) return { status: 'MISS' };
+      return { status: 'HIT', value: JSON.parse(raw) as T };
     } catch (error) {
-      this.logger.error('redis-get-failed', { key, error: messageOf(error) });
-      throw new ServiceUnavailableException('Redis get failed');
+      this.logger.warn(`cache-get-failed: ${messageOf(error)}`);
+      return { status: 'MISS' };
     }
   }
 
-  public async set(key: string, value: string, ttlSeconds: number): Promise<void> {
+  async set<T>(key: string, value: T, ttlMs?: number): Promise<void> {
+    const { enabled, defaultTtlMs, maxValueBytes } = this.configService.getCache();
+    if (!enabled) return;
+    const client = this.clientOrNull();
+    if (!client) return;
     try {
-      if (ttlSeconds > 0) {
-        await this.redisService.client.set(key, value, 'EX', ttlSeconds);
+      const raw = JSON.stringify(value);
+      if (Buffer.byteLength(raw) > maxValueBytes) {
+        this.logger.warn(`cache-set-skipped: value exceeds CACHE_MAX_VALUE_BYTES (${key})`);
+        return;
+      }
+      const ttl = ttlMs ?? defaultTtlMs;
+      if (ttl > 0) {
+        await client.set(key, raw, 'PX', ttl);
       } else {
-        await this.redisService.client.set(key, value);
+        await client.set(key, raw);
       }
     } catch (error) {
-      this.logger.error('redis-set-failed', { key, error: messageOf(error) });
-      throw new ServiceUnavailableException('Redis set failed');
+      this.logger.warn(`cache-set-failed: ${messageOf(error)}`);
     }
   }
 
-  public async delete(key: string): Promise<void> {
+  async delete(key: string): Promise<void> {
+    if (!this.configService.getCache().enabled) return;
+    const client = this.clientOrNull();
+    if (!client) return;
     try {
-      await this.redisService.client.del(key);
+      await client.del(key);
     } catch (error) {
-      this.logger.error('redis-delete-failed', { key, error: messageOf(error) });
-      throw new ServiceUnavailableException('Redis delete failed');
+      this.logger.warn(`cache-delete-failed: ${messageOf(error)}`);
     }
   }
 
-  public async exists(key: string): Promise<boolean> {
+  private clientOrNull() {
     try {
-      return (await this.redisService.client.exists(key)) > 0;
-    } catch (error) {
-      this.logger.error('redis-exists-failed', { key, error: messageOf(error) });
-      throw new ServiceUnavailableException('Redis exists failed');
+      return this.redisService?.client ?? null;
+    } catch {
+      return null;
     }
   }
 }

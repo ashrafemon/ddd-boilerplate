@@ -6,21 +6,16 @@ import {
 } from '../inbox.types';
 
 /**
- * Inbox — durable inbound message claim and deduplication boundary.
+ * Inbox — the only port. Inject it at the top of every broker or event
+ * consumer: only `ACQUIRED` proceeds to the listener, and the broker ACK only
+ * fires after `complete`.
  *
- * The Inbox is the consumer-side counterpart of Outbox.
- * Outbox protects reliable publication; Inbox protects reliable consumption.
- *
- * Business modules consume only InboxPort.
- * They do not consume InboxRepositoryPort or PrismaInboxRepository.
+ *   const delivery = await this.inbox.receive({ consumer, messageId, ... });
+ *   if (delivery.status !== 'ACQUIRED') return;
+ *   await this.inbox.complete({ reservation: delivery.reservation });
  */
 export abstract class InboxPort {
-  /** Try to receive/claim an inbound message. Returns ACQUIRED/PROCESSED/IN_PROGRESS/etc. */
   abstract receive(request: InboxReceiveRequest): Promise<InboxReceiveResult>;
-
-  /** Mark the reservation as PROCESSED. */
   abstract complete(request: InboxCompleteRequest): Promise<void>;
-
-  /** Mark the reservation as FAILED — allows retry. */
   abstract fail(request: InboxFailRequest): Promise<void>;
 }

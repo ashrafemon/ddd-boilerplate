@@ -1,30 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InboxRepositoryPort } from '../ports/inbox-repository.port';
+import { PrismaInboxRepository } from '../repositories/prisma-inbox.repository';
 import { InboxCompleteRequest } from '../inbox.types';
 
 /**
- * Use case: mark an inbox message as PROCESSED.
+ * Use case: mark an inbox message as PROCESSED (CAS on the claim token).
  *
- * CAS update: IN_PROGRESS → PROCESSED with claim token + version.
- * Returns silently if ownership lost (another worker took over).
+ * The broker ACK must fire only after this returns.
  */
 @Injectable()
 export class CompleteInboxMessageUseCase {
   private readonly logger = new Logger(CompleteInboxMessageUseCase.name);
 
-  constructor(private readonly repository: InboxRepositoryPort) {}
+  constructor(private readonly repository: PrismaInboxRepository) {}
 
   async execute(request: InboxCompleteRequest): Promise<void> {
     const { reservation } = request;
-
-    const success = await this.repository.complete(
-      reservation.id,
-      reservation.claimToken,
-      reservation.version,
-    );
-
-    if (!success) {
-      this.logger.warn(`Inbox complete failed — ownership lost for reservation ${reservation.id}`);
+    const completed = await this.repository.complete(reservation.id, reservation.claimToken);
+    if (!completed) {
+      this.logger.warn(`Inbox complete lost ownership for reservation ${reservation.id}`);
     }
   }
 }

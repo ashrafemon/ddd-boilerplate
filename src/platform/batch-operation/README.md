@@ -9,7 +9,7 @@ fan-out pipeline crossing into a domain core at exactly one point, the adapter.
 
 Flat platform-service layout — same convention as `platform/recurring`: root
 classes + `events/`, `http/`, `ports/`, `usecases/`, `adapters/`,
-`__testing__/`. No business-module DDD layering (no `domain/` or
+No business-module DDD layering (no `domain/` or
 `application/` folders) — this module has no aggregate.
 
 ```
@@ -41,7 +41,7 @@ adapters/
   bullmq-batch-operation-queue.publisher.ts
   bullmq-batch-operation.worker.ts           @Processor — Async path only
   batch-operation.mapper.ts
-events/ · __testing__/
+
 http/
   POST /batch-operations · POST /batch-operations/validate ·
   GET /batch-operations · GET /batch-operations/:id · GET /batch-operations/:id/rows ·

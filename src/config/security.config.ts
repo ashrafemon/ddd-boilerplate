@@ -17,7 +17,7 @@ export type ISecurityConfig = {
   throttler: IThrottlerConfig;
   settingsEncryptionKey: string;
   tenantHeader: string;
-  organizationHeader: string;
+  companyHeader: string;
   tenancy: ITenancyConfig;
 };
 
@@ -48,7 +48,7 @@ export default registerAs('security', () => {
     },
     settingsEncryptionKey: settingsEncryptionKey ?? 'dev-enc-key-change-me',
     tenantHeader: process.env.TENANT_HEADER ?? 'x-tenant-id',
-    organizationHeader: process.env.ORGANIZATION_HEADER ?? 'x-organization-id',
+    companyHeader: process.env.COMPANY_HEADER ?? 'x-company-id',
     tenancy: { mode: tenancyMode },
   };
 });

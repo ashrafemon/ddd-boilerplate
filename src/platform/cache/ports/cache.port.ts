@@ -1,31 +1,23 @@
-import { CacheGetResult, CacheGetOrSetRequest } from '../cache.types';
+import { CacheGetResult, CacheKey } from '../cache.types';
 
 /**
- * Cache abstraction (Redis / Memcached). Business/application code depends
- * only on this port and never on `ioredis` or a memcached client directly.
+ * Cache abstraction (Redis). Business/application code depends only on this
+ * port and never on `ioredis` directly.
  *
  * Cache is disposable infrastructure — it is never the source of truth.
- * Business correctness remains in PostgreSQL / the authoritative repository.
+ * Business correctness remains in PostgreSQL / the authoritative repository,
+ * and the app stays correct with the cache disabled.
  */
 export abstract class CachePort {
-  /** Retrieve a cached value by key. Returns null on miss or backend error (fail-open). */
-  public abstract get<T>(key: string): Promise<T | null>;
+  /** Build every key through this — never hand-write a key. */
+  abstract buildKey(identity: CacheKey): string;
 
-  /** Retrieve a cached value with explicit HIT/MISS discrimination. */
-  public abstract getWithResult<T>(key: string): Promise<CacheGetResult<T>>;
+  /** Read a key. MISS also covers Redis down and corrupt entries. */
+  abstract get<T>(cacheKey: string): Promise<CacheGetResult<T>>;
 
-  /** Store a value with a bounded TTL (seconds). */
-  public abstract set<T>(key: string, value: T, ttlSeconds?: number): Promise<void>;
+  /** Store JSON for `ttlMs` (defaults to CACHE_DEFAULT_TTL_MS). */
+  abstract set<T>(cacheKey: string, value: T, ttlMs?: number): Promise<void>;
 
-  /** Remove a cached key. Idempotent — deleting an absent key succeeds silently. */
-  public abstract delete(key: string): Promise<void>;
-
-  /** Check whether a key exists and has not expired. */
-  public abstract exists(key: string): Promise<boolean>;
-
-  /**
-   * Cache-aside convenience: return the cached value on HIT, or call the
-   * factory, store the result, and return it on MISS.
-   */
-  public abstract getOrSet<T>(request: CacheGetOrSetRequest<T>): Promise<T>;
+  /** Remove one key. Missing key counts as success. */
+  abstract delete(cacheKey: string): Promise<void>;
 }

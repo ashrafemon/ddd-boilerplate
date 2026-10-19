@@ -23,7 +23,6 @@ import { PrismaInvoiceCommandRepository } from './infrastructure/persistence/pri
 import { PrismaInvoiceQueryRepository } from './infrastructure/persistence/prisma-invoice-query.repository';
 import { InvoiceController } from './presentation/http/invoice.controller';
 import { InvoiceForReportsPort } from './public';
-import './domain/events/invoice.registry';
 
 /**
  * Sales Invoice aggregate.

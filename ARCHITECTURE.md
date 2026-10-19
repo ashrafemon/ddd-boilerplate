@@ -205,7 +205,7 @@ business/<context>/<module>/
 │   ├── aggregates/          # aggregate root + <name>.invariants.ts (registry registrations)
 │   ├── entities/            # child entities (e.g. PurchaseOrderLine) + their invariants
 │   ├── value-objects/       # typed VOs (id, sku, name, ...) + per-VO invariants files
-│   ├── events/              # domain events + <name>.registry.ts (rehydrators for the outbox)
+│   ├── events/              # domain events (persisted to the outbox; payload only — no rehydrators)
 │   ├── policies/            # policy definitions registered in policyRegistry
 │   ├── factories/           # aggregate factory — the only sanctioned build path
 │   ├── repositories/        # COMMAND repository port (abstract class = DI token)
@@ -268,10 +268,10 @@ flowchart TD
     PRISMACMD --> DB[(PostgreSQL)]
     PRISMAQRY --> DB
     OWP --> DB
-    SCHED[OutboxScheduler cron] --> PUB[OutboxPublisher]
-    PUB --> ROUTE[MessageRoutingPolicy]
-    ROUTE --> BRK[RabbitMQ / Kafka / SQS]
-    PUB --> BUS[InProcessEventBus re-dispatch]
+    SCHED[OutboxScheduler cron] --> PUB[PublishPendingBatch]
+    PUB --> MQ[MessageQueuePort<br/>broker by envelope]
+    MQ --> BRK[RabbitMQ / Kafka / SQS]
+    PUB --> BUS[InProcessEventBus.emit<br/>canonical envelope]
     DOM -. raises .-> EV[Domain Events]
 ```
 
@@ -292,16 +292,12 @@ Forbidden:
                   application/facades/**, infrastructure/**
   shared-business → @platform/**, @infrastructure/**, any concrete module (@business/*/*/**)
   platform → @business/** (ANY, including shared-business) — a single ESLint
-          regex bans it. Platform defines its OWN event contract
-          (`@platform/events/bases/outbox-event.base.ts` → `OutboxEvent`
-          structural interface + `OutboxEventBase`, and
-          `outbox-event.registry.ts` → `outboxEventRegistry`). A business
-          `DomainEvent` satisfies `OutboxEvent` STRUCTURALLY (same envelope),
-          so the outbox pipes it with no shared type. The business rehydrator
-          registry is attached as a read-only DELEGATE by the composition
-          root (`src/bootstrap/configure-event-rehydration.ts`), not imported
-          by platform — control is inverted, business registration flows one
-          way only
+          regex bans it. Platform defines its OWN event contract in
+          `@platform/outbox/outbox.types.ts` (`OutboxEvent` structural
+          interface + `OutboxEventBase` + the canonical `OutboxEnvelope`). A
+          business `DomainEvent` satisfies `OutboxEvent` STRUCTURALLY (same
+          envelope fields), so the outbox pipes it with no shared type and no
+          rehydration step — the payload is persisted and delivered verbatim
   raw client libs (Prisma, @prisma/adapter-pg, amqplib, kafkajs, ioredis/redis,
   @golevelup/nestjs-rabbitmq, @ssut/nestjs-sqs) → infrastructure/config/bootstrap/platform only
   @nestjs/schedule → platform only (the outbox scheduler owns cron)
@@ -353,8 +349,7 @@ Cross-cutting **platform ports** business code injects (never the concrete servi
 `OutboxWriterPort`, `RequestContextPort`, `CompanyConfigPort`
 (platform), `NumberingPort`, `AuditPort`, `NotificationDispatchPort`, `CachePort`,
 `FileStoragePort`, `LoggerPort`/`MetricsPort`/`ErrorTrackingPort`, `InProcessEventBus`,
-`MessageRoutingPolicy`, `PrismaReadPort`, plus the broker publisher tokens
-`RabbitMqPublisher` / `KafkaPublisher` / `SqsPublisher`.
+`MessageQueuePort`, `PrismaReadPort`.
 
 > Note: the platform `NumberingPort` (`PrismaNumberingService`, `number_sequences` table,
 > race-safe upsert increment) is available for document numbering, but PurchaseOrder/GRN
@@ -434,8 +429,6 @@ domain/common/value-objects/  Money (minor-units integer math, currency guards,
                     fromDecimal/toDecimal), VendorId
 domain/registries/  invariantRegistry  — keyed Invariant list, enforce() throws on violation
                     policyRegistry     — keyed Policy list, evaluate()/enforce()
-                    domainEventRegistry — event-type-name → rehydrator for domain events;
-                    bridged into the platform outboxEventRegistry as a delegate at bootstrap
 ```
 
 Aggregates register invariants/policies by importing side-effect files
@@ -451,7 +444,7 @@ cross-import aggregates.
 - Invariants: non-negative price (`product.create`), legal transitions (`product.status-transition`
   — `DISCONTINUED` has no outgoing transitions).
 - Policy: `product.reactivation` — a discontinued product can never be reactivated.
-- Events: `ProductCreated/Updated/Activated/Deactivated/Discontinued` (+ registry rehydrators).
+- Events: `ProductCreated/Updated/Activated/Deactivated/Discontinued` (persisted to the outbox).
 
 ### Vendor (party) — `domain/aggregates/vendor.aggregate.ts`
 
@@ -514,40 +507,41 @@ flowchart LR
     UOW --> OUT[INSERT outbox_messages]
     UOW -->|COMMIT| DB[(PostgreSQL)]
     OUT --> SCHED[OutboxScheduler cron 10s]
-    SCHED --> PUB[OutboxPublisher claimBatch]
-    PUB --> ROUTE[MessageRoutingPolicy]
-    ROUTE --> RMQ[RabbitMQ]
-    ROUTE --> KAFKA[Kafka]
-    ROUTE --> SQS[SQS]
-    PUB --> BUS[In-process re-dispatch<br/>via outboxEventRegistry (+ business delegate)]
+    SCHED --> PUB[PublishPendingBatch claimBatch]
+    PUB --> MQ[MessageQueuePort<br/>broker by envelope param]
+    MQ --> RMQ[RabbitMQ]
+    MQ --> KAFKA[Kafka]
+    MQ --> SQS[SQS]
+    PUB --> BUS[InProcessEventBus.emit<br/>canonical envelope verbatim]
 ```
 
 Flow details:
 
-- `OutboxWriter.append(event, aggregateType, aggregateId)` builds an `IntegrationMessage`
-  (`eventType` = domain event class name, JSON payload minus envelope fields, headers with
-  `event-id`/`request-id`/`correlation-id`/`causation-id`/`tenant-id`/`organization-id` from
-  `RequestContextPort`) and saves it — with a `tenantId` column — via `PrismaOutboxRepository`
-  on the caller's `TransactionHost`.
-- `OutboxPublisher.publishPendingBatch()` (guarded against overlap): `claimBatch(batchSize,
-  maxAttempts)` runs a single `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` so
-  concurrent replicas claim disjoint rows; the claim flips `PENDING|FAILED → PUBLISHING`,
-  stamps `claimedAt` (lease) and increments `attempts` (backoff gating uses `nextRetryAt` on
-  FAILED rows). Events are grouped per aggregate and each group is published sequentially
-  (parallel across groups of 10) to preserve per-aggregate FIFO. Re-dispatch restores the
-  persisted envelope (`eventId`, `occurredAt`, correlation, causation) so consumer idempotency
-  and recurring EVENT-trigger dedupe see stable identities, and runs under a restored tenant
-  CLS context.
-- `OutboxScheduler`: publishes on `OUTBOX_POLL_INTERVAL_MS`; every minute a reconcile step
-  returns `PUBLISHING` rows whose lease (`OUTBOX_CLAIM_LEASE_MS`) expired to `PENDING`
-  (crashed publisher); every hour `cleanup()` deletes `PUBLISHED` rows older than
-  `cleanupOlderThanHours`. Retry cadence is data-driven (`nextRetryAt` + `attempts`), not cron-driven.
-- `OutboxMessageStatus`: `PENDING → PUBLISHING → PUBLISHED | FAILED | DEAD_LETTER`. A message
-  that fails `OUTBOX_MAX_ATTEMPTS` times becomes `DEAD_LETTER` (terminal, alertable) instead
-  of looping forever. Delivery is at-least-once; consumers dedupe on the stable `event-id`.
+- `OutboxWriterPort.append(event, aggregateType, aggregateId, opts?)` — the single outbox
+  port — builds the canonical envelope (`eventType` = domain event class name, JSON payload
+  minus envelope fields, headers with `event-id`/`correlation-id`/`causation-id`/`tenant-id`/
+  `broker` from `RequestContextPort`, `opts.broker` defaulting to `rabbitmq`) and saves it via
+  the concrete `PrismaOutboxRepository` on the caller's `TransactionHost`.
+- `PublishPendingBatchUseCase.execute()` (guarded against overlap, driven by `OutboxScheduler`)
+  runs `claimBatch(batchSize, maxAttempts, claimLeaseMs)`: a single `UPDATE … WHERE id IN
+  (SELECT … FOR UPDATE SKIP LOCKED)` over due `PENDING` rows (`nextRetryAt <= now`, claim older
+  than the lease) stamps `claimToken` + `claimedAt` and increments `attempts` **without
+  changing status**. Each record is then published to `MessageQueuePort` (broker by
+  `envelope.broker`), emitted on `InProcessEventBus` under a restored tenant CLS context, and
+  CAS-settled. Delivery order is claim order (`createdAt` asc).
+- `OutboxScheduler`: dispatch tick on `OUTBOX_POLL_INTERVAL_MS`; hourly `cleanup()` deletes
+  `PUBLISHED` rows older than `cleanupOlderThanHours`. Retry cadence is data-driven
+  (`nextRetryAt` + `attempts`), not cron-driven. **No reconciler** — a crashed owner's lease
+  expires and the next tick reclaims the row through the same clause.
+- `OutboxMessageStatus`: `PENDING | PUBLISHED | DEAD_LETTER`. A publish error keeps the row
+  `PENDING` with exponential backoff; once `attempts` exceeds `OUTBOX_MAX_ATTEMPTS` it parks
+  `DEAD_LETTER` (terminal, alertable). Delivery is at-least-once; consumers dedupe on the
+  stable `event-id`.
+- In-process (`@OnEvent`) delivery is best-effort: a listener exception is logged, never
+  reflected onto the row (the broker already holds the message).
 - Publishing is **never** inside the business transaction. Business code only writes; the
-  scheduler owns delivery. Brokers degrade gracefully: Kafka disabled without `KAFKA_BROKERS`,
-  SQS disabled without `SQS_URL`.
+  scheduler owns delivery. An unconfigured broker target throws (so the row retries), so Kafka
+  without `KAFKA_BROKERS` / SQS without `SQS_URL` park rather than silently drop.
 
 ### 8.2 Domain events vs integration events
 
@@ -557,31 +551,23 @@ Flow details:
 | Transport  | `InProcessEventBus` (EventEmitter2 adapter, wildcard) | RabbitMQ / Kafka / SQS                                         |
 | Durability | Best effort                                           | Transactional outbox (guaranteed at-least-once)                |
 | Persisted  | No                                                    | `outbox_messages`                                              |
-| Example    | `ProductCreated` → `@OnEvent` listener                | Same event published as the full `IntegrationMessage` envelope |
+| Example    | `ProductCreated` → `@OnEvent` listener                | Same event published as the canonical `OutboxEnvelope` |
 
 Each module's `integrations/publishes/*.integration-event.ts` files declare the typed wire
 shape per event (`eventType: 'product.created'`, etc.) as a publish contract; the outbox
 itself serializes the domain event payload under the event class name.
 
-### 8.3 Message routing policy
+### 8.3 Broker selection
 
-`platform/events/message-routing.policy.ts` — the single place defining which brokers receive
-which events. Fan-out is explicit: adding a Kafka/SQS listener means adding the event here.
+There is **one** messaging port: `MessageQueuePort.publish(envelope)`. The `broker` field on
+the canonical envelope picks the transport (default `rabbitmq`); `opts.broker` on
+`OutboxWriterPort.append` sets it at write time. There is no routing table — a new consumer
+transport means a new listener, and an unconfigured broker target throws so the outbox retries.
 
-```ts
-const FAN_OUT_EVENTS: Record<string, BrokerTargets> = {
-  ProductCreated: ['rabbitmq', 'kafka', 'sqs'],
-  VendorCreated: ['rabbitmq', 'kafka', 'sqs'],
-  PurchaseOrderCreated: ['rabbitmq', 'kafka', 'sqs'],
-  GrnCreated: ['rabbitmq', 'kafka', 'sqs'],
-};
-// everything else → ['rabbitmq']
-```
-
-All transports carry the **same envelope** (`eventType`, `aggregateType`, `aggregateId`,
-`payload`, `headers`, `occurredAt`): RabbitMQ publishes the envelope to the topic exchange
-`erp.events` with the event type as routing key, Kafka uses the event type as topic, SQS goes
-to the configured queue.
+All transports carry the **same envelope** (`eventId`, `eventType`, `aggregateType`,
+`aggregateId`, `payload`, `headers`, `occurredAt`): RabbitMQ publishes the envelope to the
+topic exchange `erp.events` with the event type as routing key, Kafka uses the event type as
+topic, SQS goes to the configured queue.
 
 ### 8.4 Listeners
 
@@ -594,8 +580,9 @@ class per transport per module:
   infrastructure `KafkaConsumerHost` discovers decorated methods via `DiscoveryService` at
   bootstrap and wires one shared consumer per topic.
 - `*.sqs.listener-event.ts` — `@SqsMessageHandler('consumer1')` (`@ssut/nestjs-sqs`).
-- `*.event-emitter.listener-event.ts` — `@OnEvent('<EventClassName>')` for in-process
-  reactions (fed by the outbox publisher's re-dispatch).
+- `*.event-emitter.listener-event.ts` — `@OnEvent('<EventType>')` for in-process reactions;
+  the handler receives the canonical envelope (`message.payload` is the business payload),
+  fed by the outbox's `InProcessEventBus.emit`.
 
 Handlers currently log (they are template examples); real reactions must delegate to use
 cases/facades. Consumers are the only business code allowed to touch broker decorators.
@@ -613,14 +600,14 @@ templates is `docs/PLATFORM-SERVICE-GUIDE.md`:
 
 ```text
 platform/
-├── outbox/          OutboxModule — OutboxWriter (OutboxWriterPort), OutboxPublisher,
-│                    OutboxScheduler, PrismaOutboxRepository; SKIP-LOCKED claim with a
-│                    claimedAt lease, attempts+backoff gating, DEAD_LETTER, envelope-stable
-│                    re-dispatch, and tenant stamping on every row
-├── events/          EventsModule — NestEventBusAdapter (InProcessEventBus),
-│                    DefaultMessageRoutingPolicy (MessageRoutingPolicy)
-├── messaging/       MessagingModule — binds RabbitMqPublisher/KafkaPublisher/SqsPublisher
-│                    tokens to MessagePublisher adapters over the infra clients
+├── outbox/          OutboxModule — OutboxWriterPort, PublishPendingBatchUseCase,
+│                    OutboxScheduler, concrete PrismaOutboxRepository; SKIP-LOCKED claim with
+│                    a claimedAt lease, nextRetryAt backoff, DEAD_LETTER, hourly cleanup and
+│                    tenant stamping on every row
+├── events/          EventsModule — NestEventBusAdapter (InProcessEventBus): a thin emit
+│                    wrapper over EventEmitter2, no routing table, no rehydration
+├── messaging/       MessagingModule — MessageQueuePort (+ MessageQueueService), routing on
+│                    envelope.broker across RabbitMq/Kafka/Sqs publisher adapters
 ├── context/         ContextModule — ClsRequestContextService (RequestContextPort: per-request
 │                    identity/trace, set/get/require + run() for background context),
 │                    PrismaReadPort (bound to the infra PrismaReadService); TenancyAuthGuard
@@ -680,9 +667,8 @@ or infrastructure clients.
 > lives in the **composition root** — the handler is pure port data and
 > `src/bootstrap/configure-*.ts` plugs it into the platform registry (see 9.1 — the pattern
 > the generated business modules emit; vendor's import opt-in has migrated to the bridge).
-> (Domain events reach the
-> in-process bus through a fifth, business-owned `DomainEventRegistry` rehydrator map,
-> populated via the owner module's side-effect import.)
+> (Domain events reach the in-process bus through the outbox: the canonical
+> envelope is emitted verbatim — no rehydration map.)
 
 ### 9.1 Opt-in registration (business → platform, dependency points inward)
 
@@ -696,7 +682,7 @@ module — the registry classes are exported through each platform sub-module an
 generated adapters must stay pure `BatchOperationHandler` data + routing — no
 `OnApplicationBootstrap`, no registry imports, business knows only platform **ports**. The
 bridge file `src/bootstrap/configure-batch-operations.ts` (the only layer allowed to know
-both sides — same precedent as `configure-event-rehydration.ts` bridging rehydrators) keeps a
+both sides — the composition root is the only layer allowed to know both) keeps a
 generated-row table mapping each batch-capable aggregate's module to its handler and, after
 modules are instantiated but before the listener starts, calls:
 
@@ -768,7 +754,7 @@ Non-negotiable invariants (all enforced or precedented in the current services):
    `DistributedLockPort` (`platform/locking`, fail-closed); request/effect
    dedupe-with-replay uses `IdempotencyPort` / `@Idempotent()` (`platform/idempotency`).
 3. **Side effects leave via the outbox only** (`OutboxWriterPort` inside the use-case
-   transaction); in-process listeners get envelope-stable rehydrated events.
+   transaction); in-process listeners get the same canonical envelope (payload verbatim).
 4. **State escalation visible**: transient failures back off with bounded retries,
    terminal poison states park (`SUSPENDED`/`DEAD_LETTER`/`FAILED`) — nothing loops
    forever and nothing dies silently; stale in-flight states have a reconciler.
@@ -872,7 +858,7 @@ Request → RequestIdInterceptor → LoggingInterceptor → DeviceResponseInterc
 
 - **RequestIdInterceptor** — generates `requestId`, propagates `x-correlation-id`, and seeds
   the immutable `RequestContext` snapshot in CLS from headers (`x-tenant-id`,
-  `x-organization-id`, `x-user-id`, `x-roles`, `accept-language`) — consumed by outbox,
+  `x-company-id`, `x-user-id`, `x-roles`, `accept-language`) — consumed by outbox,
   audit, logging and `RequestContextPort`.
 - **DeviceResponseInterceptor** — reads `x-device-type` (`mobile` | default `web`) into CLS;
   when the handler is annotated `@DeviceResponse(MobileDto, WebDto)`, maps `data` through the
@@ -993,8 +979,8 @@ stay as overrides for background executions that restored a different context).
 > **`docs/BUSINESS-MODULE-GUIDE.md`** (reference implementation: `procurement/product`).
 
 1. **Domain** — `domain/aggregates` (aggregate + `<name>.invariants.ts`),
-   `domain/value-objects`, `domain/events` + `domain/events/<name>.registry.ts`
-   (rehydrators!), `domain/policies`, `domain/factories` (side-effect-import the
+   `domain/value-objects`, `domain/events` (domain events; persisted to the outbox),
+   `domain/policies`, `domain/factories` (side-effect-import the
    invariants/policies files here), `domain/types`, `domain/repositories/<name>-command.repository.ts`
    (abstract class port).
 2. **Application** — `application/usecases` (commands: `@Transactional()`,

@@ -1,11 +1,12 @@
 /**
- * Inbox types — identity, requests, results, reservation.
+ * Inbox types — identity, requests, reservation, result and the config shape.
+ * Design 07: the consumer-side counterpart of Outbox.
  */
 
-/** Logical identity for an inbox message. */
+/** Logical identity for an inbox message. NULLs normalise to '' at the repo edge. */
 export interface InboxIdentity {
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   consumer: string;
   messageId: string;
 }
@@ -13,18 +14,13 @@ export interface InboxIdentity {
 /** Request to receive/claim an inbound message. */
 export interface InboxReceiveRequest {
   tenantId?: string;
-  organizationId?: string;
+  companyId?: string;
 
   consumer: string;
   messageId: string;
 
   messageType: string;
-  messageVersion?: number;
-
-  payloadHash?: string;
   payload: unknown;
-
-  occurredAt?: Date;
 
   correlationId?: string;
   causationId?: string;
@@ -34,87 +30,60 @@ export interface InboxReceiveRequest {
 export interface InboxReservation {
   id: string;
   claimToken: string;
-  version: number;
 }
 
-/** Result of a receive attempt. */
+/**
+ * Result of a receive attempt.
+ *
+ * - `ACQUIRED`  first delivery (or the retry is due) — proceed.
+ * - `DUPLICATE` already PROCESSED — return at once, do not touch the listener.
+ * - `BUSY`      in flight, suspended, or not due for retry — return.
+ */
 export type InboxReceiveResult =
-  | {
-      status: 'ACQUIRED';
-      reservation: InboxReservation;
-    }
-  | {
-      status: 'PROCESSED';
-    }
-  | {
-      status: 'IN_PROGRESS';
-    }
-  | {
-      status: 'FAILED';
-    }
-  | {
-      status: 'SUSPENDED';
-    }
-  | {
-      status: 'MESSAGE_REUSED';
-    };
+  | { status: 'ACQUIRED'; reservation: InboxReservation }
+  | { status: 'DUPLICATE' }
+  | { status: 'BUSY' };
 
 /** Request to mark an inbox message as completed. */
 export interface InboxCompleteRequest {
   reservation: InboxReservation;
 }
 
-/** Request to mark an inbox message as failed. */
+/** Request to mark an inbox message as failed (kept pending for redelivery). */
 export interface InboxFailRequest {
   reservation: InboxReservation;
-
-  errorCode?: string;
-  errorMessage?: string;
-
-  nextAttemptAt?: Date;
+  lastError?: string;
 }
 
 /** Inbox message record. */
 export interface InboxMessage {
   id: string;
-  tenantId: string | null;
-  organizationId: string | null;
+  tenantId: string;
+  companyId: string;
   consumer: string;
   messageId: string;
   messageType: string;
-  messageVersion: number;
-  payloadHash: string | null;
   payload: unknown;
-  occurredAt: Date | null;
-  receivedAt: Date;
   status: string;
   attempts: number;
   claimToken: string;
   claimedAt: Date | null;
   processedAt: Date | null;
   nextAttemptAt: Date | null;
-  errorCode: string | null;
-  errorMessage: string | null;
   lastError: string | null;
   correlationId: string | null;
   causationId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  version: number;
-}
-
-/** Options for claiming retryable messages. */
-export interface ClaimInboxOptions {
-  batchSize: number;
-  maxAttempts: number;
 }
 
 /** Inbox configuration. */
 export interface IInboxConfig {
+  /** Processing window before the reconciler may free a claim. */
   claimLeaseMs: number;
+  /** Failures past this park the message as SUSPENDED. */
   maxAttempts: number;
   retryBaseDelayMs: number;
   retryMaxDelayMs: number;
   reconciliationIntervalMs: number;
-  batchSize: number;
+  /** PROCESSED rows older than this are deleted; SUSPENDED never purge. */
+  processedRetentionMs: number;
 }

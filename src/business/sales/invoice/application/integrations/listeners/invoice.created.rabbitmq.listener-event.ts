@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
-import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
+import type { OutboxEnvelope } from '@platform/outbox/outbox.types';
 
 const EXCHANGE = 'erp.events';
 const QUEUE = 'invoice-created.erp';
@@ -20,7 +20,7 @@ export class InvoiceRabbitMQListener {
     queue: QUEUE,
     queueOptions: { durable: true },
   })
-  onInvoiceCreated(message: IntegrationMessage): void {
+  onInvoiceCreated(message: OutboxEnvelope): void {
     this.logger.log(`[RabbitMQ] InvoiceCreated received for ${message.aggregateId}`);
   }
 }

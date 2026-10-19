@@ -1,19 +1,19 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
+import { MessageEnvelope } from '@platform/events/ports/in-process-event-bus.port';
 import { NotificationHandlerRegistry } from './notification-handler.registry';
 import { SendNotificationUseCase } from './usecases/send-notification.usecase';
 
 /**
  * EVENT-trigger path (workbook Phase 1.1 "a domain event fires"). Mirrors
- * recurring/domain-event.dispatcher.ts: matches on `event.constructor.name`,
- * the same way NestEventBusAdapter publishes
- * (`emitter.emit(event.constructor.name, event)`), so listening with onAny
- * needs no wildcard pattern of its own.
+ * recurring/domain-event.dispatcher.ts: the Event Bus emits
+ * `emitter.emit(envelope.eventType, envelope)`, so `onAny` receives the event
+ * type and the canonical envelope; the payload is `envelope.payload`.
  *
- * dedupKey is derived from the event's own id so an at-least-once redelivery
- * of "the same" event lands on SendNotificationUseCase's dedup check (grain
- * #1) instead of fanning out twice.
+ * dedupKey is derived from the envelope's stable eventId so an at-least-once
+ * redelivery of "the same" event lands on SendNotificationUseCase's dedup check
+ * (grain #1) instead of fanning out twice.
  */
 @Injectable()
 export class NotificationEventDispatcher implements OnModuleInit {
@@ -26,20 +26,21 @@ export class NotificationEventDispatcher implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.eventEmitter.onAny((eventName, event: unknown) => {
-      void this.onEvent(String(eventName), event);
+    this.eventEmitter.onAny((eventName, message: unknown) => {
+      void this.onEvent(String(eventName), message);
     });
   }
 
-  private async onEvent(eventName: string, event: unknown): Promise<void> {
+  private async onEvent(eventName: string, message: unknown): Promise<void> {
     const notificationTypes = this.registry.findByEventName(eventName);
     if (notificationTypes.length === 0) {
       return;
     }
 
-    const eventId = extractEventId(event);
-    const payload = toPlainObject(event);
-    const tenantId = typeof payload.tenantId === 'string' ? payload.tenantId : undefined;
+    const envelope = asEnvelope(message);
+    const eventId = envelope?.eventId ?? randomUUID();
+    const payload = asPayload(envelope);
+    const tenantId = envelope?.tenantId ?? undefined;
 
     for (const notificationType of notificationTypes) {
       try {
@@ -59,21 +60,17 @@ export class NotificationEventDispatcher implements OnModuleInit {
   }
 }
 
-function extractEventId(event: unknown): string {
-  if (
-    event &&
-    typeof event === 'object' &&
-    'eventId' in event &&
-    typeof event.eventId === 'string'
-  ) {
-    return event.eventId;
+function asEnvelope(message: unknown): MessageEnvelope | null {
+  if (!message || typeof message !== 'object') {
+    return null;
   }
-  return randomUUID();
+  const candidate = message as { eventType?: unknown };
+  return typeof candidate.eventType === 'string' ? (message as MessageEnvelope) : null;
 }
 
-function toPlainObject(event: unknown): Record<string, unknown> {
-  if (event && typeof event === 'object') {
-    return JSON.parse(JSON.stringify(event)) as Record<string, unknown>;
+function asPayload(envelope: MessageEnvelope | null): Record<string, unknown> {
+  if (!envelope || typeof envelope.payload !== 'object' || envelope.payload === null) {
+    return {};
   }
-  return {};
+  return JSON.parse(JSON.stringify(envelope.payload)) as Record<string, unknown>;
 }

@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { signWebhookPayload } from '../adapters/webhook-signature.util';
-import '../events/webhook.registry';
 import { WebhookSubscriptionAutoPausedEvent } from '../events/webhook-subscription-auto-paused.event';
 import { WebhookDeliveryRepositoryPort } from '../ports/webhook-delivery-repository.port';
 import { WebhookSubscriptionRepositoryPort } from '../ports/webhook-subscription-repository.port';

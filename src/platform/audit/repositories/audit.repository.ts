@@ -28,7 +28,7 @@ export class PrismaAuditRepository implements AuditPort {
         actorId: entry.actorId ?? context?.userId,
         actorType: entry.actorType ?? (context?.userId ? 'user' : 'system'),
         tenantId: entry.tenantId ?? this.requestContext.getTenantId(),
-        organizationId: entry.organizationId ?? this.requestContext.getOrganizationId(),
+        companyId: entry.companyId ?? this.requestContext.getCompanyId(),
         requestId: this.requestContext.getRequestId(),
         correlationId: this.requestContext.getCorrelationId(),
       },

@@ -11,6 +11,8 @@ Documentation:
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — design, layers, outbox, events, data model
 - [docs/FLOWCHARTS.md](./docs/FLOWCHARTS.md) — flowcharts: request lifecycles, port/adapter wiring, platform service internals
 - [docs/DI-WIRING.md](./docs/DI-WIRING.md) — generated DI graph: who injects whom, token→implementation bindings (`npm run docs:di`)
+- [docs/IAM-BUILD-PLAN.md](./docs/IAM-BUILD-PLAN.md) — **deferred**: the ERP IAM/Auth domain is designed but not yet built (read before starting it)
+- [docs/DESIGN-ALIGNMENT.md](./docs/DESIGN-ALIGNMENT.md) — status of aligning each platform service with the design docs
 
 ---
 
@@ -99,7 +101,7 @@ resolved via the Nest container — modules never import each other.
 - `single` (default): `x-tenant-id`/`x-organization-id` headers are trusted — for dev,
   internal deployments, or when a verified gateway sits in front.
 - `multi`: every request needs `Authorization: Bearer <JWT>` signed with `JWT_ACCESS_SECRET`
-  and carrying a `tenantId` claim (`organizationId`, `sub`, `roles` optional). Raw identity
+  and carrying a `tenantId` claim (`companyId`, `sub`, `roles` optional). Raw identity
   headers are ignored, anonymous requests are rejected (except `@SkipTenancy()` routes such
   as `GET /api/v1/metrics`), and missing tenant/company config rows fail hard instead of
   falling back to defaults.

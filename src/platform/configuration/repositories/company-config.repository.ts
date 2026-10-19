@@ -11,7 +11,7 @@ import { CompanyConfig, CompanyConfigPort, DEFAULT_COMPANY_ID } from '../ports/c
  * transaction.
  *
  * Company resolution: an explicit `companyId` argument wins; otherwise the
- * authenticated request context's organization is used (`x-organization-id`/
+ * authenticated request context's organization is used (`x-company-id`/
  * JWT claim), falling back to DEFAULT_COMPANY_ID for unscoped callers
  * (single-company deployments). In multi-tenancy mode a missing row for a
  * context-resolved company is a hard error — silent defaults must not bill
@@ -28,7 +28,7 @@ export class PrismaCompanyConfigRepository implements CompanyConfigPort {
   ) {}
 
   public async getCompanyConfig(companyId?: string): Promise<CompanyConfig> {
-    const contextCompanyId = this.requestContext.get()?.organizationId;
+    const contextCompanyId = this.requestContext.get()?.companyId;
     const resolved = companyId ?? contextCompanyId ?? DEFAULT_COMPANY_ID;
 
     const row = await this.txHost.tx.companyConfig.findUnique({

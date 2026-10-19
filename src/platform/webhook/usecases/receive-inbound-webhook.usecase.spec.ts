@@ -3,7 +3,6 @@ import {
   IdempotencyReserveRequest,
   IdempotencyReserveResult,
   IdempotencyCompleteRequest,
-  IdempotencyFailRequest,
 } from '@platform/idempotency/ports/idempotency.port';
 import { randomUUID } from 'crypto';
 import { WebhookInboundHandlerPort } from '../ports/webhook-inbound-handler.port';
@@ -24,7 +23,15 @@ class FakeIdempotencyPort implements IdempotencyPort {
     }
     return Promise.resolve({
       status: 'ACQUIRED',
-      reservation: { id: randomUUID(), claimToken: randomUUID(), version: 1 },
+      reservation: {
+        id: randomUUID(),
+        claimToken: randomUUID(),
+        version: 1,
+        tenantId: request.tenantId,
+        companyId: request.companyId,
+        scope: request.scope,
+        key: request.key,
+      },
     });
   }
 
@@ -33,7 +40,7 @@ class FakeIdempotencyPort implements IdempotencyPort {
     return Promise.resolve();
   }
 
-  fail(_request: IdempotencyFailRequest): Promise<void> {
+  fail(): Promise<void> {
     return Promise.resolve();
   }
 }

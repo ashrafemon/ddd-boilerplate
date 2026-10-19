@@ -23,7 +23,6 @@ import { SweepStaleExecutionsUseCase } from './usecases/sweep-stale-executions.u
 import { PrismaRecurringExecutionRepository } from './repositories/prisma-recurring-execution.repository';
 import { PrismaRecurringTemplateRepository } from './repositories/prisma-recurring-template.repository';
 import { RecurringTemplateController } from './http/recurring-template.controller';
-import './events/recurring.registry';
 
 /**
  * Platform recurring — TIME + EVENT triggered document generation.

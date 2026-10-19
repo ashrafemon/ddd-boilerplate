@@ -15,7 +15,7 @@ CREATE TABLE "number_sequences" (
 CREATE TABLE "audit_logs" (
     "id" UUID NOT NULL,
     "tenantId" TEXT,
-    "organizationId" TEXT,
+    "companyId" TEXT,
     "actorType" TEXT,
     "actorId" TEXT,
     "action" TEXT NOT NULL,

@@ -26,7 +26,7 @@ export function configureCors(app: NestFastifyApplication): void {
       'Origin',
       'X-Correlation-Id',
       'X-Tenant-Id',
-      'X-Organization-Id',
+      'X-Company-Id',
       'X-User-Id',
       'X-Roles',
     ],

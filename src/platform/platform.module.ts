@@ -13,7 +13,6 @@ import { ImportModule } from './import/import.module';
 import { InboxModule } from './inbox/inbox.module';
 import { LockingModule } from './locking/locking.module';
 import { MessagingModule } from './messaging/messaging.module';
-import { MessageQueueModule } from './messaging/message-queue.module';
 import { NotificationModule } from './notification/notification.module';
 import { NumberingModule } from './numbering/numbering.module';
 import { ObservabilityModule } from './observability/observability.module';
@@ -42,7 +41,6 @@ import { WebhookModule } from './webhook/webhook.module';
     OutboxModule,
     EventsModule,
     MessagingModule,
-    MessageQueueModule,
     InboxModule,
     StorageModule,
     ObservabilityModule,
@@ -66,7 +64,6 @@ import { WebhookModule } from './webhook/webhook.module';
     OutboxModule,
     EventsModule,
     MessagingModule,
-    MessageQueueModule,
     InboxModule,
     StorageModule,
     ObservabilityModule,

@@ -51,7 +51,7 @@ export class PrismaNumberingRepository implements NumberingPort {
 
   private scopedKey(sequenceKey: string): string {
     const ctx = this.requestContext.get();
-    const scope = ctx?.organizationId ?? ctx?.tenantId;
+    const scope = ctx?.companyId ?? ctx?.tenantId;
     return scope ? `${scope}:${sequenceKey}` : sequenceKey;
   }
 }

@@ -100,12 +100,12 @@ sequenceDiagram
 Then — asynchronously, the outbox's job, never the business transaction's:
 
 ```text
-OutboxScheduler (cron 10s) → OutboxPublisher.publishPendingBatch
-  → claimBatch (PENDING|FAILED → PUBLISHING)
-  → MessageRoutingPolicy.resolve(eventType) → RabbitMQ / Kafka / SQS envelope
-    (headers: event-id · request-id · correlation-id)
-  → outboxEventRegistry rehydrate (business registry delegated) → InProcessEventBus.emit('PurchaseOrderCreated')
-  → PUBLISHED · FAILED retried 1/min ≤ maxAttempts · cleanup hourly
+OutboxScheduler (tick 10s) → PublishPendingBatchUseCase
+  → claimBatch (PENDING, stamp claimToken+claimedAt — status unchanged)
+  → MessageQueuePort.publish(envelope) → RabbitMQ / Kafka / SQS (broker by envelope.broker)
+    (headers: event-id · correlation-id · causation-id · tenant-id · broker)
+  → InProcessEventBus.emit(envelope) — canonical envelope, no rehydration
+  → PUBLISHED · publish errors → nextRetryAt backoff ≤ maxAttempts → DEAD_LETTER · cleanup hourly
   → module listeners (application/integrations/listeners/*) react:
     @OnEvent / @RabbitSubscribe / @KafkaEvent / @SqsMessageHandler — delegate to use cases only
 ```
@@ -314,13 +314,13 @@ holds `{ ownerModule → batchHandler }` rows and calls
 Recurring→scheduler is platform→platform (allowed to inject its own registry);
 vendor's import opt-in still registers in `VendorModule` (legacy — migrate on touch).
 
-| Opt-in registry             | Key               | Handler                                                     | Wired by                                  |
-| --------------------------- | ----------------- | ----------------------------------------------------------- | ----------------------------------------- |
-| BatchOperationHandlerRegistry | `PurchaseOrder`   | PurchaseOrderBatchOperationAdapter (`infrastructure/adapters/platform/`) | `configureBatchOperations` bridge |
-| BatchOperationHandlerRegistry | `GoodReceiptNote` | GrnBatchOperationAdapter                                    | `configureBatchOperations` bridge         |
-| ImportHandlerRegistry       | `vendor`          | VendorImportHandler                                         | VendorModule (legacy)                     |
-| ScheduledJobHandlerRegistry | `Recurring`       | RecurringGenerationHandler                                    | RecurringModule (platform→platform)       |
-| FieldResolverRegistry       | field prefix      | FieldResolver                                                 | bridge row per resolver (standard, not built yet) |
+| Opt-in registry               | Key               | Handler                                                                  | Wired by                                          |
+| ----------------------------- | ----------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
+| BatchOperationHandlerRegistry | `PurchaseOrder`   | PurchaseOrderBatchOperationAdapter (`infrastructure/adapters/platform/`) | `configureBatchOperations` bridge                 |
+| BatchOperationHandlerRegistry | `GoodReceiptNote` | GrnBatchOperationAdapter                                                 | `configureBatchOperations` bridge                 |
+| ImportHandlerRegistry         | `vendor`          | VendorImportHandler                                                      | VendorModule (legacy)                             |
+| ScheduledJobHandlerRegistry   | `Recurring`       | RecurringGenerationHandler                                               | RecurringModule (platform→platform)               |
+| FieldResolverRegistry         | field prefix      | FieldResolver                                                            | bridge row per resolver (standard, not built yet) |
 
 ## 9. Mental-model cheat sheet
 

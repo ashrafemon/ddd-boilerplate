@@ -3,7 +3,7 @@ import { numericEnv } from './env.util';
 import { IInboxConfig } from '@platform/inbox/inbox.types';
 
 /**
- * Inbox configuration.
+ * Inbox configuration (design 07).
  */
 export default registerAs('inbox', (): IInboxConfig => ({
   claimLeaseMs: numericEnv('INBOX_CLAIM_LEASE_MS', 300_000),
@@ -11,5 +11,5 @@ export default registerAs('inbox', (): IInboxConfig => ({
   retryBaseDelayMs: numericEnv('INBOX_RETRY_BASE_DELAY_MS', 5_000),
   retryMaxDelayMs: numericEnv('INBOX_RETRY_MAX_DELAY_MS', 600_000),
   reconciliationIntervalMs: numericEnv('INBOX_RECONCILIATION_INTERVAL_MS', 60_000),
-  batchSize: numericEnv('INBOX_BATCH_SIZE', 100),
+  processedRetentionMs: numericEnv('INBOX_PROCESSED_RETENTION_MS', 2_592_000_000),
 }));

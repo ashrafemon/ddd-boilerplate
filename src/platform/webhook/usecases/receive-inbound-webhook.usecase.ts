@@ -33,7 +33,7 @@ export class ReceiveInboundWebhookUseCase {
     const key = idempotencyKey ?? hashBody(rawBody);
     const result = await this.idempotency.reserve({
       tenantId: '',
-      organizationId: '',
+      companyId: '',
       scope: `webhook.inbound.${source}`,
       key,
     });
@@ -41,12 +41,13 @@ export class ReceiveInboundWebhookUseCase {
     if (result.status === 'REPLAY') {
       return;
     }
-    if (result.status === 'IN_PROGRESS') {
+    if (result.status === 'BUSY') {
       // Another in-flight delivery of the same webhook is already being
       // handled — let the provider's own retry find it COMPLETED next time.
       return;
     }
-    if (result.status === 'KEY_REUSED' || result.status === 'SUSPENDED') {
+    if (result.status === 'KEY_MISMATCH') {
+      // Same key, different payload — the provider reused a key; ignore.
       return;
     }
 

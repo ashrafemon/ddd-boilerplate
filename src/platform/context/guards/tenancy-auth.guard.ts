@@ -15,7 +15,7 @@ export const VERIFIED_IDENTITY_REQUEST_KEY = 'verifiedIdentity';
 
 export interface VerifiedIdentity {
   tenantId?: string;
-  organizationId?: string;
+  companyId?: string;
   userId?: string;
   roles: string[];
 }
@@ -23,7 +23,6 @@ export interface VerifiedIdentity {
 interface TenantJwtClaims {
   sub?: string;
   tenantId?: string;
-  organizationId?: string;
   companyId?: string;
   roles?: string[] | string;
 }
@@ -86,7 +85,7 @@ export class TenancyAuthGuard implements CanActivate {
 
     const identity: VerifiedIdentity = {
       tenantId: claims.tenantId,
-      organizationId: claims.organizationId ?? claims.companyId,
+      companyId: claims.companyId,
       userId: claims.sub,
       roles: Array.isArray(claims.roles)
         ? claims.roles

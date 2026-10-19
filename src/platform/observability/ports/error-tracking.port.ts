@@ -2,7 +2,7 @@ export interface ErrorTrackingContext {
   requestId?: string;
   correlationId?: string;
   tenantId?: string;
-  organizationId?: string;
+  companyId?: string;
   userId?: string;
   tags?: Record<string, string>;
   extra?: Record<string, unknown>;

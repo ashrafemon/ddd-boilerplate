@@ -1,135 +1,139 @@
-# Platform — Saga Process Orchestration Service
+# platform/saga — Company-Configurable Orchestration
 
-## Purpose
+> Long-running cross-aggregate processes that run on ERP-standard defaults and
+> that every company narrows at runtime with its own overlay. Defaults are found
+> by event name + version; overlays only narrow, never widen. A saga calls
+> business **actions** — never repositories — so it owns no billing, plans or
+> subscriptions, only feature keys + settings + company overlays.
 
-The Saga service coordinates business processes that span multiple aggregates,
-modules, transactions, or asynchronous boundaries.
+## What it does
 
-It answers: "Given this event, what should this company do next in this
-configured business process?"
+1. **Plan build** (`PlanBuilder`) — merges the ACTIVE platform default with the
+   company overlay: conditions are AND-combined, timing/retry overridden,
+   optional steps switched on, standard steps switched off. A `requires` key the
+   company lacks removes the step (or, for a `required` step, the whole saga).
+   An empty plan means no instance is created.
+2. **Route** (`SagaRouter`, the `SagaInboundPort`) — the only place a saga (or a
+   wait) starts. Five checks in order: `requires`+policy → overlay → `if` →
+   `when` → `match`. Events for its own emissions (`aggregateType = 'Saga'`) are
+   dropped as a loop guard.
+3. **Advance** (`SagaEngine.advance`) — walks the frozen plan from the cursor:
+   bypasses steps whose `if` is false (`SKIPPED`), consumes a buffered event for
+   a `WAIT` step, or writes the next `DO` step `PENDING` and stops.
+4. **Execute** (`SagaStepWorker`) — claims due `saga_steps` rows
+   (`FOR UPDATE SKIP LOCKED` + lease, DO/UNDO only, fairness cap per company),
+   resolves a `SagaAction` and settles the step. `ok` → `DONE`; `retry` →
+   backoff until `maxAttempts`; `fail` → compensation.
+5. **Compensate** (`SagaEngine`) — on failure it runs the completed `DO` steps'
+   `UNDO`s in reverse. A completed step with no undo (and no `pivot` before it),
+   or a failure past the pivot, parks `FAILED_MANUAL`.
+6. **Sweep** (`SagaScheduler`) — one tick runs the worker, expires `WAIT`
+   timeouts (`skip` by default, `compensate` when configured) and re-queues
+   stale leases. An hourly cron purges inbox rows past retention. There is **no
+   reconciler**.
 
-A Saga is **not** one large database transaction. It orchestrates a sequence
-of steps, each dispatching a command to a business module, and reacts to
-the resulting events.
+Statuses: `RUNNING | WAITING | COMPENSATING | COMPLETED | COMPENSATED |
+CANCELLED | FAILED_MANUAL`. A `WAIT` step's timeout is its `run_at`; it is
+settled by the sweep, never by the worker.
 
-## API
+## Public ports
 
-| Method | Port | Description |
-|--------|------|-------------|
-| `start` | `SagaPort` | Start a new saga instance from a trigger event |
-| `handleEvent` | `SagaPort` | Handle an incoming event for an existing saga |
-| `suspend` | `SagaPort` | Suspend a running saga instance |
-| `compensate` | `SagaPort` | Trigger compensation for a failed step |
+```ts
+import { FeatureGate } from '@platform/saga/ports/feature-gate.port';
+import { CompanySettingsReader } from '@platform/saga/ports/company-settings.port';
+import { SAGA_ACTION, SagaAction } from '@platform/saga/ports/saga-action.port';
+import { SagaInboundPort } from '@platform/saga/ports/saga-inbound.port';
+
+// entitlement keys + settings are owned OUTSIDE the saga
+featureGate.enabled(companyId): Promise<ReadonlySet<string>>;
+companySettings.get(companyId): Promise<Record<string, unknown>>;
+
+// one command on one aggregate via its application service
+action.do(ctx): Promise<{ outcome: 'ok' | 'retry' | 'fail'; output?; error? }>;
+action.undo(ctx): Promise<{ outcome: 'ok' | 'retry' | 'fail'; error? }>;
+
+// feed events in (a broker consumer / business listener calls this)
+sagaInbound.accept(envelope: OutboxEnvelope): Promise<void>;
+```
+
+`ctx` carries `tenantId`, `companyId`, `sagaKey`, `instanceId`, `stepId`,
+`idempotencyKey` (= the `saga_steps` row id), `correlationKey`, `input`;
+`undo` also gets `doOutput`.
 
 ## Layout
 
 ```
-saga/
-├── saga.types.ts              # Types, status enums, DTOs, config
-├── saga.service.ts            # Service facade → implements SagaPort
-├── saga.module.ts             # DI module (NOT global)
-├── saga.spec.ts               # Integration tests
-├── ports/
-│   ├── saga.port.ts           # Public port (business modules consume this)
-│   ├── saga-repository.port.ts    # Repository port (internal)
-│   └── saga-command.port.ts       # Command dispatch port
-├── definitions/
-│   └── saga-definition.ts     # In-memory definition registry
-├── usecases/
-│   ├── start-saga.usecase.ts          # Create instance + first step
-│   ├── handle-saga-event.usecase.ts   # React to event + advance step
-│   ├── suspend-saga.usecase.ts        # CAS → SUSPENDED
-│   └── compensate-saga.usecase.ts     # Dispatch compensation command
-├── repositories/
-│   └── prisma-saga.repository.ts  # PostgreSQL implementation
-├── reconciliation/
-│   └── saga-reconciliation.ts     # Cron: release expired step claims
-├── adapters/
-│   ├── saga-event-consumer.adapter.ts    # Receives events from EventBus/MQ
-│   └── saga-command-dispatcher.adapter.ts # Dispatches commands via ports
-├── __testing__/
-│   ├── in-memory-saga.repository.ts  # Test double
-│   └── fake-saga-command.port.ts      # Fake command port
-└── README.md
+ports/
+  feature-gate.port.ts           — FeatureGate.enabled(companyId)
+  company-settings.port.ts       — CompanySettingsReader.get(companyId)
+  saga-action.port.ts            — SagaAction + SAGA_ACTION token
+  saga-inbound.port.ts           — SagaInboundPort.accept(envelope)
+
+application/
+  expression.ts                  — safe evaluator + `{{ }}` renderer + durations
+  plan-builder.ts                — default + overlay merge (narrows only)
+  saga-action.registry.ts        — action lookup by name
+  saga-engine.ts                 — advance / complete / compensate / cancel
+  saga-router.ts                 — inbound port, five checks, start + wait
+
+workers/
+  step-worker.ts                 — claim + run + settle a step
+
+repositories/
+  prisma-saga.repository.ts      — the five tables (one class per table)
+
+adapters/
+  empty-feature-gate.adapter.ts  — fail-closed default (no sagas until wired)
+  empty-company-settings.reader.ts
+
+events/saga-emitted.event.ts     — `onComplete.emit` envelope
+saga.types.ts                    — statuses, definition/overlay/plan shapes
+saga.scheduler.ts                — tick + sweeps + inbox cleanup
+saga.module.ts                   — wiring
 ```
 
-## Who calls how
+## Who calls it / how called
 
-| Caller | How |
-|--------|-----|
-| Event Bus / Message Queue | Delivers events to Saga consumer |
-| Business module | Registers Saga definition/configuration |
-| Saga Event Consumer | `SagaPort.handleEvent()` |
-| Saga | `SagaCommandPort.dispatch()` |
-| Business modules | Never imported directly |
+| Consumer                         | How                                                        |
+| -------------------------------- | ---------------------------------------------------------- |
+| Broker consumer / listener       | `SagaInboundPort.accept(envelope)`                         |
+| Composition root / business      | `SagaActionRegistry.register(action)` (under `SAGA_ACTION`)|
+| Scheduler                        | `SagaStepWorker.runBatch()` + `SagaEngine.onWaitTimeout`    |
+| Business actions                 | receive `SagaActionContext`, use their own app services     |
 
-## Configuration Model
+The saga imports **no business module**. Business work arrives only through
+`SagaAction` providers; gating and settings through their ports.
 
-### Saga Definition
+## Data & config
 
-A reusable process template:
+`saga_definitions`, `saga_company_configs`, `saga_instances`, `saga_steps`,
+`saga_inbox` (`prisma/schema/platform/saga.prisma`). Partial uniques — one
+ACTIVE definition per key, one live instance per correlation key — are written
+in the migration. Config namespace `saga.*` → `ConfigService.getSaga()`; env:
+`SAGA_WORKER_LEASE_SECONDS`, `SAGA_CLAIM_BATCH_SIZE`, `SAGA_FAIRNESS_CAP`,
+`SAGA_SWEEP_INTERVAL_MS`, `SAGA_RETRY_BASE_DELAY_MS`, `SAGA_RETRY_MAX_DELAY_MS`,
+`SAGA_DEFAULT_MAX_ATTEMPTS`, `SAGA_INBOX_RETENTION_DAYS`.
 
-```
-SalesOrderFulfillmentSaga v1
-```
+## Tenancy behaviour
 
-### Company Saga Configuration
+Every row is scoped by `tenantId` + `companyId`; the router runs the whole
+route inside `RequestContextPort.run` with the event's tenant/company, and the
+worker does the same per step. The correlation key is scoped per company, so two
+companies never share an instance.
 
-The organization's activation/customization of that process:
+## Rules & gotchas
 
-```
-Company A — SalesOrderFulfillmentSaga v1 — enabled = true
-Company B — SalesOrderFulfillmentSaga v1 — enabled = false
-```
-
-### Event Subscription
-
-Which events the company wants the Saga to react to:
-
-```
-Company A — SalesOrderFulfillmentSaga
-  SalesOrderCreated       ENABLED
-  InventoryReserved       ENABLED
-  InvoiceCreated          ENABLED
-  PaymentReceived         ENABLED
-```
-
-## Data
-
-- **Tables**: `saga_instances`, `saga_step_executions`, `saga_company_configs`,
-  `saga_event_subscriptions`, `saga_step_configs`, `saga_compensation_configs`
-- **Instance identity**: `(tenantId, organizationId, sagaType, correlationId)` — unique
-- **Status machine**: `STARTED` → `RUNNING` → `WAITING` → `COMPLETED` | `COMPENSATING` → `COMPENSATED` | `SUSPENDED`
-- **CAS**: Every state transition requires `claimToken` + `version` match
-
-## Config
-
-| Key | Default | Description |
-|-----|---------|-------------|
-| `SAGA_DEFAULT_TIMEOUT_MS` | 300000 | Default step timeout |
-| `SAGA_DEFAULT_MAX_ATTEMPTS` | 5 | Default max retry attempts |
-| `SAGA_RETRY_BASE_DELAY_MS` | 1000 | Base delay for exponential backoff |
-| `SAGA_RETRY_MAX_DELAY_MS` | 600000 | Cap on retry delay |
-| `SAGA_RECONCILIATION_INTERVAL_MS` | 60000 | How often the reconciler runs |
-| `SAGA_STEP_CLAIM_LEASE_MS` | 60000 | Step claim lease duration |
-
-## Tenancy
-
-Every Saga record is scoped by `(tenantId, organizationId)`.
-Company A must never see or mutate Company B's Saga instance.
-
-## Rules
-
-1. Saga is an **orchestrator**, not a business domain service.
-2. Saga **never imports** business modules.
-3. Saga communicates through **ports** only.
-4. Saga definitions are **reusable** across companies.
-5. Company configuration **determines** which Saga processes are enabled.
-6. Company configuration **determines** which events a Saga consumes.
-7. Company configuration **can override** timeouts and retry limits.
-8. Global defaults must **never bypass** a company-level disable.
-9. Every Saga instance is **tenant/company scoped**.
-10. Retries must be **bounded** — exhausted processes become `SUSPENDED`.
-11. Compensation is **not rollback** — it is a new business operation.
-12. Workers **restore CLS** before executing tenant/company work.
-13. The module is **NOT `@Global()`**.
+- Overlays **only narrow**: AND-combined conditions, overridden timing/retry,
+  optional on / standard off. A `required` step can never be disabled.
+- The plan is **frozen** on the instance at build time; a later settings or
+  definition change never affects a running instance.
+- Bypass means continue, never wait — a saga never waits for an event the
+  company cannot produce.
+- Actions must be idempotent on `ctx.idempotencyKey`; the worker settles with a
+  CAS write, so a redelivery re-runs the action but never double-applies.
+- A `WAIT` step's `run_at` is its timeout instant; the sweep settles it.
+- The platform outbox derives an event's type from its class, so
+  `onComplete.emit` travels as `SagaEmittedEvent` with the configured name in
+  the payload.
+- The default `FeatureGate` is fail-closed: nothing starts until an entitlement
+  source is wired (module provider / composition-root override).

@@ -1,5 +1,5 @@
 import { RedisDistributedLockAdapter } from './redis-distributed-lock.adapter';
-import { RedisService } from '@infrastructure/cache/redis/redis.service';
+import { RedisService } from '@infrastructure/redis/redis.service';
 
 type FakeClient = {
   set: jest.Mock;

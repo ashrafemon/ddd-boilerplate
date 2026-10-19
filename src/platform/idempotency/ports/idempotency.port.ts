@@ -5,32 +5,31 @@ import {
   IdempotencyReserveResult,
 } from '../idempotency.types';
 
+export type {
+  IdempotencyCompleteRequest,
+  IdempotencyFailRequest,
+  IdempotencyReserveRequest,
+  IdempotencyReserveResult,
+};
+
 /**
  * Cross-request / cross-replica duplicate-suppression ledger
- * (`platform/idempotency`, DB-backed — unlike `platform/locking` this must
- * survive Redis loss because it stores outcomes, not leases).
+ * (`platform/idempotency`).
  *
  * Business modules inject this port and control the sequence:
- * 1. reserve()
- * 2. execute business operation
- * 3. complete()
+ * 1. reserve() → ACQUIRED → run the operation → complete()
+ * 2. reserve() → REPLAY  → return the stored result, run nothing
+ * 3. reserve() → BUSY    → 409, retry later
+ * 4. reserve() → KEY_MISMATCH → 400, the key belongs to another request
  *
- * Failure sequence:
- * 1. reserve()
- * 2. execute business operation
- * 3. fail()
- *
- * Replay sequence:
- * 1. reserve()
- * 2. REPLAY — return stored result
+ * On failure: reserve() → ACQUIRED → run → fail() releases the claim.
  */
 export abstract class IdempotencyPort {
-  /** Try to reserve an idempotency key. Returns ACQUIRED/REPLAY/IN_PROGRESS/SUSPENDED/KEY_REUSED. */
   abstract reserve(request: IdempotencyReserveRequest): Promise<IdempotencyReserveResult>;
 
-  /** Mark the reservation as COMPLETED with the result for replay. */
+  /** Mark the reservation COMPLETED and cache the result for replay. */
   abstract complete(request: IdempotencyCompleteRequest): Promise<void>;
 
-  /** Mark the reservation as FAILED — allows retry. */
+  /** Release the claim: CAS-delete the row and evict the cached result. */
   abstract fail(request: IdempotencyFailRequest): Promise<void>;
 }

@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { CacheModule } from './cache/cache.module';
 import { ContextModule } from './context/context.module';
 import { PrismaModule } from './database/prisma/prisma.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { NotificationModule } from './notification/notification.module';
 import { QueueModule } from './queue/queue.module';
+import { RedisModule } from './redis/redis.module';
 import { StorageModule } from './storage/storage.module';
 
 /**
@@ -21,7 +21,7 @@ import { StorageModule } from './storage/storage.module';
  */
 @Module({
   imports: [
-    CacheModule.forRoot(),
+    RedisModule,
     PrismaModule,
     ContextModule,
     NotificationModule,
@@ -30,7 +30,7 @@ import { StorageModule } from './storage/storage.module';
     StorageModule,
   ],
   exports: [
-    CacheModule.forRoot(),
+    RedisModule,
     PrismaModule,
     ContextModule,
     NotificationModule,

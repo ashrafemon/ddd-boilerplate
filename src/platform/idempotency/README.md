@@ -1,91 +1,100 @@
-# platform/idempotency — Duplicate-Suppression Ledger
+# Platform — Idempotency Service
 
-> DB-backed "run this request/operation at most once" primitive with response
-> replay. Distinct from `platform/locking`: locks prevent concurrency (Redis,
-> leases, nothing stored), this prevents duplicate EFFECTS across time and
-> replicas (Postgres, results stored).
+## 1. Purpose
 
-## What it does
+Safe retry of the same operation request: the first call executes, repeats
+replay the stored result. Postgres owns the claims; Redis speeds up replays.
 
-A reservation row unique on `(scope, tenantId, key)` is an insert-as-claim:
+| Concern | Handled here |
+|---|---|
+| Claim ledger (`idempotency_keys`) | ✅ `PrismaIdempotencyRepository` |
+| Result replay cache | ✅ `RedisIdempotencyCacheAdapter` |
+| HTTP + programmatic API | `IdempotencyPort`, `@Idempotent()` |
+| Business modules talk to | `IdempotencyPort` only |
 
-- first `reserve` INSERTs `IN_PROGRESS` → caller executes the work;
-- a retried request hitting a `COMPLETED` row gets `REPLAY` + the stored
-  response (`@Idempotent()` returns it verbatim — no handler run);
-- a concurrent duplicate against `IN_PROGRESS` → 409 (safe to retry later);
-- `FAILED` rows and expired `IN_PROGRESS` rows are atomically re-armed by
-  `reserve`, so a failed operation can be retried immediately without
-  waiting for the TTL.
-
-## Public API
-
-HTTP (preferred for controllers):
+## 2. API
 
 ```ts
-import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
-
-@Post()
-@Idempotent()                       // caller MUST send `Idempotency-Key` header
-async submit(...) { ... }
+const claim = await this.idempotency.reserve({
+  tenantId, companyId, scope: 'sales.order.create', key: idempotencyKey,
+});
+if (claim.status === 'REPLAY') return claim.result;
+if (claim.status === 'BUSY') throw new ConflictException();          // 409
+if (claim.status === 'KEY_MISMATCH') throw new BadRequestException(); // 400
+try {
+  const result = await this.createOrder();
+  await this.idempotency.complete({ reservation: claim.reservation, result });
+  return result;
+} catch (error) {
+  await this.idempotency.fail({ reservation: claim.reservation });
+  throw error;
+}
 ```
 
-The route-level interceptor is installed globally by `IdempotencyModule` but
-stays inert (one metadata read) on every non-decorated route. Scope is
-derived per route as `<ControllerClass>.<method>`.
+Result statuses: `ACQUIRED` · `REPLAY + result` · `BUSY` · `KEY_MISMATCH`.
 
-Programmatic (use cases, queue handlers):
-
-```ts
-import { IdempotencyPort } from '@platform/idempotency/ports/idempotency.port';
-
-const r = await idempotency.reserve({ scope: 'recurring.generate', key, tenantId });
-if (r.status === 'ACQUIRED') {
-  try { doWork(); await idempotency.markCompleted(ref, result); }
-  catch (e) { await idempotency.markFailed(ref); throw e; }
-} else if (r.status === 'REPLAY') return r.result;
-else throw new ConflictException('in progress');
-```
-
-## Layout
+## 3. Layout
 
 ```
-ports/idempotency.port.ts                     token + reservation types
-repositories/prisma-idempotency.repository.ts insert-as-claim + takeover SQL
-http/idempotent.decorator.ts                  route decorator (metadata)
-http/idempotency.interceptor.ts               reserve → run → store/replay
-idempotency-reconciliation.ts                 hourly purge of expired rows
-idempotency.module.ts                         bindings + APP_INTERCEPTOR
+src/platform/idempotency/
+├── ports/
+│   └── idempotency.port.ts                 # the only port
+├── services/
+│   └── idempotency.service.ts              # implements IdempotencyPort
+├── repositories/
+│   └── prisma-idempotency.repository.ts    # concrete class, no internal port
+├── adapters/
+│   └── redis-idempotency-cache.adapter.ts  # COMPLETED results only
+├── usecases/
+│   ├── reserve-idempotency.usecase.ts
+│   ├── complete-idempotency.usecase.ts
+│   └── fail-idempotency.usecase.ts
+├── http/
+│   ├── idempotent.decorator.ts
+│   └── idempotency.interceptor.ts
+├── idempotency.reconciliation.ts           # hourly purge
+├── idempotency.types.ts
+├── idempotency.module.ts
+└── README.md
+prisma/schema/platform/idempotency.prisma
+src/config/idempotency.config.ts
 ```
 
-## Who calls it / how called
+## 4. Flow
 
-| Consumer | How |
-| --- | --- |
-| `POST /batch-operations` (submit) | `@Idempotent()` — reference usage |
-| `POST /import/jobs` (create job) | `@Idempotent()` — reference usage |
-| future services | inject `IdempotencyPort` |
+1. `reserve` checks the Redis result key — HIT returns `REPLAY` without Postgres.
+2. MISS: INSERT-as-claim on the unique identity → `ACQUIRED`.
+3. `COMPLETED` with the same hash → `REPLAY`; different hash → `KEY_MISMATCH`.
+4. `IN_PROGRESS` with a live claim lease → `BUSY`.
+5. Expired claim lease → CAS takeover with a fresh token → `ACQUIRED`.
+6. `complete` CASes `IN_PROGRESS → COMPLETED` on id + token + version, then
+   writes the result to Redis with the row's remaining TTL.
+7. `fail` CAS-deletes the row and evicts the Redis key — no parking lot.
 
-## Data & config
+## 5. Data
 
-- Table `idempotency_keys` (migrations in `prisma/migrations/*_idempotency_ledger`).
-  `tenantId` is normalized to `''` for the unscoped case because Postgres
-  unique indexes treat NULLs as distinct.
-- `IDEMPOTENCY_TTL_MS` (default 24 h) = replay window + stale-claim takeover
-  delay. Hourly reconcile deletes expired rows.
+| Store | What it holds |
+|---|---|
+| PostgreSQL `idempotency_keys` | claim (`IN_PROGRESS`) + completed result + `expiresAt` |
+| Redis `idempotency:{tenant}:{companyId}:{scope}:{key}` | COMPLETED result, TTL copied from the row |
 
-## Tenancy behaviour
+Statuses are only `IN_PROGRESS | COMPLETED`. Same key in another tenant or
+company is a different record.
 
-Reservations are scoped per tenant (from `RequestContextPort`); two tenants
-may reuse the same key string. In `TENANCY_MODE=multi` the key space is
-authenticated via `TenancyAuthGuard`, so clients cannot poison each other's
-keys.
+## 6. Config (`src/config/idempotency.config.ts`)
 
-## Rules & gotchas
+| Env | Default | Meaning |
+|---|---|---|
+| `IDEMPOTENCY_TTL_MS` | `86400000` | replay window |
+| `IDEMPOTENCY_CLAIM_LEASE_MS` | `300000` | live-claim window before takeover |
+| `IDEMPOTENCY_REDIS_PREFIX` | `idempotency` | result key prefix |
 
-- `@Idempotent()` requires the header — missing/blank key ⇒ 400, by design.
-- The stored snapshot is the response pipeline output; replays of non-JSON
-  side-effecting errors are still safe because `markFailed` re-arms the key.
-- Only put `@Idempotent()` on non-idempotent verbs (POST). A GET is already
-  replay-safe; adding it burns rows.
-- Result column stores one JSON value — keep responses modest (this is an
-  audit-ish ledger, not a cache; `platform/cache` exists for hot data).
+## 7. Rules
+
+- Client-driven retries only: `BUSY` → 409, `KEY_MISMATCH` → 400, `REPLAY`
+  returns the byte-identical original.
+- `fail()` releases immediately; crashed claims are taken over after the lease.
+- Keys are operation-scoped, never business ids.
+- IN_PROGRESS claims live only in Postgres; only COMPLETED results are cached,
+  so cache and row expire together.
+- The hourly reconciler deletes expired IN_PROGRESS and COMPLETED rows.

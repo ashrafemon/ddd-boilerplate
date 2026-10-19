@@ -1,47 +1,69 @@
-# platform/events — In-process bus + broker routing policy
+# platform/events — In-Process Dispatch Only
 
-> Two tiny decisions live here: how a rehydrated domain event reaches
-> in-process listeners, and which brokers an event fans out to.
+> Best-effort local notification inside the monolith. Durability belongs to
+> Outbox; transport belongs to Message Queue. This module is a **thin emit
+> wrapper** over `EventEmitter2` — no routing table, no registries, no
+> rehydration.
 
 ## What it does
 
-- `InProcessEventBus` (bound to `NestEventBusAdapter`): emits on
-  `event.constructor.name` over `EventEmitter2` (wildcard `.`-delimited,
-  provided by `@infrastructure/messaging`'s EventEmitterModule root).
-  Business `@OnEvent('<EventClassName>')` listeners are wired to the
-  outbox's in-process re-dispatch — the bus itself never publishes brokers.
-- `MessageRoutingPolicy` (`DefaultMessageRoutingPolicy`): resolves an
-  eventType to broker targets. Everything goes to `rabbitmq`; the
-  five `*-requested/created` fan-out events listed in the file also target
-  `kafka`/`sqs`. Disabled brokers (unset `KAFKA_BROKERS` / `SQS_URL`) are
-  skipped at the adapter, so a message still marks published — the routing
-  list names *intent*, availability gates the legs.
+- `InProcessEventBus.emit(envelope)` fans out the canonical transport envelope
+  to local `@OnEvent('<EventType>')` listeners. At-most-once, no retries, no
+  storage, no DLQ — a lost emission never blocks anything.
+- The adapter emits on `envelope.eventType`, so listeners (and `onAny`
+  projections) receive the exact same envelope the brokers carry and read the
+  business payload from `message.payload`.
+- `eventId` / `correlationId` / `causationId` / `tenantId` ride on the envelope
+  (no rehydration step).
 
 ## Public API
 
 ```ts
-import { InProcessEventBus } from '@platform/events/ports/event-bus.port';
-import { MessageRoutingPolicy } from '@platform/events/message-routing.policy';
+import { InProcessEventBus } from '@platform/events/ports/in-process-event-bus.port';
+
+// publisher (usually the outbox, not business code)
+await this.eventBus.emit(envelope);
+
+// subscriber (business listener file — delegates, never inline logic)
+@OnEvent('ProductCreated')
+handleProductCreated(message: MessageEnvelope) {
+  return this.productUseCase.execute(message.payload);
+}
 ```
 
-Both are consumed **only** by `platform/outbox/outbox-publisher.ts`.
+## Layout
 
-## Layout / who calls / data
+```
+ports/
+  in-process-event-bus.port.ts   — public port (emit) + MessageEnvelope alias
+services/
+  event-bus.service.ts           — facade implementing InProcessEventBus
+usecases/
+  emit-event.usecase.ts          — forwards to the Nest adapter
+adapters/
+  nest-event-bus.adapter.ts      — wraps EventEmitter2 wildcard dispatch
+events.module.ts
+```
 
-`events.module.ts`, `adapters/nest-event-bus.adapter.ts`,
-`message-routing.policy.ts`. No tables, no config, no lifecycle hooks.
+No `repositories/`, no config file, no routing table.
+
+## Who calls it / how called
+
+| Consumer             | How                                              |
+| -------------------- | ------------------------------------------------ |
+| `platform/outbox`    | Emits the canonical envelope after broker publish |
+| Any use case         | Direct `emit` for local-only projections          |
+| Business listeners   | `@OnEvent('<EventType>')` reading `message.payload` |
 
 ## Tenancy behaviour
 
-None — routing is event-type based. The event envelope carries tenancy via
-outbox headers instead.
+None of its own — the envelope carries `tenantId`/`companyId`; the outbox
+restores CLS before emitting.
 
 ## Rules & gotchas
 
-- **Adding a broker listener means adding the event to
-  `FAN_OUT_EVENTS`.** That list is the single source of truth for topology.
-- In-process listeners fire during the outbox publish tick: keep them
-  idempotent (redelivery happens) and never throw synchronously in
-  `publish()` (the publisher wraps dispatch and log-only degrades).
-- Events must be registered in the aggregate's domain-event rehydrator
-  registry to survive rehydration.
+- **One listener failure must not break others.** The adapter wraps the emit in
+  a try/catch and logs; keep listeners idempotent and non-throwing.
+- If a reaction must survive a crash, go through the **Outbox** — never emit
+  directly.
+- Zero `@business/**` imports; never `@Global`.

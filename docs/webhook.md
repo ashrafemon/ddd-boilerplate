@@ -22,12 +22,13 @@ webhooks.
 semantics (message matching, monotonic status, suppression) and **stays as
 it is** — it is not being migrated onto the new service. `platform/webhook`
 exists for capabilities notification's use case doesn't cover: generic
-inbound receipt from *any* future external source (payment gateway, storage
+inbound receipt from _any_ future external source (payment gateway, storage
 provider, etc.), and all of outbound delivery.
 
 ## Scope: both directions
 
 ### Inbound (receiving)
+
 1. **Generic receipt endpoint** — `POST /webhooks/:source`, unauthenticated
    at the transport level by design (same rationale as notification's
    webhook route): trust comes from per-source signature verification, not a
@@ -42,6 +43,7 @@ provider, etc.), and all of outbound delivery.
    `notification`'s `NotificationHandler` port).
 
 ### Outbound (sending)
+
 4. **Subscription registry** — CRUD for webhook endpoints: URL, signing
    secret, subscribed event types, tenant scope, active/paused status.
 5. **Dispatch on domain events** — listens for outbox events matching a

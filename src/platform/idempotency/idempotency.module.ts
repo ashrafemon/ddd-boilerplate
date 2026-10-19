@@ -1,34 +1,37 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
+import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
 import { ContextModule } from '@platform/context/context.module';
 import { IdempotencyInterceptor } from './http/idempotency.interceptor';
-import { IdempotencyReconciler } from './idempotency-reconciliation';
+import { IdempotencyReconciliation } from './idempotency.reconciliation';
 import { IdempotencyPort } from './ports/idempotency.port';
-import { IdempotencyRepositoryPort } from './ports/idempotency-repository.port';
 import { PrismaIdempotencyRepository } from './repositories/prisma-idempotency.repository';
+import { RedisIdempotencyCacheAdapter } from './adapters/redis-idempotency-cache.adapter';
 import { ReserveIdempotencyUseCase } from './usecases/reserve-idempotency.usecase';
 import { CompleteIdempotencyUseCase } from './usecases/complete-idempotency.usecase';
 import { FailIdempotencyUseCase } from './usecases/fail-idempotency.usecase';
-import { IdempotencyService } from './idempotency.service';
+import { IdempotencyService } from './services/idempotency.service';
 
 /**
- * Platform idempotency module — the duplicate-suppression primitive.
+ * Platform idempotency module — the duplicate-suppression primitive
+ * (design `common/02-idempotency`). Postgres owns the claims; Redis caches
+ * COMPLETED results for fast replay.
  *
  * Two consumption shapes:
  *  1. HTTP: `@Idempotent()` decorator (globally installed interceptor, gated
- *     by the decorator) + required `Idempotency-Key` request header —
- *     reserves, runs once, replays the stored response.
- *  2. Programmatic: inject `IdempotencyPort` (reserve / complete /
- *     fail) inside any use case or queued handler needing at-least-once
- *     input with exactly-once effect.
+ *     by the decorator) + required `Idempotency-Key` request header.
+ *  2. Programmatic: inject `IdempotencyPort` inside any use case or queued
+ *     handler needing at-least-once input with exactly-once effect.
  */
 @Module({
-  imports: [ContextModule, PrismaModule],
+  imports: [ContextModule, PrismaModule, InfraRedisModule],
   providers: [
-    // Repository — PostgreSQL idempotency metadata
+    // Concrete repository — injected directly into the use cases (no port).
     PrismaIdempotencyRepository,
-    { provide: IdempotencyRepositoryPort, useExisting: PrismaIdempotencyRepository },
+
+    // Redis result cache adapter
+    RedisIdempotencyCacheAdapter,
 
     // Use cases — one per file
     ReserveIdempotencyUseCase,
@@ -39,8 +42,8 @@ import { IdempotencyService } from './idempotency.service';
     IdempotencyService,
     { provide: IdempotencyPort, useExisting: IdempotencyService },
 
-    // Reconciliation
-    IdempotencyReconciler,
+    // Reconciliation (hourly purge)
+    IdempotencyReconciliation,
 
     // HTTP interceptor
     IdempotencyInterceptor,

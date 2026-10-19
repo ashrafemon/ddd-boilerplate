@@ -121,7 +121,7 @@ describe('DispatchDueJobsUseCase', () => {
     );
     expect(touchLastRunAt).toHaveBeenCalledWith('job-1');
     expect(release).toHaveBeenCalledWith({
-      ticket: expect.objectContaining({ lockKey: expect.any(String) }),
+      ticket: expect.objectContaining({ lockKey: expect.any(String) as string }) as unknown,
     });
   });
 

@@ -1,198 +1,76 @@
-import { randomUUID } from 'crypto';
-import { InMemoryMessageQueue } from './__testing__/in-memory-message-queue';
-import { MessageConsumerRegistry } from './consumers/message-consumer.registry';
+import { ConfigService } from '@config/config.service';
+import { OutboxEnvelope } from '@platform/outbox/outbox.types';
 import { PublishMessageUseCase } from './usecases/publish-message.usecase';
-import { SubscribeMessageUseCase } from './usecases/subscribe-message.usecase';
-import { AcknowledgeMessageUseCase } from './usecases/acknowledge-message.usecase';
-import { RejectMessageUseCase } from './usecases/reject-message.usecase';
-import { MessageQueueService } from './message-queue.service';
+import { MessageQueueService } from './services/message-queue.service';
 
-describe('MessageQueueService', () => {
-  let mq: InMemoryMessageQueue;
-  let publish: PublishMessageUseCase;
-  let subscribe: SubscribeMessageUseCase;
-  let ack: AcknowledgeMessageUseCase;
-  let nack: RejectMessageUseCase;
+interface ConfigLike {
+  getKafka: () => { brokers: string[] };
+  getSqs: () => { url: string };
+}
+
+function makeEnvelope(overrides: Partial<OutboxEnvelope> = {}): OutboxEnvelope {
+  return {
+    eventId: 'evt-1',
+    eventType: 'OrderCreated',
+    aggregateType: 'SalesOrder',
+    aggregateId: 'order-1',
+    payload: { id: 'order-1' },
+    occurredAt: new Date('2026-01-01T00:00:00.000Z'),
+    ...overrides,
+  };
+}
+
+describe('MessageQueuePort — broker by envelope param', () => {
+  let rabbit: { publish: jest.Mock };
+  let kafka: { publish: jest.Mock };
+  let sqs: { publish: jest.Mock };
+  let config: ConfigLike;
   let service: MessageQueueService;
 
   beforeEach(() => {
-    mq = new InMemoryMessageQueue();
-    publish = new PublishMessageUseCase(mq);
-    subscribe = new SubscribeMessageUseCase(mq);
-    ack = new AcknowledgeMessageUseCase(mq);
-    nack = new RejectMessageUseCase(mq);
-    service = new MessageQueueService(publish, subscribe, ack, nack);
-  });
+    rabbit = { publish: jest.fn().mockResolvedValue(undefined) };
+    kafka = { publish: jest.fn().mockResolvedValue(undefined) };
+    sqs = { publish: jest.fn().mockResolvedValue(undefined) };
+    config = {
+      getKafka: () => ({ brokers: [] }),
+      getSqs: () => ({ url: '' }),
+    };
 
-  it('publishes a message', async () => {
-    const result = await service.publish({
-      messageId: randomUUID(),
-      destination: 'orders',
-      messageType: 'OrderCreated',
-      messageVersion: 1,
-      payload: { orderId: 'order-1' },
-    });
-
-    expect(result.accepted).toBe(true);
-    expect(result.messageId).toBeDefined();
-    expect(mq.getPublished()).toHaveLength(1);
-  });
-
-  it('subscribes to a destination', async () => {
-    const handler = jest.fn().mockResolvedValue(undefined);
-    const subscription = await service.subscribe({
-      destination: 'orders',
-      messageType: 'OrderCreated',
-      messageVersion: 1,
-      handler,
-    });
-
-    expect(subscription.subscriptionId).toBeDefined();
-    expect(subscription.destination).toBe('orders');
-  });
-
-  it('acks a message', async () => {
-    const subId = 'sub-1';
-    await service.ack({ messageId: 'msg-1', subscriptionId: subId });
-
-    expect(mq.getAcked()).toHaveLength(1);
-    expect(mq.getAcked()[0].messageId).toBe('msg-1');
-  });
-
-  it('nacks a message', async () => {
-    const subId = 'sub-1';
-    await service.nack({ messageId: 'msg-1', subscriptionId: subId, requeue: true });
-
-    expect(mq.getNacked()).toHaveLength(1);
-    expect(mq.getNacked()[0].requeue).toBe(true);
-  });
-
-  it('preserves tenant metadata through publish', async () => {
-    await service.publish({
-      messageId: randomUUID(),
-      destination: 'orders',
-      messageType: 'OrderCreated',
-      messageVersion: 1,
-      payload: { orderId: 'order-1' },
-      tenantId: 'tenant-001',
-      organizationId: 'org-001',
-      correlationId: 'corr-123',
-      causationId: 'cause-456',
-    });
-
-    const published = mq.getPublished()[0];
-    expect(published.tenantId).toBe('tenant-001');
-    expect(published.organizationId).toBe('org-001');
-    expect(published.correlationId).toBe('corr-123');
-    expect(published.causationId).toBe('cause-456');
-  });
-
-  it('subscription handler receives messages', async () => {
-    const handler = jest.fn().mockResolvedValue(undefined);
-    const subscription = await service.subscribe({
-      destination: 'orders',
-      messageType: 'OrderCreated',
-      messageVersion: 1,
-      handler,
-    });
-
-    await mq.deliver(subscription.subscriptionId, {
-      messageId: 'msg-1',
-      messageType: 'OrderCreated',
-      messageVersion: 1,
-      payload: { orderId: 'order-1' },
-      deliveryAttempt: 1,
-      receivedAt: new Date(),
-    });
-
-    expect(handler).toHaveBeenCalledWith(
-      expect.objectContaining({ messageId: 'msg-1' }),
+    const useCase = new PublishMessageUseCase(
+      rabbit,
+      kafka,
+      sqs,
+      config as unknown as ConfigService,
     );
+    service = new MessageQueueService(useCase);
   });
 
-  it('unsubscribe removes subscription', async () => {
-    const handler = jest.fn().mockResolvedValue(undefined);
-    const subscription = await service.subscribe({
-      destination: 'orders',
-      messageType: 'OrderCreated',
-      messageVersion: 1,
-      handler,
-    });
+  it('defaults to rabbitmq when no broker is named', async () => {
+    await service.publish(makeEnvelope());
 
-    await subscription.unsubscribe();
-
-    // After unsubscribe, delivering should be a no-op
-    await mq.deliver(subscription.subscriptionId, {
-      messageId: 'msg-1',
-      messageType: 'OrderCreated',
-      messageVersion: 1,
-      payload: {},
-      deliveryAttempt: 1,
-      receivedAt: new Date(),
-    });
-
-    expect(handler).not.toHaveBeenCalled();
-  });
-});
-
-describe('MessageConsumerRegistry', () => {
-  let registry: MessageConsumerRegistry;
-
-  beforeEach(() => {
-    registry = new MessageConsumerRegistry();
+    expect(rabbit.publish).toHaveBeenCalledTimes(1);
+    expect(kafka.publish).not.toHaveBeenCalled();
+    expect(sqs.publish).not.toHaveBeenCalled();
   });
 
-  it('registers and retrieves subscriptions', () => {
-    const sub = {
-      subscriptionId: 'sub-1',
-      destination: 'orders',
-      unsubscribe: jest.fn(),
-    };
+  it('routes to the broker named on the envelope', async () => {
+    config.getKafka = () => ({ brokers: ['localhost:9092'] });
 
-    registry.register(sub);
-    expect(registry.count()).toBe(1);
-    expect(registry.get('sub-1')).toBe(sub);
+    await service.publish(makeEnvelope({ broker: 'kafka' }));
+
+    expect(kafka.publish).toHaveBeenCalledTimes(1);
+    expect(rabbit.publish).not.toHaveBeenCalled();
   });
 
-  it('unregisters subscriptions', () => {
-    const sub = {
-      subscriptionId: 'sub-1',
-      destination: 'orders',
-      unsubscribe: jest.fn(),
-    };
-
-    registry.register(sub);
-    registry.unregister('sub-1');
-    expect(registry.count()).toBe(0);
-    expect(registry.get('sub-1')).toBeUndefined();
+  it('throws for an unconfigured kafka target so the outbox retries', async () => {
+    await expect(service.publish(makeEnvelope({ broker: 'kafka' }))).rejects.toThrow(
+      /KAFKA_BROKERS/,
+    );
+    expect(kafka.publish).not.toHaveBeenCalled();
   });
 
-  it('gets all subscriptions', () => {
-    registry.register({
-      subscriptionId: 'sub-1',
-      destination: 'orders',
-      unsubscribe: jest.fn(),
-    });
-    registry.register({
-      subscriptionId: 'sub-2',
-      destination: 'invoices',
-      unsubscribe: jest.fn(),
-    });
-
-    expect(registry.getAll()).toHaveLength(2);
-  });
-
-  it('shutdown calls unsubscribe on all', async () => {
-    const unsub1 = jest.fn();
-    const unsub2 = jest.fn();
-
-    registry.register({ subscriptionId: 'sub-1', destination: 'a', unsubscribe: unsub1 });
-    registry.register({ subscriptionId: 'sub-2', destination: 'b', unsubscribe: unsub2 });
-
-    await registry.shutdown();
-
-    expect(unsub1).toHaveBeenCalled();
-    expect(unsub2).toHaveBeenCalled();
-    expect(registry.count()).toBe(0);
+  it('throws for an unconfigured sqs target so the outbox retries', async () => {
+    await expect(service.publish(makeEnvelope({ broker: 'sqs' }))).rejects.toThrow(/SQS_URL/);
+    expect(sqs.publish).not.toHaveBeenCalled();
   });
 });

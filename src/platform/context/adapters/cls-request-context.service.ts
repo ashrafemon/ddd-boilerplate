@@ -65,8 +65,8 @@ export class ClsRequestContextService implements RequestContextPort {
     return this.get()?.tenantId;
   }
 
-  public getOrganizationId(): string | undefined {
-    return this.get()?.organizationId;
+  public getCompanyId(): string | undefined {
+    return this.get()?.companyId;
   }
 
   public getUserId(): string | undefined {

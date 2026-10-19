@@ -53,7 +53,7 @@ export class RequestIdInterceptor implements NestInterceptor {
         requestId,
         correlationId,
         tenantId: identity.tenantId,
-        organizationId: identity.organizationId,
+        companyId: identity.companyId,
         userId: identity.userId,
         roles: identity.roles,
         locale: (request.headers['accept-language'] as string) || 'en',
@@ -80,7 +80,7 @@ export class RequestIdInterceptor implements NestInterceptor {
     const headers = request.headers;
     return {
       tenantId: (headers['x-tenant-id'] as string) ?? undefined,
-      organizationId: (headers['x-organization-id'] as string) ?? undefined,
+      companyId: (headers['x-company-id'] as string) ?? undefined,
       userId: (headers['x-user-id'] as string) ?? undefined,
       roles:
         (headers['x-roles'] as string)

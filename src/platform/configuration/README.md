@@ -8,7 +8,7 @@
 
 `CompanyConfigPort.getCompanyConfig(companyId?)` reads `company_configs`
 through `TransactionHost` (so it joins the caller's transaction). Company
-resolution order: **explicit argument → CLS `organizationId` →
+resolution order: **explicit argument → CLS `companyId` →
 `DEFAULT_COMPANY_ID`**. A missing row for a *context-resolved* company in
 `TENANCY_MODE=multi` is a hard `NotFoundException` — never default billing
 data across companies. For the unscoped default it logs a warning and returns

@@ -16,7 +16,6 @@ import { RecurringExecutionRepositoryPort } from './ports/recurring-execution-re
 import { RecurringContext } from './recurring-context.types';
 import { RecurringTemplateRecord } from './recurring-template.types';
 import { RecurrenceEngine } from './recurrence-engine';
-import './events/recurring.registry';
 
 /**
  * Scheduler (TIME) and DomainEventDispatcher (EVENT) both land here.

@@ -8,9 +8,9 @@
 1. [Composition root & global request pipeline](#0-composition-root--global-request-pipeline)
 2. [Context (request identity + tenancy + read replica)](#1-context--request-identity--tenancy--read-replica)
 3. [Outbox (transactional publish)](#2-outbox--transactional-publish)
-4. [Events (in-process bus + routing policy)](#3-events--in-process-bus--routing-policy)
+4. [Events (in-process dispatch only)](#3-events--in-process-dispatch-only)
 5. [Messaging + MessageQueue (broker adapters)](#4-messaging--messagequeue--broker-adapters)
-6. [Inbox (reliable consumption)](#5-inbox--reliable-consumption)
+6. [Inbox (consumer-side deduplication)](#5-inbox--consumer-side-deduplication)
 7. [Locking (distributed lease)](#6-locking--distributed-lease)
 8. [Idempotency (duplicate suppression + replay)](#7-idempotency--duplicate-suppression--replay)
 9. [Scheduler (durable TIME wake-ups)](#8-scheduler--durable-time-wake-ups)
@@ -18,7 +18,7 @@
 11. [Batch-operation (bulk transitions)](#10-batch-operation--bulk-transitions)
 12. [Import (spreadsheet/CSV pipeline)](#11-import--spreadsheetcsv-pipeline)
 13. [Condition-engine (AND/OR generation gate)](#12-condition-engine--andor-generation-gate)
-14. [Saga (cross-aggregate orchestration)](#13-saga--cross-aggregate-orchestration)
+14. [Saga (company-configurable orchestration)](#13-saga--company-configurable-orchestration)
 15. [Webhook (inbound receipt + outbound dispatch)](#14-webhook--inbound-receipt--outbound-dispatch)
 16. [Notification (email/SMS/push pipeline)](#15-notification--emailsmspush-pipeline)
 17. [Numbering (document sequences)](#16-numbering--document-sequences)
@@ -44,7 +44,7 @@ Client → Fastify → RequestIdInterceptor (seeds CLS RequestContext)
 
 - `PlatformModule` imports + re-exports all 20 service modules. Deliberately **not `@Global()`**.
 - Raw clients (`Prisma, amqplib, kafkajs, ioredis, S3, SES/SNS`) live in `src/infrastructure/*` only.
-- Platform owns its event contract `OutboxEvent / OutboxEventBase` (`platform/events/bases/outbox-event.base.ts`) + `outboxEventRegistry`. Business `DomainEvent` satisfies it **structurally**. `src/bootstrap/configure-event-rehydration.ts` attaches business `domainEventRegistry` as read-only delegate. Platform never imports `@business/**`.
+- Platform owns its event contract — `OutboxEvent / OutboxEventBase / OutboxEnvelope` (`platform/outbox/outbox.types.ts`). Business `DomainEvent` satisfies `OutboxEvent` **structurally** (same envelope fields), so the outbox pipes it verbatim: the payload is persisted and delivered as-is, with **no rehydration step** and no business registry delegate. Platform never imports `@business/**`.
 - Business opt-in registries (`BatchOperationHandler`, `ImportHandler`, `NotificationHandler`, `ScheduledJobFireHandler`, `FieldResolver`, webhook sources) are filled by **composition root** `src/bootstrap/configure-*.ts`, never by platform importing business. Exception: recurring→scheduler is platform→platform and registers in `RecurringModule.onApplicationBootstrap`.
 
 ---
@@ -67,11 +67,11 @@ abstract class RequestContextPort {
   getRequestId(): string | undefined;
   getCorrelationId(): string | undefined;
   getTenantId(): string | undefined;
-  getOrganizationId(): string | undefined;
+  getCompanyId(): string | undefined;
   getUserId(): string | undefined;
 }
 // impl: adapters/cls-request-context.service.ts (over nestjs-cls, key CLS_REQUEST_CONTEXT_KEY)
-// ports/request-context.ts: RequestContextData{requestId,correlationId,tenantId?,organizationId?,userId?,roles[],locale,ip?,userAgent?}
+// ports/request-context.ts: RequestContextData{requestId,correlationId,tenantId?,companyId?,userId?,roles[],locale,ip?,userAgent?}
 // ports/prisma-read.port.ts: abstract class PrismaReadPort extends PrismaClient
 // impl binding: useExisting PrismaReadService (infrastructure/database/prisma)
 // guards/tenancy-auth.guard.ts: TenancyAuthGuard (APP_GUARD in app.module), @SkipTenancy() opt-out
@@ -82,7 +82,7 @@ abstract class RequestContextPort {
 1. HTTP: `RequestIdInterceptor` creates one CLS context per request (`requestId`, `x-correlation-id`).
 2. `TenancyAuthGuard`: `TENANCY_MODE=single` → trust `x-tenant-id` headers (pass-through). `multi` → require `Authorization: Bearer <jwt>` signed with `JWT_ACCESS_SECRET`, extract `tenantId` claim → stash `VerifiedIdentity` on request; interceptor ignores raw headers. Missing/invalid → 401; missing `tenantId` claim → 403.
 3. Any layer: `requestContextPort.get()/require()/getTenantId()` — no param threading.
-4. Background (BullMQ workers, outbox re-dispatch, scheduler/recurring/batch/import): `requestContextPort.run({tenantId, organizationId, correlationId}, fn)` — the **only** sanctioned child-context mechanism. `require()` throws if forgotten.
+4. Background (BullMQ workers, outbox re-dispatch, scheduler/recurring/batch/import): `requestContextPort.run({tenantId, companyId, correlationId}, fn)` — the **only** sanctioned child-context mechanism. `require()` throws if forgotten.
 5. Queries: business `*QueryRepository` injects `PrismaReadPort` (replica pool; falls back to write pool when no replica URL).
 
 **Who calls / how:**
@@ -107,19 +107,23 @@ abstract class RequestContextPort {
 **Ports:**
 
 ```ts
-// ports/outbox.port.ts (current)
-abstract class OutboxPort {
-  append(req: AppendOutboxEventRequest): Promise<OutboxMessage>;
-  appendMany(reqs: AppendOutboxEventRequest[]): Promise<OutboxMessage[]>;
+// ports/outbox-writer.port.ts — the ONLY outbox port
+abstract class OutboxWriterPort {
+  append(
+    event: OutboxEvent,
+    aggregateType: string,
+    aggregateId: string,
+    opts?: { broker?: BrokerTarget },
+  ): Promise<void>;
 }
-// impl: OutboxService → AppendOutboxEventUseCase / AppendOutboxEventsBatchUseCase
-// ports/outbox-writer.port.ts (@deprecated, still used by recurring/batch/import): OutboxWriterPort.append(event, aggregateType, aggregateId)
-// internal ports/outbox-repository.port.ts → PrismaOutboxRepository:
-// append, appendMany, claimBatch({batchSize,maxAttempts}), markPublished(id,claimToken),
-// markFailed(id,claimToken,error,availableAt,maxAttempts), releaseExpiredClaims(now), deletePublishedOlderThan(hours)
+// impl: OutboxService → AppendOutboxEventUseCase
+// repositories/prisma-outbox.repository.ts (concrete, no port): append(request),
+// claimBatch({batchSize,maxAttempts,claimLeaseMs}), markPublished(id,claimToken),
+// markFailed(id,claimToken,error,nextRetryAt,maxAttempts), deletePublishedOlderThan(hours)
+// usecases/publish-pending-batch.usecase.ts — claim → publish → emit → CAS settle
 ```
 
-Types (`outbox.types.ts`): `OutboxStatus=PENDING|CLAIMED(=DB PUBLISHING)|PUBLISHED|FAILED|DEAD_LETTER`, `AppendOutboxEventRequest{tenantId?,organizationId?,eventType,eventVersion?,aggregateType,aggregateId,payload,occurredAt?,correlationId?,causationId?,headers?}`.
+Types (`outbox.types.ts`): `BrokerTarget='rabbitmq'|'kafka'|'sqs'`; `OutboxEnvelope` (the single canonical transport envelope); `OutboxEvent`/`OutboxEventBase` (platform event contract); `OutboxStatus=PENDING|PUBLISHED|DEAD_LETTER`; `AppendOutboxEventRequest{tenantId?,companyId?,eventId,eventType,eventVersion?,aggregateType,aggregateId,payload,occurredAt?,correlationId?,causationId?,headers?,broker?,nextRetryAt?}`.
 
 **Complete flow:**
 
@@ -129,147 +133,126 @@ flowchart LR
   TX --> AGG[Aggregate row]
   TX --> OUT[INSERT outbox_messages]
   TX -->|COMMIT| DB[(PostgreSQL)]
-  OUT --> SCHED[OutboxScheduler poll 5s]
-  SCHED --> PUB[OutboxDispatcherAdapter]
-  PUB --> BRK[RabbitMQ/Kafka/SQS]
-  PUB --> BUS[In-process re-dispatch]
+  OUT --> SCHED[OutboxScheduler poll 10s]
+  SCHED --> PUB[PublishPendingBatchUseCase]
+  PUB --> MQ[MessageQueuePort<br/>broker by envelope]
+  MQ --> BRK[RabbitMQ/Kafka/SQS]
+  PUB --> BUS[InProcessEventBus.emit<br/>canonical envelope]
 ```
 
-1. **Append (in business tx):** use case → `<Aggregate>IntegrationPort` → `OutboxAdapter` → `OutboxPort.append` → `PrismaOutboxRepository.append` on caller's `TransactionHost`. `tenantId/organizationId/eventId/correlationId/causationId` stamped from CLS. COMMIT is atomic (data + event). Nothing is published here.
-2. **Poll:** `outbox-scheduler.ts` `setInterval(pollIntervalMs)` → `OutboxDispatcherAdapter.dispatchPendingBatch()`; cron `EVERY_MINUTE` reconcile leases, `EVERY_HOUR` cleanup published.
-3. **Claim:** `ClaimOutboxMessagesUseCase({batchSize,maxAttempts})` runs single `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` over due `PENDING|FAILED` (`attempts<max && availableAt<=now`), flips to `PUBLISHING`, stamps `claimToken+claimedAt`, bumps `attempts`. Concurrent replicas claim disjoint rows. Grouped per `aggregateType:aggregateId` (claim/`createdAt` order), chunks of 10 parallel, sequential within group = per-aggregate FIFO.
-4. **Dispatch per record:** `MessageRoutingPolicy.resolve(eventType)` → build `IntegrationMessage` → publish to each targeted broker (`MessagePublisher`). Then `dispatchInProcess`: `outboxEventRegistry.rehydrate(eventType,payload,envelope)` (business delegate from bootstrap; null → warn+skip) → `RequestContextPort.run({tenantId,…})` → `EventBusPort.publish(envelope)`. In-process throw = log-only (brokers already hold it).
-5. **Settle:** success → `MarkOutboxPublishedUseCase(id,claimToken)` (CAS). Broker throw → `availableAt=now+baseMs*2^(attempts-1)` → `MarkOutboxFailedUseCase` → `FAILED`, or `DEAD_LETTER` when `attempts>=max` (terminal, alertable).
-6. **Reconcile:** `OutboxReconciler` returns `PUBLISHING` rows with expired `claimedAt` lease → `PENDING` (crashed publisher).
+1. **Append (in business tx):** use case → `<Aggregate>IntegrationPort` → `OutboxAdapter` → `OutboxWriterPort.append(event, aggregateType, aggregateId, opts?)` → `AppendOutboxEventUseCase` → concrete `PrismaOutboxRepository.append` on the caller's `TransactionHost`. `tenantId/companyId/eventId/correlationId/causationId` stamped from CLS; `opts.broker` (default `rabbitmq`) written into `headers.broker`. COMMIT is atomic (data + event). Nothing is published here.
+2. **Poll:** `outbox.scheduler.ts` `setInterval(pollIntervalMs)` → `PublishPendingBatchUseCase.execute()` (overlap-guarded); cron `EVERY_HOUR` deletes `PUBLISHED` rows past retention.
+3. **Claim:** `claimBatch({batchSize,maxAttempts,claimLeaseMs})` runs a single `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` over due `PENDING` rows (`nextRetryAt<=now` and claim missing or older than the lease), stamps `claimToken+claimedAt`, bumps `attempts` — **status stays `PENDING`** (the lease is the in-flight marker). Concurrent replicas claim disjoint rows; order is `createdAt` asc.
+4. **Dispatch per record:** build the canonical `OutboxEnvelope` (broker read from `headers.broker`, default `rabbitmq`) → `MessageQueuePort.publish(envelope)` → then `RequestContextPort.run({tenantId,…})` → `InProcessEventBus.emit(envelope)`. In-process throw = log-only (the broker already holds it).
+5. **Settle:** success → `markPublished(id,claimToken)` (CAS). Publish throw → `nextRetryAt=now+baseMs*2^(attempts-1)` → `markFailed(id,claimToken,error,nextRetryAt,max)` → stays `PENDING`, or `DEAD_LETTER` when `attempts>max` (terminal, alertable).
+6. **No reconciler:** a crashed owner's lease simply expires and the next tick reclaims the row through the same claim clause.
 
 **Who calls / how:**
 
-| Caller                                                 | Surface                                                         |
-| ------------------------------------------------------ | --------------------------------------------------------------- |
-| Every command use case (via module `OutboxAdapter`)    | `OutboxPort.append/appendMany` (same tx)                        |
-| `OutboxScheduler` / `OutboxReconciler` (internal cron) | `OutboxDispatcherAdapter`, claim/mark use cases                 |
-| Nobody publishes brokers directly                      | `MessageRoutingPolicy` + `MessagePublisher` only via dispatcher |
+| Caller                                              | Surface                                                |
+| --------------------------------------------------- | ------------------------------------------------------ |
+| Every command use case (via module `OutboxAdapter`) | `OutboxWriterPort.append` (same tx)                    |
+| `OutboxScheduler` (internal cron + tick)            | `PublishPendingBatchUseCase`, `PrismaOutboxRepository` |
+| Nobody publishes brokers directly                   | `MessageQueuePort` only via the dispatcher             |
 
-**Data & config:** `outbox_messages` (`prisma/schema/platform/outbox.prisma`, indexes `[status,availableAt]`, `[tenantId,organizationId,status]`). `src/config/outbox.config.ts` (`ConfigService.getOutbox()`): `OUTBOX_POLL_INTERVAL_MS=5000`, `OUTBOX_BATCH_SIZE=50`, `OUTBOX_MAX_ATTEMPTS=10`, `OUTBOX_RETRY_BACKOFF_BASE_MS=1000`, `OUTBOX_RETRY_MAX_DELAY_MS=600000`, `OUTBOX_CLAIM_LEASE_MS=120000`, `OUTBOX_CLEANUP_OLDER_THAN_HOURS=24`.
-**Tenancy:** stamped at append, carried on re-dispatch CLS + broker headers; dispatcher claims globally.
-**Rules:** Never publish inside business tx; CAS on `claimToken`; stable `eventId` for consumer dedupe; new event type must be in aggregate rehydrator registry or in-process is skipped.
+**Data & config:** `outbox_messages` (`prisma/schema/platform/outbox.prisma`, indexes `[status,nextRetryAt]`, `[tenantId,companyId,status]`). `src/config/outbox.config.ts` (`ConfigService.getOutbox()`): `OUTBOX_POLL_INTERVAL_MS=10000`, `OUTBOX_BATCH_SIZE=100`, `OUTBOX_MAX_ATTEMPTS=10`, `OUTBOX_RETRY_BASE_DELAY_MS=1000`, `OUTBOX_RETRY_MAX_DELAY_MS=600000`, `OUTBOX_CLAIM_LEASE_MS=60000`, `OUTBOX_CLEANUP_OLDER_THAN_HOURS=24`.
+**Tenancy:** stamped at append, restored on in-process CLS + carried in broker headers; the dispatcher claims globally (stateless).
+**Rules:** Never publish inside business tx; every settle is CAS on `claimToken`; stable `eventId` for consumer dedupe; in-process delivery is best-effort and never reflected onto the row.
 
 ---
 
-## 3. Events — in-process bus + routing policy
+## 3. Events — in-process dispatch only
 
-> Two decisions, no persistence. `src/platform/events/README.md`.
+> A thin emit wrapper over `EventEmitter2`: same envelope the brokers carry, zero
+> durability. `src/platform/events/README.md`.
 
 **Module:** `src/platform/events/events.module.ts` → `EventsModule`.
 **Ports:**
 
 ```ts
-// ports/event-bus.port.ts
-abstract class EventBusPort {
-  publish(event: DomainEventEnvelope): Promise<EventPublishResult>;
-  register(reg: EventHandlerRegistration): void;
-  unregister(id: string): void;
+// ports/in-process-event-bus.port.ts — the only port
+type MessageEnvelope = OutboxEnvelope; // canonical envelope alias
+abstract class InProcessEventBus {
+  emit(envelope: MessageEnvelope): void; // at-most-once, no retries, no storage
 }
-// impl: EventBusService → Publish/Register/UnregisterEventHandlerUseCase → DomainEventDispatcher + DomainEventRegistry
-// underlying: NestEventBusAdapter (EventEmitter2 wildcard)
-// message-routing.policy.ts
-abstract class MessageRoutingPolicy {
-  resolve(eventType: string): BrokerTargets;
-}
-// impl: DefaultMessageRoutingPolicy; BrokerTarget='rabbitmq'|'kafka'|'sqs'
+// impl: EventBusService → EmitEventUseCase → NestEventBusAdapter (EventEmitter2)
 ```
 
-Envelope (`bases/outbox-event.base.ts`): `OutboxEvent{eventId,occurredAt,version,correlationId?,causationId?,headers?}`, `OutboxEventBase`, `EventRehydrator`, `RehydrationEnvelope`; bus type (`event-bus.types.ts`): `DomainEventEnvelope{eventId,eventType,eventVersion,tenantId?,organizationId?,aggregateType,aggregateId,payload,occurredAt,…}`.
+Envelope: the canonical `OutboxEnvelope` from `platform/outbox/outbox.types.ts`
+(`eventId`, `eventType`, `aggregateType`, `aggregateId`, `payload`, `headers`,
+`occurredAt`, `broker?`, `correlationId?`, `causationId?`). No rehydration types.
 
 **Complete flow:**
 
-1. Only caller is `OutboxDispatcherAdapter` (broker legs + `dispatchInProcess`) — business never publishes brokers directly.
-2. `EventBusService.publish(envelope)` → `PublishEventUseCase.execute(event,{failFast?,timeoutMs?})` → `DomainEventDispatcher.dispatch` over `DomainEventRegistry` matching `eventType+version (+tenant/org scope)` → invoke handlers, return `{eventId,dispatchedHandlers}`.
-3. `DefaultMessageRoutingPolicy.resolve`: `FAN_OUT_EVENTS={ProductCreated,VendorCreated,PurchaseOrderCreated,GrnCreated,InvoiceCreated: [rabbitmq,kafka,sqs]}` else `['rabbitmq']`. Disabled brokers (no `KAFKA_BROKERS`/`SQS_URL`) are skipped at adapter but still counted published — routing is intent, availability gates legs. Same envelope rides all transports (RabbitMQ exchange `erp.events` + routing-key=eventType; Kafka topic=eventType; SQS queue URL).
+1. The only caller is the outbox dispatcher (`PublishPendingBatchUseCase`) — business never emits directly.
+2. `EventBusService.emit(envelope)` → `EmitEventUseCase` → `NestEventBusAdapter.emit(envelope)` → `emitter.emit(envelope.eventType, envelope)`.
+3. Subscribers: business `*.event-emitter.listener-event.ts` (`@OnEvent('<EventType>')`, receives `MessageEnvelope`, reads `message.payload`) plus platform `onAny` projections (recurring / notification / webhook), which match on the event type.
 
-**Who calls / how:** `OutboxDispatcherAdapter` → `MessageRoutingPolicy.resolve` + `EventBusPort.publish`; business `*.event-emitter.listener-event.ts` (`@OnEvent('<EventClassName>')`) reacts. Adding a Kafka/SQS listener = adding the event to `FAN_OUT_EVENTS`.
+**Who calls / how:** `platform/outbox` emits after the broker publish, under a restored tenant CLS context; business listeners react locally. Reactions that must survive a crash belong behind a broker consumer + `platform/inbox`.
 **Data & config:** None (no tables, no config, no cron).
-**Rules:** Keep in-process handlers idempotent and non-throwing; events must be in the aggregate rehydrator registry.
+**Rules:** Keep in-process handlers idempotent and non-throwing — the adapter catches and logs, so one bad listener never breaks the others or the outbox row.
 
 ---
 
-## 4. Messaging / MessageQueue — broker adapters
+## 4. Messaging / MessageQueue — one port, broker by param
 
-> Thin per-broker publishers; outbox decides targets. `src/platform/messaging/README.md`.
+> Infrastructure-agnostic async transport; the envelope picks the broker. `src/platform/messaging/README.md`.
 
-**Modules:** `messaging.module.ts` → `MessagingModule`; `message-queue.module.ts` → `MessageQueueModule` (imports `@infrastructure/messaging`).
+**Module:** `messaging.module.ts` → `MessagingModule` (imports `@infrastructure/messaging`).
 **Ports:**
 
 ```ts
-// ports/message-publisher.port.ts
-interface IntegrationMessage {
-  eventType;
-  aggregateType;
-  aggregateId;
-  payload;
-  headers?;
-  occurredAt;
-  correlationId?;
-  causationId?;
-  tenantId?;
-}
-abstract class MessagePublisher {
-  publish(msg: IntegrationMessage): Promise<void>;
-}
-// message-publisher.tokens.ts: abstract RabbitMqPublisher, KafkaPublisher, SqsPublisher
-// binding: MessagePublisher → RabbitMQPublisherAdapter (default); per-broker tokens → adapters/rabbitmq|kafka|sqs-publisher.adapter.ts
-// ports/message-queue.port.ts
+// ports/message-queue.port.ts — the only public port
 abstract class MessageQueuePort {
-  publish(req: MessageQueuePublishRequest): Promise<MessageQueuePublishResult>;
-  subscribe(req: MessageQueueSubscribeRequest): Promise<MessageQueueSubscription>;
-  ack(req: MessageQueueAckRequest): Promise<void>;
-  nack(req: MessageQueueNackRequest): Promise<void>;
+  publish(envelope: OutboxEnvelope): Promise<void>; // routes on envelope.broker (default rabbitmq)
 }
-// impl: MessageQueueService → Publish/Subscribe/Acknowledge/RejectMessageUseCase + MessageConsumerRegistry
+// impl: MessageQueueService → PublishMessageUseCase → BrokerPublisher adapters
+// message-publisher.tokens.ts: interface BrokerPublisher + abstract RabbitMqPublisher/KafkaPublisher/SqsPublisher
 ```
 
 **Complete flow:**
 
-1. `OutboxDispatcherAdapter` injects all three broker tokens + `SchedulerEventPublisherPort` (scheduler fallback) injects `RabbitMqPublisher`. Business never publishes.
-2. Per-broker shape: RabbitMQ routing-key=`eventType` on `rabbitmq.exchange`, persistent; Kafka topic=`eventType`, key=`aggregateId` (disabled without `KAFKA_BROKERS`); SQS queue-URL + `event-id` header (no-op without `SQS_URL`).
-3. `MessageQueuePort` path: `PublishMessageUseCase` → transport; `SubscribeMessageUseCase` → `MessageConsumerRegistry`; consumers `ack/nack(requeue)`.
-4. Publish-leg throw → outbox `FAILED` + retry. Partial multi-broker delivery is expected (at-least-once + consumer dedupe on `event-id` via inbox/idempotency).
+1. `PublishPendingBatchUseCase` (outbox) injects `MessageQueuePort`; the scheduler fallback (`RabbitMqSchedulerEventPublisher` → `SchedulerEventPublisherPort`) does too. Business never publishes.
+2. `PublishMessageUseCase.execute(envelope)` switches on `envelope.broker ?? 'rabbitmq'` across the three adapters. Per-broker shape: RabbitMQ routing-key=`eventType` on `rabbitmq.exchange`, persistent; Kafka topic=`eventType`, key=`aggregateId`; SQS to the configured queue URL. Every transport carries the same canonical envelope.
+3. An unconfigured broker target throws — `publish` rejects, the outbox keeps the row `PENDING` and retries it to `DEAD_LETTER`; a missing broker never blocks a transaction.
 
-**Data & config:** No tables. `src/config/messaging.config.ts` (`KAFKA_BROKERS`, `SQS_URL`, `rabbitmq.exchange`).
-**Rules:** New broker = implement `MessagePublisher` + register token here + extend `BrokerTarget`/routing policy. Lint bans broker libs outside infra/listeners.
+**Data & config:** No tables. `src/config/messaging.config.ts` (`RABBITMQ_URL`, `RABBITMQ_EXCHANGE`, `KAFKA_BROKERS`, `SQS_URL`, `SQS_REGION`).
+**Rules:** Business never imports broker libs (ESLint). New broker = implement `BrokerPublisher` + register a token + extend `BrokerTarget` and the publish switch — never hand-roll producers in business modules. At-least-once; consumers dedupe on the stable `event-id` via inbox/idempotency. No consumers, no subscribe registry.
 
 ---
 
-## 5. Inbox — reliable consumption
+## 5. Inbox — consumer-side deduplication
 
-> Consumer-side counterpart of the outbox (receive→process→ack, duplicate-safe). `src/platform/inbox/README.md`.
+> The consumer counterpart of Outbox: the same logical message + the same
+> consumer yields exactly one business execution under at-least-once delivery.
+> `src/platform/inbox/README.md`.
 
 **Module:** `src/platform/inbox/inbox.module.ts` → `InboxModule` (imports `Context,Prisma`; exports `InboxPort`).
 **Ports:**
 
 ```ts
-// ports/inbox.port.ts
+// ports/inbox.port.ts — the only port
 abstract class InboxPort {
   receive(req: InboxReceiveRequest): Promise<InboxReceiveResult>;
   complete(req: InboxCompleteRequest): Promise<void>;
   fail(req: InboxFailRequest): Promise<void>;
 }
-// InboxReceiveRequest={tenantId?,organizationId?,consumer,messageId,messageType,payload?,payloadHash?,occurredAt?,correlationId?,causationId?}
-// InboxReceiveResult= ACQUIRED{reservation:{id,claimToken,version}} | PROCESSED | IN_PROGRESS | FAILED | SUSPENDED | MESSAGE_REUSED
-// impl: InboxService → Receive/Complete/Fail/ClaimInboxRetryUseCase
-// ports/inbox-repository.port.ts → PrismaInboxRepository: insert/findUnique/claimRetryable/updateStatus(CAS)
+// InboxReceiveRequest={tenantId?,companyId?,consumer,messageId,messageType,payload,correlationId?,causationId?}
+// InboxReceiveResult= ACQUIRED{reservation:{id,claimToken}} | DUPLICATE | BUSY
+// impl: InboxService → Receive/Complete/FailUseCase → PrismaInboxRepository (concrete)
 ```
 
 **Complete flow:**
 
-1. Worker first step (inside `RequestContextPort.run`): `receive()` → `sha256(payload)` if no hash → `repository.insert` → success ⇒ `ACQUIRED{claimToken,version}`.
-2. On unique violation → `findUnique(tenantId,orgId,consumer,messageId)`: `PROCESSED`⇒`PROCESSED` (dup, skip); `IN_PROGRESS`⇒`IN_PROGRESS`; `FAILED`⇒`claimRetryable`→`ACQUIRED` or `FAILED`; `SUSPENDED`⇒`SUSPENDED`; `payloadHash` mismatch⇒`MESSAGE_REUSED` (key reuse bug).
-3. Process → `complete` (CAS `claimToken+version+status` → `PROCESSED`) or `fail` (CAS → `FAILED`, retryable, bounded).
-4. `InboxReconciler` cron releases expired `IN_PROGRESS` (`claimedAt+claimLeaseMs`), exponential backoff `nextAttemptAt`, `SUSPEND` after max.
+1. Listener calls `receive()`: INSERT-as-claim on `(tenant, company, consumer, messageId)` → success ⇒ `ACQUIRED` (first delivery wins; the reservation carries `id` + `claimToken`).
+2. On unique violation → read the row: `PROCESSED` ⇒ `DUPLICATE` (skip); `SUSPENDED` ⇒ `BUSY`; `IN_PROGRESS` while the claim is live (inside `INBOX_CLAIM_LEASE_MS`) or the retry is not due ⇒ `BUSY`; otherwise CAS re-claim on the stored token (`attempts + 1`) ⇒ `ACQUIRED` (losing the race ⇒ `BUSY`).
+3. `RequestContextPort.run` restores tenant/company/correlation; the listener executes the payload, then `complete` (CAS `claimToken` → `PROCESSED`) fires the broker ACK.
+4. Failure → `fail` keeps the row `IN_PROGRESS` with an exponential `nextAttemptAt` + `lastError`; the broker NACK drives redelivery.
+5. `InboxReconciler` (@Cron 60s): an expired claim with `attempts > INBOX_MAX_ATTEMPTS` parks `SUSPENDED` (alertable, never purged); the rest get a fresh backoff; the same sweep deletes `PROCESSED` rows past `INBOX_PROCESSED_RETENTION_MS`.
 
-**Data & config:** `inbox_messages` (`prisma/schema/platform/inbox.prisma`, `@@unique([tenantId,organizationId,consumer,messageId])`, CAS `claimToken/version`). `src/config/inbox.config.ts`: `INBOX_CLAIM_LEASE_MS=300000`, `MAX_ATTEMPTS=5`, `RETRY_BASE_DELAY_MS=5000`, `RETRY_MAX_DELAY_MS=600000`, `RECONCILIATION_INTERVAL_MS=60000`, `BATCH_SIZE=100`.
-**Tenancy:** natural key tenant-scoped; different consumers process same `messageId` independently.
-**Rules:** Business consumes only `InboxPort`; every write CAS; failed is re-claimable; reconciler is the only path for expired claims.
+**Data & config:** `inbox_messages` (`prisma/schema/platform/inbox.prisma`; `@@unique([tenantId,companyId,consumer,messageId])` with NULLs normalized to `''` at the repo edge; `IN_PROGRESS|PROCESSED|SUSPENDED`; CAS on `claimToken`). `src/config/inbox.config.ts`: `INBOX_CLAIM_LEASE_MS=300000`, `INBOX_MAX_ATTEMPTS=5`, `INBOX_RETRY_BASE_DELAY_MS=5000`, `INBOX_RETRY_MAX_DELAY_MS=600000`, `INBOX_RECONCILIATION_INTERVAL_MS=60000`, `INBOX_PROCESSED_RETENTION_MS=2592000000`.
+**Tenancy:** the natural key is tenant + company + consumer + message id; different consumers process the same `messageId` independently.
+**Rules:** Business consumes only `InboxPort`; ACK only after `complete`; every write CAS; poison is parked, never dropped; events a consumer produces leave via the outbox in the same transaction.
 
 ---
 
@@ -292,7 +275,7 @@ abstract class DistributedLockPort {
 // internal ports/distributed-lock-repository.port.ts → PrismaDistributedLockRepository (getOrCreate, nextFencingToken)
 ```
 
-Types (`locking.types.ts`): identity `{tenantId,organizationId,scope,resource}`, `AcquireResult={ACQUIRED,ticket}|{BUSY,retryAfterMs}`, ticket `{lockId,lockKey,ownerToken,fencingToken,acquiredAt,expiresAt}`. Key: `LockKeyBuilder` → `{tenantId}:{organizationId}:{scope}:{resource}`, adapter prepends `lock:`.
+Types (`locking.types.ts`): identity `{tenantId,companyId,scope,resource}`, `AcquireResult={ACQUIRED,ticket}|{BUSY,retryAfterMs}`, ticket `{lockId,lockKey,ownerToken,fencingToken,acquiredAt,expiresAt}`. Key: `LockKeyBuilder` → `{tenantId}:{companyId}:{scope}:{resource}`, adapter prepends `lock:`.
 
 **Complete flow:**
 
@@ -301,7 +284,7 @@ Types (`locking.types.ts`): identity `{tenantId,organizationId,scope,resource}`,
 3. `release({ticket})` in `finally` → Lua ownership+DEL, idempotent best-effort (TTL is the backstop).
 
 **Who calls / how:** scheduler ticker per `jobId`, import stage locks (`StageLock`), any "one-winner" worker — all via `DistributedLockPort`. Fail-closed: BUSY ⇒ skip work, never speculative.
-**Data & config:** `distributed_locks` (`prisma/schema/platform/locking.prisma`, `@@unique[tenantId,organizationId,scope,resource]`, `fencingToken BigInt`). `src/config/locking.config.ts`: `LOCK_DEFAULT_LEASE_MS=30000`, `MIN=5000`, `MAX=300000`, `RENEW_INTERVAL=10000`. Redis via `InfraCacheModule`.
+**Data & config:** `distributed_locks` (`prisma/schema/platform/locking.prisma`, `@@unique[tenantId,companyId,scope,resource]`, `fencingToken BigInt`). `src/config/locking.config.ts`: `LOCK_DEFAULT_LEASE_MS=30000`, `MIN=5000`, `MAX=300000`, `RENEW_INTERVAL=10000`. Redis via `RedisModule` (infrastructure).
 **Rules:** Redis down on acquire → `BUSY` (logged); PG down → throw (no fencing token = unsafe); never inject `RedisService` directly, never hand-build keys, never use as cache/idempotency; always release in `finally`; downstream rejects stale owners via fencing token.
 
 ---
@@ -321,14 +304,14 @@ abstract class IdempotencyPort {
   fail(req: IdempotencyFailRequest): Promise<void>;
 }
 // impl: IdempotencyService → Reserve/Complete/FailIdempotencyUseCase
-// IdempotencyIdentity={tenantId,organizationId,scope,key}
+// IdempotencyIdentity={tenantId,companyId,scope,key}
 // ReserveResult= {ACQUIRED,reservation:{id,claimToken,version}} | {REPLAY,result} | {IN_PROGRESS} | {SUSPENDED} | {KEY_REUSED}
 // http/idempotent.decorator.ts: @Idempotent() + IDEMPOTENCY_HEADER='idempotency-key'
 ```
 
 **Complete flow (programmatic):**
 
-1. `reserve({scope,key,tenantId,organizationId,requestHash?,ttlMs?})` → `INSERT IN_PROGRESS` (insert-as-claim on `@@unique[tenantId,organizationId,scope,key]`) → `ACQUIRED` → execute → `complete({reservation,result})` (CAS `version+token` → `COMPLETED+resultJson`) or `fail` (→ `FAILED`, re-arms immediately).
+1. `reserve({scope,key,tenantId,companyId,requestHash?,ttlMs?})` → `INSERT IN_PROGRESS` (insert-as-claim on `@@unique[tenantId,companyId,scope,key]`) → `ACQUIRED` → execute → `complete({reservation,result})` (CAS `version+token` → `COMPLETED+resultJson`) or `fail` (→ `FAILED`, re-arms immediately).
 2. Retried `COMPLETED` → `REPLAY+result`; concurrent `IN_PROGRESS` → `IN_PROGRESS`; `requestHash` mismatch → `KEY_REUSED`; `FAILED/SUSPENDED/expired` → atomic `takeover` → `ACQUIRED`.
 
 **Complete flow (HTTP):** `IdempotencyInterceptor`: metadata check → require non-blank `Idempotency-Key` (else 400) → `reserve({scope: Controller.method, key, tenant/org from RequestContextPort})` → `REPLAY`→return stored result (handler never runs); `IN_PROGRESS/SUSPENDED/KEY_REUSED`→409; `ACQUIRED`→`next.handle().pipe(complete on success, fail+rethrow on error)`.
@@ -413,7 +396,7 @@ abstract class RecurringExecutionPort {
 4. Template not ACTIVE → `skip(TemplateNotActive)`. Else parse `generationCondition` → `ConditionEvaluator.evaluate`; fail → `skip(ConditionNotMet)` + reschedule.
 5. Pass → `OutboxWriterPort.append(new RecurringOccurrenceRequested(executionId,templateId,targetEntityType,partyId,partyType,currency,autoPost,triggerKey,traceId,headerOverrides,lines,tenantId,eventPayload), 'RecurringTemplate', template.id)`.
 6. `reschedule`: `RecurrenceEngine.nextRunDate(frequency,interval,from,timeZone)` → `template.update(nextRunDate,lastRunDate)` + `schedulerPort.rescheduleByAggregate`; past `endDate` → COMPLETED + `cancelByAggregate`.
-7. `OutboxPublisher` → Rabbit `erp.events/RecurringOccurrenceRequested` → business creates doc → `RecurringExecutionPort.complete/fail`.
+7. Outbox dispatcher → Rabbit `erp.events/RecurringOccurrenceRequested` → business creates doc → `RecurringExecutionPort.complete/fail`.
 
 **Complete flow — EVENT:** no `scheduled_jobs` row. `domain-event.dispatcher.ts` (`EventEmitter2.onAny`) matches ACTIVE templates by `eventName`, calls same handler with `jobId:null`, `triggerKey=sourceEventId`.
 
@@ -550,44 +533,61 @@ interface FieldResolver {
 
 ---
 
-## 13. Saga — cross-aggregate orchestration
+## 13. Saga — company-configurable orchestration
 
-> Sequence of steps each dispatching a command and reacting to events (not one DB tx). `src/platform/saga/README.md`.
+> Long-running cross-aggregate processes on ERP-standard defaults that every
+> company narrows with its own overlay; the saga calls business actions, never
+> repositories. `src/platform/saga/README.md`.
 
-**Module:** `src/platform/saga/saga.module.ts` → `SagaModule` (imports `Context,Prisma`; NOT `@Global()`; exports `SagaPort,SagaDefinitionRegistry`).
+**Module:** `src/platform/saga/saga.module.ts` → `SagaModule` (imports `Context,Prisma,Outbox`; NOT `@Global()`; exports `SagaInboundPort,SagaActionRegistry`).
 **Ports:**
 
 ```ts
-// ports/saga.port.ts → SagaService
-abstract class SagaPort {
-  start(req: StartSagaRequest): Promise<SagaInstance>;
-  handleEvent(req: HandleSagaEventRequest): Promise<void>;
-  suspend(req: SuspendSagaRequest): Promise<void>;
-  compensate(req: CompensateSagaRequest): Promise<void>;
+// ports/feature-gate.port.ts — owned outside the saga
+abstract class FeatureGate {
+  enabled(companyId): Promise<ReadonlySet<string>>;
 }
-// ports/saga-repository.port.ts → PrismaSagaRepository (createInstance/findInstanceByCorrelation/updateInstanceStatus(CAS)/findCompanyConfig/findEventSubscription/findStepConfig/findCompensationConfigs/createStepExecution/findStepExecution/updateStepStatus(CAS))
-// ports/saga-command.port.ts → SagaCommandDispatcherAdapter (dispatch({tenantId,organizationId,commandId,commandType,commandVersion,payload,correlationId,causationId}))
-// definitions/saga-definition.ts: SagaDefinitionRegistry.get(sagaType,version) → {steps:{name,commandType,commandVersion,waitFor[]}[],compensation?}
+// ports/company-settings.port.ts
+abstract class CompanySettingsReader {
+  get(companyId): Promise<Record<string, unknown>>;
+}
+// ports/saga-action.port.ts — one command on one aggregate
+interface SagaAction {
+  readonly name: string;
+  do(ctx): Promise<Result>;
+  undo(ctx): Promise<Result>;
+}
+const SAGA_ACTION = 'SAGA_ACTION';
+// ports/saga-inbound.port.ts — how events reach the saga
+abstract class SagaInboundPort {
+  accept(envelope: OutboxEnvelope): Promise<void>;
+}
+// application/plan-builder.ts — default + overlay merge (narrows only)
+// application/expression.ts — safe evaluator + `{{ }}` templates + ISO durations
+// application/saga-engine.ts — advance / complete / compensate / cancel
+// application/saga-router.ts — five checks, start + wait
+// workers/step-worker.ts — claim + run + settle
+// repositories/prisma-saga.repository.ts — the five tables (one class per table)
 ```
 
-**Complete flow — start:**
+**Complete flow — start (router):**
 
-1. `findCompanyConfig(tenant,org,sagaType)` — disabled ⇒ stub STARTED no-op (company disable never bypassed).
-2. `definitionRegistry.get(type,ver)` — missing ⇒ stub. `findEventSubscription` — disabled ⇒ stub.
-3. `createInstance({correlationId??uuid,status:RUNNING,claimToken})` (unique `(tenantId,orgId,sagaType,correlationId)`).
-4. `findStepConfig` for steps[0] — disabled ⇒ stop. Else `createStepExecution(CLAIMED)` → `updateInstanceStatus WAITING{currentStep}` → `commandPort.dispatch` (first step payload = trigger event payload).
+1. `FeatureGate.enabled(company)` + `CompanySettingsReader.get(company)` (read once, snapshotted; a lookup error aborts the start, never blocks another saga).
+2. `PlanBuilder.build({definition, overlay, features, settings})` — required/standard/optional policy, `requires` filtering, AND-combined `if`/`when`, overridden timeout/retry. Empty plan ⇒ nothing starts.
+3. `correlationKey = renderTemplate(start.key, {event})`; `context = {settings, event, start: mapContext(start.context)}`.
+4. `SagaEngine.createAndAdvance` — `tryInsertLive` on the partial unique key (duplicate ⇒ one live instance already exists) then `advance`.
 
-**Complete flow — handleEvent:**
+**Complete flow — advance / execute:**
 
-1. `findInstanceByCorrelation`; ignore if missing or status not `WAITING/RUNNING`.
-2. Load definition; get `currentStep`; check subscription enabled; verify `event.eventType ∈ stepDef.waitFor` else ignore.
-3. `findStepExecution`; failure event (`Failed`/`Error` in type) → `updateStepStatus FAILED` → compensation defined+enabled? → `COMPENSATING` : `SUSPENDED{failedAt}`.
-4. Else CAS `COMPLETED` → next step? `createStepExecution CLAIMED` + `WAITING` + `dispatch` : `COMPLETED`.
-5. `Suspend/CompensateUseCase`: CAS → SUSPENDED / dispatch compensation commands (new business ops, not rollbacks). `SagaReconciler` cron releases expired step claims; bounded retries → SUSPENDED.
+1. `advance` walks the frozen plan from `cursor`: `if` false ⇒ record `SKIPPED`; `WAIT` ⇒ consume the oldest buffered matching event (`match` + `when`) or park `WAITING` with `run_at = timeout`; `DO` ⇒ write a `PENDING` step and stop.
+2. `SagaStepWorker` claims due `DO|UNDO` rows (`FOR UPDATE SKIP LOCKED`, lease, fairness cap), resolves the `SagaAction`, runs it inside the instance's CLS.
+3. `ok` ⇒ `markDone` + advance; `retry` ⇒ `nextRetry` backoff (exponential, capped) until `maxAttempts`; `fail`/exhaustion ⇒ `markFailed` + compensation.
+4. Compensation creates `UNDO` rows for the completed `DO` steps in reverse (input = the DO output). A completed step with no undo, or a failure past the `pivot`, parks `FAILED_MANUAL`.
+5. `SagaScheduler` tick: worker → expire `WAIT` timeouts (`skip` default / `compensate`) → re-queue stale leases. Hourly: purge inbox past retention. **No reconciler.**
 
-**Data & config:** `saga_instances` (`@@unique([tenantId,orgId,sagaType,correlationId])`, `STARTED/RUNNING/WAITING/COMPLETED/COMPENSATING/COMPENSATED/FAILED/SUSPENDED`, CAS `claimToken/version`) + `saga_step_executions` (`@@unique([instanceId,stepName])`) + `saga_company_configs` + `saga_event_subscriptions` + `saga_step_configs` + `saga_compensation_configs` (`prisma/schema/platform/saga.prisma`). `src/config/saga.config.ts`: `DEFAULT_TIMEOUT=300000`, `MAX_ATTEMPTS=5`, `RETRY_BASE=1000`, `RETRY_MAX=600000`, `RECONCILIATION=60000`, `STEP_CLAIM_LEASE=60000`, `MAX_CONCURRENT_INSTANCES=100`.
-**Tenancy:** every record `(tenantId,organizationId)`; company A never sees B.
-**Rules:** Orchestrator, not domain; never imports business; every transition CAS; workers restore CLS.
+**Data & config:** `saga_definitions` (one ACTIVE per key; found by `(event_name,event_version)`), `saga_company_configs` (one ACTIVE overlay per company+key), `saga_instances` (one live instance per tenant+company+key+correlation), `saga_steps` (unique `(instance,step,kind)`; `id` = action idempotency key), `saga_inbox` (dedupe on tenant+company+consumer+event). Partial uniques live in the migration. `src/config/saga.config.ts`: `SAGA_WORKER_LEASE_SECONDS=60`, `SAGA_CLAIM_BATCH_SIZE=20`, `SAGA_FAIRNESS_CAP=5`, `SAGA_SWEEP_INTERVAL_MS=10000`, `SAGA_RETRY_BASE_DELAY_MS=1000`, `SAGA_RETRY_MAX_DELAY_MS=600000`, `SAGA_DEFAULT_MAX_ATTEMPTS=5`, `SAGA_INBOX_RETENTION_DAYS=30`.
+**Tenancy:** every row `(tenantId,companyId)`; the router and the worker both run in `RequestContextPort.run`; the correlation key scoped per company.
+**Rules:** orchestrator, not domain — never imports business (actions arrive through `SAGA_ACTION`); overlays only narrow; the plan is frozen at build; every settle CAS; the saga's own `aggregateType='Saga'` events are dropped as a loop guard. Default `FeatureGate` is fail-closed (`EmptyFeatureGate`).
 
 ---
 
@@ -686,7 +686,7 @@ abstract class NumberingPort {
 **Complete flow:**
 
 1. Caller: `await numbering.nextNumber('purchase-order',{prefix:'PO-',padding:6})`. Callers: `platform/import`, `platform/batch-operation`, purchase-order/invoice via module-local port + `NumberingAdapter`.
-2. `scopedKey()`: `${organizationId ?? tenantId}:${key}` from CLS (unscoped → raw key).
+2. `scopedKey()`: `${companyId ?? tenantId}:${key}` from CLS (unscoped → raw key).
 3. Single `tx.numberSequence.upsert({where:{key},create:{key,prefix,padding,currentValue:1},update:{currentValue:{increment:1}}})` — no read-then-write window.
 4. Format `prefix + currentValue.padStart(padding,'0')`. `prefix/padding` frozen at creation.
 
@@ -713,7 +713,7 @@ interface AuditEntry {
   actorType?: string;
   actorId?: string;
   tenantId?: string;
-  organizationId?: string;
+  companyId?: string;
 }
 abstract class AuditPort {
   record(entry: AuditEntry): Promise<void>;
@@ -723,7 +723,7 @@ abstract class AuditPort {
 **Complete flow:**
 
 1. Caller (scheduler cancel/dispatch-now, recurring pause/resume/cancel, batch cancel, import cancel/execute) injects `AuditPort`, calls `record({action,entityType,entityId,changes})` inside `@Transactional()`.
-2. `PrismaAuditRepository.record`: fills `actorId=userId`, `actorType=user|system`, `tenantId/organizationId/requestId/correlationId` from CLS if omitted.
+2. `PrismaAuditRepository.record`: fills `actorId=userId`, `actorType=user|system`, `tenantId/companyId/requestId/correlationId` from CLS if omitted.
 3. `redact()`: keys matching `/(password|secret|token|authorization|pin|otp)/i` → `[redacted]`; per-field cap 4000 chars.
 4. `txHost.tx.auditLog.create()` — commits/rolls back atomically with business change.
 
@@ -758,7 +758,7 @@ abstract class CompanyConfigPort {
 **Complete flow:**
 
 1. Business modules (party/product/purchase-order/GRN/invoice) via own module-local `CompanyConfigPort` → `CompanyConfigAdapter` → here.
-2. Resolve: `companyId ?? ctx.organizationId ?? DEFAULT_COMPANY_ID`.
+2. Resolve: `companyId ?? ctx.companyId ?? DEFAULT_COMPANY_ID`.
 3. `tx.companyConfig.findUnique({where:{companyId:resolved}})` (joins caller txn). Hit → map (`Decimal→Number`).
 4. Miss + explicit/context-resolved + `tenancy.mode==='multi'` → `NotFoundException` (never cross-bill). Else warn + built-in defaults (`DEFAULT/USD/10000/true`).
 
@@ -821,9 +821,10 @@ abstract class CachePort {
   getOrSet<T>(req: { key; ttlSeconds; factory: () => Promise<T> }): Promise<T>;
 }
 // impl: CacheService → Get/GetWithResult/Set/Delete/Exists/GetOrSetCacheValueUseCase
-// ports/cache-key-builder.port.ts → CacheKeyBuilder.build({tenantId?,organizationId?,namespace,resource,variant?})
-// internal ports/cache-storage.port.ts → exactly one of RedisCacheAdapter|MemcachedCacheAdapter (CACHE_DRIVER)
-// key format: cache:v1:{tenantId}:{organizationId}:{namespace}:{resource}:{variant}
+// ports/cache-key-builder.port.ts → CacheKeyBuilder.build({tenantId?,companyId?,namespace,resource,variant?})
+// ports/cache.port.ts → CacheService → Get/Set/DeleteCacheValueUseCase (Redis-only)
+// adapters/redis-cache.adapter.ts → RedisCacheAdapter (concrete, uses RedisService)
+// key format: cache:v1:{tenantId}:{companyId}:{namespace}:{resource}:{variant}
 ```
 
 **Complete flow:**
@@ -833,7 +834,7 @@ abstract class CachePort {
 3. `getOrSet`: `storage.get` → HIT return parsed; MISS/error → `await factory()` (once per call; caller ensures idempotent factory for races) → `storage.set` (warn on write fail) → return. Write failures never roll back DB writes.
 4. Cross-process invalidation: outbox → event handler → `CachePort.delete()`.
 
-**Data & config:** No tables. `src/config/cache.config.ts` (`CACHE_DRIVER=redis|memcache`, `REDIS_URL`, `MEMCACHED_HOST/PORT`, `CACHE_KEY_PREFIX/VERSION`). Infra `InfraCacheModule.forRoot()`.
+**Data & config:** No tables. `src/config/cache.config.ts` (`REDIS_URL`, `CACHE_ENABLED`, `CACHE_DEFAULT_TTL_MS`, `CACHE_MAX_VALUE_BYTES`, `CACHE_KEY_PREFIX/VERSION`). Infra `RedisModule`.
 **Rules:** Cache ≠ source of truth (PG authoritative) ≠ lock ≠ idempotency ≠ outbox ≠ session; every entry bounded TTL; business injects only `CachePort` (+ key builder), never `CacheStoragePort`/ioredis; fail-open on backend error.
 
 ---
@@ -853,7 +854,7 @@ abstract class LoggerPort { debug/info/warn/error/fatal(msg: string, fields?: Lo
 abstract class MetricsPort { incrementCounter(name,labels?,value?); observeHistogram(name,value,labels?); setGauge(name,value,labels?); registerCounter/registerHistogram/registerGauge; getMetrics():Promise<string>; getMetricsContentType():Promise<string>; }
 // impl: PrometheusMetricsAdapter (own Registry, app=erp-api, prefix erp_, collectDefaultMetrics; unregistered increment = no-op)
 // ports/error-tracking.port.ts
-abstract class ErrorTrackingPort { captureException(err,ctx?:{requestId,correlationId,tenantId,organizationId,userId,tags,extra}); captureMessage(msg,ctx?): void; }
+abstract class ErrorTrackingPort { captureException(err,ctx?:{requestId,correlationId,tenantId,companyId,userId,tags,extra}); captureMessage(msg,ctx?): void; }
 // impl: SentryErrorTrackingAdapter (self-disables without DSN; Sentry.init in bootstrap)
 // http/metrics.controller.ts: GET /api/v1/metrics (@SkipTenancy())
 ```
@@ -873,7 +874,7 @@ Client → guards/interceptors/pipes → PurchaseOrderController → CreatePurch
  → companyConfig.getCompanyConfig() · vendorQueryPort.getOrderableVendor(id) (public-port 3-hop chain)
  → PurchaseOrderFactory.create (invariants/policies, raises PurchaseOrderCreated)
  → PurchaseOrderCommandRepository.save (TransactionHost) + OutboxPort.append (SAME tx) → COMMIT
- → OutboxScheduler (5s) → claimBatch (SKIP LOCKED) → MessageRoutingPolicy → RabbitMQ/Kafka/SQS + InProcessEventBus
+ → OutboxScheduler (10s) → claimBatch (SKIP LOCKED) → MessageQueuePort (broker by envelope) → RabbitMQ/Kafka/SQS + InProcessEventBus.emit
  → listeners (@OnEvent/@RabbitSubscribe/@KafkaEvent/@SqsMessageHandler) delegate to use cases
 ```
 
@@ -907,26 +908,26 @@ Rule: only ACTIVE vendors orderable (else ConflictException); only ACTIVE produc
 
 ## Appendix — file map & verification
 
-| Service                       | Module file                                                                                     | Tables (`prisma/schema/platform/`) | Config (`src/config/`)                                      |
-| ----------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------- |
-| context                       | `context/context.module.ts`                                                                     | —                                  | `security, auth`                                            |
-| outbox                        | `outbox/outbox.module.ts`                                                                       | `outbox.prisma`                    | `outbox.config.ts`                                          |
-| events/messaging              | `events/events.module.ts`, `messaging/messaging.module.ts`, `messaging/message-queue.module.ts` | —                                  | `messaging.config.ts`                                       |
-| inbox                         | `inbox/inbox.module.ts`                                                                         | `inbox.prisma`                     | `inbox.config.ts`                                           |
-| locking                       | `locking/locking.module.ts`                                                                     | `locking.prisma`                   | `locking.config.ts`                                         |
-| idempotency                   | `idempotency/idempotency.module.ts`                                                             | `idempotency.prisma`               | `idempotency.config.ts`                                     |
-| scheduler                     | `scheduler/scheduler.module.ts`                                                                 | `scheduler.prisma`                 | `scheduler.config.ts`                                       |
-| recurring                     | `recurring/recurring.module.ts`                                                                 | `recurring.prisma`                 | (scheduler+outbox+numbering)                                |
-| batch-operation               | `batch-operation/batch-operation.module.ts`                                                     | `batch-operation.prisma`           | `batch-operation.config.ts`                                 |
-| import                        | `import/import.module.ts`                                                                       | `import.prisma`                    | `import.config.ts`                                          |
-| condition-engine              | `condition-engine/condition-engine.module.ts`                                                   | —                                  | —                                                           |
-| saga                          | `saga/saga.module.ts`                                                                           | `saga.prisma`                      | `saga.config.ts`                                            |
-| webhook                       | `webhook/webhook.module.ts`                                                                     | `webhook.prisma`                   | `webhook.config.ts`                                         |
-| notification                  | `notification/notification.module.ts`                                                           | `notification.prisma`              | `notification.config.ts`, `notification-pipeline.config.ts` |
-| numbering/audit/configuration | `numbering/`, `audit/`, `configuration/`                                                        | `platform.prisma`                  | (security/app for configuration)                            |
-| storage                       | `storage/storage.module.ts`                                                                     | — (import owns `storage_objects`)  | `storage.config.ts`                                         |
-| cache                         | `cache/cache.module.ts`                                                                         | —                                  | `cache.config.ts`                                           |
-| observability                 | `observability/observability.module.ts`                                                         | —                                  | `observability.config.ts`                                   |
+| Service                       | Module file                                                | Tables (`prisma/schema/platform/`) | Config (`src/config/`)                                      |
+| ----------------------------- | ---------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------- |
+| context                       | `context/context.module.ts`                                | —                                  | `security, auth`                                            |
+| outbox                        | `outbox/outbox.module.ts`                                  | `outbox.prisma`                    | `outbox.config.ts`                                          |
+| events/messaging              | `events/events.module.ts`, `messaging/messaging.module.ts` | —                                  | `messaging.config.ts`                                       |
+| inbox                         | `inbox/inbox.module.ts`                                    | `inbox.prisma`                     | `inbox.config.ts`                                           |
+| locking                       | `locking/locking.module.ts`                                | `locking.prisma`                   | `locking.config.ts`                                         |
+| idempotency                   | `idempotency/idempotency.module.ts`                        | `idempotency.prisma`               | `idempotency.config.ts`                                     |
+| scheduler                     | `scheduler/scheduler.module.ts`                            | `scheduler.prisma`                 | `scheduler.config.ts`                                       |
+| recurring                     | `recurring/recurring.module.ts`                            | `recurring.prisma`                 | (scheduler+outbox+numbering)                                |
+| batch-operation               | `batch-operation/batch-operation.module.ts`                | `batch-operation.prisma`           | `batch-operation.config.ts`                                 |
+| import                        | `import/import.module.ts`                                  | `import.prisma`                    | `import.config.ts`                                          |
+| condition-engine              | `condition-engine/condition-engine.module.ts`              | —                                  | —                                                           |
+| saga                          | `saga/saga.module.ts`                                      | `saga.prisma`                      | `saga.config.ts`                                            |
+| webhook                       | `webhook/webhook.module.ts`                                | `webhook.prisma`                   | `webhook.config.ts`                                         |
+| notification                  | `notification/notification.module.ts`                      | `notification.prisma`              | `notification.config.ts`, `notification-pipeline.config.ts` |
+| numbering/audit/configuration | `numbering/`, `audit/`, `configuration/`                   | `platform.prisma`                  | (security/app for configuration)                            |
+| storage                       | `storage/storage.module.ts`                                | — (import owns `storage_objects`)  | `storage.config.ts`                                         |
+| cache                         | `cache/cache.module.ts`                                    | —                                  | `cache.config.ts`                                           |
+| observability                 | `observability/observability.module.ts`                    | —                                  | `observability.config.ts`                                   |
 
 Verify after any change:
 

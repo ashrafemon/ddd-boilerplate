@@ -4,6 +4,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
 import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { MessageEnvelope } from '@platform/events/ports/in-process-event-bus.port';
 import { ScheduledJobHandlerRegistry } from '@platform/scheduler/scheduled-job-handler.registry';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';
 
@@ -13,14 +14,13 @@ import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repo
  * SchedulerPollerService uses — `jobId: null`, nothing to lock/release,
  * `scheduled_jobs` stays untouched.
  *
- * Matches on `event.constructor.name` the same way NestEventBusAdapter
- * publishes (`emitter.emit(event.constructor.name, event)`), so listening
- * with `onAny` needs no wildcard pattern of its own.
+ * Listens on `onAny`: the Event Bus emits `emitter.emit(envelope.eventType,
+ * envelope)` (NestEventBusAdapter), so `eventName` is the event type and the
+ * second argument is the canonical envelope — the payload is `envelope.payload`.
  *
- * Redelivery stability: in-process dispatch is fed by the outbox publisher,
- * which restores the persisted envelope (`eventId` included) on rehydration —
- * so `triggerKey = sourceEventId` survives an outbox retry and the claim
- * insert collapses the duplicate EVENT generation.
+ * Redelivery stability: the outbox carries a stable `eventId` on the envelope,
+ * so `triggerKey = sourceEventId` survives an outbox retry and the claim insert
+ * collapses the duplicate EVENT generation.
  */
 @Injectable()
 export class DomainEventDispatcher implements OnModuleInit {
@@ -33,15 +33,12 @@ export class DomainEventDispatcher implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.eventEmitter.onAny((eventName, event: unknown) => {
-      void this.onEvent(
-        String(eventName),
-        event !== null && typeof event === 'object' ? event : null,
-      );
+    this.eventEmitter.onAny((eventName, message: unknown) => {
+      void this.onEvent(String(eventName), DispatcherEventReader.asEnvelope(message));
     });
   }
 
-  private async onEvent(eventName: string, event: object | null): Promise<void> {
+  private async onEvent(eventName: string, message: MessageEnvelope | null): Promise<void> {
     try {
       const templates = await this.templateRepository.findActiveByEventName(eventName);
       if (templates.length === 0) {
@@ -49,8 +46,8 @@ export class DomainEventDispatcher implements OnModuleInit {
       }
 
       const handler = this.handlerRegistry.resolveHandler('Recurring');
-      const sourceEventId = DispatcherEventReader.eventId(event);
-      const eventPayload = DispatcherEventReader.snapshot(event);
+      const sourceEventId = message?.eventId ?? randomUUID();
+      const eventPayload: JsonObject = message ? PrismaJson.snapshot(message.payload) : {};
 
       for (const template of templates) {
         try {
@@ -77,19 +74,20 @@ export class DomainEventDispatcher implements OnModuleInit {
   }
 }
 
-/** One audited read of unknown bus payloads (domain-event envelope). */
+/** One audited read of unknown bus payloads (the canonical envelope). */
 class DispatcherEventReader {
   /**
-   * Envelope read is STRUCTURAL (any event carrying `eventId` — a business
-   * DomainEvent or a platform OutboxEvent) so the dispatcher keeps zero
-   * compile-time dependency on the business kernel.
+   * Envelope read is STRUCTURAL (any object carrying `eventType` + `payload`),
+   * so the dispatcher keeps zero compile-time dependency on the business kernel.
    */
-  static eventId(event: object | null): string {
-    const candidate = (event as { eventId?: unknown } | null)?.eventId;
-    return typeof candidate === 'string' && candidate.length > 0 ? candidate : randomUUID();
-  }
-
-  static snapshot(event: object | null): JsonObject {
-    return event ? PrismaJson.snapshot(event) : {};
+  static asEnvelope(message: unknown): MessageEnvelope | null {
+    if (!message || typeof message !== 'object') {
+      return null;
+    }
+    const candidate = message as { eventType?: unknown; payload?: unknown };
+    if (typeof candidate.eventType !== 'string') {
+      return null;
+    }
+    return message as MessageEnvelope;
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
-import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
+import type { OutboxEnvelope } from '@platform/outbox/outbox.types';
 
 const EXCHANGE = 'erp.events';
 const QUEUE = 'grn-created.erp';
@@ -15,7 +15,7 @@ export class GrnRabbitMQListener {
     queue: QUEUE,
     queueOptions: { durable: true },
   })
-  onGrnCreated(message: IntegrationMessage): void {
+  onGrnCreated(message: OutboxEnvelope): void {
     this.logger.log(`[RabbitMQ] GrnCreated received for ${message.aggregateId}`);
   }
 }

@@ -41,7 +41,7 @@ export class SentryErrorTrackingAdapter implements ErrorTrackingPort {
     if (context.requestId) scope.setTag('requestId', context.requestId);
     if (context.correlationId) scope.setTag('correlationId', context.correlationId);
     if (context.tenantId) scope.setTag('tenantId', context.tenantId);
-    if (context.organizationId) scope.setTag('organizationId', context.organizationId);
+    if (context.companyId) scope.setTag('companyId', context.companyId);
     if (context.userId) scope.setUser({ id: context.userId });
     if (context.tags) scope.setTags(context.tags);
     if (context.extra) scope.setExtras(context.extra);

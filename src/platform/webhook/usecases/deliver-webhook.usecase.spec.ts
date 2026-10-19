@@ -1,8 +1,8 @@
 import { ConfigService } from '@config/config.service';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 import { WebhookTransportPort, WebhookTransportResponse } from '../ports/webhook-transport.port';
-import { InMemoryWebhookDeliveryRepository } from '../__testing__/in-memory-webhook-delivery.repository';
-import { InMemoryWebhookSubscriptionRepository } from '../__testing__/in-memory-webhook-subscription.repository';
+import { InMemoryWebhookDeliveryRepository } from '@test/support/webhook/in-memory-webhook-delivery.repository';
+import { InMemoryWebhookSubscriptionRepository } from '@test/support/webhook/in-memory-webhook-subscription.repository';
 import { DeliverWebhookUseCase } from './deliver-webhook.usecase';
 
 const config = {

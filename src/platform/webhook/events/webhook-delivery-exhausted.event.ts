@@ -1,4 +1,4 @@
-import { OutboxEventBase } from '@platform/events/bases/outbox-event.base';
+import { OutboxEventBase } from '@platform/outbox/outbox.types';
 
 export class WebhookDeliveryExhaustedEvent extends OutboxEventBase {
   constructor(

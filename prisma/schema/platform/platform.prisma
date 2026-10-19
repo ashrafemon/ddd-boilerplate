@@ -31,7 +31,7 @@ model NumberSequence {
 model AuditLog {
   id            String   @id @default(uuid()) @db.Uuid
   tenantId      String?
-  organizationId String?
+  companyId String?
   actorType     String?
   actorId       String?
   action        String

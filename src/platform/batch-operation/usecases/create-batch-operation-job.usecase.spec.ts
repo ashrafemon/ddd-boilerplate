@@ -1,11 +1,11 @@
 import { ConfigService } from '@config/config.service';
-import { InMemoryRequestContextService } from '@platform/context/__testing__/in-memory-request-context';
+import { InMemoryRequestContextService } from '@test/support/context/in-memory-request-context';
 import { NumberingPort } from '@platform/numbering/ports/numbering.port';
 import { CreateBatchOperationJobUseCase } from './create-batch-operation-job.usecase';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
 import { BatchOperationWorker } from '../batch-operation.worker';
 import { BatchOperationQueuePublisherPort } from '../ports/batch-operation-queue-publisher.port';
-import { InMemoryBatchOperationJobRepository } from '../__testing__/in-memory-batch-operation-job.repository';
+import { InMemoryBatchOperationJobRepository } from '@test/support/batch-operation/in-memory-batch-operation-job.repository';
 
 function makeSut(overrides?: { syncThreshold?: number; maxRecordsPerJob?: number }) {
   const repo = new InMemoryBatchOperationJobRepository();

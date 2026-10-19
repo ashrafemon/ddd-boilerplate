@@ -1,8 +1,9 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { RedisService } from '@infrastructure/cache/redis/redis.service';
+import { RedisService } from '@infrastructure/redis/redis.service';
 import { RedisLockPort } from '../ports/redis-lock.port';
 
 const KEY_PREFIX = 'lock:';
+const FENCE_PREFIX = 'lock:fence:';
 
 /**
  * Redis-backed distributed lock adapter using atomic Lua scripts.
@@ -68,6 +69,15 @@ export class RedisDistributedLockAdapter implements RedisLockPort {
       );
       return false;
     }
+  }
+
+  async nextFencingToken(key: string): Promise<number> {
+    const client = this.clientOrNull();
+    if (!client) {
+      throw new Error('Redis unavailable — cannot allocate fencing token (fail-closed)');
+    }
+    const value = await client.incr(FENCE_PREFIX + key);
+    return Number(value);
   }
 
   async isHeld(key: string): Promise<boolean> {

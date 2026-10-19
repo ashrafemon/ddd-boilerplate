@@ -3,13 +3,16 @@ import { MessagingModule as InfraMessagingModule } from '@infrastructure/messagi
 import { KafkaPublisherAdapter } from './adapters/kafka-publisher.adapter';
 import { RabbitMQPublisherAdapter } from './adapters/rabbitmq-publisher.adapter';
 import { SqsPublisherAdapter } from './adapters/sqs-publisher.adapter';
-import { MessagePublisher } from './ports/message-publisher.port';
+import { MessageQueuePort } from './ports/message-queue.port';
+import { MessageQueueService } from './services/message-queue.service';
+import { PublishMessageUseCase } from './usecases/publish-message.usecase';
 import { RabbitMqPublisher, KafkaPublisher, SqsPublisher } from './message-publisher.tokens';
 
 /**
- * Platform messaging module — binds the MessagePublisher port to the broker
- * clients initialised by the infrastructure layer. Driver registration lives
- * in `@infrastructure/messaging`; this module only owns the port bindings.
+ * Platform messaging module — one publish-only port (`MessageQueuePort`) bound
+ * to the broker clients initialised by the infrastructure layer. Driver
+ * registration lives in `@infrastructure/messaging`; this module only owns the
+ * port bindings and the broker routing. No consumers, no subscribe registry.
  */
 @Module({
   imports: [InfraMessagingModule],
@@ -17,11 +20,13 @@ import { RabbitMqPublisher, KafkaPublisher, SqsPublisher } from './message-publi
     KafkaPublisherAdapter,
     RabbitMQPublisherAdapter,
     SqsPublisherAdapter,
-    { provide: MessagePublisher, useExisting: RabbitMQPublisherAdapter },
     { provide: RabbitMqPublisher, useExisting: RabbitMQPublisherAdapter },
     { provide: KafkaPublisher, useExisting: KafkaPublisherAdapter },
     { provide: SqsPublisher, useExisting: SqsPublisherAdapter },
+    PublishMessageUseCase,
+    MessageQueueService,
+    { provide: MessageQueuePort, useExisting: MessageQueueService },
   ],
-  exports: [MessagePublisher, RabbitMqPublisher, KafkaPublisher, SqsPublisher],
+  exports: [MessageQueuePort],
 })
 export class MessagingModule {}

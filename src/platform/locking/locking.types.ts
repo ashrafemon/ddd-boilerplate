@@ -5,7 +5,7 @@
 /** Logical identity for a distributed lock. */
 export interface DistributedLockIdentity {
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   scope: string;
   resource: string;
 }
@@ -13,7 +13,7 @@ export interface DistributedLockIdentity {
 /** Request to acquire a distributed lock. */
 export interface DistributedLockAcquireRequest {
   tenantId: string;
-  organizationId: string;
+  companyId: string;
   scope: string;
   resource: string;
   leaseMs?: number;
@@ -64,15 +64,3 @@ export type DistributedLockRenewResult =
   | {
       status: 'LOST';
     };
-
-/** Persistent lock record in PostgreSQL. */
-export interface DistributedLockRecord {
-  id: string;
-  tenantId: string;
-  organizationId: string;
-  scope: string;
-  resource: string;
-  fencingToken: number;
-  createdAt: Date;
-  updatedAt: Date;
-}

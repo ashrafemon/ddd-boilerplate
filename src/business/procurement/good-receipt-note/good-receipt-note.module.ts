@@ -24,7 +24,6 @@ import { PrismaGrnCommandRepository } from './infrastructure/persistence/prisma-
 import { PrismaGrnQueryRepository } from './infrastructure/persistence/prisma-grn-query.repository';
 import { GrnController } from './presentation/http/grn.controller';
 import { GrnForPurchaseOrderPort } from '@business/procurement/good-receipt-note/public';
-import './domain/events/grn.registry';
 import { GrnBatchOperationAdapter } from './infrastructure/adapters/platform/grn-batch-operation.adapter';
 
 @Module({

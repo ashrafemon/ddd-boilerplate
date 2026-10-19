@@ -77,6 +77,16 @@ npm run docs:di                       # Regenerate docs/DI-WIRING.md when module
 DB-backed e2e (`npm run test:e2e`) needs `docker compose up -d` + `.env`;
 it must not be marked passing without running it.
 
+## Open work — build next
+
+- **IAM / Auth is deferred and NOT implemented.** The repo today only has the
+  tenancy guard (`src/platform/context/guards/tenancy-auth.guard.ts`) +
+  `src/config/auth.config.ts`. The full design (tenancy, identity,
+  authentication/sessions, centers, membership, machine access, audit,
+  authorization + SoD) lives in
+  `~/Documents/Common/erp/iam/{index,iam,authorization}.html` and is distilled
+  into **`docs/IAM-BUILD-PLAN.md`** — read that before starting.
+
 ## Commit/PR hygiene
 
 Do not commit secrets or `.env`; SQL migrations are hand-written and reviewed

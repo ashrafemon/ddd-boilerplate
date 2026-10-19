@@ -71,7 +71,7 @@ export class DispatchDueJobsUseCase {
   private async dispatchOne(job: ClaimedJob, lockTtlMs: number): Promise<boolean> {
     const result = await this.lock.acquire({
       tenantId: job.tenantId ?? 'system',
-      organizationId: 'scheduler',
+      companyId: 'scheduler',
       scope: 'scheduled-job',
       resource: job.id,
       leaseMs: lockTtlMs,

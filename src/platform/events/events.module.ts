@@ -1,42 +1,25 @@
 import { Module } from '@nestjs/common';
-import { ContextModule } from '../context/context.module';
-import { EventBusPort } from './ports/event-bus.port';
-import { EventBusService } from './event-bus.service';
-import { DomainEventRegistry } from './registries/domain-event.registry';
-import { DomainEventDispatcher } from './dispatchers/domain-event.dispatcher';
-import { PublishEventUseCase } from './usecases/publish-event.usecase';
-import { RegisterEventHandlerUseCase } from './usecases/register-event-handler.usecase';
-import { UnregisterEventHandlerUseCase } from './usecases/unregister-event-handler.usecase';
-import { MessageRoutingPolicy, DefaultMessageRoutingPolicy } from './message-routing.policy';
+import { InProcessEventBus } from './ports/in-process-event-bus.port';
+import { EventBusService } from './services/event-bus.service';
+import { EmitEventUseCase } from './usecases/emit-event.usecase';
+import { NestEventBusAdapter } from './adapters/nest-event-bus.adapter';
 
 /**
- * Platform Event Bus module — event publication and handler dispatch boundary.
+ * Platform Event Bus module — best-effort in-process dispatch.
  *
- * Business modules register their handlers through the EventBusPort.
- * The Outbox Dispatcher publishes events through this port.
+ * A thin emit wrapper over EventEmitter2: the Outbox dispatcher emits the same
+ * canonical envelope the brokers carry, and business `@OnEvent` listeners read
+ * `message.payload`. No routing table, no registries, no rehydration.
  *
  * This module is NOT global. Business modules must import PlatformModule.
  */
 @Module({
-  imports: [ContextModule],
   providers: [
-    // Registry
-    DomainEventRegistry,
-    DomainEventDispatcher,
-
-    // Use cases
-    PublishEventUseCase,
-    RegisterEventHandlerUseCase,
-    UnregisterEventHandlerUseCase,
-
-    // Routing
-    DefaultMessageRoutingPolicy,
-    { provide: MessageRoutingPolicy, useExisting: DefaultMessageRoutingPolicy },
-
-    // Facade → public port
+    NestEventBusAdapter,
+    EmitEventUseCase,
     EventBusService,
-    { provide: EventBusPort, useExisting: EventBusService },
+    { provide: InProcessEventBus, useExisting: EventBusService },
   ],
-  exports: [EventBusPort, DomainEventRegistry, MessageRoutingPolicy],
+  exports: [InProcessEventBus],
 })
 export class EventsModule {}

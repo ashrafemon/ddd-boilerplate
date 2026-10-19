@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
-import { ICacheDriver, IMemcachedConfig, IRedisConfig } from './cache.config';
+import { ICacheConfig, IRedisConfig } from './cache.config';
 import { ILockingConfig } from './locking.config';
 import { IIdempotencyConfig } from '../platform/idempotency/idempotency.types';
-import { IEventBusConfig } from '../platform/events/event-bus.types';
-import { IMessageQueueConfig } from '../platform/messaging/message-queue.types';
 import { IInboxConfig } from '../platform/inbox/inbox.types';
 import { ISagaConfig } from '../platform/saga/saga.types';
 import { IDatabaseConfig, IDatabaseDriver } from './database.config';
@@ -61,22 +59,19 @@ export class ConfigService {
     });
   }
 
-  /** Cache Environment Variables */
-  public getCacheDriver(): ICacheDriver {
-    return this.config.get<ICacheDriver>('cache.driver', 'redis');
+  /** Cache behaviour (design common/01-cache). */
+  public getCache(): ICacheConfig {
+    return {
+      enabled: this.config.get<boolean>('cache.enabled', true),
+      defaultTtlMs: this.config.get<number>('cache.defaultTtlMs', 300_000),
+      maxValueBytes: this.config.get<number>('cache.maxValueBytes', 1_048_576),
+      keyPrefix: this.config.get<string>('cache.keyPrefix', 'cache'),
+      keyVersion: this.config.get<string>('cache.keyVersion', 'v1'),
+    };
   }
   public getRedis(): IRedisConfig {
     return this.config.get('cache.redis', {
       url: '',
-    });
-  }
-  public getMemcached(): IMemcachedConfig {
-    return this.config.get('cache.memcached', {
-      host: '',
-      port: 11211,
-      ttl: 300,
-      username: '',
-      password: '',
     });
   }
 
@@ -174,45 +169,20 @@ export class ConfigService {
       ttlMs: 86_400_000,
       claimLeaseMs: 300_000,
       reconciliationIntervalMs: 3_600_000,
+      redisPrefix: 'idempotency',
     });
   }
 
   /** Outbox Environment Variables */
   public getOutbox(): IOutboxConfig {
     return this.config.get<IOutboxConfig>('outbox', {
-      pollIntervalMs: 5_000,
-      batchSize: 50,
+      pollIntervalMs: 10_000,
+      batchSize: 100,
       maxAttempts: 10,
       retryBackoffBaseMs: 1_000,
       retryMaxDelayMs: 600_000,
-      claimLeaseMs: 120_000,
+      claimLeaseMs: 60_000,
       cleanupOlderThanHours: 24,
-    });
-  }
-
-  /** Event Bus Environment Variables */
-  public getEventBus(): IEventBusConfig {
-    return this.config.get<IEventBusConfig>('eventBus', {
-      provider: 'nest',
-      maxHandlerConcurrency: 20,
-      handlerTimeoutMs: 30_000,
-      failFast: false,
-      retryEnabled: true,
-      maxAttempts: 10,
-    });
-  }
-
-  /** Message Queue Environment Variables */
-  public getMessageQueue(): IMessageQueueConfig {
-    return this.config.get<IMessageQueueConfig>('messageQueue', {
-      provider: 'rabbitmq',
-      publishTimeoutMs: 10_000,
-      consumerPrefetch: 20,
-      maxAttempts: 10,
-      retryBaseDelayMs: 1_000,
-      retryMaxDelayMs: 600_000,
-      connectionTimeoutMs: 10_000,
-      heartbeatSeconds: 30,
     });
   }
 
@@ -224,21 +194,21 @@ export class ConfigService {
       retryBaseDelayMs: 5_000,
       retryMaxDelayMs: 600_000,
       reconciliationIntervalMs: 60_000,
-      batchSize: 100,
+      processedRetentionMs: 2_592_000_000,
     });
   }
 
   /** Saga Environment Variables */
   public getSaga(): ISagaConfig {
     return this.config.get<ISagaConfig>('saga', {
-      defaultTimeoutMs: 300_000,
-      defaultMaxAttempts: 5,
+      workerLeaseSeconds: 60,
+      claimBatchSize: 20,
+      fairnessCap: 5,
+      sweepIntervalMs: 10_000,
       retryBaseDelayMs: 1_000,
       retryMaxDelayMs: 600_000,
-      reconciliationIntervalMs: 60_000,
-      stepClaimLeaseMs: 60_000,
-      maxConcurrentInstances: 100,
-      maxConcurrentSteps: 20,
+      defaultMaxAttempts: 5,
+      inboxRetentionDays: 30,
     });
   }
 
@@ -304,7 +274,7 @@ export class ConfigService {
       throttler: { ttlMs: 60_000, limit: 120 },
       settingsEncryptionKey: '',
       tenantHeader: 'x-tenant-id',
-      organizationHeader: 'x-organization-id',
+      companyHeader: 'x-company-id',
       tenancy: { mode: 'single' },
     });
   }

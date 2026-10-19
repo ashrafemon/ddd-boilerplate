@@ -31,7 +31,7 @@ export abstract class RequestContextPort {
 
   public abstract getTenantId(): string | undefined;
 
-  public abstract getOrganizationId(): string | undefined;
+  public abstract getCompanyId(): string | undefined;
 
   public abstract getUserId(): string | undefined;
 }

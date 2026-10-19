@@ -34,7 +34,6 @@ import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company
 import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
 import { PurchasableProductAdapter } from './infrastructure/adapters/module/purchasable-product.adapter';
 import { OrderableVendorAdapter } from './infrastructure/adapters/module/orderable-vendor.adapter';
-import './domain/events/purchase-order.registry';
 import { PurchaseOrderBatchOperationAdapter } from './infrastructure/adapters/platform/purchase-order-batch-operation.adapter';
 import { PurchaseOrderNotificationAdapter } from './infrastructure/adapters/platform/purchase-order-notification.adapter';
 import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/purchase-order-import.adapter';
