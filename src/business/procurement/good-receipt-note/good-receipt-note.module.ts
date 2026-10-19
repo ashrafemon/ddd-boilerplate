@@ -16,6 +16,7 @@ import { AddGrnLineUseCase } from './application/usecases/add-grn-line.usecase';
 import { ReceiveGrnUseCase } from './application/usecases/receive-grn.usecase';
 import { CompleteGrnUseCase } from './application/usecases/complete-grn.usecase';
 import { CancelGrnUseCase } from './application/usecases/cancel-grn.usecase';
+import { PostGrnUseCase } from './application/usecases/post-grn.usecase';
 import { GetGrnUseCase } from './application/usecases/get-grn.usecase';
 import { ListGrnsUseCase } from './application/usecases/list-grns.usecase';
 import { GrnCommandRepository } from './domain/repositories/grn-command.repository';
@@ -41,6 +42,7 @@ import { GrnBatchOperationAdapter } from './infrastructure/adapters/platform/grn
     GetGrnUseCase,
     ListGrnsUseCase,
     CancelGrnUseCase,
+    PostGrnUseCase,
     GrnEventEmitterListener,
     GrnKafkaListener,
     GrnRabbitMQListener,
