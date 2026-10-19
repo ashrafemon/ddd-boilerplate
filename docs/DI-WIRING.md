@@ -34,11 +34,11 @@ flowchart LR
     ConfigurationModule["ConfigurationModule"]
     VendorModule -->|CompanyConfigPort| ConfigurationModule
     GoodReceiptNoteModule["GoodReceiptNoteModule"]
-    IdempotencyModule["IdempotencyModule"]
-    GoodReceiptNoteModule -->|IdempotencyPort| IdempotencyModule
     GoodReceiptNoteModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
     AuditModule["AuditModule"]
     GoodReceiptNoteModule -->|AuditPort| AuditModule
+    CacheModule["CacheModule"]
+    GoodReceiptNoteModule -->|CachePort| CacheModule
     GoodReceiptNoteModule -->|OutboxWriterPort| OutboxModule
     GoodReceiptNoteModule -->|CompanyConfigPort| ConfigurationModule
     PurchaseOrderModule["PurchaseOrderModule"]
@@ -51,6 +51,7 @@ flowchart LR
     ProductModule -->|CompanyConfigPort| ConfigurationModule
     PurchaseOrderModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
     PurchaseOrderModule -->|AuditPort| AuditModule
+    PurchaseOrderModule -->|CachePort| CacheModule
     RecurringModule["RecurringModule"]
     PurchaseOrderModule -->|RecurringTemplatePort, RecurringExecutionPort| RecurringModule
     ObservabilityModule["ObservabilityModule"]
@@ -84,13 +85,13 @@ flowchart LR
     BatchOperationModule -->|NumberingPort| NumberingModule
     BatchOperationModule -->|RequestContextPort| ContextModule__src_platform_context__2
     BatchOperationModule -->|AuditPort| AuditModule
-    CacheModule["CacheModule"]
     CacheModule -->|ConfigService| ConfigModule
     CacheModule -->|RedisService| RedisModule
     ConfigurationModule -->|ConfigService| ConfigModule
     ConfigurationModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ContextModule__src_platform_context__2 -->|ConfigService| ConfigModule
     ContextModule__src_platform_context__2 -->|PrismaWriteService| PrismaModule
+    IdempotencyModule["IdempotencyModule"]
     IdempotencyModule -->|PrismaWriteService| PrismaModule
     IdempotencyModule -->|ConfigService| ConfigModule
     IdempotencyModule -->|RedisService| RedisModule
@@ -277,8 +278,6 @@ flowchart LR
     CreateGrnUseCase -->|injects| GrnIntegrationPort
     CreateGrnUseCase -->|injects| CompanyConfigPort
     CreateGrnUseCase -->|injects| NumberingPort
-    IdempotencyPort["IdempotencyPort"]
-    CreateGrnUseCase -->|injects via IdempotencyModule| IdempotencyPort
     RequestContextPort["RequestContextPort"]
     CreateGrnUseCase -->|injects via ContextModule| RequestContextPort
     AddGrnLineUseCase -->|injects| GrnCommandRepository
@@ -290,6 +289,9 @@ flowchart LR
     ReceiveGrnUseCase -->|injects via AuditModule| AuditPort
     CompleteGrnUseCase -->|injects| PostGrnUseCase
     GetGrnUseCase -->|injects| GrnQuery
+    CacheResponseInterceptor["CacheResponseInterceptor"]
+    CachePort["CachePort"]
+    CacheResponseInterceptor -->|injects via CacheModule| CachePort
     ListGrnsUseCase -->|injects| GrnQuery
     CancelGrnUseCase -->|injects| GrnCommandRepository
     CancelGrnUseCase -->|injects| GrnIntegrationPort
@@ -298,13 +300,11 @@ flowchart LR
     PostGrnUseCase -->|injects| GrnCommandRepository
     PostGrnUseCase -->|injects| PurchaseOrderPort
     PostGrnUseCase -->|injects| GrnIntegrationPort
-    PostGrnUseCase -->|injects via IdempotencyModule| IdempotencyPort
     PostGrnUseCase -->|injects via ContextModule| RequestContextPort
     PostGrnUseCase -->|injects via AuditModule| AuditPort
     ReverseGrnUseCase -->|injects| GrnCommandRepository
     ReverseGrnUseCase -->|injects| PurchaseOrderPort
     ReverseGrnUseCase -->|injects| GrnIntegrationPort
-    ReverseGrnUseCase -->|injects via IdempotencyModule| IdempotencyPort
     ReverseGrnUseCase -->|injects via ContextModule| RequestContextPort
     ReverseGrnUseCase -->|injects via AuditModule| AuditPort
     ReverseGrnUseCase -->|injects| NumberingPort
@@ -439,6 +439,9 @@ flowchart LR
     TransactionHost__library_["TransactionHost (library)"]
     HasPurchaseOrderReceiptsUseCase -->|injects| TransactionHost__library_
     GetPurchaseOrderUseCase -->|injects| PurchaseOrderQuery
+    CacheResponseInterceptor["CacheResponseInterceptor"]
+    CachePort["CachePort"]
+    CacheResponseInterceptor -->|injects via CacheModule| CachePort
     PrismaReadPort["PrismaReadPort"]
     GetPurchaseOrderReceiptsUseCase -->|injects via ContextModule| PrismaReadPort
     GetPurchaseOrderRemainingQuantitiesUseCase -->|injects| GetPurchaseOrderReceiptsUseCase
