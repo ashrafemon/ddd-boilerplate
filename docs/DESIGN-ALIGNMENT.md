@@ -158,10 +158,11 @@ FAILED_MANUAL`; ports `FeatureGate`, `CompanySettingsReader`, `SagaAction`
   `docs/ARCHITECTURE-BUSINESS-MODULE-PATTERN.md` updated for the 01–08
   removals; the per-service READMEs for events/messaging/outbox/inbox/saga
   rewritten.
-- Naming: the design uses `companyId`; the code uses `companyId`
-  throughout. **Still open** — a global rename across every Prisma model,
-  migration, business module and the request context. Deferred deliberately
-  (large mechanical change, tracked here).
+- Naming: ✅ renamed `organizationId` → `companyId` (and `organization_id` →
+  `company_id`, `getOrganizationId` → `getCompanyId`,
+  `organizationHeader` → `companyHeader`, `x-organization-id` → `x-company-id`)
+  across every Prisma model, migration, business module, request context, config
+  and test. The tenancy guard now reads only the `companyId` JWT claim.
 
 ## Verify after each slice
 
