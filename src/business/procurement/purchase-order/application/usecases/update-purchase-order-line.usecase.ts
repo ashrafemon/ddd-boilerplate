@@ -7,7 +7,6 @@ import { PurchasableProductPort } from '../outbound-ports/product-query.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
-import { PurchaseOrderReadCache } from '../outbound-ports/read-cache.port';
 
 /**
  * Rewrite one draft line by product id (plan Phase 2.2): `setLine` semantics —
@@ -25,7 +24,6 @@ export class UpdatePurchaseOrderLineUseCase {
     private readonly productQueryPort: PurchasableProductPort,
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
     private readonly companyConfig: CompanyConfigPort,
-    private readonly readCache: PurchaseOrderReadCache,
   ) {}
 
   @Transactional()
@@ -55,7 +53,6 @@ export class UpdatePurchaseOrderLineUseCase {
     }
 
     await this.purchaseOrderRepository.update(purchaseOrder);
-    await this.readCache.invalidate(purchaseOrder.id.toString());
 
     for (const event of purchaseOrder.pullEvents()) {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());

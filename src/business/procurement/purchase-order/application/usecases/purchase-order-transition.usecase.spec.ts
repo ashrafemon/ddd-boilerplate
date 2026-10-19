@@ -97,7 +97,6 @@ describe('PurchaseOrderTransitionUseCase', () => {
       hasReceipts as unknown as HasPurchaseOrderReceiptsUseCase,
       context,
       audit,
-      readCache,
     );
   });
 

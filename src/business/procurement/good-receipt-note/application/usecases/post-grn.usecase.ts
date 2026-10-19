@@ -8,7 +8,6 @@ import { IdempotencyPort } from '@platform/idempotency/ports/idempotency.port';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
 import { GoodsReceiptPosted } from '../../domain/events/grn.posted.event';
-import { GrnReadCache } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class PostGrnUseCase {
@@ -19,7 +18,6 @@ export class PostGrnUseCase {
     private readonly idempotency: IdempotencyPort,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
-    private readonly readCache: GrnReadCache,
   ) {}
 
   @Transactional()
@@ -69,7 +67,6 @@ export class PostGrnUseCase {
 
       grn.complete(actorId);
       await this.grnRepository.update(grn);
-      await this.readCache.invalidate(grn.id.toString());
 
       await this.audit.record({
         action: 'grn.post',

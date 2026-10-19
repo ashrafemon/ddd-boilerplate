@@ -32,7 +32,6 @@ import { GrnController } from './presentation/http/grn.controller';
 import { GrnForPurchaseOrderPort } from '@business/procurement/good-receipt-note/public';
 import { GrnBatchOperationAdapter } from './infrastructure/adapters/platform/grn-batch-operation.adapter';
 import { GrnNotificationAdapter } from './infrastructure/adapters/platform/grn-notification.adapter';
-import { GrnReadCacheAdapter } from './infrastructure/adapters/platform/grn-read-cache.adapter';
 
 @Module({
   imports: [PlatformModule, PurchaseOrderModule],
@@ -40,7 +39,6 @@ import { GrnReadCacheAdapter } from './infrastructure/adapters/platform/grn-read
   providers: [
     GrnBatchOperationAdapter,
     GrnNotificationAdapter,
-    GrnReadCacheAdapter,
     CreateGrnUseCase,
     AddGrnLineUseCase,
     ReceiveGrnUseCase,

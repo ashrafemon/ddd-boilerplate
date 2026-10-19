@@ -4,7 +4,6 @@ import { RecordInspectionResultRequest } from '../../domain/types/grn.types';
 import { GrnId } from '../../domain/value-objects/grn.vos';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
-import { GrnReadCache } from '../outbound-ports/read-cache.port';
 
 /**
  * Record the accepted/rejected split per line (plan Phase 3.2 / GRN-01):
@@ -20,7 +19,6 @@ export class RecordInspectionResultUseCase {
   constructor(
     private readonly grnRepository: GrnCommandRepository,
     private readonly integrationEvent: GrnIntegrationPort,
-    private readonly readCache: GrnReadCache,
   ) {}
 
   @Transactional()
@@ -32,7 +30,6 @@ export class RecordInspectionResultUseCase {
 
     grn.recordInspectionResult({ lines: input.lines });
     await this.grnRepository.update(grn);
-    await this.readCache.invalidate(grn.id.toString());
 
     for (const event of grn.pullEvents()) {
       await this.integrationEvent.send(event, grn.id.toString());

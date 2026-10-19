@@ -8,7 +8,6 @@ import { GrnCommandRepository } from '../../domain/repositories/grn-command.repo
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
-import { GrnReadCache } from '../outbound-ports/read-cache.port';
 import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GoodsReceiptReversed } from '../../domain/events/grn.reversed.event';
 
@@ -40,7 +39,6 @@ export class ReverseGrnUseCase {
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
     private readonly numbering: NumberingPort,
-    private readonly readCache: GrnReadCache,
   ) {}
 
   @Transactional()
@@ -125,7 +123,6 @@ export class ReverseGrnUseCase {
       await this.grnRepository.save(reversal);
       // The ORIGINAL's read model changed (it is now reversed); the new
       // reversal document has never been cached.
-      await this.readCache.invalidate(original.id.toString());
 
       await this.audit.record({
         action: 'grn.reverse',
