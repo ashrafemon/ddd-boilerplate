@@ -1,5 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { RedisService } from '@infrastructure/cache/redis/redis.service';
+import { RedisService } from '@infrastructure/redis/redis.service';
 import { ConfigService } from '@config/config.service';
 import { IdempotencyIdentity } from '../idempotency.types';
 

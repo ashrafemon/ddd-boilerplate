@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { CacheModule as InfraCacheModule } from '@infrastructure/cache/cache.module';
+import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
 import { DistributedLockPort } from './ports/distributed-lock.port';
 import { RedisLockPort } from './ports/redis-lock.port';
 import { RedisDistributedLockAdapter } from './adapters/redis-distributed-lock.adapter';
@@ -18,7 +18,7 @@ import { LockKeyBuilder } from './lock-key.builder';
  * and control the sequence: acquire → execute → renew (optional) → release.
  */
 @Module({
-  imports: [InfraCacheModule.forRoot()],
+  imports: [InfraRedisModule],
   providers: [
     // Redis adapter — atomic lock operations (shared infra Redis client)
     RedisDistributedLockAdapter,

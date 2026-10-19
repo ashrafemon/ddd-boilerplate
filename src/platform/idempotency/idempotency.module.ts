@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
-import { CacheModule as InfraCacheModule } from '@infrastructure/cache/cache.module';
+import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
 import { ContextModule } from '@platform/context/context.module';
 import { IdempotencyInterceptor } from './http/idempotency.interceptor';
 import { IdempotencyReconciliation } from './idempotency.reconciliation';
@@ -25,7 +25,7 @@ import { IdempotencyService } from './services/idempotency.service';
  *     handler needing at-least-once input with exactly-once effect.
  */
 @Module({
-  imports: [ContextModule, PrismaModule, InfraCacheModule.forRoot()],
+  imports: [ContextModule, PrismaModule, InfraRedisModule],
   providers: [
     // Concrete repository — injected directly into the use cases (no port).
     PrismaIdempotencyRepository,

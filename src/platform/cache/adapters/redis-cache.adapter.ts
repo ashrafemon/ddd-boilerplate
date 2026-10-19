@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { RedisService } from '@infrastructure/cache/redis/redis.service';
+import { RedisService } from '@infrastructure/redis/redis.service';
 import { CacheGetResult } from '../cache.types';
 
 /**

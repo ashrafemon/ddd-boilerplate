@@ -284,7 +284,7 @@ Types (`locking.types.ts`): identity `{tenantId,companyId,scope,resource}`, `Acq
 3. `release({ticket})` in `finally` → Lua ownership+DEL, idempotent best-effort (TTL is the backstop).
 
 **Who calls / how:** scheduler ticker per `jobId`, import stage locks (`StageLock`), any "one-winner" worker — all via `DistributedLockPort`. Fail-closed: BUSY ⇒ skip work, never speculative.
-**Data & config:** `distributed_locks` (`prisma/schema/platform/locking.prisma`, `@@unique[tenantId,companyId,scope,resource]`, `fencingToken BigInt`). `src/config/locking.config.ts`: `LOCK_DEFAULT_LEASE_MS=30000`, `MIN=5000`, `MAX=300000`, `RENEW_INTERVAL=10000`. Redis via `InfraCacheModule`.
+**Data & config:** `distributed_locks` (`prisma/schema/platform/locking.prisma`, `@@unique[tenantId,companyId,scope,resource]`, `fencingToken BigInt`). `src/config/locking.config.ts`: `LOCK_DEFAULT_LEASE_MS=30000`, `MIN=5000`, `MAX=300000`, `RENEW_INTERVAL=10000`. Redis via `RedisModule` (infrastructure).
 **Rules:** Redis down on acquire → `BUSY` (logged); PG down → throw (no fencing token = unsafe); never inject `RedisService` directly, never hand-build keys, never use as cache/idempotency; always release in `finally`; downstream rejects stale owners via fencing token.
 
 ---
@@ -822,7 +822,8 @@ abstract class CachePort {
 }
 // impl: CacheService → Get/GetWithResult/Set/Delete/Exists/GetOrSetCacheValueUseCase
 // ports/cache-key-builder.port.ts → CacheKeyBuilder.build({tenantId?,companyId?,namespace,resource,variant?})
-// internal ports/cache-storage.port.ts → exactly one of RedisCacheAdapter|MemcachedCacheAdapter (CACHE_DRIVER)
+// ports/cache.port.ts → CacheService → Get/Set/DeleteCacheValueUseCase (Redis-only)
+// adapters/redis-cache.adapter.ts → RedisCacheAdapter (concrete, uses RedisService)
 // key format: cache:v1:{tenantId}:{companyId}:{namespace}:{resource}:{variant}
 ```
 
@@ -833,7 +834,7 @@ abstract class CachePort {
 3. `getOrSet`: `storage.get` → HIT return parsed; MISS/error → `await factory()` (once per call; caller ensures idempotent factory for races) → `storage.set` (warn on write fail) → return. Write failures never roll back DB writes.
 4. Cross-process invalidation: outbox → event handler → `CachePort.delete()`.
 
-**Data & config:** No tables. `src/config/cache.config.ts` (`CACHE_DRIVER=redis|memcache`, `REDIS_URL`, `MEMCACHED_HOST/PORT`, `CACHE_KEY_PREFIX/VERSION`). Infra `InfraCacheModule.forRoot()`.
+**Data & config:** No tables. `src/config/cache.config.ts` (`REDIS_URL`, `CACHE_ENABLED`, `CACHE_DEFAULT_TTL_MS`, `CACHE_MAX_VALUE_BYTES`, `CACHE_KEY_PREFIX/VERSION`). Infra `RedisModule`.
 **Rules:** Cache ≠ source of truth (PG authoritative) ≠ lock ≠ idempotency ≠ outbox ≠ session; every entry bounded TTL; business injects only `CachePort` (+ key builder), never `CacheStoragePort`/ioredis; fail-open on backend error.
 
 ---

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { CacheModule as InfraCacheModule } from '@infrastructure/cache/cache.module';
+import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
 import { RedisCacheAdapter } from './adapters/redis-cache.adapter';
 import { CacheService } from './services/cache.service';
 import { CachePort } from './ports/cache.port';
@@ -14,7 +14,7 @@ import { DeleteCacheValueUseCase } from './usecases/delete-cache-value.usecase';
  * Business modules inject CachePort only — never the adapter directly.
  */
 @Module({
-  imports: [InfraCacheModule.forRoot()],
+  imports: [InfraRedisModule],
   providers: [
     // Concrete Redis adapter (injected directly into the use cases)
     RedisCacheAdapter,

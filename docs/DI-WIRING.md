@@ -65,6 +65,8 @@ flowchart LR
     NotificationModule__src_infrastructure_notification_["NotificationModule (src/infrastructure/notification)"]
     NotificationModule__src_infrastructure_notification__2["NotificationModule__src_infrastructure_notification_"]
     NotificationModule__src_infrastructure_notification__2 -->|ConfigService| ConfigModule
+    RedisModule["RedisModule"]
+    RedisModule -->|ConfigService| ConfigModule
     AuditModule["AuditModule"]
     AuditModule -->|RequestContextPort| ContextModule__src_platform_context__2
     BatchOperationModule["BatchOperationModule"]
@@ -73,9 +75,9 @@ flowchart LR
     BatchOperationModule -->|NumberingPort| NumberingModule
     BatchOperationModule -->|RequestContextPort| ContextModule__src_platform_context__2
     BatchOperationModule -->|AuditPort| AuditModule
-    CacheModule__src_platform_cache_["CacheModule (src/platform/cache)"]
-    CacheModule__src_platform_cache__2["CacheModule__src_platform_cache_"]
-    CacheModule__src_platform_cache__2 -->|ConfigService| ConfigModule
+    CacheModule["CacheModule"]
+    CacheModule -->|ConfigService| ConfigModule
+    CacheModule -->|RedisService| RedisModule
     ConfigurationModule -->|ConfigService| ConfigModule
     ConfigurationModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ContextModule__src_platform_context__2 -->|ConfigService| ConfigModule
@@ -83,9 +85,7 @@ flowchart LR
     IdempotencyModule["IdempotencyModule"]
     IdempotencyModule -->|PrismaWriteService| PrismaModule
     IdempotencyModule -->|ConfigService| ConfigModule
-    CacheModule__src_infrastructure_cache_["CacheModule (src/infrastructure/cache)"]
-    CacheModule__src_infrastructure_cache__2["CacheModule__src_infrastructure_cache_"]
-    IdempotencyModule -->|RedisService| CacheModule__src_infrastructure_cache__2
+    IdempotencyModule -->|RedisService| RedisModule
     IdempotencyModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ImportModule["ImportModule"]
     ImportModule -->|OutboxWriterPort| OutboxModule
@@ -97,10 +97,9 @@ flowchart LR
     ImportModule -->|NumberingPort| NumberingModule
     ImportModule -->|AuditPort| AuditModule
     InboxModule["InboxModule"]
-    InboxModule -->|PrismaWriteService| PrismaModule
     InboxModule -->|ConfigService| ConfigModule
     LockingModule["LockingModule"]
-    LockingModule -->|RedisService| CacheModule__src_infrastructure_cache__2
+    LockingModule -->|RedisService| RedisModule
     LockingModule -->|ConfigService| ConfigModule
     MessagingModule__src_platform_messaging_["MessagingModule (src/platform/messaging)"]
     MessagingModule__src_platform_messaging__2["MessagingModule__src_platform_messaging_"]
@@ -591,9 +590,9 @@ flowchart LR
     PrismaAuditRepository -->|injects via ContextModule| RequestContextPort
 ```
 
-#### CacheModule (src/platform/cache) — `src/platform/cache/cache.module.ts`
+#### CacheModule — `src/platform/cache/cache.module.ts`
 
-imports: InfraCacheModule.forRoot() · exports: CachePort
+imports: InfraRedisModule · exports: CachePort
 
 ```mermaid
 flowchart LR
@@ -604,7 +603,7 @@ flowchart LR
     ConfigService["ConfigService"]
     RedisCacheAdapter -->|injects via ConfigModule| ConfigService
     RedisService["RedisService"]
-    RedisCacheAdapter -->|injects| RedisService
+    RedisCacheAdapter -->|injects via RedisModule| RedisService
     GetCacheValueUseCase["GetCacheValueUseCase"]
     GetCacheValueUseCase -->|injects| RedisCacheAdapter
     SetCacheValueUseCase["SetCacheValueUseCase"]
