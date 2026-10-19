@@ -6,6 +6,7 @@ import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-po
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 import { IdempotencyPort } from '@platform/idempotency/ports/idempotency.port';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { GoodsReceiptPosted } from '../../domain/events/grn.posted.event';
 
 @Injectable()
 export class PostGrnUseCase {
@@ -67,6 +68,21 @@ export class PostGrnUseCase {
       for (const event of grn.pullEvents()) {
         await this.integrationEvent.send(event, grn.id.toString());
       }
+
+      // Emit GoodsReceiptPosted for downstream consumers (inventory).
+      await this.integrationEvent.send(
+        new GoodsReceiptPosted(
+          grn.id.toString(),
+          grn.purchaseOrderId,
+          grn.lines.map(l => ({
+            grnLineId: `${grn.id.toString()}:${l.productId}`,
+            productId: l.productId,
+            acceptedQuantity: l.acceptedQuantity > 0 ? l.acceptedQuantity : l.receivedQuantity,
+            unitPrice: l.unitPrice,
+          })),
+        ),
+        grn.id.toString(),
+      );
 
       await this.idempotency.complete({
         reservation,

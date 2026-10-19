@@ -20,6 +20,7 @@ const businessModules = [
   'party/vendor',
   'procurement/purchase-order',
   'procurement/good-receipt-note',
+  'inventory/stock-movement',
   'sales/invoice',
 ];
 
