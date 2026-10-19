@@ -53,6 +53,7 @@ import {
 } from './responses/list-purchase-orders.web.response.dto';
 import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
+import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
 import { UseInterceptors } from '@nestjs/common';
 import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
@@ -88,6 +89,7 @@ export class PurchaseOrderController {
   ) {}
 
   @Post()
+  @Idempotent()
   @ApiOperation({ summary: 'Create a purchase order' })
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() dto: CreatePurchaseOrderDto): Promise<ApiResponse<IdResponse>> {
