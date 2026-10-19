@@ -1,72 +1,53 @@
 // ============================================================================
 // Platform — Inbox (inbox.prisma)
 // ============================================================================
-// Durable inbound message claim and deduplication boundary.
-// The Inbox is the consumer-side counterpart of Outbox.
-// Outbox protects reliable publication; Inbox protects reliable consumption.
+// Consumer-side counterpart of Outbox (design 07): guarantees that the same
+// logical message + the same consumer gives exactly one business execution
+// under at-least-once redelivery. No business rules, no broker knowledge.
 //
-// A message is claimed via INSERT-as-claim on (tenantId, organizationId,
-// consumer, messageId). PROCESSED rows replay the dedup; FAILED rows are
-// re-claimable; expired IN_PROGRESS claims are reconciled.
+// Identity is (tenantId, organizationId, consumer, messageId); NULLs are
+// normalized to '' at the repository edge so the unique constraint still bites.
 //
-// Multi-tenancy: (tenantId, organizationId, consumer, messageId) is the
-// natural identity — the same messageId can be independently processed
-// by different consumers.
+// Statuses: IN_PROGRESS | PROCESSED | SUSPENDED. `fail` keeps a row IN_PROGRESS
+// with a backoff `nextAttemptAt` (the broker redelivers); the reconciler parks
+// poison past `maxAttempts` as SUSPENDED and deletes PROCESSED past retention.
 // ============================================================================
 
 enum InboxMessageStatus {
   IN_PROGRESS
   PROCESSED
-  FAILED
   SUSPENDED
 
   @@map("inbox_message_status")
 }
 
 model InboxMessage {
-  id             String             @id @default(uuid()) @db.Uuid
+  id             String            @id @default(uuid()) @db.Uuid
 
-  tenantId       String             @default("") @map("tenant_id") @db.VarChar(100)
-  organizationId String             @default("") @map("organization_id") @db.VarChar(100)
-  consumer       String             @db.VarChar(250)
-  messageId      String             @map("message_id") @db.VarChar(500)
+  tenantId       String            @default("") @map("tenant_id") @db.VarChar(100)
+  organizationId String            @default("") @map("organization_id") @db.VarChar(100)
+  consumer       String            @db.VarChar(250)
+  messageId      String            @map("message_id") @db.VarChar(500)
 
-  messageType    String             @map("message_type") @db.VarChar(250)
-  messageVersion Int                @default(1) @map("message_version")
-
-  payloadHash    String?            @map("payload_hash") @db.VarChar(128)
+  messageType    String            @map("message_type") @db.VarChar(250)
   payload        Json
 
-  occurredAt     DateTime?          @map("occurred_at")
-  receivedAt     DateTime           @default(now()) @map("received_at")
-
   status         InboxMessageStatus @default(IN_PROGRESS)
+  attempts       Int               @default(1)
 
-  attempts       Int                @default(1)
+  claimToken     String            @map("claim_token") @db.Uuid
+  claimedAt      DateTime?         @map("claimed_at")
+  processedAt    DateTime?         @map("processed_at")
+  nextAttemptAt  DateTime?         @map("next_attempt_at")
+  lastError      String?           @map("last_error") @db.Text
 
-  claimToken     String             @map("claim_token") @db.Uuid
-  claimedAt      DateTime?          @map("claimed_at")
+  correlationId  String?           @map("correlation_id") @db.VarChar(200)
+  causationId    String?           @map("causation_id") @db.VarChar(200)
 
-  processedAt    DateTime?          @map("processed_at")
-
-  nextAttemptAt  DateTime?          @map("next_attempt_at")
-
-  errorCode      String?            @map("error_code") @db.VarChar(100)
-  errorMessage   String?            @map("error_message") @db.Text
-  lastError      String?            @map("last_error") @db.Text
-
-  correlationId  String?            @map("correlation_id") @db.VarChar(200)
-  causationId    String?            @map("causation_id") @db.VarChar(200)
-
-  createdAt      DateTime           @default(now()) @map("created_at")
-  updatedAt      DateTime           @updatedAt @map("updated_at")
-
-  version        Int                @default(1)
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
 
   @@unique([tenantId, organizationId, consumer, messageId])
   @@index([status, nextAttemptAt])
-  @@index([claimedAt])
-  @@index([tenantId, organizationId, status])
-  @@index([consumer, messageId])
   @@map("inbox_messages")
 }

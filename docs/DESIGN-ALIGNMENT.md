@@ -90,6 +90,27 @@ with the design docs in `~/Documents/Common/erp` (extracted to
   their event bases now import `OutboxEvent`/`OutboxEventBase` from
   `@platform/outbox/outbox.types`.
 
+### 07 · Inbox — consumer-side deduplication ✅
+
+- Statuses narrowed to `IN_PROGRESS | PROCESSED | SUSPENDED`; `FAILED` and the
+  `MESSAGE_REUSED`/payload-hash machinery dropped. Receive results are
+  `ACQUIRED | DUPLICATE | BUSY` (the reserve-everything pattern: only `ACQUIRED`
+  proceeds, ACK only after `complete`).
+- `receive` = INSERT-as-claim on `(tenant, company, consumer, messageId)`;
+  `IN_PROGRESS` is `BUSY` while the claim is live (inside
+  `INBOX_CLAIM_LEASE_MS`) or the retry is not due, otherwise CAS re-claimed on
+  the stored token (`attempts + 1`). `fail` keeps the row `IN_PROGRESS` with an
+  exponential `nextAttemptAt` (broker NACK drives redelivery).
+- Internal `InboxRepositoryPort` + `ClaimInboxRetryUseCase` removed —
+  `PrismaInboxRepository` is concrete and injected into the use cases.
+- Reconciler (`@Cron` 60s) parks expired poison (`attempts > max`) `SUSPENDED`
+  and backoffs the rest; the same sweep deletes `PROCESSED` past retention.
+- Table trimmed to the design columns (`message_version`, `payload_hash`,
+  `occurred_at`, `received_at`, `error_*`, `version` dropped); migration
+  `20261019150000_align_inbox_design` (the table had never been migrated).
+- `__testing__/in-memory-inbox.repository.ts` deleted; the spec builds an inline
+  fake. Config gained `INBOX_PROCESSED_RETENTION_MS`, dropped `INBOX_BATCH_SIZE`.
+
 ### 08 · Saga — company-configurable, five tables ✅
 
 - Five tables: `saga_definitions` (one ACTIVE per key, found by event
@@ -124,7 +145,7 @@ FAILED_MANUAL`; ports `FeatureGate`, `CompanySettingsReader`, `SagaAction`
 
 ### Cross-cutting
 
-- Remove the remaining `__testing__` doubles (notification, inbox, context,
+- Remove the remaining `__testing__` doubles (notification, context,
   batch-operation, webhook) — design: "common services ship no test doubles".
   Specs that rely on them must be rewritten with inline mocks.
 - Wire the saga to a broker consumer: `SagaInboundPort` is the seam, but
@@ -134,7 +155,8 @@ FAILED_MANUAL`; ports `FeatureGate`, `CompanySettingsReader`, `SagaAction`
   `docs/FLOWCHARTS.md`, `docs/BUSINESS-MODULE-GUIDE.md`,
   `docs/PLATFORM-SERVICE-GUIDE.md` and
   `docs/ARCHITECTURE-BUSINESS-MODULE-PATTERN.md` updated for the 01–08
-  removals; the per-service READMEs for events/messaging/outbox/saga rewritten.
+  removals; the per-service READMEs for events/messaging/outbox/inbox/saga
+  rewritten.
 - Naming: the design uses `companyId`; the code uses `organizationId`
   throughout. **Still open** — a global rename across every Prisma model,
   migration, business module and the request context. Deferred deliberately

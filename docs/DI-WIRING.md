@@ -1263,12 +1263,12 @@ flowchart LR
 #### AppModule — `src/app.module.ts`
 
 imports: ConfigModule, ThrottlerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const { ttlMs, limit } = config.getThrottler();
-        return { throttlers: [{ ttl: ttlMs, limit }] };
-      },
-    }), InfrastructureModule, PlatformModule, BusinessModule · exports: —
+inject: [ConfigService],
+useFactory: (config: ConfigService) => {
+const { ttlMs, limit } = config.getThrottler();
+return { throttlers: [{ ttl: ttlMs, limit }] };
+},
+}), InfrastructureModule, PlatformModule, BusinessModule · exports: —
 
 ```mermaid
 flowchart LR

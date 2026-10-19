@@ -15,7 +15,7 @@
 - **Auth (IamAuthN)** — proves identity, holds the session, resolves the
   entitled context (tenant → company → center).
 - **Authorization (AuthZ)** — decides. `ALLOW + company scope filter +
-  obligations`, or `DENY`. Default DENY; explicit DENY wins.
+obligations`, or `DENY`. Default DENY; explicit DENY wins.
 
 Company is the workspace; tenant isolates. One login, every center.
 
@@ -44,8 +44,17 @@ roles / permissions / role_permissions / role_assignments(center+scope+validity)
 - `IamSessionPort.verifySession({ sessionId })` — Redis lookup, O(1) revoke
 
 ```ts
-const context = await this.iamEntitlement.resolveContext({ user: userId, tenant: tenantId, company: companyId, center: 'ERP' });
-const decision = await this.authorization.check({ ...context, resource: 'purchase-order', action: 'approve' });
+const context = await this.iamEntitlement.resolveContext({
+  user: userId,
+  tenant: tenantId,
+  company: companyId,
+  center: 'ERP',
+});
+const decision = await this.authorization.check({
+  ...context,
+  resource: 'purchase-order',
+  action: 'approve',
+});
 if (decision.status !== 'ALLOW') throw new ForbiddenException();
 return this.purchaseOrders.approve(id, decision.scopeFilter);
 ```

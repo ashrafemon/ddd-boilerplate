@@ -207,7 +207,7 @@ export class ConfigService {
       retryBaseDelayMs: 5_000,
       retryMaxDelayMs: 600_000,
       reconciliationIntervalMs: 60_000,
-      batchSize: 100,
+      processedRetentionMs: 2_592_000_000,
     });
   }
 

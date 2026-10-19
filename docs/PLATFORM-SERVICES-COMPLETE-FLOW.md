@@ -10,7 +10,7 @@
 3. [Outbox (transactional publish)](#2-outbox--transactional-publish)
 4. [Events (in-process dispatch only)](#3-events--in-process-dispatch-only)
 5. [Messaging + MessageQueue (broker adapters)](#4-messaging--messagequeue--broker-adapters)
-6. [Inbox (reliable consumption)](#5-inbox--reliable-consumption)
+6. [Inbox (consumer-side deduplication)](#5-inbox--consumer-side-deduplication)
 7. [Locking (distributed lease)](#6-locking--distributed-lease)
 8. [Idempotency (duplicate suppression + replay)](#7-idempotency--duplicate-suppression--replay)
 9. [Scheduler (durable TIME wake-ups)](#8-scheduler--durable-time-wake-ups)
@@ -221,36 +221,38 @@ abstract class MessageQueuePort {
 
 ---
 
-## 5. Inbox — reliable consumption
+## 5. Inbox — consumer-side deduplication
 
-> Consumer-side counterpart of the outbox (receive→process→ack, duplicate-safe). `src/platform/inbox/README.md`.
+> The consumer counterpart of Outbox: the same logical message + the same
+> consumer yields exactly one business execution under at-least-once delivery.
+> `src/platform/inbox/README.md`.
 
 **Module:** `src/platform/inbox/inbox.module.ts` → `InboxModule` (imports `Context,Prisma`; exports `InboxPort`).
 **Ports:**
 
 ```ts
-// ports/inbox.port.ts
+// ports/inbox.port.ts — the only port
 abstract class InboxPort {
   receive(req: InboxReceiveRequest): Promise<InboxReceiveResult>;
   complete(req: InboxCompleteRequest): Promise<void>;
   fail(req: InboxFailRequest): Promise<void>;
 }
-// InboxReceiveRequest={tenantId?,organizationId?,consumer,messageId,messageType,payload?,payloadHash?,occurredAt?,correlationId?,causationId?}
-// InboxReceiveResult= ACQUIRED{reservation:{id,claimToken,version}} | PROCESSED | IN_PROGRESS | FAILED | SUSPENDED | MESSAGE_REUSED
-// impl: InboxService → Receive/Complete/Fail/ClaimInboxRetryUseCase
-// ports/inbox-repository.port.ts → PrismaInboxRepository: insert/findUnique/claimRetryable/updateStatus(CAS)
+// InboxReceiveRequest={tenantId?,organizationId?,consumer,messageId,messageType,payload,correlationId?,causationId?}
+// InboxReceiveResult= ACQUIRED{reservation:{id,claimToken}} | DUPLICATE | BUSY
+// impl: InboxService → Receive/Complete/FailUseCase → PrismaInboxRepository (concrete)
 ```
 
 **Complete flow:**
 
-1. Worker first step (inside `RequestContextPort.run`): `receive()` → `sha256(payload)` if no hash → `repository.insert` → success ⇒ `ACQUIRED{claimToken,version}`.
-2. On unique violation → `findUnique(tenantId,orgId,consumer,messageId)`: `PROCESSED`⇒`PROCESSED` (dup, skip); `IN_PROGRESS`⇒`IN_PROGRESS`; `FAILED`⇒`claimRetryable`→`ACQUIRED` or `FAILED`; `SUSPENDED`⇒`SUSPENDED`; `payloadHash` mismatch⇒`MESSAGE_REUSED` (key reuse bug).
-3. Process → `complete` (CAS `claimToken+version+status` → `PROCESSED`) or `fail` (CAS → `FAILED`, retryable, bounded).
-4. `InboxReconciler` cron releases expired `IN_PROGRESS` (`claimedAt+claimLeaseMs`), exponential backoff `nextAttemptAt`, `SUSPEND` after max.
+1. Listener calls `receive()`: INSERT-as-claim on `(tenant, company, consumer, messageId)` → success ⇒ `ACQUIRED` (first delivery wins; the reservation carries `id` + `claimToken`).
+2. On unique violation → read the row: `PROCESSED` ⇒ `DUPLICATE` (skip); `SUSPENDED` ⇒ `BUSY`; `IN_PROGRESS` while the claim is live (inside `INBOX_CLAIM_LEASE_MS`) or the retry is not due ⇒ `BUSY`; otherwise CAS re-claim on the stored token (`attempts + 1`) ⇒ `ACQUIRED` (losing the race ⇒ `BUSY`).
+3. `RequestContextPort.run` restores tenant/company/correlation; the listener executes the payload, then `complete` (CAS `claimToken` → `PROCESSED`) fires the broker ACK.
+4. Failure → `fail` keeps the row `IN_PROGRESS` with an exponential `nextAttemptAt` + `lastError`; the broker NACK drives redelivery.
+5. `InboxReconciler` (@Cron 60s): an expired claim with `attempts > INBOX_MAX_ATTEMPTS` parks `SUSPENDED` (alertable, never purged); the rest get a fresh backoff; the same sweep deletes `PROCESSED` rows past `INBOX_PROCESSED_RETENTION_MS`.
 
-**Data & config:** `inbox_messages` (`prisma/schema/platform/inbox.prisma`, `@@unique([tenantId,organizationId,consumer,messageId])`, CAS `claimToken/version`). `src/config/inbox.config.ts`: `INBOX_CLAIM_LEASE_MS=300000`, `MAX_ATTEMPTS=5`, `RETRY_BASE_DELAY_MS=5000`, `RETRY_MAX_DELAY_MS=600000`, `RECONCILIATION_INTERVAL_MS=60000`, `BATCH_SIZE=100`.
-**Tenancy:** natural key tenant-scoped; different consumers process same `messageId` independently.
-**Rules:** Business consumes only `InboxPort`; every write CAS; failed is re-claimable; reconciler is the only path for expired claims.
+**Data & config:** `inbox_messages` (`prisma/schema/platform/inbox.prisma`; `@@unique([tenantId,organizationId,consumer,messageId])` with NULLs normalized to `''` at the repo edge; `IN_PROGRESS|PROCESSED|SUSPENDED`; CAS on `claimToken`). `src/config/inbox.config.ts`: `INBOX_CLAIM_LEASE_MS=300000`, `INBOX_MAX_ATTEMPTS=5`, `INBOX_RETRY_BASE_DELAY_MS=5000`, `INBOX_RETRY_MAX_DELAY_MS=600000`, `INBOX_RECONCILIATION_INTERVAL_MS=60000`, `INBOX_PROCESSED_RETENTION_MS=2592000000`.
+**Tenancy:** the natural key is tenant + company + consumer + message id; different consumers process the same `messageId` independently.
+**Rules:** Business consumes only `InboxPort`; ACK only after `complete`; every write CAS; poison is parked, never dropped; events a consumer produces leave via the outbox in the same transaction.
 
 ---
 

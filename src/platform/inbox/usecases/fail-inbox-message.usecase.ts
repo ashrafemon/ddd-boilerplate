@@ -1,33 +1,34 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InboxRepositoryPort } from '../ports/inbox-repository.port';
+import { ConfigService } from '@config/config.service';
+import { PrismaInboxRepository } from '../repositories/prisma-inbox.repository';
 import { InboxFailRequest } from '../inbox.types';
 
 /**
- * Use case: mark an inbox message as FAILED.
- *
- * CAS update: IN_PROGRESS → FAILED with claim token + version.
- * A FAILED message can be re-acquired by a subsequent receive.
+ * Use case: keep an inbox message pending with a backoff `nextAttemptAt`
+ * (CAS on the claim token). The broker NACK then triggers redelivery; the
+ * message stays deduped by its identity throughout.
  */
 @Injectable()
 export class FailInboxMessageUseCase {
   private readonly logger = new Logger(FailInboxMessageUseCase.name);
 
-  constructor(private readonly repository: InboxRepositoryPort) {}
+  constructor(
+    private readonly repository: PrismaInboxRepository,
+    private readonly configService: ConfigService,
+  ) {}
 
   async execute(request: InboxFailRequest): Promise<void> {
-    const { reservation, errorCode, errorMessage, nextAttemptAt } = request;
-
-    const success = await this.repository.fail(
+    const { reservation, lastError = null } = request;
+    const { retryBaseDelayMs, retryMaxDelayMs } = this.configService.getInbox();
+    const failed = await this.repository.fail(
       reservation.id,
       reservation.claimToken,
-      reservation.version,
-      errorCode,
-      errorMessage,
-      nextAttemptAt,
+      lastError,
+      retryBaseDelayMs,
+      retryMaxDelayMs,
     );
-
-    if (!success) {
-      this.logger.warn(`Inbox fail failed — ownership lost for reservation ${reservation.id}`);
+    if (!failed) {
+      this.logger.warn(`Inbox fail lost ownership for reservation ${reservation.id}`);
     }
   }
 }
