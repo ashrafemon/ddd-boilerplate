@@ -32,9 +32,6 @@ class FakeRepository extends PurchaseOrderCommandRepository {
   findByExternalReference(ref: string) {
     return Promise.resolve([...this.store.values()].find(p => p.externalReference === ref) ?? null);
   }
-  nextOrderSequence() {
-    return Promise.resolve(this.store.size + 1);
-  }
 }
 
 describe('ImportPurchaseOrderUseCase', () => {

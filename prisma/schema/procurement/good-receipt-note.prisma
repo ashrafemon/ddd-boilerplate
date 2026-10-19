@@ -9,7 +9,7 @@ model GoodReceiptNote {
   currency        String       @default("USD") @db.VarChar(3)
   subtotal        Decimal      @default(0) @db.Decimal(18, 2)
   total           Decimal      @default(0) @db.Decimal(18, 2)
-  receivedAt      DateTime
+  receivedAt      DateTime?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   version         Int          @default(1)

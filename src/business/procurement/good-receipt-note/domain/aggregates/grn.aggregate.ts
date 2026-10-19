@@ -44,7 +44,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
     return this.props.lines;
   }
 
-  get receivedAt(): Date {
+  get receivedAt(): Date | null {
     return this.props.receivedAt;
   }
 

@@ -36,7 +36,7 @@ invariantRegistry.register<{ receivedQuantity: number }>('grn.line-quantity', {
 invariantRegistry.register<{ status: string }>('grn.editable', {
   name: 'grn-editable',
   check: ({ status }) => {
-    if (!['DRAFT', 'RECEIVED'].includes(status)) {
+    if (status !== 'DRAFT') {
       throw Object.assign(new Error('GRN cannot be modified in its current status'), {
         statusCode: 422,
       });

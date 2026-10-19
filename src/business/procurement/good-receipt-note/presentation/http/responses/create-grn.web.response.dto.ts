@@ -11,7 +11,7 @@ const createGrnWebSchema = z.object({
   subtotal: z.number(),
   total: z.number(),
   lines: z.array(z.never()),
-  receivedAt: z.date(),
+  receivedAt: z.date().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

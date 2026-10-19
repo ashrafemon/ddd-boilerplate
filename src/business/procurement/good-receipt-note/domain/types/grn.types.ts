@@ -34,12 +34,13 @@ export interface GrnProps {
   status: string;
   currency: string;
   lines: GrnLine[];
-  receivedAt: Date;
+  receivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CreateGrnInput {
+  grnNumber: string;
   purchaseOrderId: string;
   vendorId: string;
   currency: string;
@@ -79,14 +80,14 @@ export interface GrnQueryRecord {
     unitPrice: number;
     total: number;
   }[];
-  receivedAt: Date;
+  receivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CreateGrnRequest {
   purchaseOrderId: string;
-  vendorId: string;
+  vendorId?: string;
   currency?: string;
   lines: {
     productId: string;

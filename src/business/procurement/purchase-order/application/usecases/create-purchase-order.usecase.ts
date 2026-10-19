@@ -7,6 +7,7 @@ import { OrderableVendorPort } from '../outbound-ports/vendor-query.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
+import { NumberingPort } from '../outbound-ports/numbering.port';
 
 @Injectable()
 export class CreatePurchaseOrderUseCase {
@@ -15,6 +16,7 @@ export class CreatePurchaseOrderUseCase {
     private readonly vendorQueryPort: OrderableVendorPort,
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
     private readonly companyConfig: CompanyConfigPort,
+    private readonly numbering: NumberingPort,
   ) {}
 
   @Transactional()
@@ -27,9 +29,12 @@ export class CreatePurchaseOrderUseCase {
       throw new ConflictException('Vendor is not orderable (blocked or inactive)');
     }
 
-    const sequence = await this.purchaseOrderRepository.nextOrderSequence();
+    const orderNumber = await this.numbering.nextNumber('purchase-order.number', {
+      prefix: 'PO-',
+      padding: 8,
+    });
     const purchaseOrder = PurchaseOrderFactory.create({
-      orderNumber: `PO-${String(sequence).padStart(8, '0')}`,
+      orderNumber,
       vendorId: input.vendorId,
       currency,
       externalReference: input.externalReference,

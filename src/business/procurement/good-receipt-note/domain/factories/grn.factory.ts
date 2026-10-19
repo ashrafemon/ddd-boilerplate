@@ -17,7 +17,7 @@ export class GrnFactory {
       GrnId.generate(),
       {
         id: GrnId.generate(),
-        grnNumber: `GRN-${Date.now()}`,
+        grnNumber: input.grnNumber,
         purchaseOrderId: input.purchaseOrderId,
         vendorId: input.vendorId,
         status: GrnStatus.DRAFT,
@@ -30,7 +30,7 @@ export class GrnFactory {
             line.unitPrice,
           ),
         ),
-        receivedAt: now,
+        receivedAt: null,
         createdAt: now,
         updatedAt: now,
       } satisfies GrnProps,

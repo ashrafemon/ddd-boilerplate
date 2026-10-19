@@ -15,6 +15,7 @@ import { CreateGrnUseCase } from '../../application/usecases/create-grn.usecase'
 import { AddGrnLineUseCase } from '../../application/usecases/add-grn-line.usecase';
 import { ReceiveGrnUseCase } from '../../application/usecases/receive-grn.usecase';
 import { CompleteGrnUseCase } from '../../application/usecases/complete-grn.usecase';
+import { CancelGrnUseCase } from '../../application/usecases/cancel-grn.usecase';
 import { GetGrnUseCase } from '../../application/usecases/get-grn.usecase';
 import { ListGrnsUseCase } from '../../application/usecases/list-grns.usecase';
 import { CreateGrnDto } from './requests/create-grn.request.dto';
@@ -49,6 +50,7 @@ export class GrnController {
     private readonly addGrnLineUseCase: AddGrnLineUseCase,
     private readonly receiveGrnUseCase: ReceiveGrnUseCase,
     private readonly completeGrnUseCase: CompleteGrnUseCase,
+    private readonly cancelGrnUseCase: CancelGrnUseCase,
     private readonly getGrnUseCase: GetGrnUseCase,
     private readonly listGrnsUseCase: ListGrnsUseCase,
   ) {}
@@ -112,5 +114,13 @@ export class GrnController {
   async complete(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const grnId = await this.completeGrnUseCase.execute(id);
     return { data: { id: grnId.toString() }, message: 'GRN completed' };
+  }
+
+  @Patch(':id/cancel')
+  @ApiOperation({ summary: 'Cancel a GRN' })
+  @HttpCode(HttpStatus.OK)
+  async cancel(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
+    const grnId = await this.cancelGrnUseCase.execute(id);
+    return { data: { id: grnId.toString() }, message: 'GRN cancelled' };
   }
 }
