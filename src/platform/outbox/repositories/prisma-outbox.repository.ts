@@ -80,9 +80,13 @@ export class PrismaOutboxRepository {
 
   /**
    * Race-safe claim: FOR UPDATE SKIP LOCKED over due PENDING rows. Stamps
-   * `claimToken` + `claimedAt` and bumps `attempts` but leaves `status` as
+   * `claim_token` + `claimed_at` and bumps `attempts` but leaves `status` as
    * PENDING (the lease is the in-flight marker; a crashed owner is reclaimed
    * once its lease expires — no reconciler needed).
+   *
+   * The outbox table is snake_case (`prisma/schema/platform/outbox.prisma`
+   * maps every column), so the raw SQL MUST use the physical names — and the
+   * RETURNING list aliases them back to camelCase for the mapper.
    */
   async claimBatch(options: ClaimOutboxOptions): Promise<OutboxClaimedRecord[]> {
     const now = new Date();
@@ -91,19 +95,41 @@ export class PrismaOutboxRepository {
 
     const rows = await this.txHost.tx.$queryRaw<OutboxRawRow[]>`
       UPDATE "outbox_messages" o
-      SET "claimToken" = ${claimToken}::uuid,
-          "claimedAt" = now(),
+      SET "claim_token" = ${claimToken}::uuid,
+          "claimed_at" = now(),
           "attempts" = o."attempts" + 1
       WHERE o."id" IN (
         SELECT "id" FROM "outbox_messages"
         WHERE "status" = 'PENDING'
-          AND ("nextRetryAt" IS NULL OR "nextRetryAt" <= ${now})
-          AND ("claimedAt" IS NULL OR "claimedAt" <= ${leaseCutoff})
-        ORDER BY "createdAt" ASC
+          AND ("next_retry_at" IS NULL OR "next_retry_at" <= ${now})
+          AND ("claimed_at" IS NULL OR "claimed_at" <= ${leaseCutoff})
+        ORDER BY "created_at" ASC
         LIMIT ${options.batchSize}
         FOR UPDATE SKIP LOCKED
       )
-      RETURNING *`;
+      RETURNING
+        o."id",
+        o."event_id" AS "eventId",
+        o."tenant_id" AS "tenantId",
+        o."company_id" AS "companyId",
+        o."event_type" AS "eventType",
+        o."event_version" AS "eventVersion",
+        o."aggregate_type" AS "aggregateType",
+        o."aggregate_id" AS "aggregateId",
+        o."payload",
+        o."headers",
+        o."occurred_at" AS "occurredAt",
+        o."created_at" AS "createdAt",
+        o."status",
+        o."next_retry_at" AS "nextRetryAt",
+        o."attempts",
+        o."claimed_at" AS "claimedAt",
+        o."claim_token" AS "claimToken",
+        o."published_at" AS "publishedAt",
+        o."last_error" AS "lastError",
+        o."correlation_id" AS "correlationId",
+        o."causation_id" AS "causationId",
+        o."version"`;
 
     return rows.map(row => this.toClaimedRecord(row, claimToken));
   }

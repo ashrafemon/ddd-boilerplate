@@ -169,11 +169,17 @@ export class PrismaInboxRepository {
 
     const backoffBase = Math.max(retryBaseDelayMs, 0);
     const backoffMax = Math.max(retryMaxDelayMs, backoffBase);
+    // The numeric casts matter: Prisma sends JS numbers as untyped parameters,
+    // and `LEAST($1, $2)` then resolves to `interval` — which Postgres refuses
+    // to add to a `timestamp` column ("expression is of type interval").
     const backoffed = await this.txHost.tx.$executeRaw`
       UPDATE "inbox_messages"
       SET "claimed_at" = NULL,
-          "next_attempt_at" = ${now} + (
-            LEAST(${backoffBase} * POWER(2, GREATEST("attempts" - 1, 0)), ${backoffMax})
+          "next_attempt_at" = ${now}::timestamp + (
+            LEAST(
+              ${backoffBase}::numeric * POWER(2, GREATEST("attempts" - 1, 0)),
+              ${backoffMax}::numeric
+            )
             * INTERVAL '1 millisecond'
           )
       WHERE "status" = 'IN_PROGRESS'

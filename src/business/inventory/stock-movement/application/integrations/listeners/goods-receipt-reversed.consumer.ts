@@ -82,8 +82,14 @@ export class GoodsReceiptReversedConsumer {
           tenantId: envelope.tenantId ?? '',
         });
         if (!movement) {
-          this.logger.warn(
-            `No original GOODS_RECEIPT movement for ${originalGrnLineId}; compensation skipped`,
+          // The original receipt has not been recorded YET — the reversal
+          // event can overtake the receipt event. Completing the inbox row
+          // here would drop the compensation for good and leave the stock
+          // balance wrong. Failing keeps the row IN_PROGRESS with a backoff,
+          // so the broker redelivers it once the original lands (and it
+          // parks as SUSPENDED if it never does).
+          throw new Error(
+            `No original GOODS_RECEIPT movement for ${originalGrnLineId}; compensation deferred`,
           );
         }
       }

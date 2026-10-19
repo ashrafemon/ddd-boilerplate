@@ -800,12 +800,20 @@ SKIP LOCKED`, terminal writes are CAS/token-fenced, and at-least-once redelivery
    dedupe-with-replay uses `IdempotencyPort` / `@Idempotent()` (`platform/idempotency`).
 3. **Side effects leave via the outbox only** (`OutboxWriterPort` inside the use-case
    transaction); in-process listeners get the same canonical envelope (payload verbatim).
-4. **State escalation visible**: transient failures back off with bounded retries,
+4. **Hand-written SQL uses the PHYSICAL column names.** The platform tables are
+   not uniform: `outbox_messages`, `inbox_messages` and `saga_steps` are
+   snake_case (`@map`), while `scheduled_jobs`, `batch_operation_*`,
+   `import_job*` and `notification_*` are camelCase. A `$queryRaw` against a
+   snake_case table that names a camelCase column fails the whole statement —
+   and a statement that fails on every tick is silent: the outbox simply never
+   publishes. `RETURNING` lists alias the physical names back to camelCase so
+   the TypeScript mappers keep working.
+5. **State escalation visible**: transient failures back off with bounded retries,
    terminal poison states park (`SUSPENDED`/`DEAD_LETTER`/`FAILED`) — nothing loops
    forever and nothing dies silently; stale in-flight states have a reconciler.
-5. **Config**: `src/config/<service>.config.ts` (+ `ConfigService` getter with
+6. **Config**: `src/config/<service>.config.ts` (+ `ConfigService` getter with
    identical defaults) — no raw `process.env` outside `src/config`.
-6. Registration of business handlers into platform registries happens in the
+7. Registration of business handlers into platform registries happens in the
    **composition root** (`src/bootstrap/configure-<feature>.ts` table → `register(handler)`
    — §9.1 standard; the registry docstring says so too); `PlatformModule` imports+exports
    the new module; `src/platform/README.md` catalog row + this tree entry get updated in the

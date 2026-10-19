@@ -33,6 +33,10 @@ source of truth; this file is the load-bearing summary.
    Domain folders import no `@nestjs/*`.
 3. Raw clients (Prisma generated, amqplib/kafkajs/ioredis/…) →
    `infrastructure/config/bootstrap/platform` only.
+   **Hand-written `$queryRaw` must use the PHYSICAL column names** — the
+   platform tables are not uniform (`outbox_messages`, `inbox_messages` and
+   `saga_steps` are snake_case, the rest camelCase). A wrong column name fails
+   the statement on every call, silently.
 4. Side effects that leave the process go through `OutboxWriterPort` inside
    the caller's `@Transactional()` — never publish from a use case.
 

@@ -43,14 +43,21 @@ export class ClsRequestContextService implements RequestContextPort {
   }
 
   public async run<T>(patch: Partial<RequestContextData>, fn: () => T | Promise<T>): Promise<T> {
-    const previous = this.cls.get<RequestContext | undefined>(CLS_REQUEST_CONTEXT_KEY);
-    const base = previous ?? RequestContext.create({ ...emptyContext() });
-    this.cls.set(CLS_REQUEST_CONTEXT_KEY, base.with(patch));
-    try {
-      return await this.cls.run(() => fn());
-    } finally {
-      this.cls.set(CLS_REQUEST_CONTEXT_KEY, previous);
-    }
+    // `cls.set` needs an ACTIVE context, and `cls.run` is what establishes
+    // one — so the merge happens INSIDE the run. Setting before it throws
+    // "Cannot set the key … No CLS context available" on every background
+    // path (the outbox's in-process dispatch, import execution, batch rows,
+    // recurring generation) that has no HTTP request to inherit from.
+    return await this.cls.run(async () => {
+      const previous = this.cls.get<RequestContext | undefined>(CLS_REQUEST_CONTEXT_KEY);
+      const base = previous ?? RequestContext.create({ ...emptyContext() });
+      this.cls.set(CLS_REQUEST_CONTEXT_KEY, base.with(patch));
+      try {
+        return await fn();
+      } finally {
+        this.cls.set(CLS_REQUEST_CONTEXT_KEY, previous);
+      }
+    });
   }
 
   public getRequestId(): string | undefined {

@@ -26,10 +26,11 @@ export interface RecordStockMovementReversalInput {
  * reuses the same natural-idempotency write (`grnLineId + movementType`), so
  * redelivered reversals never double-decrement.
  *
- * If the original receipt movement was never recorded (e.g. goods received
- * before this consumer existed), there is nothing to compensate — the call
- * returns null instead of pushing stock negative on a receipt that never
- * happened.
+ * If the original receipt movement is not recorded YET, the call returns
+ * null instead of pushing stock negative on a receipt that never happened.
+ * The caller (the reversal consumer) treats that as "not yet" and defers:
+ * the reversal event can overtake the receipt event, and dropping the
+ * compensation would leave the stock balance permanently wrong.
  */
 @Injectable()
 export class RecordStockMovementReversalUseCase {
