@@ -10,6 +10,7 @@ import { RemovePurchaseOrderLineUseCase } from './application/usecases/remove-pu
 import { PurchaseOrderTransitionUseCase } from './application/usecases/purchase-order-transition.usecase';
 import { IssuePurchaseOrderUseCase } from './application/usecases/issue-purchase-order.usecase';
 import { ClosePurchaseOrderUseCase } from './application/usecases/close-purchase-order.usecase';
+import { GetPurchaseOrderReceiptsUseCase } from './application/usecases/get-purchase-order-receipts.usecase';
 import { RegisterPurchaseOrderReceiptUseCase } from './application/usecases/register-purchase-order-receipt.usecase';
 import { HasPurchaseOrderReceiptsUseCase } from './application/usecases/has-purchase-order-receipts.usecase';
 import { ImportPurchaseOrderUseCase } from './application/usecases/import-purchase-order.usecase';
@@ -59,6 +60,7 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     RegisterPurchaseOrderReceiptUseCase,
     HasPurchaseOrderReceiptsUseCase,
     GetPurchaseOrderUseCase,
+    GetPurchaseOrderReceiptsUseCase,
     ListPurchaseOrdersUseCase,
     CreateRecurringPurchaseOrderUseCase,
     CreateRecurringFromPurchaseOrderUseCase,
