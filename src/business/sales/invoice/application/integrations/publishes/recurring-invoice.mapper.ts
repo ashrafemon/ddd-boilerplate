@@ -1,6 +1,6 @@
 import { ConflictException } from '@nestjs/common';
 import { JsonValue } from '@shared-kernel/types/json-value.type';
-import { InvoiceLineInput } from '../../domain/types/invoice.types';
+import { InvoiceLineInput } from '../../../domain/types/invoice.types';
 
 /**
  * Normalises the opaque RecurringTemplate.lines JSON carried by a
