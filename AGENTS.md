@@ -77,7 +77,10 @@ npm run build && NODE_ENV=test node -e "(async()=>{const{NestFactory}=require('@
 There are **no unit specs in `src/`** (they were removed in `0f32e4d`; `npm test`
 runs with `--passWithNoTests` and reports "No tests found"). The DB-backed e2e
 suite is the executable check: `npm run test:e2e` needs `docker compose up -d` +
-`.env`, and it must not be marked passing without running it.
+`.env`, and it must not be marked passing without running it. It covers the DI
+graph, the error envelope, the PO-07 receiving concurrency (two concurrent
+receipts can never jointly exceed the over-receipt limit) and the `grn.post`
+idempotent replay.
 
 ## Open work — build next
 

@@ -438,8 +438,9 @@ domain/registries/  invariantRegistry  — keyed Invariant list, enforce() throw
 ```
 
 Aggregates register invariants/policies by importing side-effect files
-(`*.invariants.ts`, `policies/*.ts`, `events/<name>.registry.ts`); rule classes never
-cross-import aggregates.
+(`*.invariants.ts`, `policies/*.ts`); rule classes never cross-import aggregates.
+`InvariantRegistry.enforce` / `PolicyRegistry.evaluate` THROW on an unknown key — a
+guard that was never registered is a loud error, never a silent no-op.
 
 ### Product (procurement) — `domain/aggregates/product.aggregate.ts`
 
@@ -480,10 +481,12 @@ DRAFT ── submit ─▶ SUBMITTED ── approve ─▶ APPROVED ── issue
 - Invariants: editable only in `DRAFT`, ≥1 line before submit, positive quantity, legal
   transitions.
 - Policy: `purchase-order.approval` — submitted orders with `total > autoApproveThreshold`
-  (company config) require manual approval; the approve transition is a no-op for them.
-- Order number: `PO-00000001` style, allocated through the command repository's
-  `nextOrderSequence()`.
-- Events: `PurchaseOrderCreated/Submitted/Approved/Rejected/Cancelled/Completed` +
+  (company config) require manual approval; `approve` on such an order is refused with
+  **409 "manual approval required"**, never a silent no-op.
+- Order number: `PO-00000001` style, allocated through the platform `NumberingPort`
+  (sequence key `purchase-order.number`, prefix `PO-`, padding 8) — race-safe, and the
+  only place a PO number is minted.
+- Events: `PurchaseOrderCreated/Submitted/Approved/Rejected/Issued/Cancelled/Completed` +
   `LineAdded/LineRemoved`.
 
 ### GoodReceiptNote (procurement) — `domain/aggregates/grn.aggregate.ts`
@@ -493,9 +496,11 @@ DRAFT ── submit ─▶ SUBMITTED ── approve ─▶ APPROVED ── issue
 - Status: `DRAFT | RECEIVED | COMPLETED | CANCELLED`.
 - Behavior: `addLine`, `receive` (needs ≥1 line, stamps `receivedAt`), `complete`, `cancel`;
   editable only in `DRAFT`.
-- Number: `GRN-<timestamp>` via the factory (a `nextGrnSequence()` helper exists on the
-  command repository — switch to `NumberingPort` when hardening).
-- Events: `GrnCreated/LineAdded/Received/Completed/Cancelled`.
+- Number: `GRN-00000001` style, allocated through the platform `NumberingPort`
+  (sequence key `grn.number`, prefix `GRN-`, padding 8).
+- Events: `GrnCreated/LineAdded/Received/Completed/Cancelled`, plus `GoodsReceiptPosted`
+  and `GoodsReceiptReversed` — raised by the post/reverse use cases for the inventory
+  consumers.
 
 ---
 

@@ -51,13 +51,11 @@ export class ReverseGrnUseCase {
   @Transactional()
   async execute(input: { id: string; actorId?: string; idempotencyKey?: string }): Promise<GrnId> {
     // Guarded by `IdempotencyPort` scope `grn.reverse`: a redelivered request
-    // replays the original reversal id instead of compensating twice. Without
-    // a key the command still runs — the "one reversal per original" check
-    // below is the natural guard.
-    const key = input.idempotencyKey;
-    if (!key) {
-      return this.reverse(input);
-    }
+    // replays the original reversal id instead of compensating twice. The key
+    // falls back to the GRN id (see `ReverseGrnDto`), so the command is
+    // replay-safe even when the client sends no key — a second reversal of the
+    // same original can never mint a second compensation document.
+    const key = input.idempotencyKey ?? input.id;
 
     const tenantId = this.requestContext.getTenantId() ?? '';
     const companyId = this.requestContext.getCompanyId() ?? '';
