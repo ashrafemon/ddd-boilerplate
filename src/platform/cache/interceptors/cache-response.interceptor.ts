@@ -19,12 +19,10 @@ export class CacheResponseInterceptor implements NestInterceptor {
       return of(cached.value);
     }
     return next.handle().pipe(
-      tap(async (data) => {
-        try {
-          await this.cache.set(cacheKey, data);
-        } catch {
+      tap(data => {
+        void this.cache.set(cacheKey, data).catch(() => {
           // fail-open
-        }
+        });
       }),
     );
   }
