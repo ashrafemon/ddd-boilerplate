@@ -314,13 +314,13 @@ holds `{ ownerModule → batchHandler }` rows and calls
 Recurring→scheduler is platform→platform (allowed to inject its own registry);
 vendor's import opt-in still registers in `VendorModule` (legacy — migrate on touch).
 
-| Opt-in registry             | Key               | Handler                                                     | Wired by                                  |
-| --------------------------- | ----------------- | ----------------------------------------------------------- | ----------------------------------------- |
-| BatchOperationHandlerRegistry | `PurchaseOrder`   | PurchaseOrderBatchOperationAdapter (`infrastructure/adapters/platform/`) | `configureBatchOperations` bridge |
-| BatchOperationHandlerRegistry | `GoodReceiptNote` | GrnBatchOperationAdapter                                    | `configureBatchOperations` bridge         |
-| ImportHandlerRegistry       | `vendor`          | VendorImportHandler                                         | VendorModule (legacy)                     |
-| ScheduledJobHandlerRegistry | `Recurring`       | RecurringGenerationHandler                                    | RecurringModule (platform→platform)       |
-| FieldResolverRegistry       | field prefix      | FieldResolver                                                 | bridge row per resolver (standard, not built yet) |
+| Opt-in registry               | Key               | Handler                                                                  | Wired by                                          |
+| ----------------------------- | ----------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
+| BatchOperationHandlerRegistry | `PurchaseOrder`   | PurchaseOrderBatchOperationAdapter (`infrastructure/adapters/platform/`) | `configureBatchOperations` bridge                 |
+| BatchOperationHandlerRegistry | `GoodReceiptNote` | GrnBatchOperationAdapter                                                 | `configureBatchOperations` bridge                 |
+| ImportHandlerRegistry         | `vendor`          | VendorImportHandler                                                      | VendorModule (legacy)                             |
+| ScheduledJobHandlerRegistry   | `Recurring`       | RecurringGenerationHandler                                               | RecurringModule (platform→platform)               |
+| FieldResolverRegistry         | field prefix      | FieldResolver                                                            | bridge row per resolver (standard, not built yet) |
 
 ## 9. Mental-model cheat sheet
 

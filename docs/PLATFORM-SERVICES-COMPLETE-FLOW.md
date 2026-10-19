@@ -18,7 +18,7 @@
 11. [Batch-operation (bulk transitions)](#10-batch-operation--bulk-transitions)
 12. [Import (spreadsheet/CSV pipeline)](#11-import--spreadsheetcsv-pipeline)
 13. [Condition-engine (AND/OR generation gate)](#12-condition-engine--andor-generation-gate)
-14. [Saga (cross-aggregate orchestration)](#13-saga--cross-aggregate-orchestration)
+14. [Saga (company-configurable orchestration)](#13-saga--company-configurable-orchestration)
 15. [Webhook (inbound receipt + outbound dispatch)](#14-webhook--inbound-receipt--outbound-dispatch)
 16. [Notification (email/SMS/push pipeline)](#15-notification--emailsmspush-pipeline)
 17. [Numbering (document sequences)](#16-numbering--document-sequences)
@@ -109,7 +109,12 @@ abstract class RequestContextPort {
 ```ts
 // ports/outbox-writer.port.ts — the ONLY outbox port
 abstract class OutboxWriterPort {
-  append(event: OutboxEvent, aggregateType: string, aggregateId: string, opts?: { broker?: BrokerTarget }): Promise<void>;
+  append(
+    event: OutboxEvent,
+    aggregateType: string,
+    aggregateId: string,
+    opts?: { broker?: BrokerTarget },
+  ): Promise<void>;
 }
 // impl: OutboxService → AppendOutboxEventUseCase
 // repositories/prisma-outbox.repository.ts (concrete, no port): append(request),
@@ -144,11 +149,11 @@ flowchart LR
 
 **Who calls / how:**
 
-| Caller                                              | Surface                                                  |
-| --------------------------------------------------- | -------------------------------------------------------- |
-| Every command use case (via module `OutboxAdapter`) | `OutboxWriterPort.append` (same tx)                      |
-| `OutboxScheduler` (internal cron + tick)            | `PublishPendingBatchUseCase`, `PrismaOutboxRepository`   |
-| Nobody publishes brokers directly                   | `MessageQueuePort` only via the dispatcher               |
+| Caller                                              | Surface                                                |
+| --------------------------------------------------- | ------------------------------------------------------ |
+| Every command use case (via module `OutboxAdapter`) | `OutboxWriterPort.append` (same tx)                    |
+| `OutboxScheduler` (internal cron + tick)            | `PublishPendingBatchUseCase`, `PrismaOutboxRepository` |
+| Nobody publishes brokers directly                   | `MessageQueuePort` only via the dispatcher             |
 
 **Data & config:** `outbox_messages` (`prisma/schema/platform/outbox.prisma`, indexes `[status,nextRetryAt]`, `[tenantId,organizationId,status]`). `src/config/outbox.config.ts` (`ConfigService.getOutbox()`): `OUTBOX_POLL_INTERVAL_MS=10000`, `OUTBOX_BATCH_SIZE=100`, `OUTBOX_MAX_ATTEMPTS=10`, `OUTBOX_RETRY_BASE_DELAY_MS=1000`, `OUTBOX_RETRY_MAX_DELAY_MS=600000`, `OUTBOX_CLAIM_LEASE_MS=60000`, `OUTBOX_CLEANUP_OLDER_THAN_HOURS=24`.
 **Tenancy:** stamped at append, restored on in-process CLS + carried in broker headers; the dispatcher claims globally (stateless).
@@ -526,44 +531,61 @@ interface FieldResolver {
 
 ---
 
-## 13. Saga — cross-aggregate orchestration
+## 13. Saga — company-configurable orchestration
 
-> Sequence of steps each dispatching a command and reacting to events (not one DB tx). `src/platform/saga/README.md`.
+> Long-running cross-aggregate processes on ERP-standard defaults that every
+> company narrows with its own overlay; the saga calls business actions, never
+> repositories. `src/platform/saga/README.md`.
 
-**Module:** `src/platform/saga/saga.module.ts` → `SagaModule` (imports `Context,Prisma`; NOT `@Global()`; exports `SagaPort,SagaDefinitionRegistry`).
+**Module:** `src/platform/saga/saga.module.ts` → `SagaModule` (imports `Context,Prisma,Outbox`; NOT `@Global()`; exports `SagaInboundPort,SagaActionRegistry`).
 **Ports:**
 
 ```ts
-// ports/saga.port.ts → SagaService
-abstract class SagaPort {
-  start(req: StartSagaRequest): Promise<SagaInstance>;
-  handleEvent(req: HandleSagaEventRequest): Promise<void>;
-  suspend(req: SuspendSagaRequest): Promise<void>;
-  compensate(req: CompensateSagaRequest): Promise<void>;
+// ports/feature-gate.port.ts — owned outside the saga
+abstract class FeatureGate {
+  enabled(companyId): Promise<ReadonlySet<string>>;
 }
-// ports/saga-repository.port.ts → PrismaSagaRepository (createInstance/findInstanceByCorrelation/updateInstanceStatus(CAS)/findCompanyConfig/findEventSubscription/findStepConfig/findCompensationConfigs/createStepExecution/findStepExecution/updateStepStatus(CAS))
-// ports/saga-command.port.ts → SagaCommandDispatcherAdapter (dispatch({tenantId,organizationId,commandId,commandType,commandVersion,payload,correlationId,causationId}))
-// definitions/saga-definition.ts: SagaDefinitionRegistry.get(sagaType,version) → {steps:{name,commandType,commandVersion,waitFor[]}[],compensation?}
+// ports/company-settings.port.ts
+abstract class CompanySettingsReader {
+  get(companyId): Promise<Record<string, unknown>>;
+}
+// ports/saga-action.port.ts — one command on one aggregate
+interface SagaAction {
+  readonly name: string;
+  do(ctx): Promise<Result>;
+  undo(ctx): Promise<Result>;
+}
+const SAGA_ACTION = 'SAGA_ACTION';
+// ports/saga-inbound.port.ts — how events reach the saga
+abstract class SagaInboundPort {
+  accept(envelope: OutboxEnvelope): Promise<void>;
+}
+// application/plan-builder.ts — default + overlay merge (narrows only)
+// application/expression.ts — safe evaluator + `{{ }}` templates + ISO durations
+// application/saga-engine.ts — advance / complete / compensate / cancel
+// application/saga-router.ts — five checks, start + wait
+// workers/step-worker.ts — claim + run + settle
+// repositories/prisma-saga.repository.ts — the five tables (one class per table)
 ```
 
-**Complete flow — start:**
+**Complete flow — start (router):**
 
-1. `findCompanyConfig(tenant,org,sagaType)` — disabled ⇒ stub STARTED no-op (company disable never bypassed).
-2. `definitionRegistry.get(type,ver)` — missing ⇒ stub. `findEventSubscription` — disabled ⇒ stub.
-3. `createInstance({correlationId??uuid,status:RUNNING,claimToken})` (unique `(tenantId,orgId,sagaType,correlationId)`).
-4. `findStepConfig` for steps[0] — disabled ⇒ stop. Else `createStepExecution(CLAIMED)` → `updateInstanceStatus WAITING{currentStep}` → `commandPort.dispatch` (first step payload = trigger event payload).
+1. `FeatureGate.enabled(company)` + `CompanySettingsReader.get(company)` (read once, snapshotted; a lookup error aborts the start, never blocks another saga).
+2. `PlanBuilder.build({definition, overlay, features, settings})` — required/standard/optional policy, `requires` filtering, AND-combined `if`/`when`, overridden timeout/retry. Empty plan ⇒ nothing starts.
+3. `correlationKey = renderTemplate(start.key, {event})`; `context = {settings, event, start: mapContext(start.context)}`.
+4. `SagaEngine.createAndAdvance` — `tryInsertLive` on the partial unique key (duplicate ⇒ one live instance already exists) then `advance`.
 
-**Complete flow — handleEvent:**
+**Complete flow — advance / execute:**
 
-1. `findInstanceByCorrelation`; ignore if missing or status not `WAITING/RUNNING`.
-2. Load definition; get `currentStep`; check subscription enabled; verify `event.eventType ∈ stepDef.waitFor` else ignore.
-3. `findStepExecution`; failure event (`Failed`/`Error` in type) → `updateStepStatus FAILED` → compensation defined+enabled? → `COMPENSATING` : `SUSPENDED{failedAt}`.
-4. Else CAS `COMPLETED` → next step? `createStepExecution CLAIMED` + `WAITING` + `dispatch` : `COMPLETED`.
-5. `Suspend/CompensateUseCase`: CAS → SUSPENDED / dispatch compensation commands (new business ops, not rollbacks). `SagaReconciler` cron releases expired step claims; bounded retries → SUSPENDED.
+1. `advance` walks the frozen plan from `cursor`: `if` false ⇒ record `SKIPPED`; `WAIT` ⇒ consume the oldest buffered matching event (`match` + `when`) or park `WAITING` with `run_at = timeout`; `DO` ⇒ write a `PENDING` step and stop.
+2. `SagaStepWorker` claims due `DO|UNDO` rows (`FOR UPDATE SKIP LOCKED`, lease, fairness cap), resolves the `SagaAction`, runs it inside the instance's CLS.
+3. `ok` ⇒ `markDone` + advance; `retry` ⇒ `nextRetry` backoff (exponential, capped) until `maxAttempts`; `fail`/exhaustion ⇒ `markFailed` + compensation.
+4. Compensation creates `UNDO` rows for the completed `DO` steps in reverse (input = the DO output). A completed step with no undo, or a failure past the `pivot`, parks `FAILED_MANUAL`.
+5. `SagaScheduler` tick: worker → expire `WAIT` timeouts (`skip` default / `compensate`) → re-queue stale leases. Hourly: purge inbox past retention. **No reconciler.**
 
-**Data & config:** `saga_instances` (`@@unique([tenantId,orgId,sagaType,correlationId])`, `STARTED/RUNNING/WAITING/COMPLETED/COMPENSATING/COMPENSATED/FAILED/SUSPENDED`, CAS `claimToken/version`) + `saga_step_executions` (`@@unique([instanceId,stepName])`) + `saga_company_configs` + `saga_event_subscriptions` + `saga_step_configs` + `saga_compensation_configs` (`prisma/schema/platform/saga.prisma`). `src/config/saga.config.ts`: `DEFAULT_TIMEOUT=300000`, `MAX_ATTEMPTS=5`, `RETRY_BASE=1000`, `RETRY_MAX=600000`, `RECONCILIATION=60000`, `STEP_CLAIM_LEASE=60000`, `MAX_CONCURRENT_INSTANCES=100`.
-**Tenancy:** every record `(tenantId,organizationId)`; company A never sees B.
-**Rules:** Orchestrator, not domain; never imports business; every transition CAS; workers restore CLS.
+**Data & config:** `saga_definitions` (one ACTIVE per key; found by `(event_name,event_version)`), `saga_company_configs` (one ACTIVE overlay per company+key), `saga_instances` (one live instance per tenant+company+key+correlation), `saga_steps` (unique `(instance,step,kind)`; `id` = action idempotency key), `saga_inbox` (dedupe on tenant+company+consumer+event). Partial uniques live in the migration. `src/config/saga.config.ts`: `SAGA_WORKER_LEASE_SECONDS=60`, `SAGA_CLAIM_BATCH_SIZE=20`, `SAGA_FAIRNESS_CAP=5`, `SAGA_SWEEP_INTERVAL_MS=10000`, `SAGA_RETRY_BASE_DELAY_MS=1000`, `SAGA_RETRY_MAX_DELAY_MS=600000`, `SAGA_DEFAULT_MAX_ATTEMPTS=5`, `SAGA_INBOX_RETENTION_DAYS=30`.
+**Tenancy:** every row `(tenantId,organizationId)`; the router and the worker both run in `RequestContextPort.run`; the correlation key scoped per company.
+**Rules:** orchestrator, not domain — never imports business (actions arrive through `SAGA_ACTION`); overlays only narrow; the plan is frozen at build; every settle CAS; the saga's own `aggregateType='Saga'` events are dropped as a loop guard. Default `FeatureGate` is fail-closed (`EmptyFeatureGate`).
 
 ---
 
@@ -883,26 +905,26 @@ Rule: only ACTIVE vendors orderable (else ConflictException); only ACTIVE produc
 
 ## Appendix — file map & verification
 
-| Service                       | Module file                                                                                     | Tables (`prisma/schema/platform/`) | Config (`src/config/`)                                      |
-| ----------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------- |
-| context                       | `context/context.module.ts`                                                                     | —                                  | `security, auth`                                            |
-| outbox                        | `outbox/outbox.module.ts`                                                                       | `outbox.prisma`                    | `outbox.config.ts`                                          |
-| events/messaging              | `events/events.module.ts`, `messaging/messaging.module.ts`                                        | —                                  | `messaging.config.ts`                                       |
-| inbox                         | `inbox/inbox.module.ts`                                                                         | `inbox.prisma`                     | `inbox.config.ts`                                           |
-| locking                       | `locking/locking.module.ts`                                                                     | `locking.prisma`                   | `locking.config.ts`                                         |
-| idempotency                   | `idempotency/idempotency.module.ts`                                                             | `idempotency.prisma`               | `idempotency.config.ts`                                     |
-| scheduler                     | `scheduler/scheduler.module.ts`                                                                 | `scheduler.prisma`                 | `scheduler.config.ts`                                       |
-| recurring                     | `recurring/recurring.module.ts`                                                                 | `recurring.prisma`                 | (scheduler+outbox+numbering)                                |
-| batch-operation               | `batch-operation/batch-operation.module.ts`                                                     | `batch-operation.prisma`           | `batch-operation.config.ts`                                 |
-| import                        | `import/import.module.ts`                                                                       | `import.prisma`                    | `import.config.ts`                                          |
-| condition-engine              | `condition-engine/condition-engine.module.ts`                                                   | —                                  | —                                                           |
-| saga                          | `saga/saga.module.ts`                                                                           | `saga.prisma`                      | `saga.config.ts`                                            |
-| webhook                       | `webhook/webhook.module.ts`                                                                     | `webhook.prisma`                   | `webhook.config.ts`                                         |
-| notification                  | `notification/notification.module.ts`                                                           | `notification.prisma`              | `notification.config.ts`, `notification-pipeline.config.ts` |
-| numbering/audit/configuration | `numbering/`, `audit/`, `configuration/`                                                        | `platform.prisma`                  | (security/app for configuration)                            |
-| storage                       | `storage/storage.module.ts`                                                                     | — (import owns `storage_objects`)  | `storage.config.ts`                                         |
-| cache                         | `cache/cache.module.ts`                                                                         | —                                  | `cache.config.ts`                                           |
-| observability                 | `observability/observability.module.ts`                                                         | —                                  | `observability.config.ts`                                   |
+| Service                       | Module file                                                | Tables (`prisma/schema/platform/`) | Config (`src/config/`)                                      |
+| ----------------------------- | ---------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------- |
+| context                       | `context/context.module.ts`                                | —                                  | `security, auth`                                            |
+| outbox                        | `outbox/outbox.module.ts`                                  | `outbox.prisma`                    | `outbox.config.ts`                                          |
+| events/messaging              | `events/events.module.ts`, `messaging/messaging.module.ts` | —                                  | `messaging.config.ts`                                       |
+| inbox                         | `inbox/inbox.module.ts`                                    | `inbox.prisma`                     | `inbox.config.ts`                                           |
+| locking                       | `locking/locking.module.ts`                                | `locking.prisma`                   | `locking.config.ts`                                         |
+| idempotency                   | `idempotency/idempotency.module.ts`                        | `idempotency.prisma`               | `idempotency.config.ts`                                     |
+| scheduler                     | `scheduler/scheduler.module.ts`                            | `scheduler.prisma`                 | `scheduler.config.ts`                                       |
+| recurring                     | `recurring/recurring.module.ts`                            | `recurring.prisma`                 | (scheduler+outbox+numbering)                                |
+| batch-operation               | `batch-operation/batch-operation.module.ts`                | `batch-operation.prisma`           | `batch-operation.config.ts`                                 |
+| import                        | `import/import.module.ts`                                  | `import.prisma`                    | `import.config.ts`                                          |
+| condition-engine              | `condition-engine/condition-engine.module.ts`              | —                                  | —                                                           |
+| saga                          | `saga/saga.module.ts`                                      | `saga.prisma`                      | `saga.config.ts`                                            |
+| webhook                       | `webhook/webhook.module.ts`                                | `webhook.prisma`                   | `webhook.config.ts`                                         |
+| notification                  | `notification/notification.module.ts`                      | `notification.prisma`              | `notification.config.ts`, `notification-pipeline.config.ts` |
+| numbering/audit/configuration | `numbering/`, `audit/`, `configuration/`                   | `platform.prisma`                  | (security/app for configuration)                            |
+| storage                       | `storage/storage.module.ts`                                | — (import owns `storage_objects`)  | `storage.config.ts`                                         |
+| cache                         | `cache/cache.module.ts`                                    | —                                  | `cache.config.ts`                                           |
+| observability                 | `observability/observability.module.ts`                    | —                                  | `observability.config.ts`                                   |
 
 Verify after any change:
 

@@ -87,15 +87,23 @@ npx prisma generate
 ## 3. Code templates (verbatim shapes, from product/purchase-order)
 
 **Value object:**
+
 ```ts
 export class Sku extends ValueObject<{ value: string }> {
-  private constructor(value: string) { super({ value }); }
-  static create(input: string): Sku { return new Sku(input.trim().toUpperCase()); }
-  get value(): string { return this.props.value; }
+  private constructor(value: string) {
+    super({ value });
+  }
+  static create(input: string): Sku {
+    return new Sku(input.trim().toUpperCase());
+  }
+  get value(): string {
+    return this.props.value;
+  }
 }
 ```
 
 **Invariant (side-effect file, keyed in the shared registry):**
+
 ```ts
 invariantRegistry.register('sku.create', (data: Record<string, unknown>) => {
   if (typeof data.sku !== 'string' || !data.sku) throw new Error('Sku is required');
@@ -107,6 +115,7 @@ private `props`, mutation methods enforce then `this.addEvent(new X(...))`;
 use case drains with `pullEvents()`. Money via `Money.fromDecimal`.
 
 **Factory (sole creation path; enforce + instantiate + raise initial event):**
+
 ```ts
 export class ProductFactory {
   static create(input: CreateProductInput): Product {
@@ -117,10 +126,12 @@ export class ProductFactory {
   }
 }
 ```
+
 (`domain/factories/<name>.factory.ts` side-effect-imports
 `'../aggregates/<name>.invariants'`, `'../value-objects/<x>.invariants'`, policies.)
 
 **Command use case (the exact 6-step flow):**
+
 ```ts
 @Injectable()
 export class Create<X>UseCase {
@@ -140,15 +151,19 @@ export class Create<X>UseCase {
   }
 }
 ```
+
 - `XIntegrationPort` = abstract `send(event: DomainEvent, id: string)`; the ONE
   implementation `OutboxAdapter` forwards to `OutboxWriterPort.append(event,'<Type>',id)`.
 - Queries NEVER go through the aggregate: `XQuery` port implemented by
   `prisma-x-query.repository.ts` (constructor injects `PrismaReadPort`) returning `XQueryRecord`.
 
 **Module-local outbound port (never import @platform in domain/usecases):**
+
 ```ts
 // application/outbound-ports/company-config.port.ts
-export abstract class CompanyConfigPort { abstract getCompanyConfig(): Promise<CompanyConfig>; }
+export abstract class CompanyConfigPort {
+  abstract getCompanyConfig(): Promise<CompanyConfig>;
+}
 // infrastructure/adapters/platform/company-config.adapter.ts → forwards the @platform token
 // module: { provide: CompanyConfigPort, useClass: CompanyConfigAdapter }
 ```
@@ -163,6 +178,7 @@ Two acceptable transports: (a) public port + adapter (read paths) or (b) Rabbit 
 module's internal path — lint enforces per-module blocked lists (§15 step 9 / eslint `businessModules`).
 
 **Public surface:**
+
 ```ts
 // public/contracts/x-for-y.contract.ts  — plain interface data, NO domain classes
 export interface ProductReference { id: string; sku: string; name: string; unitPrice: Money… } // primitives/simple shapes
@@ -171,6 +187,7 @@ export interface ProductReference { id: string; sku: string; name: string; unitP
 ```
 
 **Events (outbox carries the payload verbatim — no rehydration):**
+
 ```ts
 // domain/events/product.created.event.ts
 export class ProductCreated extends DomainEvent {
@@ -181,6 +198,7 @@ export class ProductCreated extends DomainEvent {
 ```
 
 **Listener (application/integrations/listeners only):**
+
 ```ts
 @Injectable()
 export class XRabbitMQListener {
@@ -231,7 +249,7 @@ export class XModule {}
 - [ ] `domain/**` contains zero `@nestjs/*` and no `@platform`/`@infrastructure` imports
 - [ ] aggregates only mutated through factory + methods; repository ports speak domain types
 - [ ] command path = use case + `@Transactional` + repository + `append` via integration port
-  (NO direct broker/publish calls)
+      (NO direct broker/publish calls)
 - [ ] reads on the query port + replica client; no aggregate hydration in query repos
 - [ ] every persisted event is delivered through the outbox; the in-process listener
       reads `message.payload` from the canonical envelope (no rehydration registry)

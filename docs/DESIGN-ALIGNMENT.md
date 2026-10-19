@@ -14,6 +14,7 @@ with the design docs in `~/Documents/Common/erp` (extracted to
 ## Done
 
 ### 03 · Distributed Lock — Redis-only ✅
+
 - Dropped `distributed_locks` Prisma model + repository (design: no schema,
   no repository). Ownership, lease and fencing tokens all live in Redis.
 - Fencing token now allocated with Redis `INCR` (`lock:fence:*`).
@@ -22,6 +23,7 @@ with the design docs in `~/Documents/Common/erp` (extracted to
 - Service at `services/locking.service.ts`; `__testing__` double removed.
 
 ### 02 · Idempotency — Postgres claims + Redis replay ✅
+
 - Statuses are `IN_PROGRESS | COMPLETED` only; `error_code`/`error_message`
   dropped (migration `20261019120000_align_idempotency_design`).
 - Reserve checks a Redis result cache first; result statuses
@@ -32,6 +34,7 @@ with the design docs in `~/Documents/Common/erp` (extracted to
 - Service moved to `services/idempotency.service.ts`; `__testing__` removed.
 
 ### 01 · Cache — disposable cache-aside ✅
+
 - `CachePort` is now `buildKey` + `get(HIT|MISS)` + `set(ttlMs)` + `delete`.
 - `buildKey` lives on the service; `RedisCacheAdapter` is concrete (no storage
   port), JSON serialize + `SET PX`, fail-open, `CACHE_ENABLED` honoured.
@@ -41,6 +44,7 @@ with the design docs in `~/Documents/Common/erp` (extracted to
   `CACHE_KEY_PREFIX`, `CACHE_KEY_VERSION`.
 
 ### 05 · Event Bus — thin emit-only ✅
+
 - `ports/in-process-event-bus.port.ts` — `emit(envelope)` + `MessageEnvelope`
   alias; `services/event-bus.service.ts` → `usecases/emit-event.usecase.ts` →
   `adapters/nest-event-bus.adapter.ts` (`emitter.emit(envelope.eventType, envelope)`),
@@ -56,6 +60,7 @@ with the design docs in `~/Documents/Common/erp` (extracted to
   the stable `envelope.eventId`.
 
 ### 06 · Message Queue — one publish-only port ✅
+
 - `ports/message-queue.port.ts` — `publish(envelope)` only;
   `services/message-queue.service.ts` → `usecases/publish-message.usecase.ts`
   switches on `envelope.broker` (default `rabbitmq`). An unconfigured target
@@ -69,6 +74,7 @@ with the design docs in `~/Documents/Common/erp` (extracted to
   canonical `OutboxEnvelope`.
 
 ### 04 · Outbox — single port, three statuses ✅
+
 - Public port is `outbox-writer.port.ts` with
   `append(event, aggregateType, aggregateId, opts?)` (`opts.broker` default
   `rabbitmq`); the `OutboxPort.append(request)` shape and `appendMany` are gone.
@@ -84,21 +90,51 @@ with the design docs in `~/Documents/Common/erp` (extracted to
   their event bases now import `OutboxEvent`/`OutboxEventBase` from
   `@platform/outbox/outbox.types`.
 
+### 08 · Saga — company-configurable, five tables ✅
+
+- Five tables: `saga_definitions` (one ACTIVE per key, found by event
+  name+version), `saga_company_configs` (one ACTIVE overlay per company+key),
+  `saga_instances` (one live instance per correlation key), `saga_steps`
+  (unique `(instance, step, kind)`; the row id is the action idempotency key)
+  and `saga_inbox` (dedupe on tenant+company+consumer+event); partial uniques
+  hand-written in migration `20261019140000_align_saga_design`.
+- `PlanBuilder` merges default + overlay (narrows only: AND-combined
+  conditions, overridden timing/retry, optional on / standard off; required can
+  never be disabled) and returns `null` for an empty plan.
+- `application/expression.ts` is a hand-written safe evaluator (no `eval`):
+  literals, property paths, arrays, `==`/`!=`/`>`/`<`/`>=`/`<=`, `!`, `&&`,
+  `||`, `in`; plus `{{ }}` rendering and ISO-8601 duration parsing.
+- `SagaRouter` (the `SagaInboundPort`) applies the five checks in order and
+  drops its own `aggregateType='Saga'` events as a loop guard.
+- `SagaEngine` advances the frozen plan: bypass `if`-false steps, consume a
+  buffered event for a `WAIT`, otherwise queue the next `DO`; completion emits
+  `onComplete` through the outbox; failure compensates completed steps in
+  reverse (no undo / past `pivot` ⇒ `FAILED_MANUAL`); cancel compensates or goes
+  straight to `CANCELLED`.
+- `SagaStepWorker` claims `DO|UNDO` rows (`FOR UPDATE SKIP LOCKED` + lease,
+  fairness cap), runs `SagaAction`s and CAS-settles. `SagaScheduler` ticks the
+  worker + WAIT-timeout sweep + stale-lease re-queue; hourly inbox cleanup.
+- Statuses `RUNNING|WAITING|COMPENSATING|COMPLETED|COMPENSATED|CANCELLED|
+FAILED_MANUAL`; ports `FeatureGate`, `CompanySettingsReader`, `SagaAction`
+  (+`SAGA_ACTION`), `SagaInboundPort`; fail-closed `EmptyFeatureGate` /
+  `EmptyCompanySettingsReader` defaults until an owner wires them.
+- Old six-table/command-dispatch saga (never migrated) removed.
+
 ## Remaining
 
-### 08 · Saga — runtime overlays, 5 tables
-- Rewrite to `definitions / company_configs / instances / steps / inbox` with
-  a plan-builder, event router, engine and step worker.
-
 ### Cross-cutting
+
 - Remove the remaining `__testing__` doubles (notification, inbox, context,
-  batch-operation, saga, webhook) — design: "common services ship no test
-  doubles". Specs that rely on them must be rewritten with inline mocks.
+  batch-operation, webhook) — design: "common services ship no test doubles".
+  Specs that rely on them must be rewritten with inline mocks.
+- Wire the saga to a broker consumer: `SagaInboundPort` is the seam, but
+  nothing calls `accept` yet (and no business `SagaAction`s are registered), so
+  the saga is inert until an owner wires actions + a consumer.
 - Docs: `ARCHITECTURE.md`, `docs/PLATFORM-SERVICES-COMPLETE-FLOW.md`,
   `docs/FLOWCHARTS.md`, `docs/BUSINESS-MODULE-GUIDE.md`,
   `docs/PLATFORM-SERVICE-GUIDE.md` and
-  `docs/ARCHITECTURE-BUSINESS-MODULE-PATTERN.md` updated for the 04/05/06
-  removals; the per-service READMEs for events/messaging/outbox rewritten.
+  `docs/ARCHITECTURE-BUSINESS-MODULE-PATTERN.md` updated for the 01–08
+  removals; the per-service READMEs for events/messaging/outbox/saga rewritten.
 - Naming: the design uses `companyId`; the code uses `organizationId`
   throughout. **Still open** — a global rename across every Prisma model,
   migration, business module and the request context. Deferred deliberately

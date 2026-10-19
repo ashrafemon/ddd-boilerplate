@@ -126,8 +126,9 @@ flowchart LR
     RecurringModule -->|RequestContextPort| ContextModule__src_platform_context__2
     RecurringModule -->|AuditPort| AuditModule
     SagaModule["SagaModule"]
-    SagaModule -->|PrismaWriteService| PrismaModule
+    SagaModule -->|OutboxWriterPort| OutboxModule
     SagaModule -->|ConfigService| ConfigModule
+    SagaModule -->|RequestContextPort| ContextModule__src_platform_context__2
     SchedulerModule -->|ConfigService| ConfigModule
     SchedulerModule -->|MessageQueuePort| MessagingModule__src_platform_messaging__2
     SchedulerModule -->|RequestContextPort| ContextModule__src_platform_context__2

@@ -214,14 +214,14 @@ export class ConfigService {
   /** Saga Environment Variables */
   public getSaga(): ISagaConfig {
     return this.config.get<ISagaConfig>('saga', {
-      defaultTimeoutMs: 300_000,
-      defaultMaxAttempts: 5,
+      workerLeaseSeconds: 60,
+      claimBatchSize: 20,
+      fairnessCap: 5,
+      sweepIntervalMs: 10_000,
       retryBaseDelayMs: 1_000,
       retryMaxDelayMs: 600_000,
-      reconciliationIntervalMs: 60_000,
-      stepClaimLeaseMs: 60_000,
-      maxConcurrentInstances: 100,
-      maxConcurrentSteps: 20,
+      defaultMaxAttempts: 5,
+      inboxRetentionDays: 30,
     });
   }
 
