@@ -12,9 +12,20 @@ export class PurchaseOrderLine {
     public readonly quantity: number,
     public readonly unitPrice: Money,
     public readonly total: Money,
+    public readonly receivedQuantity: number = 0,
   ) {}
 
   withUpdatedQuantity(quantity: number, unitPrice: Money, total: Money): PurchaseOrderLine {
-    return new PurchaseOrderLine(this.productId, quantity, unitPrice, total);
+    return new PurchaseOrderLine(this.productId, quantity, unitPrice, total, this.receivedQuantity);
+  }
+
+  withReceivedQuantity(receivedQuantity: number): PurchaseOrderLine {
+    return new PurchaseOrderLine(
+      this.productId,
+      this.quantity,
+      this.unitPrice,
+      this.total,
+      receivedQuantity,
+    );
   }
 }

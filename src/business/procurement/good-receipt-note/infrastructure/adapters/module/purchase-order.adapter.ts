@@ -3,6 +3,8 @@ import { PurchaseOrderPort } from '@business/procurement/good-receipt-note/appli
 import {
   PurchaseOrderForGrnPort,
   PurchaseOrderReference,
+  PurchaseOrderReceiptRequest,
+  PurchaseOrderReceiptResult,
 } from '@business/procurement/purchase-order/public';
 
 /**
@@ -15,5 +17,13 @@ export class PurchaseOrderAdapter implements PurchaseOrderPort {
 
   getPurchaseOrder(id: string): Promise<PurchaseOrderReference | null> {
     return this.purchaseOrderForGrnPort.getPurchaseOrder(id);
+  }
+
+  registerReceipt(request: PurchaseOrderReceiptRequest): Promise<PurchaseOrderReceiptResult> {
+    return this.purchaseOrderForGrnPort.registerReceipt(request);
+  }
+
+  hasReceipts(purchaseOrderId: string): Promise<boolean> {
+    return this.purchaseOrderForGrnPort.hasReceipts(purchaseOrderId);
   }
 }

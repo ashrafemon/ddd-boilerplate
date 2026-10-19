@@ -18,7 +18,13 @@ export class PrismaPurchaseOrderMapper {
     externalReference?: string | null;
     status: string;
     currency: string;
-    lines: { productId: string; quantity: number; unitPrice: unknown; total: unknown }[];
+    lines: {
+      productId: string;
+      quantity: number;
+      receivedQuantity: number;
+      unitPrice: unknown;
+      total: unknown;
+    }[];
     createdAt: Date;
     updatedAt: Date;
     version: number;
@@ -30,6 +36,7 @@ export class PrismaPurchaseOrderMapper {
           line.quantity,
           Money.fromDecimal(Number(line.unitPrice), row.currency),
           Money.fromDecimal(Number(line.total), row.currency),
+          line.receivedQuantity ?? 0,
         ),
     );
 
@@ -67,6 +74,7 @@ export class PrismaPurchaseOrderMapper {
     return purchaseOrder.lines.map(line => ({
       productId: line.productId.toString(),
       quantity: line.quantity,
+      receivedQuantity: line.receivedQuantity,
       unitPrice: line.unitPrice.toDecimal(),
       total: line.total.toDecimal(),
     }));
@@ -84,6 +92,7 @@ export class PrismaPurchaseOrderMapper {
       lines: {
         productId: string;
         quantity: number;
+        receivedQuantity: number;
         unitPrice: { toString(): string };
         total: { toString(): string };
       }[];
@@ -101,6 +110,7 @@ export class PrismaPurchaseOrderMapper {
       lines: r.lines.map(line => ({
         productId: line.productId,
         quantity: line.quantity,
+        receivedQuantity: line.receivedQuantity,
         unitPrice: Number(line.unitPrice.toString()),
         total: Number(line.total.toString()),
       })),
