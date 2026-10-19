@@ -96,7 +96,6 @@ describe('CreateGrnUseCase', () => {
           }),
       } as CompanyConfigPort,
       numbering,
-      idempotency,
       context,
     );
   });

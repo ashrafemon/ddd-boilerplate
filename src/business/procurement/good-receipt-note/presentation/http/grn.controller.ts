@@ -42,6 +42,7 @@ import {
 } from './responses/list-grns.web.response.dto';
 import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
+import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
 import { UseInterceptors } from '@nestjs/common';
 import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
@@ -67,6 +68,7 @@ export class GrnController {
   ) {}
 
   @Post()
+  @Idempotent()
   @ApiOperation({ summary: 'Create a GRN' })
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() dto: CreateGrnDto): Promise<ApiResponse<IdResponse>> {
@@ -149,6 +151,7 @@ export class GrnController {
   }
 
   @Post(':id/post')
+  @Idempotent()
   @ApiOperation({ summary: 'Post a GRN (idempotent)' })
   @HttpCode(HttpStatus.OK)
   async post(@Param('id') id: string, @Body() dto: PostGrnDto): Promise<ApiResponse<IdResponse>> {
@@ -157,6 +160,7 @@ export class GrnController {
   }
 
   @Post(':id/reverse')
+  @Idempotent()
   @ApiOperation({ summary: 'Reverse a posted GRN via a compensating document' })
   @HttpCode(HttpStatus.OK)
   async reverse(
