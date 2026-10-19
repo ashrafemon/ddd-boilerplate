@@ -2,7 +2,7 @@
 
 ## Context
 
-`docs/webhook.md` proposed this service; the user has now confirmed scope:
+`src/platform/webhook/README.md` now documents this service; the user has now confirmed scope:
 **both directions** (inbound receipt + outbound subscription/dispatch/retry),
 **explicit opt-in event-type list** (mirrors `NOTIFICATION_HANDLERS`, not a
 fully-dynamic allowlist), **admin/ops-only** management surface for v1 (in
@@ -338,7 +338,7 @@ same as the guide sanctions.
 - `.env.example` — six `WEBHOOK_*` vars.
 - `src/bootstrap/index.ts` — add `configureWebhooks(app)` next to the other three composition-root calls.
 - `src/platform/README.md` — new catalog row.
-- `docs/webhook.md` — flip status from "proposed" to reflect what's built; keep the open-decisions section only for anything still genuinely open (none, after this build).
+- `src/platform/webhook/README.md` — current API/layout/rules.
 - `docs/DI-WIRING.md` — regenerate via `npm run docs:di` (last build step, not hand-edited).
 
 ## Build order (follow `PLATFORM-SERVICE-GUIDE.md` §2 exactly)

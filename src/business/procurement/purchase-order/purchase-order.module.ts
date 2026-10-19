@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
+import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { ProductModule } from '@business/procurement/product/product.module';
 import { VendorModule } from '@business/party/vendor/vendor.module';
 import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
@@ -40,7 +41,6 @@ import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
 import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
-import { PurchaseOrderReadCacheAdapter } from './infrastructure/adapters/platform/purchase-order-read-cache.adapter';
 import { PurchasableProductAdapter } from './infrastructure/adapters/module/purchasable-product.adapter';
 import { OrderableVendorAdapter } from './infrastructure/adapters/module/orderable-vendor.adapter';
 import { PurchaseOrderBatchOperationAdapter } from './infrastructure/adapters/platform/purchase-order-batch-operation.adapter';
@@ -54,7 +54,6 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     PurchaseOrderBatchOperationAdapter,
     PurchaseOrderNotificationAdapter,
     PurchaseOrderImportHandler,
-    PurchaseOrderReadCacheAdapter,
     CreatePurchaseOrderUseCase,
     ImportPurchaseOrderUseCase,
     AddPurchaseOrderLineUseCase,
@@ -70,6 +69,7 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     // batch adapter, GRN facade — reads through the caching decorator, and
     // command use cases invalidate through the same port.
     GetPurchaseOrderUseCase,
+    CacheResponseInterceptor,
     GetPurchaseOrderReceiptsUseCase,
     GetPurchaseOrderRemainingQuantitiesUseCase,
     ListPurchaseOrdersUseCase,

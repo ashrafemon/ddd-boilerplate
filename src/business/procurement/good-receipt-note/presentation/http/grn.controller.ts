@@ -42,6 +42,9 @@ import {
 } from './responses/list-grns.web.response.dto';
 import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
+import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
+import { UseInterceptors } from '@nestjs/common';
+import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 
 type GrnGetResponse = GetGrnMobileResponse | GetGrnWebResponse;
@@ -65,6 +68,7 @@ export class GrnController {
   ) {}
 
   @Post()
+  @Idempotent()
   @ApiOperation({ summary: 'Create a GRN' })
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() dto: CreateGrnDto): Promise<ApiResponse<IdResponse>> {
@@ -73,6 +77,7 @@ export class GrnController {
   }
 
   @Get()
+  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'List GRNs' })
   @DeviceResponse(ListGrnsMobileResponseDto, ListGrnsWebResponseDto)
   async list(@Query() query: GrnQueryDto): Promise<ApiResponse<GrnListResponse>> {
@@ -85,6 +90,7 @@ export class GrnController {
   }
 
   @Get(':id')
+  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'Get a GRN by id' })
   @DeviceResponse(GetGrnMobileResponseDto, GetGrnWebResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<GrnGetResponse>> {
@@ -145,6 +151,7 @@ export class GrnController {
   }
 
   @Post(':id/post')
+  @Idempotent()
   @ApiOperation({ summary: 'Post a GRN (idempotent)' })
   @HttpCode(HttpStatus.OK)
   async post(@Param('id') id: string, @Body() dto: PostGrnDto): Promise<ApiResponse<IdResponse>> {
@@ -153,6 +160,7 @@ export class GrnController {
   }
 
   @Post(':id/reverse')
+  @Idempotent()
   @ApiOperation({ summary: 'Reverse a posted GRN via a compensating document' })
   @HttpCode(HttpStatus.OK)
   async reverse(

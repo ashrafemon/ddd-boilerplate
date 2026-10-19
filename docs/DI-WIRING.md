@@ -34,13 +34,11 @@ flowchart LR
     ConfigurationModule["ConfigurationModule"]
     VendorModule -->|CompanyConfigPort| ConfigurationModule
     GoodReceiptNoteModule["GoodReceiptNoteModule"]
-    CacheModule["CacheModule"]
-    GoodReceiptNoteModule -->|CachePort| CacheModule
     GoodReceiptNoteModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
-    IdempotencyModule["IdempotencyModule"]
-    GoodReceiptNoteModule -->|IdempotencyPort| IdempotencyModule
     AuditModule["AuditModule"]
     GoodReceiptNoteModule -->|AuditPort| AuditModule
+    CacheModule["CacheModule"]
+    GoodReceiptNoteModule -->|CachePort| CacheModule
     GoodReceiptNoteModule -->|OutboxWriterPort| OutboxModule
     GoodReceiptNoteModule -->|CompanyConfigPort| ConfigurationModule
     PurchaseOrderModule["PurchaseOrderModule"]
@@ -51,9 +49,9 @@ flowchart LR
     ProductModule -->|PrismaReadPort| ContextModule__src_platform_context__2
     ProductModule -->|OutboxWriterPort| OutboxModule
     ProductModule -->|CompanyConfigPort| ConfigurationModule
-    PurchaseOrderModule -->|CachePort| CacheModule
     PurchaseOrderModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
     PurchaseOrderModule -->|AuditPort| AuditModule
+    PurchaseOrderModule -->|CachePort| CacheModule
     RecurringModule["RecurringModule"]
     PurchaseOrderModule -->|RecurringTemplatePort, RecurringExecutionPort| RecurringModule
     ObservabilityModule["ObservabilityModule"]
@@ -93,6 +91,7 @@ flowchart LR
     ConfigurationModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ContextModule__src_platform_context__2 -->|ConfigService| ConfigModule
     ContextModule__src_platform_context__2 -->|PrismaWriteService| PrismaModule
+    IdempotencyModule["IdempotencyModule"]
     IdempotencyModule -->|PrismaWriteService| PrismaModule
     IdempotencyModule -->|ConfigService| ConfigModule
     IdempotencyModule -->|RedisService| RedisModule
@@ -274,55 +273,43 @@ flowchart LR
     GrnNotificationAdapter["GrnNotificationAdapter"]
     GrnNotificationAdapter -->|injects| GetGrnUseCase
     GrnNotificationAdapter -->|injects| PurchaseOrderPort
-    GrnReadCacheAdapter["GrnReadCacheAdapter"]
-    CachePort["CachePort"]
-    GrnReadCacheAdapter -->|injects via CacheModule| CachePort
-    RequestContextPort["RequestContextPort"]
-    GrnReadCacheAdapter -->|injects via ContextModule| RequestContextPort
     CreateGrnUseCase -->|injects| GrnCommandRepository
     CreateGrnUseCase -->|injects| PurchaseOrderPort
     CreateGrnUseCase -->|injects| GrnIntegrationPort
     CreateGrnUseCase -->|injects| CompanyConfigPort
     CreateGrnUseCase -->|injects| NumberingPort
-    IdempotencyPort["IdempotencyPort"]
-    CreateGrnUseCase -->|injects via IdempotencyModule| IdempotencyPort
+    RequestContextPort["RequestContextPort"]
     CreateGrnUseCase -->|injects via ContextModule| RequestContextPort
     AddGrnLineUseCase -->|injects| GrnCommandRepository
     AddGrnLineUseCase -->|injects| GrnIntegrationPort
-    GrnReadCache["GrnReadCache"]
-    AddGrnLineUseCase -->|injects| GrnReadCache
     ReceiveGrnUseCase -->|injects| GrnCommandRepository
     ReceiveGrnUseCase -->|injects| GrnIntegrationPort
     ReceiveGrnUseCase -->|injects via ContextModule| RequestContextPort
     AuditPort["AuditPort"]
     ReceiveGrnUseCase -->|injects via AuditModule| AuditPort
-    ReceiveGrnUseCase -->|injects| GrnReadCache
     CompleteGrnUseCase -->|injects| PostGrnUseCase
     GetGrnUseCase -->|injects| GrnQuery
+    CacheResponseInterceptor["CacheResponseInterceptor"]
+    CachePort["CachePort"]
+    CacheResponseInterceptor -->|injects via CacheModule| CachePort
     ListGrnsUseCase -->|injects| GrnQuery
     CancelGrnUseCase -->|injects| GrnCommandRepository
     CancelGrnUseCase -->|injects| GrnIntegrationPort
     CancelGrnUseCase -->|injects via ContextModule| RequestContextPort
     CancelGrnUseCase -->|injects via AuditModule| AuditPort
-    CancelGrnUseCase -->|injects| GrnReadCache
     PostGrnUseCase -->|injects| GrnCommandRepository
     PostGrnUseCase -->|injects| PurchaseOrderPort
     PostGrnUseCase -->|injects| GrnIntegrationPort
-    PostGrnUseCase -->|injects via IdempotencyModule| IdempotencyPort
     PostGrnUseCase -->|injects via ContextModule| RequestContextPort
     PostGrnUseCase -->|injects via AuditModule| AuditPort
-    PostGrnUseCase -->|injects| GrnReadCache
     ReverseGrnUseCase -->|injects| GrnCommandRepository
     ReverseGrnUseCase -->|injects| PurchaseOrderPort
     ReverseGrnUseCase -->|injects| GrnIntegrationPort
-    ReverseGrnUseCase -->|injects via IdempotencyModule| IdempotencyPort
     ReverseGrnUseCase -->|injects via ContextModule| RequestContextPort
     ReverseGrnUseCase -->|injects via AuditModule| AuditPort
     ReverseGrnUseCase -->|injects| NumberingPort
-    ReverseGrnUseCase -->|injects| GrnReadCache
     RecordInspectionResultUseCase -->|injects| GrnCommandRepository
     RecordInspectionResultUseCase -->|injects| GrnIntegrationPort
-    RecordInspectionResultUseCase -->|injects| GrnReadCache
     GrnForPurchaseOrderFacade -->|injects| GetGrnUseCase
     GrnForPurchaseOrderFacade -->|injects| GetGrnUseCase
     TransactionHost__library_["TransactionHost (library)"]
@@ -407,39 +394,29 @@ flowchart LR
     PurchaseOrderImportHandler -->|injects| PurchasableProductPort
     ImportPurchaseOrderUseCase["ImportPurchaseOrderUseCase"]
     PurchaseOrderImportHandler -->|injects| ImportPurchaseOrderUseCase
-    PurchaseOrderReadCacheAdapter["PurchaseOrderReadCacheAdapter"]
-    CachePort["CachePort"]
-    PurchaseOrderReadCacheAdapter -->|injects via CacheModule| CachePort
-    RequestContextPort["RequestContextPort"]
-    PurchaseOrderReadCacheAdapter -->|injects via ContextModule| RequestContextPort
     CreatePurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
     CreatePurchaseOrderUseCase -->|injects| OrderableVendorPort
     CreatePurchaseOrderUseCase -->|injects| PurchaseOrderIntegrationPort
     CreatePurchaseOrderUseCase -->|injects| CompanyConfigPort
     CreatePurchaseOrderUseCase -->|injects| NumberingPort
+    RequestContextPort["RequestContextPort"]
     CreatePurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
     ImportPurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
     ImportPurchaseOrderUseCase -->|injects| CreatePurchaseOrderUseCase
     ImportPurchaseOrderUseCase -->|injects| PurchaseOrderIntegrationPort
-    PurchaseOrderReadCache["PurchaseOrderReadCache"]
-    ImportPurchaseOrderUseCase -->|injects| PurchaseOrderReadCache
     AddPurchaseOrderLineUseCase -->|injects| PurchaseOrderCommandRepository
     AddPurchaseOrderLineUseCase -->|injects| PurchasableProductPort
     AddPurchaseOrderLineUseCase -->|injects| PurchaseOrderIntegrationPort
     AddPurchaseOrderLineUseCase -->|injects| CompanyConfigPort
-    AddPurchaseOrderLineUseCase -->|injects| PurchaseOrderReadCache
     UpdatePurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
     UpdatePurchaseOrderUseCase -->|injects| PurchaseOrderIntegrationPort
-    UpdatePurchaseOrderUseCase -->|injects| PurchaseOrderReadCache
     UpdatePurchaseOrderLineUseCase -->|injects| PurchaseOrderCommandRepository
     UpdatePurchaseOrderLineUseCase -->|injects| PurchasableProductPort
     UpdatePurchaseOrderLineUseCase -->|injects| PurchaseOrderIntegrationPort
     UpdatePurchaseOrderLineUseCase -->|injects| CompanyConfigPort
-    UpdatePurchaseOrderLineUseCase -->|injects| PurchaseOrderReadCache
     RemovePurchaseOrderLineUseCase -->|injects| PurchaseOrderCommandRepository
     RemovePurchaseOrderLineUseCase -->|injects| PurchaseOrderIntegrationPort
     RemovePurchaseOrderLineUseCase -->|injects| CompanyConfigPort
-    RemovePurchaseOrderLineUseCase -->|injects| PurchaseOrderReadCache
     PurchaseOrderTransitionUseCase -->|injects| PurchaseOrderCommandRepository
     PurchaseOrderTransitionUseCase -->|injects| PurchaseOrderIntegrationPort
     PurchaseOrderTransitionUseCase -->|injects| CompanyConfigPort
@@ -448,23 +425,23 @@ flowchart LR
     PurchaseOrderTransitionUseCase -->|injects via ContextModule| RequestContextPort
     AuditPort["AuditPort"]
     PurchaseOrderTransitionUseCase -->|injects via AuditModule| AuditPort
-    PurchaseOrderTransitionUseCase -->|injects| PurchaseOrderReadCache
     IssuePurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
     IssuePurchaseOrderUseCase -->|injects| PurchaseOrderIntegrationPort
     IssuePurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
     IssuePurchaseOrderUseCase -->|injects via AuditModule| AuditPort
-    IssuePurchaseOrderUseCase -->|injects| PurchaseOrderReadCache
     ClosePurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
     ClosePurchaseOrderUseCase -->|injects| PurchaseOrderIntegrationPort
     ClosePurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
     ClosePurchaseOrderUseCase -->|injects via AuditModule| AuditPort
-    ClosePurchaseOrderUseCase -->|injects| PurchaseOrderReadCache
     RegisterPurchaseOrderReceiptUseCase["RegisterPurchaseOrderReceiptUseCase"]
     RegisterPurchaseOrderReceiptUseCase -->|injects| PurchaseOrderCommandRepository
+    RegisterPurchaseOrderReceiptUseCase -->|injects| CompanyConfigPort
     TransactionHost__library_["TransactionHost (library)"]
-    RegisterPurchaseOrderReceiptUseCase -->|injects| TransactionHost__library_
     HasPurchaseOrderReceiptsUseCase -->|injects| TransactionHost__library_
     GetPurchaseOrderUseCase -->|injects| PurchaseOrderQuery
+    CacheResponseInterceptor["CacheResponseInterceptor"]
+    CachePort["CachePort"]
+    CacheResponseInterceptor -->|injects via CacheModule| CachePort
     PrismaReadPort["PrismaReadPort"]
     GetPurchaseOrderReceiptsUseCase -->|injects via ContextModule| PrismaReadPort
     GetPurchaseOrderRemainingQuantitiesUseCase -->|injects| GetPurchaseOrderReceiptsUseCase

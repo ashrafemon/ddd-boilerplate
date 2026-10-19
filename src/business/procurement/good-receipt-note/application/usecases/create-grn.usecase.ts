@@ -1,6 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { IdempotencyPort } from '@platform/idempotency/ports/idempotency.port';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { CreateGrnRequest } from '../../domain/types/grn.types';
 import { GrnFactory } from '../../domain/factories/grn.factory';
@@ -32,51 +31,13 @@ export class CreateGrnUseCase {
     private readonly integrationEvent: GrnIntegrationPort,
     private readonly companyConfig: CompanyConfigPort,
     private readonly numbering: NumberingPort,
-    private readonly idempotency: IdempotencyPort,
     private readonly requestContext: RequestContextPort,
   ) {}
 
   @Transactional()
   async execute(input: CreateGrnRequest): Promise<GrnId> {
-    const tenantId = this.requestContext.getTenantId() ?? '';
-    const companyId = this.requestContext.getCompanyId() ?? '';
     const actorId = input.actorId ?? this.requestContext.getUserId();
-
-    const reserveResult = input.idempotencyKey
-      ? await this.idempotency.reserve({
-          tenantId,
-          companyId,
-          scope: 'grn.create',
-          key: input.idempotencyKey,
-        })
-      : null;
-
-    if (reserveResult) {
-      if (reserveResult.status === 'REPLAY') {
-        return GrnId.fromString(reserveResult.result as string);
-      }
-      if (reserveResult.status === 'BUSY') {
-        throw new ConflictException('GRN create is already in progress');
-      }
-      if (reserveResult.status === 'KEY_MISMATCH') {
-        throw new ConflictException('Idempotency key mismatch');
-      }
-    }
-
-    const reservation = reserveResult?.reservation;
-
-    try {
-      const id = await this.create(input, actorId);
-      if (reservation) {
-        await this.idempotency.complete({ reservation, result: id.toString() });
-      }
-      return id;
-    } catch (error) {
-      if (reservation) {
-        await this.idempotency.fail({ reservation });
-      }
-      throw error;
-    }
+    return this.create(input, actorId);
   }
 
   private async create(input: CreateGrnRequest, actorId?: string): Promise<GrnId> {

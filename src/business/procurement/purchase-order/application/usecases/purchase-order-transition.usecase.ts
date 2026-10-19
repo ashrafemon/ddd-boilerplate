@@ -8,7 +8,6 @@ import { PurchaseOrderCommandRepository } from '../../domain/repositories/purcha
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { HasPurchaseOrderReceiptsUseCase } from './has-purchase-order-receipts.usecase';
-import { PurchaseOrderReadCache } from '../outbound-ports/read-cache.port';
 
 /**
  * Single mutation path for submit/approve/reject/cancel/complete.
@@ -28,7 +27,6 @@ export class PurchaseOrderTransitionUseCase {
     private readonly hasReceipts: HasPurchaseOrderReceiptsUseCase,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
-    private readonly readCache: PurchaseOrderReadCache,
   ) {}
 
   @Transactional()
@@ -70,7 +68,6 @@ export class PurchaseOrderTransitionUseCase {
     }
 
     await this.purchaseOrderRepository.update(purchaseOrder);
-    await this.readCache.invalidate(purchaseOrder.id.toString());
 
     await this.audit.record({
       action: `purchase-order.${input.transition}`,

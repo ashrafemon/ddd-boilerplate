@@ -239,3 +239,7 @@ else injects (`observability`, `storage`). Never two bindings of the same class.
 
 Business-module creation follows the same rigor via `ARCHITECTURE.md` §3 (anatomy) +
 §15 (checklist) — its DTO/use-case naming is already one-per-file.
+
+## 7. Cache placement (read vs write)
+
+Cache lives in **query** use cases only (`get-*`, `list-*`); command use cases never read cache and only invalidate the affected key after a successful write. Cache adapters sit behind a module-local read-cache port and are fail-open. This keeps cache at the read layer and invalidation at the write layer.

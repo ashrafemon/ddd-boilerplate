@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { AddLineInput } from '../../domain/types/purchase-order.types';
+import { AddLineInput } from '../../../domain/types/purchase-order.types';
 
 /**
  * Normalises the opaque RecurringTemplate.lines JSON carried by a

@@ -12,7 +12,6 @@ Documentation:
 - [docs/FLOWCHARTS.md](./docs/FLOWCHARTS.md) — flowcharts: request lifecycles, port/adapter wiring, platform service internals
 - [docs/DI-WIRING.md](./docs/DI-WIRING.md) — generated DI graph: who injects whom, token→implementation bindings (`npm run docs:di`)
 - [docs/IAM-BUILD-PLAN.md](./docs/IAM-BUILD-PLAN.md) — **deferred**: the ERP IAM/Auth domain is designed but not yet built (read before starting it)
-- [docs/DESIGN-ALIGNMENT.md](./docs/DESIGN-ALIGNMENT.md) — status of aligning each platform service with the design docs
 
 ---
 

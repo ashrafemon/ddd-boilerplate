@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
+import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { PurchaseOrderModule } from '@business/procurement/purchase-order/purchase-order.module';
 import { GrnForPurchaseOrderFacade } from './application/facades/grn-for-purchase-order.facade';
 import { GrnEventEmitterListener } from './application/integrations/listeners/grn.created.event-emitter.listener-event';
@@ -32,7 +33,6 @@ import { GrnController } from './presentation/http/grn.controller';
 import { GrnForPurchaseOrderPort } from '@business/procurement/good-receipt-note/public';
 import { GrnBatchOperationAdapter } from './infrastructure/adapters/platform/grn-batch-operation.adapter';
 import { GrnNotificationAdapter } from './infrastructure/adapters/platform/grn-notification.adapter';
-import { GrnReadCacheAdapter } from './infrastructure/adapters/platform/grn-read-cache.adapter';
 
 @Module({
   imports: [PlatformModule, PurchaseOrderModule],
@@ -40,7 +40,6 @@ import { GrnReadCacheAdapter } from './infrastructure/adapters/platform/grn-read
   providers: [
     GrnBatchOperationAdapter,
     GrnNotificationAdapter,
-    GrnReadCacheAdapter,
     CreateGrnUseCase,
     AddGrnLineUseCase,
     ReceiveGrnUseCase,
@@ -48,6 +47,7 @@ import { GrnReadCacheAdapter } from './infrastructure/adapters/platform/grn-read
     // Read-model cache (plan §1.6): controllers, batch adapter and the PO-facing
     // facade all read through the caching decorator; commands invalidate.
     GetGrnUseCase,
+    CacheResponseInterceptor,
     ListGrnsUseCase,
     CancelGrnUseCase,
     PostGrnUseCase,

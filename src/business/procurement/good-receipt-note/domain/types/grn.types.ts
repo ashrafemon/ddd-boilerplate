@@ -116,6 +116,7 @@ export interface RecordInspectionResultRequest {
     rejectedQuantity: number;
   }[];
   actorId?: string;
+  idempotencyKey?: string;
 }
 
 export interface AddGrnLineInput {
@@ -162,7 +163,6 @@ export interface CreateGrnRequest {
   purchaseOrderId: string;
   vendorId?: string;
   currency?: string;
-  idempotencyKey?: string;
   actorId?: string;
   lines: {
     productId: string;
