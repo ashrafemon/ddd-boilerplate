@@ -17,6 +17,8 @@ export class PrismaGrnMapper {
       productId: string;
       orderedQuantity: number;
       receivedQuantity: number;
+      acceptedQuantity: number;
+      rejectedQuantity: number;
       unitPrice: number;
       total: number;
     }[];
@@ -40,6 +42,8 @@ export class PrismaGrnMapper {
             line.orderedQuantity,
             line.receivedQuantity,
             line.unitPrice,
+            line.acceptedQuantity,
+            line.rejectedQuantity,
           ),
         ),
         receivedAt: row.receivedAt,
@@ -72,6 +76,8 @@ export class PrismaGrnMapper {
       productId: line.productId,
       orderedQuantity: line.orderedQuantity,
       receivedQuantity: line.receivedQuantity,
+      acceptedQuantity: line.acceptedQuantity,
+      rejectedQuantity: line.rejectedQuantity,
       unitPrice: line.unitPrice,
       total: line.total,
     }));
@@ -91,6 +97,8 @@ export class PrismaGrnMapper {
         productId: string;
         orderedQuantity: number;
         receivedQuantity: number;
+        acceptedQuantity: number;
+        rejectedQuantity: number;
         unitPrice: number;
         total: number;
       }[];

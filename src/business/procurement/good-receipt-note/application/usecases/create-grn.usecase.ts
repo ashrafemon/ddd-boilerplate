@@ -47,12 +47,27 @@ export class CreateGrnUseCase {
       padding: 8,
     });
 
+    // Snapshot orderedQuantity/unitPrice from the PO lines (client values ignored).
+    const poLineByProduct = new Map(purchaseOrder.lines.map(l => [l.productId, l]));
+    const snappedLines = input.lines.map(line => {
+      const poLine = poLineByProduct.get(line.productId);
+      if (!poLine) {
+        throw new ConflictException(`Product ${line.productId} is not on the purchase order`);
+      }
+      return {
+        productId: line.productId,
+        orderedQuantity: poLine.quantity,
+        receivedQuantity: line.receivedQuantity,
+        unitPrice: poLine.unitPrice,
+      };
+    });
+
     const grn = GrnFactory.create({
       grnNumber,
       purchaseOrderId: input.purchaseOrderId,
       vendorId,
       currency,
-      lines: input.lines,
+      lines: snappedLines,
     });
 
     await this.grnRepository.save(grn);

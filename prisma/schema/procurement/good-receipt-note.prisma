@@ -28,6 +28,8 @@ model GrnLine {
   productId         String          @db.Uuid
   orderedQuantity   Int
   receivedQuantity  Int
+  acceptedQuantity  Int             @default(0)
+  rejectedQuantity  Int             @default(0)
   unitPrice         Decimal         @db.Decimal(18, 2)
   total             Decimal         @db.Decimal(18, 2)
   goodReceiptNote   GoodReceiptNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
