@@ -14,7 +14,12 @@ export class PolicyRegistry {
 
   evaluate<TState = unknown>(key: string, state: TState): boolean {
     const list = this.items.get(key);
-    if (!list) return true;
+    if (!list) {
+      throw Object.assign(
+        new Error(`No policy registered for key "${key}" — check the registration import`),
+        { statusCode: 500 },
+      );
+    }
     for (const item of list) {
       if (!item.evaluate(state)) return false;
     }
@@ -23,7 +28,12 @@ export class PolicyRegistry {
 
   enforce<TState = unknown>(key: string, state: TState): void {
     const list = this.items.get(key);
-    if (!list) return;
+    if (!list) {
+      throw Object.assign(
+        new Error(`No policy registered for key "${key}" — check the registration import`),
+        { statusCode: 500 },
+      );
+    }
     for (const item of list) {
       if (!item.evaluate(state)) {
         throw Object.assign(new Error(`Policy "${item.name}" failed`), { statusCode: 422 });

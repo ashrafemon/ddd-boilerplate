@@ -10,6 +10,15 @@ invariantRegistry.register<{ unitPrice: number }>('product.create', {
   },
 });
 
+invariantRegistry.register<{ unitPrice: number }>('product.price-change', {
+  name: 'product-price-change-non-negative',
+  check: ({ unitPrice }) => {
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+      throw Object.assign(new Error('Product price cannot be negative'), { statusCode: 422 });
+    }
+  },
+});
+
 invariantRegistry.register<{ status: ProductStatus; to: ProductStatus }>(
   'product.status-transition',
   {

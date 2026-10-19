@@ -6,6 +6,7 @@ import { InvoiceId } from '../value-objects/invoice-id.vo';
 import { InvoiceLine } from '../value-objects/invoice-line.vo';
 import { InvoiceStatus } from '../types/invoice.enum';
 import { InvoiceProps } from '../types/invoice.types';
+import './invoice.invariants';
 
 /**
  * Invoice aggregate root. DRAFT → POSTED is the only sanctioned state change

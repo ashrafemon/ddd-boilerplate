@@ -6,6 +6,7 @@ import { GrnCompleted } from '../events/grn.completed.event';
 import { GrnLineAdded } from '../events/grn.line-added.event';
 import { GrnReceived } from '../events/grn.received.event';
 import { GrnCancelled } from '../events/grn.cancelled.event';
+import './grn.invariants';
 
 export class GoodReceiptNote extends AggregateRoot<GrnId> {
   private props: GrnProps;

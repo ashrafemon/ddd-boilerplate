@@ -10,6 +10,8 @@ import { ProductProps } from '../types/product.types';
 import { ProductId } from '../value-objects/product-id.vo';
 import { ProductName } from '../value-objects/product-name.vo';
 import { ProductStatus } from '../types/product.enum';
+import './product.invariants';
+import '../policies/reactivation.policy';
 
 export class Product extends AggregateRoot<ProductId> {
   private props: ProductProps;
@@ -76,7 +78,7 @@ export class Product extends AggregateRoot<ProductId> {
   }
 
   changePrice(newPrice: Money): void {
-    invariantRegistry.enforce('product.price-change', { unitPrice: newPrice });
+    invariantRegistry.enforce('product.price-change', { unitPrice: newPrice.amount });
     this.props.unitPrice = newPrice;
     this.props.updatedAt = new Date();
     this.addEvent(new ProductUpdated(this.id));

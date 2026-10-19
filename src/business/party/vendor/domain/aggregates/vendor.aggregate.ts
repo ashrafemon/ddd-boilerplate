@@ -7,6 +7,7 @@ import { VendorActivated } from '../events/vendor.activated.event';
 import { VendorBlocked } from '../events/vendor.blocked.event';
 import { VendorDeactivated } from '../events/vendor.deactivated.event';
 import { VendorUpdated } from '../events/vendor.updated.event';
+import './vendor.invariants';
 export class Vendor extends AggregateRoot<VendorId> {
   private props: VendorProps;
 

@@ -22,9 +22,22 @@ export class InvariantRegistry {
     this.items.set(key, list);
   }
 
+  /**
+   * Run every invariant registered under `key`.
+   *
+   * An UNKNOWN KEY THROWS: a typo or a missing side-effect import would
+   * otherwise turn the guard into a silent no-op, which is how a dead
+   * `product.price-change` check could ship unnoticed. Failing loud is the
+   * whole point of a guard.
+   */
   enforce<TState = unknown>(key: string, state: TState): void {
     const list = this.items.get(key);
-    if (!list) return;
+    if (!list) {
+      throw Object.assign(
+        new Error(`No invariant registered for key "${key}" — check the registration import`),
+        { statusCode: 500 },
+      );
+    }
     for (const item of list) {
       item.check(state);
     }

@@ -9,7 +9,6 @@ import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
 import { OrderNumber, VendorIdRef } from '../value-objects/purchase-order.vos';
 import { PurchaseOrderCreated } from '../events/purchase-order.created.event';
 import './../aggregates/purchase-order.invariants';
-import '../entities/purchase-order-line.invariants';
 import '../value-objects/order-number.invariants';
 import './../policies/approval.policy';
 import './../policies/cancellation.policy';
@@ -19,6 +18,7 @@ export class PurchaseOrderFactory {
   static create(input: CreatePurchaseOrderInput): PurchaseOrder {
     invariantRegistry.enforce('purchase-order.create', {
       orderNumber: input.orderNumber,
+      vendorId: input.vendorId,
     });
 
     invariantRegistry.enforce('order-number.create', { orderNumber: input.orderNumber });

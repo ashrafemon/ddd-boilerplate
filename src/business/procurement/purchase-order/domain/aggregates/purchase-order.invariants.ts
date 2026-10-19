@@ -3,6 +3,18 @@ import { PurchaseOrderStatus } from '../types/purchase-order.enum';
 
 export type { PurchaseOrderStatus };
 
+invariantRegistry.register<{ orderNumber: string; vendorId: string }>('purchase-order.create', {
+  name: 'purchase-order-create-required-fields',
+  check: ({ orderNumber, vendorId }) => {
+    if (!orderNumber?.trim()) {
+      throw Object.assign(new Error('Purchase order number is required'), { statusCode: 422 });
+    }
+    if (!vendorId?.trim()) {
+      throw Object.assign(new Error('Purchase order vendor is required'), { statusCode: 422 });
+    }
+  },
+});
+
 invariantRegistry.register<{ lineCount: number }>('purchase-order.has-lines', {
   name: 'purchase-order-has-lines',
   check: ({ lineCount }) => {
