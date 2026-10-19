@@ -88,6 +88,8 @@ export class ConfigService {
       brokers: [],
       clientId: 'erp-boilerplate',
       groupId: 'erp-boilerplate-group',
+      connectionTimeoutMs: 3000,
+      retryCount: 2,
     });
   }
   public getSqs(): ISqsConfig {

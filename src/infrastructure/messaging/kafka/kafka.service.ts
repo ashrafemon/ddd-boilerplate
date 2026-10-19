@@ -19,7 +19,15 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    this.kafka = new Kafka({ clientId: config.clientId, brokers: config.brokers });
+    this.kafka = new Kafka({
+      clientId: config.clientId,
+      brokers: config.brokers,
+      // A bounded connect budget: Kafka is opt-in and may simply not be
+      // running. Without this the default retry policy blocks app bootstrap
+      // for tens of seconds before giving up.
+      connectionTimeout: config.connectionTimeoutMs,
+      retry: { retries: config.retryCount, initialRetryTime: 300, maxRetryTime: 3000 },
+    });
     this.producer = this.kafka.producer();
     this.consumerGroupId = config.groupId;
   }

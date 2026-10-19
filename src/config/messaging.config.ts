@@ -14,6 +14,13 @@ export type IKafkaConfig = {
   brokers: string[];
   clientId: string;
   groupId: string;
+  /**
+   * Bounded connect budget. Kafka is OPT-IN and the project's own compose
+   * file does not start a broker, so an unreachable broker must degrade to
+   * "Kafka inactive" in a couple of seconds — never block app bootstrap.
+   */
+  connectionTimeoutMs: number;
+  retryCount: number;
 };
 export type ISqsConfig = {
   accessKey: string;
@@ -41,6 +48,8 @@ export default registerAs('messaging', () => ({
       .filter(Boolean),
     clientId: process.env.KAFKA_CLIENT_ID ?? 'erp-boilerplate',
     groupId: process.env.KAFKA_GROUP_ID ?? 'erp-boilerplate-group',
+    connectionTimeoutMs: Number(process.env.KAFKA_CONNECTION_TIMEOUT_MS ?? 3000),
+    retryCount: Number(process.env.KAFKA_RETRY_COUNT ?? 2),
   },
   sqs: {
     accessKey: process.env.SQS_ACCESS_KEY ?? '',

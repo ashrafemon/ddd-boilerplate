@@ -44,16 +44,27 @@ export class KafkaConsumerHost implements OnApplicationBootstrap, OnModuleDestro
       for (const topic of this.handlers.keys()) {
         await consumer.subscribe({ topic, fromBeginning: false });
       }
-      await consumer.run({
-        eachMessage: async ({ topic, message }) => {
-          const entries = this.handlers.get(topic);
-          if (!entries) return;
-          const payload = this.parse(message.value?.toString());
-          for (const entry of entries) {
-            await entry.handler.call(entry.instance, payload, message);
-          }
-        },
-      });
+      // `consumer.run()` resolves only when the consumer STOPS, and kafkajs
+      // re-joins the group forever while the broker is unreachable. Awaiting
+      // it would block application bootstrap indefinitely when Kafka is down,
+      // so it runs in the background and failures are logged, not awaited.
+      void consumer
+        .run({
+          eachMessage: async ({ topic, message }) => {
+            const entries = this.handlers.get(topic);
+            if (!entries) return;
+            const payload = this.parse(message.value?.toString());
+            for (const entry of entries) {
+              await entry.handler.call(entry.instance, payload, message);
+            }
+          },
+        })
+        .catch((error: unknown) => {
+          this.consumer = undefined;
+          this.logger.error(
+            `Kafka consumer stopped; @KafkaEvent handlers are inactive: ${(error as Error).message}`,
+          );
+        });
       this.logger.log(
         `Kafka consumer subscribed to topics: ${[...this.handlers.keys()].join(', ')}`,
       );
