@@ -8,7 +8,7 @@
 1. [Composition root & global request pipeline](#0-composition-root--global-request-pipeline)
 2. [Context (request identity + tenancy + read replica)](#1-context--request-identity--tenancy--read-replica)
 3. [Outbox (transactional publish)](#2-outbox--transactional-publish)
-4. [Events (in-process bus + routing policy)](#3-events--in-process-bus--routing-policy)
+4. [Events (in-process dispatch only)](#3-events--in-process-dispatch-only)
 5. [Messaging + MessageQueue (broker adapters)](#4-messaging--messagequeue--broker-adapters)
 6. [Inbox (reliable consumption)](#5-inbox--reliable-consumption)
 7. [Locking (distributed lease)](#6-locking--distributed-lease)
@@ -44,7 +44,7 @@ Client → Fastify → RequestIdInterceptor (seeds CLS RequestContext)
 
 - `PlatformModule` imports + re-exports all 20 service modules. Deliberately **not `@Global()`**.
 - Raw clients (`Prisma, amqplib, kafkajs, ioredis, S3, SES/SNS`) live in `src/infrastructure/*` only.
-- Platform owns its event contract `OutboxEvent / OutboxEventBase` (`platform/events/bases/outbox-event.base.ts`) + `outboxEventRegistry`. Business `DomainEvent` satisfies it **structurally**. `src/bootstrap/configure-event-rehydration.ts` attaches business `domainEventRegistry` as read-only delegate. Platform never imports `@business/**`.
+- Platform owns its event contract — `OutboxEvent / OutboxEventBase / OutboxEnvelope` (`platform/outbox/outbox.types.ts`). Business `DomainEvent` satisfies `OutboxEvent` **structurally** (same envelope fields), so the outbox pipes it verbatim: the payload is persisted and delivered as-is, with **no rehydration step** and no business registry delegate. Platform never imports `@business/**`.
 - Business opt-in registries (`BatchOperationHandler`, `ImportHandler`, `NotificationHandler`, `ScheduledJobFireHandler`, `FieldResolver`, webhook sources) are filled by **composition root** `src/bootstrap/configure-*.ts`, never by platform importing business. Exception: recurring→scheduler is platform→platform and registers in `RecurringModule.onApplicationBootstrap`.
 
 ---
@@ -107,19 +107,18 @@ abstract class RequestContextPort {
 **Ports:**
 
 ```ts
-// ports/outbox.port.ts (current)
-abstract class OutboxPort {
-  append(req: AppendOutboxEventRequest): Promise<OutboxMessage>;
-  appendMany(reqs: AppendOutboxEventRequest[]): Promise<OutboxMessage[]>;
+// ports/outbox-writer.port.ts — the ONLY outbox port
+abstract class OutboxWriterPort {
+  append(event: OutboxEvent, aggregateType: string, aggregateId: string, opts?: { broker?: BrokerTarget }): Promise<void>;
 }
-// impl: OutboxService → AppendOutboxEventUseCase / AppendOutboxEventsBatchUseCase
-// ports/outbox-writer.port.ts (@deprecated, still used by recurring/batch/import): OutboxWriterPort.append(event, aggregateType, aggregateId)
-// internal ports/outbox-repository.port.ts → PrismaOutboxRepository:
-// append, appendMany, claimBatch({batchSize,maxAttempts}), markPublished(id,claimToken),
-// markFailed(id,claimToken,error,availableAt,maxAttempts), releaseExpiredClaims(now), deletePublishedOlderThan(hours)
+// impl: OutboxService → AppendOutboxEventUseCase
+// repositories/prisma-outbox.repository.ts (concrete, no port): append(request),
+// claimBatch({batchSize,maxAttempts,claimLeaseMs}), markPublished(id,claimToken),
+// markFailed(id,claimToken,error,nextRetryAt,maxAttempts), deletePublishedOlderThan(hours)
+// usecases/publish-pending-batch.usecase.ts — claim → publish → emit → CAS settle
 ```
 
-Types (`outbox.types.ts`): `OutboxStatus=PENDING|CLAIMED(=DB PUBLISHING)|PUBLISHED|FAILED|DEAD_LETTER`, `AppendOutboxEventRequest{tenantId?,organizationId?,eventType,eventVersion?,aggregateType,aggregateId,payload,occurredAt?,correlationId?,causationId?,headers?}`.
+Types (`outbox.types.ts`): `BrokerTarget='rabbitmq'|'kafka'|'sqs'`; `OutboxEnvelope` (the single canonical transport envelope); `OutboxEvent`/`OutboxEventBase` (platform event contract); `OutboxStatus=PENDING|PUBLISHED|DEAD_LETTER`; `AppendOutboxEventRequest{tenantId?,organizationId?,eventId,eventType,eventVersion?,aggregateType,aggregateId,payload,occurredAt?,correlationId?,causationId?,headers?,broker?,nextRetryAt?}`.
 
 **Complete flow:**
 
@@ -129,114 +128,91 @@ flowchart LR
   TX --> AGG[Aggregate row]
   TX --> OUT[INSERT outbox_messages]
   TX -->|COMMIT| DB[(PostgreSQL)]
-  OUT --> SCHED[OutboxScheduler poll 5s]
-  SCHED --> PUB[OutboxDispatcherAdapter]
-  PUB --> BRK[RabbitMQ/Kafka/SQS]
-  PUB --> BUS[In-process re-dispatch]
+  OUT --> SCHED[OutboxScheduler poll 10s]
+  SCHED --> PUB[PublishPendingBatchUseCase]
+  PUB --> MQ[MessageQueuePort<br/>broker by envelope]
+  MQ --> BRK[RabbitMQ/Kafka/SQS]
+  PUB --> BUS[InProcessEventBus.emit<br/>canonical envelope]
 ```
 
-1. **Append (in business tx):** use case → `<Aggregate>IntegrationPort` → `OutboxAdapter` → `OutboxPort.append` → `PrismaOutboxRepository.append` on caller's `TransactionHost`. `tenantId/organizationId/eventId/correlationId/causationId` stamped from CLS. COMMIT is atomic (data + event). Nothing is published here.
-2. **Poll:** `outbox-scheduler.ts` `setInterval(pollIntervalMs)` → `OutboxDispatcherAdapter.dispatchPendingBatch()`; cron `EVERY_MINUTE` reconcile leases, `EVERY_HOUR` cleanup published.
-3. **Claim:** `ClaimOutboxMessagesUseCase({batchSize,maxAttempts})` runs single `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` over due `PENDING|FAILED` (`attempts<max && availableAt<=now`), flips to `PUBLISHING`, stamps `claimToken+claimedAt`, bumps `attempts`. Concurrent replicas claim disjoint rows. Grouped per `aggregateType:aggregateId` (claim/`createdAt` order), chunks of 10 parallel, sequential within group = per-aggregate FIFO.
-4. **Dispatch per record:** `MessageRoutingPolicy.resolve(eventType)` → build `IntegrationMessage` → publish to each targeted broker (`MessagePublisher`). Then `dispatchInProcess`: `outboxEventRegistry.rehydrate(eventType,payload,envelope)` (business delegate from bootstrap; null → warn+skip) → `RequestContextPort.run({tenantId,…})` → `EventBusPort.publish(envelope)`. In-process throw = log-only (brokers already hold it).
-5. **Settle:** success → `MarkOutboxPublishedUseCase(id,claimToken)` (CAS). Broker throw → `availableAt=now+baseMs*2^(attempts-1)` → `MarkOutboxFailedUseCase` → `FAILED`, or `DEAD_LETTER` when `attempts>=max` (terminal, alertable).
-6. **Reconcile:** `OutboxReconciler` returns `PUBLISHING` rows with expired `claimedAt` lease → `PENDING` (crashed publisher).
+1. **Append (in business tx):** use case → `<Aggregate>IntegrationPort` → `OutboxAdapter` → `OutboxWriterPort.append(event, aggregateType, aggregateId, opts?)` → `AppendOutboxEventUseCase` → concrete `PrismaOutboxRepository.append` on the caller's `TransactionHost`. `tenantId/organizationId/eventId/correlationId/causationId` stamped from CLS; `opts.broker` (default `rabbitmq`) written into `headers.broker`. COMMIT is atomic (data + event). Nothing is published here.
+2. **Poll:** `outbox.scheduler.ts` `setInterval(pollIntervalMs)` → `PublishPendingBatchUseCase.execute()` (overlap-guarded); cron `EVERY_HOUR` deletes `PUBLISHED` rows past retention.
+3. **Claim:** `claimBatch({batchSize,maxAttempts,claimLeaseMs})` runs a single `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)` over due `PENDING` rows (`nextRetryAt<=now` and claim missing or older than the lease), stamps `claimToken+claimedAt`, bumps `attempts` — **status stays `PENDING`** (the lease is the in-flight marker). Concurrent replicas claim disjoint rows; order is `createdAt` asc.
+4. **Dispatch per record:** build the canonical `OutboxEnvelope` (broker read from `headers.broker`, default `rabbitmq`) → `MessageQueuePort.publish(envelope)` → then `RequestContextPort.run({tenantId,…})` → `InProcessEventBus.emit(envelope)`. In-process throw = log-only (the broker already holds it).
+5. **Settle:** success → `markPublished(id,claimToken)` (CAS). Publish throw → `nextRetryAt=now+baseMs*2^(attempts-1)` → `markFailed(id,claimToken,error,nextRetryAt,max)` → stays `PENDING`, or `DEAD_LETTER` when `attempts>max` (terminal, alertable).
+6. **No reconciler:** a crashed owner's lease simply expires and the next tick reclaims the row through the same claim clause.
 
 **Who calls / how:**
 
-| Caller                                                 | Surface                                                         |
-| ------------------------------------------------------ | --------------------------------------------------------------- |
-| Every command use case (via module `OutboxAdapter`)    | `OutboxPort.append/appendMany` (same tx)                        |
-| `OutboxScheduler` / `OutboxReconciler` (internal cron) | `OutboxDispatcherAdapter`, claim/mark use cases                 |
-| Nobody publishes brokers directly                      | `MessageRoutingPolicy` + `MessagePublisher` only via dispatcher |
+| Caller                                              | Surface                                                  |
+| --------------------------------------------------- | -------------------------------------------------------- |
+| Every command use case (via module `OutboxAdapter`) | `OutboxWriterPort.append` (same tx)                      |
+| `OutboxScheduler` (internal cron + tick)            | `PublishPendingBatchUseCase`, `PrismaOutboxRepository`   |
+| Nobody publishes brokers directly                   | `MessageQueuePort` only via the dispatcher               |
 
-**Data & config:** `outbox_messages` (`prisma/schema/platform/outbox.prisma`, indexes `[status,availableAt]`, `[tenantId,organizationId,status]`). `src/config/outbox.config.ts` (`ConfigService.getOutbox()`): `OUTBOX_POLL_INTERVAL_MS=5000`, `OUTBOX_BATCH_SIZE=50`, `OUTBOX_MAX_ATTEMPTS=10`, `OUTBOX_RETRY_BACKOFF_BASE_MS=1000`, `OUTBOX_RETRY_MAX_DELAY_MS=600000`, `OUTBOX_CLAIM_LEASE_MS=120000`, `OUTBOX_CLEANUP_OLDER_THAN_HOURS=24`.
-**Tenancy:** stamped at append, carried on re-dispatch CLS + broker headers; dispatcher claims globally.
-**Rules:** Never publish inside business tx; CAS on `claimToken`; stable `eventId` for consumer dedupe; new event type must be in aggregate rehydrator registry or in-process is skipped.
+**Data & config:** `outbox_messages` (`prisma/schema/platform/outbox.prisma`, indexes `[status,nextRetryAt]`, `[tenantId,organizationId,status]`). `src/config/outbox.config.ts` (`ConfigService.getOutbox()`): `OUTBOX_POLL_INTERVAL_MS=10000`, `OUTBOX_BATCH_SIZE=100`, `OUTBOX_MAX_ATTEMPTS=10`, `OUTBOX_RETRY_BASE_DELAY_MS=1000`, `OUTBOX_RETRY_MAX_DELAY_MS=600000`, `OUTBOX_CLAIM_LEASE_MS=60000`, `OUTBOX_CLEANUP_OLDER_THAN_HOURS=24`.
+**Tenancy:** stamped at append, restored on in-process CLS + carried in broker headers; the dispatcher claims globally (stateless).
+**Rules:** Never publish inside business tx; every settle is CAS on `claimToken`; stable `eventId` for consumer dedupe; in-process delivery is best-effort and never reflected onto the row.
 
 ---
 
-## 3. Events — in-process bus + routing policy
+## 3. Events — in-process dispatch only
 
-> Two decisions, no persistence. `src/platform/events/README.md`.
+> A thin emit wrapper over `EventEmitter2`: same envelope the brokers carry, zero
+> durability. `src/platform/events/README.md`.
 
 **Module:** `src/platform/events/events.module.ts` → `EventsModule`.
 **Ports:**
 
 ```ts
-// ports/event-bus.port.ts
-abstract class EventBusPort {
-  publish(event: DomainEventEnvelope): Promise<EventPublishResult>;
-  register(reg: EventHandlerRegistration): void;
-  unregister(id: string): void;
+// ports/in-process-event-bus.port.ts — the only port
+type MessageEnvelope = OutboxEnvelope; // canonical envelope alias
+abstract class InProcessEventBus {
+  emit(envelope: MessageEnvelope): void; // at-most-once, no retries, no storage
 }
-// impl: EventBusService → Publish/Register/UnregisterEventHandlerUseCase → DomainEventDispatcher + DomainEventRegistry
-// underlying: NestEventBusAdapter (EventEmitter2 wildcard)
-// message-routing.policy.ts
-abstract class MessageRoutingPolicy {
-  resolve(eventType: string): BrokerTargets;
-}
-// impl: DefaultMessageRoutingPolicy; BrokerTarget='rabbitmq'|'kafka'|'sqs'
+// impl: EventBusService → EmitEventUseCase → NestEventBusAdapter (EventEmitter2)
 ```
 
-Envelope (`bases/outbox-event.base.ts`): `OutboxEvent{eventId,occurredAt,version,correlationId?,causationId?,headers?}`, `OutboxEventBase`, `EventRehydrator`, `RehydrationEnvelope`; bus type (`event-bus.types.ts`): `DomainEventEnvelope{eventId,eventType,eventVersion,tenantId?,organizationId?,aggregateType,aggregateId,payload,occurredAt,…}`.
+Envelope: the canonical `OutboxEnvelope` from `platform/outbox/outbox.types.ts`
+(`eventId`, `eventType`, `aggregateType`, `aggregateId`, `payload`, `headers`,
+`occurredAt`, `broker?`, `correlationId?`, `causationId?`). No rehydration types.
 
 **Complete flow:**
 
-1. Only caller is `OutboxDispatcherAdapter` (broker legs + `dispatchInProcess`) — business never publishes brokers directly.
-2. `EventBusService.publish(envelope)` → `PublishEventUseCase.execute(event,{failFast?,timeoutMs?})` → `DomainEventDispatcher.dispatch` over `DomainEventRegistry` matching `eventType+version (+tenant/org scope)` → invoke handlers, return `{eventId,dispatchedHandlers}`.
-3. `DefaultMessageRoutingPolicy.resolve`: `FAN_OUT_EVENTS={ProductCreated,VendorCreated,PurchaseOrderCreated,GrnCreated,InvoiceCreated: [rabbitmq,kafka,sqs]}` else `['rabbitmq']`. Disabled brokers (no `KAFKA_BROKERS`/`SQS_URL`) are skipped at adapter but still counted published — routing is intent, availability gates legs. Same envelope rides all transports (RabbitMQ exchange `erp.events` + routing-key=eventType; Kafka topic=eventType; SQS queue URL).
+1. The only caller is the outbox dispatcher (`PublishPendingBatchUseCase`) — business never emits directly.
+2. `EventBusService.emit(envelope)` → `EmitEventUseCase` → `NestEventBusAdapter.emit(envelope)` → `emitter.emit(envelope.eventType, envelope)`.
+3. Subscribers: business `*.event-emitter.listener-event.ts` (`@OnEvent('<EventType>')`, receives `MessageEnvelope`, reads `message.payload`) plus platform `onAny` projections (recurring / notification / webhook), which match on the event type.
 
-**Who calls / how:** `OutboxDispatcherAdapter` → `MessageRoutingPolicy.resolve` + `EventBusPort.publish`; business `*.event-emitter.listener-event.ts` (`@OnEvent('<EventClassName>')`) reacts. Adding a Kafka/SQS listener = adding the event to `FAN_OUT_EVENTS`.
+**Who calls / how:** `platform/outbox` emits after the broker publish, under a restored tenant CLS context; business listeners react locally. Reactions that must survive a crash belong behind a broker consumer + `platform/inbox`.
 **Data & config:** None (no tables, no config, no cron).
-**Rules:** Keep in-process handlers idempotent and non-throwing; events must be in the aggregate rehydrator registry.
+**Rules:** Keep in-process handlers idempotent and non-throwing — the adapter catches and logs, so one bad listener never breaks the others or the outbox row.
 
 ---
 
-## 4. Messaging / MessageQueue — broker adapters
+## 4. Messaging / MessageQueue — one port, broker by param
 
-> Thin per-broker publishers; outbox decides targets. `src/platform/messaging/README.md`.
+> Infrastructure-agnostic async transport; the envelope picks the broker. `src/platform/messaging/README.md`.
 
-**Modules:** `messaging.module.ts` → `MessagingModule`; `message-queue.module.ts` → `MessageQueueModule` (imports `@infrastructure/messaging`).
+**Module:** `messaging.module.ts` → `MessagingModule` (imports `@infrastructure/messaging`).
 **Ports:**
 
 ```ts
-// ports/message-publisher.port.ts
-interface IntegrationMessage {
-  eventType;
-  aggregateType;
-  aggregateId;
-  payload;
-  headers?;
-  occurredAt;
-  correlationId?;
-  causationId?;
-  tenantId?;
-}
-abstract class MessagePublisher {
-  publish(msg: IntegrationMessage): Promise<void>;
-}
-// message-publisher.tokens.ts: abstract RabbitMqPublisher, KafkaPublisher, SqsPublisher
-// binding: MessagePublisher → RabbitMQPublisherAdapter (default); per-broker tokens → adapters/rabbitmq|kafka|sqs-publisher.adapter.ts
-// ports/message-queue.port.ts
+// ports/message-queue.port.ts — the only public port
 abstract class MessageQueuePort {
-  publish(req: MessageQueuePublishRequest): Promise<MessageQueuePublishResult>;
-  subscribe(req: MessageQueueSubscribeRequest): Promise<MessageQueueSubscription>;
-  ack(req: MessageQueueAckRequest): Promise<void>;
-  nack(req: MessageQueueNackRequest): Promise<void>;
+  publish(envelope: OutboxEnvelope): Promise<void>; // routes on envelope.broker (default rabbitmq)
 }
-// impl: MessageQueueService → Publish/Subscribe/Acknowledge/RejectMessageUseCase + MessageConsumerRegistry
+// impl: MessageQueueService → PublishMessageUseCase → BrokerPublisher adapters
+// message-publisher.tokens.ts: interface BrokerPublisher + abstract RabbitMqPublisher/KafkaPublisher/SqsPublisher
 ```
 
 **Complete flow:**
 
-1. `OutboxDispatcherAdapter` injects all three broker tokens + `SchedulerEventPublisherPort` (scheduler fallback) injects `RabbitMqPublisher`. Business never publishes.
-2. Per-broker shape: RabbitMQ routing-key=`eventType` on `rabbitmq.exchange`, persistent; Kafka topic=`eventType`, key=`aggregateId` (disabled without `KAFKA_BROKERS`); SQS queue-URL + `event-id` header (no-op without `SQS_URL`).
-3. `MessageQueuePort` path: `PublishMessageUseCase` → transport; `SubscribeMessageUseCase` → `MessageConsumerRegistry`; consumers `ack/nack(requeue)`.
-4. Publish-leg throw → outbox `FAILED` + retry. Partial multi-broker delivery is expected (at-least-once + consumer dedupe on `event-id` via inbox/idempotency).
+1. `PublishPendingBatchUseCase` (outbox) injects `MessageQueuePort`; the scheduler fallback (`RabbitMqSchedulerEventPublisher` → `SchedulerEventPublisherPort`) does too. Business never publishes.
+2. `PublishMessageUseCase.execute(envelope)` switches on `envelope.broker ?? 'rabbitmq'` across the three adapters. Per-broker shape: RabbitMQ routing-key=`eventType` on `rabbitmq.exchange`, persistent; Kafka topic=`eventType`, key=`aggregateId`; SQS to the configured queue URL. Every transport carries the same canonical envelope.
+3. An unconfigured broker target throws — `publish` rejects, the outbox keeps the row `PENDING` and retries it to `DEAD_LETTER`; a missing broker never blocks a transaction.
 
-**Data & config:** No tables. `src/config/messaging.config.ts` (`KAFKA_BROKERS`, `SQS_URL`, `rabbitmq.exchange`).
-**Rules:** New broker = implement `MessagePublisher` + register token here + extend `BrokerTarget`/routing policy. Lint bans broker libs outside infra/listeners.
+**Data & config:** No tables. `src/config/messaging.config.ts` (`RABBITMQ_URL`, `RABBITMQ_EXCHANGE`, `KAFKA_BROKERS`, `SQS_URL`, `SQS_REGION`).
+**Rules:** Business never imports broker libs (ESLint). New broker = implement `BrokerPublisher` + register a token + extend `BrokerTarget` and the publish switch — never hand-roll producers in business modules. At-least-once; consumers dedupe on the stable `event-id` via inbox/idempotency. No consumers, no subscribe registry.
 
 ---
 
@@ -413,7 +389,7 @@ abstract class RecurringExecutionPort {
 4. Template not ACTIVE → `skip(TemplateNotActive)`. Else parse `generationCondition` → `ConditionEvaluator.evaluate`; fail → `skip(ConditionNotMet)` + reschedule.
 5. Pass → `OutboxWriterPort.append(new RecurringOccurrenceRequested(executionId,templateId,targetEntityType,partyId,partyType,currency,autoPost,triggerKey,traceId,headerOverrides,lines,tenantId,eventPayload), 'RecurringTemplate', template.id)`.
 6. `reschedule`: `RecurrenceEngine.nextRunDate(frequency,interval,from,timeZone)` → `template.update(nextRunDate,lastRunDate)` + `schedulerPort.rescheduleByAggregate`; past `endDate` → COMPLETED + `cancelByAggregate`.
-7. `OutboxPublisher` → Rabbit `erp.events/RecurringOccurrenceRequested` → business creates doc → `RecurringExecutionPort.complete/fail`.
+7. Outbox dispatcher → Rabbit `erp.events/RecurringOccurrenceRequested` → business creates doc → `RecurringExecutionPort.complete/fail`.
 
 **Complete flow — EVENT:** no `scheduled_jobs` row. `domain-event.dispatcher.ts` (`EventEmitter2.onAny`) matches ACTIVE templates by `eventName`, calls same handler with `jobId:null`, `triggerKey=sourceEventId`.
 
@@ -873,7 +849,7 @@ Client → guards/interceptors/pipes → PurchaseOrderController → CreatePurch
  → companyConfig.getCompanyConfig() · vendorQueryPort.getOrderableVendor(id) (public-port 3-hop chain)
  → PurchaseOrderFactory.create (invariants/policies, raises PurchaseOrderCreated)
  → PurchaseOrderCommandRepository.save (TransactionHost) + OutboxPort.append (SAME tx) → COMMIT
- → OutboxScheduler (5s) → claimBatch (SKIP LOCKED) → MessageRoutingPolicy → RabbitMQ/Kafka/SQS + InProcessEventBus
+ → OutboxScheduler (10s) → claimBatch (SKIP LOCKED) → MessageQueuePort (broker by envelope) → RabbitMQ/Kafka/SQS + InProcessEventBus.emit
  → listeners (@OnEvent/@RabbitSubscribe/@KafkaEvent/@SqsMessageHandler) delegate to use cases
 ```
 
@@ -911,7 +887,7 @@ Rule: only ACTIVE vendors orderable (else ConflictException); only ACTIVE produc
 | ----------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------- |
 | context                       | `context/context.module.ts`                                                                     | —                                  | `security, auth`                                            |
 | outbox                        | `outbox/outbox.module.ts`                                                                       | `outbox.prisma`                    | `outbox.config.ts`                                          |
-| events/messaging              | `events/events.module.ts`, `messaging/messaging.module.ts`, `messaging/message-queue.module.ts` | —                                  | `messaging.config.ts`                                       |
+| events/messaging              | `events/events.module.ts`, `messaging/messaging.module.ts`                                        | —                                  | `messaging.config.ts`                                       |
 | inbox                         | `inbox/inbox.module.ts`                                                                         | `inbox.prisma`                     | `inbox.config.ts`                                           |
 | locking                       | `locking/locking.module.ts`                                                                     | `locking.prisma`                   | `locking.config.ts`                                         |
 | idempotency                   | `idempotency/idempotency.module.ts`                                                             | `idempotency.prisma`               | `idempotency.config.ts`                                     |

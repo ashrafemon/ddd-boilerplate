@@ -49,7 +49,7 @@ Use Case → Outbound Ports + Integration Port → OutboxAdapter → OutboxWrite
 Use Case → Command Repository Port → Prisma command repo (TransactionHost, @Transactional tx)
 Query Use Case → Query Port → Prisma query repo (PrismaReadPort, replica)
 Consumer adapter (own infra/adapters/module) → Producer facade (producer application/facades)
-OutboxScheduler cron → OutboxPublisher (SKIP LOCKED claim) → MessageRoutingPolicy
+OutboxScheduler tick → PublishPendingBatch (SKIP LOCKED claim) → MessageQueuePort
   → RabbitMQ / Kafka / SQS + InProcessEventBus re-dispatch
 ```
 
@@ -61,9 +61,9 @@ Rules (enforced by `eslint.config.mjs` — `npm run lint:check`):
   Allowed cross-module imports: another module's `public/**` or
   `application/outbound-ports/**` contract only.
 - `platform/**` → never `@business/**`. Platform owns its event contract
-  (`OutboxEvent` structural interface + `outboxEventRegistry`); business
-  `DomainEvent` satisfies it structurally. Business rehydrators are bridged as a
-  delegate by `src/bootstrap/configure-event-rehydration.ts`.
+  (`OutboxEvent` structural interface + canonical `OutboxEnvelope` in
+  `@platform/outbox/outbox.types`); business `DomainEvent` satisfies it
+  structurally and the payload is delivered verbatim — no rehydration.
 - Raw clients (`prisma`, `amqplib`, `kafkajs`, `ioredis`, …) →
   `infrastructure/config/bootstrap/platform` only. `@nestjs/schedule` → platform only.
 - Carve-out: `application/integrations/listeners/**` may use subscribe decorators
@@ -88,7 +88,6 @@ business/<context>/<module>/               # e.g. business/procurement/product/
 │   ├── value-objects/<x>.invariants.ts     # invariantRegistry.register('<vo>.create'…), side-effect
 │   ├── value-objects/<name>-id.vo.ts       # generate() / fromString()
 │   ├── events/<name>.<past-verb>.event.ts  # extends DomainEvent, typed readonly props
-│   ├── events/<name>.registry.ts           # domainEventRegistry.register per event (rehydrator)
 │   ├── policies/<name>.policy.ts           # policyRegistry.register — reads EXTERNAL data, not own state
 │   ├── factories/<name>.factory.ts         # SOLE construction path; side-effect-imports invariants/policies
 │   ├── repositories/<name>-command.repository.ts  # ABSTRACT command port, domain types only
@@ -145,12 +144,11 @@ in `prisma/migrations/<ts>_<name>/migration.sql`, then `npx prisma generate`.
   `invariantRegistry.enforce('product.create', …)` → `X.instantiate(Id.generate(), …)`
   → `addEvent(new XCreated(…))`. Must side-effect-import all
   `*.invariants.ts` + policy files so registries are populated.
-- **Events + rehydrators** (`domain/events/`): `class ProductCreated extends
-DomainEvent` with `eventId/occurredAt/version + correlationId/causationId/headers`.
-  `<name>.registry.ts` registers every event in `domainEventRegistry` with a payload
-  cast that rebuilds VOs (`ProductId.fromString`, `Money.fromMinorUnits`). The
-  outbox re-dispatch needs this to survive the async hop — no event without a
-  rehydrator.
+- **Events** (`domain/events/`): `class ProductCreated extends DomainEvent` with
+  `eventId/occurredAt/version + correlationId/causationId/headers`. The aggregate
+  raises it and the integration port appends it to the outbox inside the
+  transaction; the in-process listener receives the canonical envelope and reads
+  the business payload from `message.payload` — no rehydrator.
 - **Policies** (`policies/`): `policyRegistry.register('<scope>.<rule>', …)` —
   cross-cutting rules reading external data (e.g. `product.reactivation`,
   `vendor.orderability`, `purchase-order.approval` with company-config threshold).
@@ -159,7 +157,7 @@ DomainEvent` with `eventId/occurredAt/version + correlationId/causationId/header
 Shared primitives (`business/shared-business/`): `AggregateRoot` (`version` +
 `addEvent/pullEvents`), `Entity`, `ValueObject` (equals by props), `DomainEvent`,
 `DomainFactory`, `Money` (minor-units integer math), `invariantRegistry`,
-`policyRegistry`, `domainEventRegistry` (bridged into `outboxEventRegistry` at bootstrap).
+`policyRegistry`.
 
 ### 4.2 Application — command vs query, ports everywhere
 
@@ -291,8 +289,8 @@ registry after instantiation.
 2. `OutboxScheduler` (poll `OUTBOX_POLL_INTERVAL_MS`) → `OutboxPublisher`
    claims with `UPDATE … FOR UPDATE SKIP LOCKED` (lease `claimedAt`, `attempts` +
    `nextRetryAt` backoff), publishes per-aggregate FIFO, re-dispatches in-process
-   via `outboxEventRegistry` with stable envelope identities.
-3. `MessageRoutingPolicy.FAN_OUT_EVENTS` decides brokers per event type
+   with stable envelope identities (canonical `OutboxEnvelope`).
+3. The envelope's `broker` field decides the transport (default `rabbitmq`)
    (default `rabbitmq` topic exchange `erp.events`; adding Kafka/SQS listener ⇒ add target here).
 4. Statuses `PENDING → PUBLISHING → PUBLISHED | FAILED | DEAD_LETTER`; lease-expiry
    reconciler + hourly cleanup; at-least-once delivery, consumers dedupe on stable
@@ -304,7 +302,7 @@ Build order (full templates in `docs/BUSINESS-MODULE-GUIDE.md`):
 
 1. Schema first: `prisma/schema/<ctx>/<name>.prisma` + hand-written
    `prisma/migrations/<ts>_<name>/migration.sql`; `npx prisma generate`.
-2. Domain leaf-to-root: types → enums → VOs (+id) → invariants → events (+registry)
+2. Domain leaf-to-root: types → enums → VOs (+id) → invariants → events
    → policies → aggregate → factory (side-effect-import invariants/policies).
 3. Domain command-repository port (abstract) + application query port.
 4. Use cases (command 6-step flow; query via query port).
@@ -321,7 +319,7 @@ Build order (full templates in `docs/BUSINESS-MODULE-GUIDE.md`):
 
 Acceptance: zero `@nestjs/*` in `domain/**`; aggregate-only mutation via factory;
 command path `@Transactional` + repo + outbox-append (no direct publish); reads on
-query port + replica; every persisted event has a rehydrator; cross-module only via
+query port + replica; every persisted event rides the outbox (payload verbatim); cross-module only via
 `public/` + outbound port; lint + types + unit tests green.
 
 Known gaps to not copy blindly (see guide §6): business tables not yet

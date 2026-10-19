@@ -3,16 +3,17 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JsonObject } from '@shared-kernel/types/json-value.type';
 import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { MessageEnvelope } from '@platform/events/ports/in-process-event-bus.port';
 import { DispatchWebhookEventUseCase } from './usecases/dispatch-webhook-event.usecase';
 import { WebhookEventTypeRegistry } from './webhook-event-type.registry';
 
 /**
  * Outbound EVENT-trigger path — structurally copied from
- * notification/notification-event.dispatcher.ts: matches on
- * `event.constructor.name` (`emitter.emit(event.constructor.name, event)`),
- * so `onAny` needs no wildcard pattern. Only events on the boot-time
- * WEBHOOK_EVENT_TYPES allowlist (WebhookEventTypeRegistry) go any further —
- * everything else is ignored before touching the DB.
+ * notification/notification-event.dispatcher.ts: the Event Bus emits
+ * `emitter.emit(envelope.eventType, envelope)`, so `onAny` receives the event
+ * type and the canonical envelope (payload is `envelope.payload`). Only events
+ * on the boot-time WEBHOOK_EVENT_TYPES allowlist (WebhookEventTypeRegistry) go
+ * any further — everything else is ignored before touching the DB.
  */
 @Injectable()
 export class WebhookDispatchDispatcher implements OnModuleInit {
@@ -25,18 +26,19 @@ export class WebhookDispatchDispatcher implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.eventEmitter.onAny((eventName, event: unknown) => {
-      void this.onEvent(String(eventName), event);
+    this.eventEmitter.onAny((eventName, message: unknown) => {
+      void this.onEvent(String(eventName), message);
     });
   }
 
-  private async onEvent(eventName: string, event: unknown): Promise<void> {
+  private async onEvent(eventName: string, message: unknown): Promise<void> {
     if (!this.eventTypes.has(eventName)) {
       return;
     }
 
-    const eventId = extractEventId(event);
-    const payload = toPlainObject(event);
+    const envelope = asEnvelope(message);
+    const eventId = envelope?.eventId ?? randomUUID();
+    const payload: JsonObject = envelope ? PrismaJson.snapshot(envelope.payload) : {};
 
     try {
       await this.dispatchWebhookEvent.execute(eventName, eventId, payload);
@@ -48,18 +50,10 @@ export class WebhookDispatchDispatcher implements OnModuleInit {
   }
 }
 
-function extractEventId(event: unknown): string {
-  if (
-    event &&
-    typeof event === 'object' &&
-    'eventId' in event &&
-    typeof event.eventId === 'string'
-  ) {
-    return event.eventId;
+function asEnvelope(message: unknown): MessageEnvelope | null {
+  if (!message || typeof message !== 'object') {
+    return null;
   }
-  return randomUUID();
-}
-
-function toPlainObject(event: unknown): JsonObject {
-  return event && typeof event === 'object' ? PrismaJson.snapshot(event) : {};
+  const candidate = message as { eventType?: unknown };
+  return typeof candidate.eventType === 'string' ? (message as MessageEnvelope) : null;
 }

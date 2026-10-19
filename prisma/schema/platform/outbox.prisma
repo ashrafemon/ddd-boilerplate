@@ -1,9 +1,9 @@
 // Transactional Outbox persistence model. Written inside the same DB
-// transaction as the aggregate change and published by the outbox dispatcher.
-// Claim safety: rows move to PUBLISHING via FOR UPDATE SKIP LOCKED with
-// claimToken + claimedAt as the lease; stale leases are reconciled back to
-// PENDING. attempts gates re-claim; availableAt implements backoff;
-// DEAD_LETTER is the terminal failure state for exhausted poison messages.
+// transaction as the aggregate change and published by the outbox scheduler
+// (see docs/design 04). Claim safety: rows keep status=PENDING while claimed —
+// FOR UPDATE SKIP LOCKED stamps claimToken + claimedAt as the lease and bumps
+// attempts; a crashed owner is reclaimed once its lease expires (nextRetryAt
+// drives backoff). DEAD_LETTER is the terminal park state for poison messages.
 model OutboxMessage {
   id            String              @id @default(uuid()) @db.Uuid
   eventId       String              @unique @map("event_id") @db.Uuid
@@ -18,7 +18,7 @@ model OutboxMessage {
   occurredAt    DateTime            @map("occurred_at")
   createdAt     DateTime            @default(now()) @map("created_at")
   status        OutboxMessageStatus @default(PENDING)
-  availableAt   DateTime            @default(now()) @map("available_at")
+  nextRetryAt   DateTime?           @map("next_retry_at")
   attempts      Int                 @default(0)
   claimedAt     DateTime?           @map("claimed_at")
   claimToken    String?             @map("claim_token") @db.Uuid
@@ -28,7 +28,7 @@ model OutboxMessage {
   causationId   String?             @map("causation_id") @db.VarChar(200)
   version       Int                 @default(1)
 
-  @@index([status, availableAt])
+  @@index([status, nextRetryAt])
   @@index([tenantId, organizationId, status])
   @@index([claimedAt])
   @@index([aggregateType, aggregateId])
@@ -37,8 +37,6 @@ model OutboxMessage {
 
 enum OutboxMessageStatus {
   PENDING
-  PUBLISHING  // Maps to CLAIMED conceptually — lease-stamped claim state
   PUBLISHED
-  FAILED
   DEAD_LETTER
 }

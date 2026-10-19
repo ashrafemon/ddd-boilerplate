@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
-import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
+import type { OutboxEnvelope } from '@platform/outbox/outbox.types';
 import { GenerateRecurringInvoiceUseCase } from '../../usecases/generate-recurring-invoice.usecase';
 import { RecurringOccurrenceRequestedPayload } from '../recurring-occurrence.types';
 
@@ -23,7 +23,7 @@ export class RecurringOccurrenceRequestedRabbitMQListener {
     queue: RECURRING_QUEUE,
     queueOptions: { durable: true },
   })
-  async onRecurringOccurrenceRequested(message: IntegrationMessage): Promise<void> {
+  async onRecurringOccurrenceRequested(message: OutboxEnvelope): Promise<void> {
     if (message.eventType !== 'RecurringOccurrenceRequested') {
       return;
     }

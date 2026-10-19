@@ -1,6 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { MessagePublisher } from '@platform/messaging/ports/message-publisher.port';
-import { RabbitMqPublisher } from '@platform/messaging/message-publisher.tokens';
+import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'crypto';
+import { MessageQueuePort } from '@platform/messaging/ports/message-queue.port';
 import {
   SchedulerEventPublisherPort,
   SchedulerJobDueEvent,
@@ -8,10 +8,11 @@ import {
 
 @Injectable()
 export class RabbitMqSchedulerEventPublisher implements SchedulerEventPublisherPort {
-  constructor(@Inject(RabbitMqPublisher) private readonly publisher: MessagePublisher) {}
+  constructor(private readonly messageQueue: MessageQueuePort) {}
 
   async publishJobDue(event: SchedulerJobDueEvent): Promise<void> {
-    await this.publisher.publish({
+    await this.messageQueue.publish({
+      eventId: randomUUID(),
       eventType: `scheduler.job.${event.jobType}`,
       aggregateType: event.aggregateType ?? 'ScheduledJob',
       aggregateId: event.aggregateId ?? event.jobId,
@@ -28,6 +29,7 @@ export class RabbitMqSchedulerEventPublisher implements SchedulerEventPublisherP
       },
       headers: { idempotencyKey: event.idempotencyKey },
       occurredAt: new Date(),
+      broker: 'rabbitmq',
     });
   }
 }

@@ -7,8 +7,8 @@ import { PurchaseOrderModule } from '@business/procurement/purchase-order/purcha
 import { PurchaseOrderBatchOperationAdapter } from '@business/procurement/purchase-order/infrastructure/adapters/platform/purchase-order-batch-operation.adapter';
 
 /**
- * Composition-root bridge for the batch-operation opt-in — same precedent as
- * `configure-event-rehydration.ts`: the batch adapters are PURE
+ * Composition-root bridge for the batch-operation opt-in — the standard
+ * composition-root pattern: the batch adapters are PURE
  * `BatchOperationHandler`s (no lifecycle, no registry imports), business
  * module classes stay bodyless `@Module`s, and only this file — the layer
  * allowed to know both sides — plugs business handlers into the platform

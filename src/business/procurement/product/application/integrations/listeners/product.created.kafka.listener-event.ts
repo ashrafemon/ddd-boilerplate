@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { KafkaEvent } from '@shared-kernel/decorators/kafka-event.decorator';
-import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
+import type { OutboxEnvelope } from '@platform/outbox/outbox.types';
 
 /**
  * Kafka listener for Product integration events using the custom @KafkaEvent
@@ -12,7 +12,7 @@ export class ProductKafkaListener {
   private readonly logger = new Logger(ProductKafkaListener.name);
 
   @KafkaEvent('ProductCreated')
-  onProductCreated(message: IntegrationMessage): void {
+  onProductCreated(message: OutboxEnvelope): void {
     this.logger.log(`[Kafka] ProductCreated received for ${message.aggregateId}`);
   }
 }

@@ -3,8 +3,6 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { ICacheConfig, ICacheDriver, IMemcachedConfig, IRedisConfig } from './cache.config';
 import { ILockingConfig } from './locking.config';
 import { IIdempotencyConfig } from '../platform/idempotency/idempotency.types';
-import { IEventBusConfig } from '../platform/events/event-bus.types';
-import { IMessageQueueConfig } from '../platform/messaging/message-queue.types';
 import { IInboxConfig } from '../platform/inbox/inbox.types';
 import { ISagaConfig } from '../platform/saga/saga.types';
 import { IDatabaseConfig, IDatabaseDriver } from './database.config';
@@ -191,39 +189,13 @@ export class ConfigService {
   /** Outbox Environment Variables */
   public getOutbox(): IOutboxConfig {
     return this.config.get<IOutboxConfig>('outbox', {
-      pollIntervalMs: 5_000,
-      batchSize: 50,
+      pollIntervalMs: 10_000,
+      batchSize: 100,
       maxAttempts: 10,
       retryBackoffBaseMs: 1_000,
       retryMaxDelayMs: 600_000,
-      claimLeaseMs: 120_000,
+      claimLeaseMs: 60_000,
       cleanupOlderThanHours: 24,
-    });
-  }
-
-  /** Event Bus Environment Variables */
-  public getEventBus(): IEventBusConfig {
-    return this.config.get<IEventBusConfig>('eventBus', {
-      provider: 'nest',
-      maxHandlerConcurrency: 20,
-      handlerTimeoutMs: 30_000,
-      failFast: false,
-      retryEnabled: true,
-      maxAttempts: 10,
-    });
-  }
-
-  /** Message Queue Environment Variables */
-  public getMessageQueue(): IMessageQueueConfig {
-    return this.config.get<IMessageQueueConfig>('messageQueue', {
-      provider: 'rabbitmq',
-      publishTimeoutMs: 10_000,
-      consumerPrefetch: 20,
-      maxAttempts: 10,
-      retryBaseDelayMs: 1_000,
-      retryMaxDelayMs: 600_000,
-      connectionTimeoutMs: 10_000,
-      heartbeatSeconds: 30,
     });
   }
 

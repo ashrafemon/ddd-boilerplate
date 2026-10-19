@@ -5,10 +5,11 @@ with the design docs in `~/Documents/Common/erp` (extracted to
 `common/01`–`common/21`, `module/`, `iam/`). Branch: `align-to-design`.
 
 > Baseline note: at the start of this work the repo was **not** green —
-> `npx tsc` had 2 pre-existing errors (now fixed) and `npm run lint:check` /
-> `npm run format:check` fail on untouched files under `platform/events`,
-> `platform/messaging`, `platform/saga` and one `scheduler` spec. `npm test`
-> (206 tests) passes.
+> `npx tsc` had 2 pre-existing errors (fixed during the idempotency rewrite) and
+> `npm run lint:check` / `npm run format:check` failed on untouched files under
+> `platform/events`, `platform/messaging`, `platform/saga` and one `scheduler`
+> spec. As of the 04/05/06 cluster, **`tsc`, `lint:check`, `npm test` and
+> `format:check` are all green** (180 tests).
 
 ## Done
 
@@ -39,48 +40,69 @@ with the design docs in `~/Documents/Common/erp` (extracted to
 - Config: `CACHE_ENABLED`, `CACHE_DEFAULT_TTL_MS`, `CACHE_MAX_VALUE_BYTES`,
   `CACHE_KEY_PREFIX`, `CACHE_KEY_VERSION`.
 
-## Remaining
+### 05 · Event Bus — thin emit-only ✅
+- `ports/in-process-event-bus.port.ts` — `emit(envelope)` + `MessageEnvelope`
+  alias; `services/event-bus.service.ts` → `usecases/emit-event.usecase.ts` →
+  `adapters/nest-event-bus.adapter.ts` (`emitter.emit(envelope.eventType, envelope)`),
+  best-effort (a throwing listener is logged, never propagated).
+- Deleted `message-routing.policy.ts`, `event-bus.config.ts`, `event-bus.types.ts`,
+  `dispatchers/`, `registries/`, `bases/`, `ports/event-bus.port.ts`, the
+  publish/register/unregister use cases, `__testing__/` and
+  `src/bootstrap/configure-event-rehydration.ts` — **no routing table, no
+  rehydration**.
+- The 5 business `@OnEvent` listeners now take the canonical envelope
+  (`MessageEnvelope`) and read `message.payload`; the 3 platform `onAny`
+  projections (recurring / notification / webhook) read `envelope.payload` and
+  the stable `envelope.eventId`.
 
-### 05 · Event Bus — thin emit-only
-- Port must become `in-process-event-bus.port.ts` with `emit(envelope)`
-  (current: `event-bus.port.ts` publish/register/unregister).
-- Delete `message-routing.policy.ts`, `event-bus.config.ts`, the
-  `dispatchers/` + `registries/` + `src/bootstrap/configure-event-rehydration.ts`
-  machinery (design: **no routing table, no rehydration step**).
-- Business `@OnEvent` listeners must take the envelope
-  (`message.payload`) instead of a rehydrated event object.
+### 06 · Message Queue — one publish-only port ✅
+- `ports/message-queue.port.ts` — `publish(envelope)` only;
+  `services/message-queue.service.ts` → `usecases/publish-message.usecase.ts`
+  switches on `envelope.broker` (default `rabbitmq`). An unconfigured target
+  throws so the outbox retries to `DEAD_LETTER`.
+- Deleted `ports/message-publisher.port.ts`, `message-queue.module.ts`,
+  `message-queue.types.ts`, the `consumers/` registry, the subscribe/ack/nack
+  use cases and `__testing__/` — **no consumers, no subscribe registry**.
+  `message-publisher.tokens.ts` keeps only the `BrokerPublisher` contract +
+  DI tokens. `MessageQueueModule` merged into `messaging.module.ts`.
+- The 12 business broker listeners now type the delivered message as the
+  canonical `OutboxEnvelope`.
 
-### 06 · Message Queue — one publish-only port
-- Collapse to `ports/message-queue.port.ts` + `services/message-queue.service.ts`
-  + `usecases/publish-message.usecase.ts` switching on `envelope.broker`.
-- Delete `ports/message-publisher.port.ts`, `message-publisher.tokens.ts`,
-  `consumers/message-consumer.registry.ts`, `subscribe`/`ack`/`nack` use cases
-  and `__testing__` doubles (design: **no consumers, no subscribe registry**).
-
-### 04 · Outbox — single port, three statuses
+### 04 · Outbox — single port, three statuses ✅
 - Public port is `outbox-writer.port.ts` with
   `append(event, aggregateType, aggregateId, opts?)` (`opts.broker` default
-  `rabbitmq`); remove the newer `OutboxPort.append(request)` shape.
-- Statuses `PENDING | PUBLISHED | DEAD_LETTER` (drop `CLAIMED`/`FAILED`).
-- `usecases/publish-pending-batch.usecase.ts` +
-  `outbox.scheduler.ts`; **no reconciler** (expired `claimedAt` is reclaimed by
-  the same claim clause). Hourly cleanup deletes old PUBLISHED rows.
-- `outbox.types.ts` exposes one canonical `OutboxMessage`/`OutboxEnvelope`.
-- Cascades to the 5 business outbox adapters + batch/import/notification/
-  webhook outbox writers.
+  `rabbitmq`); the `OutboxPort.append(request)` shape and `appendMany` are gone.
+- `usecases/publish-pending-batch.usecase.ts` (claim → publish → emit → CAS
+  settle) + `outbox.scheduler.ts` (dispatch tick + hourly cleanup). **No
+  reconciler** — a crashed owner's lease is reclaimed by the same claim clause.
+- Concrete `repositories/prisma-outbox.repository.ts` (no internal port); claim
+  keeps `status=PENDING` and stamps `claimToken`/`claimedAt`; `availableAt`
+  renamed `nextRetryAt` (migration `20261019130000_align_outbox_design`).
+- Statuses `PENDING | PUBLISHED | DEAD_LETTER`; `outbox.types.ts` exposes the
+  canonical `OutboxEnvelope`/`OutboxMessage` + `OutboxEvent`/`OutboxEventBase`.
+- Business/platform `append(event, aggregateType, aggregateId)` callers unchanged;
+  their event bases now import `OutboxEvent`/`OutboxEventBase` from
+  `@platform/outbox/outbox.types`.
+
+## Remaining
 
 ### 08 · Saga — runtime overlays, 5 tables
 - Rewrite to `definitions / company_configs / instances / steps / inbox` with
   a plan-builder, event router, engine and step worker.
 
 ### Cross-cutting
-- Remove the remaining `__testing__` doubles (events, messaging, inbox,
-  scheduler, webhook, …) — design: "common services ship no test doubles".
-  Specs that rely on them must be rewritten with inline mocks.
-- Update `ARCHITECTURE.md`, `docs/PLATFORM-SERVICES-COMPLETE-FLOW.md` and the
-  per-service READMEs for the removals above.
+- Remove the remaining `__testing__` doubles (notification, inbox, context,
+  batch-operation, saga, webhook) — design: "common services ship no test
+  doubles". Specs that rely on them must be rewritten with inline mocks.
+- Docs: `ARCHITECTURE.md`, `docs/PLATFORM-SERVICES-COMPLETE-FLOW.md`,
+  `docs/FLOWCHARTS.md`, `docs/BUSINESS-MODULE-GUIDE.md`,
+  `docs/PLATFORM-SERVICE-GUIDE.md` and
+  `docs/ARCHITECTURE-BUSINESS-MODULE-PATTERN.md` updated for the 04/05/06
+  removals; the per-service READMEs for events/messaging/outbox rewritten.
 - Naming: the design uses `companyId`; the code uses `organizationId`
-  throughout. Decide whether to rename globally.
+  throughout. **Still open** — a global rename across every Prisma model,
+  migration, business module and the request context. Deferred deliberately
+  (large mechanical change, tracked here).
 
 ## Verify after each slice
 

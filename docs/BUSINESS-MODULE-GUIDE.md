@@ -25,7 +25,6 @@ src/business/<ctx>/<name>/
 │   │   └── <name>-id.vo.ts             extends EntityId-style base, generate()/fromString()
 │   ├── events/
 │   │   ├── <name>.<past-verb>.event.ts  extends DomainEvent (typed readonly props)
-│   │   └── <name>.registry.ts           domainEventRegistry.register per event (payload cast)
 │   ├── policies/<name>.policy.ts        policyRegistry.register — reads external data, NOT own state
 │   ├── factories/<name>.factory.ts      SOLE construction path: enforce invariants (import side-effect
 │   │                                    files here!) → new …/instantiate → super-constructor props
@@ -70,7 +69,7 @@ src/business/<ctx>/<name>/
 # 1) schema FIRST (table contract before code): prisma/schema/<ctx>/<name>.prisma
 #    + hand-written migration prisma/migrations/<ts>_<name>/migration.sql
 npx prisma generate
-# 2) domain leaf-to-root: types → enums → VOs (+id) → invariants → events(+registry)
+# 2) domain leaf-to-root: types → enums → VOs (+id) → invariants → events
 #    → policies → aggregate → factory
 # 3) domain ports: command repository (abstract) ; application query port
 # 4) use cases (command: factory → save → pullEvents → integration port ; query use cases)
@@ -171,14 +170,14 @@ export interface ProductReference { id: string; sku: string; name: string; unitP
 // module exports the port so PlatformModule-style consumers can bind it.
 ```
 
-**Events + rehydrators (outbox in-process dispatch MUST survive async hop):**
+**Events (outbox carries the payload verbatim — no rehydration):**
 ```ts
-// domain/events/product.registry.ts
-domainEventRegistry.register('ProductCreated', payload => {
-  const p = payload as unknown as { productId: { value: string }; unitPrice: { minorUnits: number; currency: string }; ... };
-  return new ProductCreated(ProductId.fromString(p.productId.value), p.sku, p.name,
-    Money.fromMinorUnits(p.unitPrice.minorUnits, p.unitPrice.currency), p.currency);
-});
+// domain/events/product.created.event.ts
+export class ProductCreated extends DomainEvent {
+  constructor(readonly productId: ProductId, readonly sku: string, ...) { super(); }
+}
+// persisted by the outbox adapter inside @Transactional; the in-process listener
+// receives the canonical envelope and reads the business payload from message.payload.
 ```
 
 **Listener (application/integrations/listeners only):**
@@ -187,7 +186,7 @@ domainEventRegistry.register('ProductCreated', payload => {
 export class XRabbitMQListener {
   @RabbitSubscribe({ exchange: 'erp.events', routingKey: 'XApproved', queue: 'x-approved.erp',
                      queueOptions: { durable: true } })
-  onXApproved(message: IntegrationMessage): void {
+  onXApproved(message: OutboxEnvelope): void {
     void this.transition.execute(message.aggregateId, ...);   // delegate to a use case
   }
 }
@@ -234,8 +233,8 @@ export class XModule {}
 - [ ] command path = use case + `@Transactional` + repository + `append` via integration port
   (NO direct broker/publish calls)
 - [ ] reads on the query port + replica client; no aggregate hydration in query repos
-- [ ] every persisted event has a rehydrator in `<name>.registry.ts`
-      (the outbox re-dispatch restores rehydrated instances via `outboxEventRegistry` delegates — see the platform guide §Events)
+- [ ] every persisted event is delivered through the outbox; the in-process listener
+      reads `message.payload` from the canonical envelope (no rehydration registry)
 - [ ] cross-module ONLY via `public/` contract + local outbound port (lint-enforced)
 - [ ] module added to `businessModules` in eslint.config.mjs + to context root
 - [ ] new module listed in §4/§7 docs (`ARCHITECTURE.md`) when it joins a context

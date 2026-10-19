@@ -1,4 +1,4 @@
-import { OutboxEventBase } from '@platform/events/bases/outbox-event.base';
+import { OutboxEventBase } from '@platform/outbox/outbox.types';
 import { BatchOperationJobStatus } from '../batch-operation.types';
 
 /** Raised when a batch job reaches a terminal status (Completed* / Failed / Cancelled). */

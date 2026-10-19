@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
-import { IntegrationMessage } from '@platform/messaging/ports/message-publisher.port';
+import type { OutboxEnvelope } from '@platform/outbox/outbox.types';
 
 const EXCHANGE = 'erp.events';
 const QUEUE = 'vendor-created.erp';
@@ -15,7 +15,7 @@ export class VendorRabbitMQListener {
     queue: QUEUE,
     queueOptions: { durable: true },
   })
-  onVendorCreated(message: IntegrationMessage): void {
+  onVendorCreated(message: OutboxEnvelope): void {
     this.logger.log(`[RabbitMQ] VendorCreated received for ${message.aggregateId}`);
   }
 }

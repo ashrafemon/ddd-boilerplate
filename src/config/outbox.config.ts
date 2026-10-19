@@ -9,21 +9,21 @@ export type IOutboxConfig = {
   retryBackoffBaseMs: number;
   /** Maximum retry delay (ms) — backoff is capped at this value. */
   retryMaxDelayMs: number;
-  /** Claim lease: CLAIMED rows older than this are reconciled to PENDING. */
+  /** Claim lease: claims older than this are reclaimable (no reconciler). */
   claimLeaseMs: number;
   /** Delete PUBLISHED rows older than this many hours. */
   cleanupOlderThanHours: number;
 };
 
 /**
- * Transactional outbox config — dispatcher cadence and retry limits.
+ * Transactional outbox config — dispatch cadence, retry limits and retention.
  */
 export default registerAs('outbox', () => ({
-  pollIntervalMs: numericEnv('OUTBOX_POLL_INTERVAL_MS', 5_000),
-  batchSize: numericEnv('OUTBOX_BATCH_SIZE', 50),
+  pollIntervalMs: numericEnv('OUTBOX_POLL_INTERVAL_MS', 10_000),
+  batchSize: numericEnv('OUTBOX_BATCH_SIZE', 100),
   maxAttempts: numericEnv('OUTBOX_MAX_ATTEMPTS', 10),
-  retryBackoffBaseMs: numericEnv('OUTBOX_RETRY_BACKOFF_BASE_MS', 1_000),
+  retryBackoffBaseMs: numericEnv('OUTBOX_RETRY_BASE_DELAY_MS', 1_000),
   retryMaxDelayMs: numericEnv('OUTBOX_RETRY_MAX_DELAY_MS', 600_000),
-  claimLeaseMs: numericEnv('OUTBOX_CLAIM_LEASE_MS', 120_000),
+  claimLeaseMs: numericEnv('OUTBOX_CLAIM_LEASE_MS', 60_000),
   cleanupOlderThanHours: numericEnv('OUTBOX_CLEANUP_OLDER_THAN_HOURS', 24),
 }));

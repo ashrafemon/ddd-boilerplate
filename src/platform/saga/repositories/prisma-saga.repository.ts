@@ -229,7 +229,7 @@ export class PrismaSagaRepository implements SagaRepositoryPort {
 
   // ─── Mappers ───────────────────────────────────────────────────────
 
-  /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment -- Prisma raw row types: mapping to domain DTOs */
+  /* eslint-disable @typescript-eslint/no-unsafe-member-access -- Prisma raw row types: mapping to domain DTOs */
   private toInstance(row: any): SagaInstance {
     return {
       id: row.id as string,
@@ -332,5 +332,5 @@ export class PrismaSagaRepository implements SagaRepositoryPort {
       updatedAt: row.updatedAt as Date,
     };
   }
-  /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
+  /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 }

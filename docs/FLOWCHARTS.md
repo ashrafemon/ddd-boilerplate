@@ -100,12 +100,12 @@ sequenceDiagram
 Then — asynchronously, the outbox's job, never the business transaction's:
 
 ```text
-OutboxScheduler (cron 10s) → OutboxPublisher.publishPendingBatch
-  → claimBatch (PENDING|FAILED → PUBLISHING)
-  → MessageRoutingPolicy.resolve(eventType) → RabbitMQ / Kafka / SQS envelope
-    (headers: event-id · request-id · correlation-id)
-  → outboxEventRegistry rehydrate (business registry delegated) → InProcessEventBus.emit('PurchaseOrderCreated')
-  → PUBLISHED · FAILED retried 1/min ≤ maxAttempts · cleanup hourly
+OutboxScheduler (tick 10s) → PublishPendingBatchUseCase
+  → claimBatch (PENDING, stamp claimToken+claimedAt — status unchanged)
+  → MessageQueuePort.publish(envelope) → RabbitMQ / Kafka / SQS (broker by envelope.broker)
+    (headers: event-id · correlation-id · causation-id · tenant-id · broker)
+  → InProcessEventBus.emit(envelope) — canonical envelope, no rehydration
+  → PUBLISHED · publish errors → nextRetryAt backoff ≤ maxAttempts → DEAD_LETTER · cleanup hourly
   → module listeners (application/integrations/listeners/*) react:
     @OnEvent / @RabbitSubscribe / @KafkaEvent / @SqsMessageHandler — delegate to use cases only
 ```

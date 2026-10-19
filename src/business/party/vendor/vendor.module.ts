@@ -23,7 +23,6 @@ import { PrismaVendorCommandRepository } from './infrastructure/persistence/pris
 import { PrismaVendorQueryRepository } from './infrastructure/persistence/prisma-vendor-query.repository';
 import { VendorController } from './presentation/http/vendor.controller';
 import { VendorForPurchasePort } from '@business/party/vendor/public';
-import './domain/events/vendor.registry';
 
 /**
  * Vendor aggregate module. The import opt-in handler is registered by the

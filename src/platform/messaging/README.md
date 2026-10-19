@@ -1,41 +1,80 @@
-# platform/messaging — Broker publisher adapters
+# platform/messaging — One Port, Broker by Param
 
-> Thin per-broker implementations of `MessagePublisher`. One adapter per
-> transport; the outbox publisher decides targets via `MessageRoutingPolicy`.
+> Infrastructure-agnostic async transport after an outbox row is ready. **One
+> public port**; the envelope's `broker` field picks rabbitmq, kafka or sqs.
+> Knows exchanges/topics/queues; knows nothing about domain semantics.
 
 ## What it does
 
-Publishes the identical `IntegrationMessage` envelope
-(`{ eventType, aggregateType, aggregateId, payload, headers, occurredAt }`)
-to:
+`MessageQueuePort.publish(envelope)` routes on `envelope.broker` (default
+`rabbitmq`) across three adapters:
 
 | Token | Adapter | Shape | Degradation |
 | --- | --- | --- | --- |
-| `RabbitMqPublisher` | RabbitMQ | routing key = eventType on configured `rabbitmq.exchange`, persistent | required (infra AmqpConnection) |
-| `KafkaPublisher` | Kafka | topic = eventType, key = aggregateId | disabled when `KAFKA_BROKERS` unset |
-| `SqsPublisher` | SQS | queue URL target, `event-id` header as message id | silent no-op without `SQS_URL` |
-| `MessagePublisher` | → RabbitMQ (default binding) | — | currently unused token; kept as the generic seam |
+| `RabbitMqPublisher` | RabbitMQ | routing key = `eventType` on `rabbitmq.exchange`, persistent | required (infra AmqpConnection) |
+| `KafkaPublisher` | Kafka | topic = `eventType`, key = `aggregateId` | **throws** when `KAFKA_BROKERS` unset |
+| `SqsPublisher` | SQS | configured queue URL | **throws** when `SQS_URL` unset |
 
-## How called
+An unconfigured broker target throws, so the outbox keeps the row `PENDING` and
+retries it to `DEAD_LETTER` — a missing broker never blocks a transaction.
 
-`platform/outbox/outbox-publisher.ts` injects all three dec
-(`@Inject(RabbitMqPublisher)` …) and `platform/scheduler/rabbitmq-scheduler-event.publisher.ts`
-injects `RabbitMqPublisher` for the unregistered-jobType fallback. Business
-code never publishes directly — events reach brokers only through the outbox.
+The identical canonical envelope (`OutboxEnvelope` from
+`platform/outbox/outbox.types`) goes to every transport, so consumers are
+portable. Headers carry `event-id`, correlation, causation and tenant.
 
-## Layout / data
+## Public API
 
-`ports/` (message-publisher + IntegrationMessage type),
-`message-publisher.tokens.ts` (marker tokens), `adapters/` (the three
-adapters), `messaging.module.ts`. No tables; config via infra clients
-(`getRabbitMQ()`, `getSqs()` — `messaging.config.ts`).
+```ts
+import { MessageQueuePort } from '@platform/messaging/ports/message-queue.port';
+
+// normally called by the outbox publisher, not business code
+await this.messageQueue.publish(envelope); // broker: 'rabbitmq' | 'kafka' | 'sqs'
+```
+
+`BrokerPublisher` and the `RabbitMqPublisher`/`KafkaPublisher`/`SqsPublisher`
+marker tokens are internal to the module.
+
+## Layout
+
+```
+ports/
+  message-queue.port.ts          — the only publisher port
+services/
+  message-queue.service.ts       — facade implementing MessageQueuePort
+usecases/
+  publish-message.usecase.ts     — switches on envelope.broker across adapters
+adapters/
+  rabbitmq-publisher.adapter.ts
+  kafka-publisher.adapter.ts
+  sqs-publisher.adapter.ts
+message-publisher.tokens.ts      — BrokerPublisher contract + DI tokens
+messaging.module.ts
+```
+
+No `consumers/`, no subscribe registry.
+
+## Who calls it / how called
+
+| Consumer                    | How                                     |
+| --------------------------- | --------------------------------------- |
+| `platform/outbox`           | `publish(envelope)` during the tick     |
+| `platform/scheduler`        | `publish(envelope)` for unregistered jobTypes |
+
+Business code never publishes directly — events reach brokers only through the
+outbox. Consumers live **in business** (`@RabbitSubscribe` / `@KafkaEvent` /
+`@SqsMessageHandler`), then `platform/inbox`, the use case, then ack.
+
+## Data / config
+
+No tables. Config via `messaging.config.ts` → `getRabbitMQ()`, `getKafka()`,
+`getSqs()`; env `RABBITMQ_URL`, `RABBITMQ_EXCHANGE`, `KAFKA_BROKERS` (optional),
+`SQS_URL`/`SQS_REGION` (optional), `MESSAGE_QUEUE_PUBLISH_TIMEOUT_MS`.
 
 ## Rules & gotchas
 
-- A publish leg failing throws → the outbox marks the message FAILED and
-  retries; partial delivery across brokers is expected (at-least-once +
-  consumer dedupe on `event-id`).
-- New broker: implement `MessagePublisher.bindings.publish`, register a
-  token here, add the target to `BrokerTarget` + routing policy — do not
-  hand-roll producers inside business modules (lint blocks broker
-  libraries outside infra/listeners).
+- Business never imports amqplib/kafkajs/sqs libs (ESLint).
+- At-least-once; consumers dedupe via Inbox + the stable `event-id`.
+- Same envelope on every broker; tenant/correlation headers preserved.
+- New broker: implement `BrokerPublisher`, register a token here, add the value
+  to `BrokerTarget` and the publish switch — never hand-roll producers inside
+  business modules.

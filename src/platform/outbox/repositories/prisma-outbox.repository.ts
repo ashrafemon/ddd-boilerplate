@@ -3,7 +3,6 @@ import { randomUUID } from 'crypto';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
-import { OutboxRepositoryPort } from '../ports/outbox-repository.port';
 import {
   AppendOutboxEventRequest,
   ClaimOutboxOptions,
@@ -26,7 +25,7 @@ interface OutboxRawRow {
   occurredAt: Date;
   createdAt: Date;
   status: string;
-  availableAt: Date;
+  nextRetryAt: Date | null;
   attempts: number;
   claimedAt: Date | null;
   claimToken: string | null;
@@ -37,34 +36,36 @@ interface OutboxRawRow {
   version: number;
 }
 
+/**
+ * Concrete Outbox persistence (no internal repository port — injected
+ * directly into the outbox use cases). Every write happens inside the caller's
+ * transaction/CLS scope; every state transition is CAS-fenced on `claimToken`.
+ */
 @Injectable()
-export class PrismaOutboxRepository extends OutboxRepositoryPort {
-  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {
-    super();
-  }
+export class PrismaOutboxRepository {
+  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
 
   async append(request: AppendOutboxEventRequest): Promise<OutboxMessage> {
-    const id = randomUUID();
-    const eventId = request.headers?.['event-id'] ?? randomUUID();
     const now = new Date();
+    const occurredAt = request.occurredAt ?? now;
 
     const row = await this.txHost.tx.outboxMessage.create({
       data: {
-        id,
+        id: randomUUID(),
+        eventId: request.eventId,
         eventType: request.eventType,
         eventVersion: request.eventVersion ?? 1,
         aggregateType: request.aggregateType,
         aggregateId: request.aggregateId,
         tenantId: request.tenantId ?? null,
         organizationId: request.organizationId ?? null,
-        payload: PrismaJson.toInput(request.payload ?? {}) as object,
+        payload: PrismaJson.toInput(request.payload) as object,
         headers: request.headers ? (request.headers as object) : undefined,
-        occurredAt: request.occurredAt ?? now,
+        occurredAt,
         status: 'PENDING',
-        availableAt: request.occurredAt ?? now,
+        nextRetryAt: request.nextRetryAt ?? occurredAt,
         correlationId: request.correlationId ?? null,
         causationId: request.causationId ?? null,
-        eventId,
         claimToken: null,
         claimedAt: null,
         publishedAt: null,
@@ -77,29 +78,27 @@ export class PrismaOutboxRepository extends OutboxRepositoryPort {
     return this.toMessage(row);
   }
 
-  async appendMany(requests: AppendOutboxEventRequest[]): Promise<OutboxMessage[]> {
-    const results: OutboxMessage[] = [];
-    for (const request of requests) {
-      results.push(await this.append(request));
-    }
-    return results;
-  }
-
+  /**
+   * Race-safe claim: FOR UPDATE SKIP LOCKED over due PENDING rows. Stamps
+   * `claimToken` + `claimedAt` and bumps `attempts` but leaves `status` as
+   * PENDING (the lease is the in-flight marker; a crashed owner is reclaimed
+   * once its lease expires — no reconciler needed).
+   */
   async claimBatch(options: ClaimOutboxOptions): Promise<OutboxClaimedRecord[]> {
-    const dueBefore = new Date();
+    const now = new Date();
+    const leaseCutoff = new Date(now.getTime() - options.claimLeaseMs);
     const claimToken = randomUUID();
 
     const rows = await this.txHost.tx.$queryRaw<OutboxRawRow[]>`
       UPDATE "outbox_messages" o
-      SET "status" = 'PUBLISHING',
-          "claimToken" = ${claimToken}::uuid,
+      SET "claimToken" = ${claimToken}::uuid,
           "claimedAt" = now(),
           "attempts" = o."attempts" + 1
       WHERE o."id" IN (
         SELECT "id" FROM "outbox_messages"
-        WHERE "status" IN ('PENDING', 'FAILED')
-          AND "attempts" < ${options.maxAttempts}
-          AND "availableAt" <= ${dueBefore}
+        WHERE "status" = 'PENDING'
+          AND ("nextRetryAt" IS NULL OR "nextRetryAt" <= ${now})
+          AND ("claimedAt" IS NULL OR "claimedAt" <= ${leaseCutoff})
         ORDER BY "createdAt" ASC
         LIMIT ${options.batchSize}
         FOR UPDATE SKIP LOCKED
@@ -109,73 +108,53 @@ export class PrismaOutboxRepository extends OutboxRepositoryPort {
     return rows.map(row => this.toClaimedRecord(row, claimToken));
   }
 
+  /** CAS update: PENDING → PUBLISHED. No-op if ownership was lost. */
   async markPublished(id: string, claimToken: string): Promise<void> {
     await this.txHost.tx.outboxMessage.updateMany({
-      where: {
-        id,
-        claimToken,
-        status: 'PUBLISHING',
-      },
+      where: { id, claimToken, status: 'PENDING' },
       data: {
         status: 'PUBLISHED',
         publishedAt: new Date(),
         claimedAt: null,
         claimToken: null,
+        lastError: null,
       },
     });
   }
 
+  /**
+   * CAS update: keep PENDING with the next retry time, or park DEAD_LETTER
+   * once attempts exceed the ceiling.
+   */
   async markFailed(
     id: string,
     claimToken: string,
     error: string,
-    availableAt: Date,
+    nextRetryAt: Date,
     maxAttempts: number,
   ): Promise<void> {
-    // First read the row to check attempts
     const row = await this.txHost.tx.outboxMessage.findFirst({
-      where: { id, claimToken, status: 'PUBLISHING' },
+      where: { id, claimToken, status: 'PENDING' },
     });
+    if (!row) {
+      return;
+    }
 
-    if (!row) return;
-
-    const isExhausted = row.attempts >= maxAttempts;
+    const isExhausted = row.attempts > maxAttempts;
 
     await this.txHost.tx.outboxMessage.updateMany({
-      where: {
-        id,
-        claimToken,
-        status: 'PUBLISHING',
-      },
+      where: { id, claimToken, status: 'PENDING' },
       data: {
-        status: isExhausted ? 'DEAD_LETTER' : 'FAILED',
+        status: isExhausted ? 'DEAD_LETTER' : 'PENDING',
         lastError: error,
-        availableAt: isExhausted ? row.availableAt : availableAt,
+        nextRetryAt: isExhausted ? row.nextRetryAt : nextRetryAt,
         claimedAt: null,
         claimToken: null,
       },
     });
   }
 
-  async releaseExpiredClaims(now: Date): Promise<number> {
-    // The caller (ReleaseOutboxClaimUseCase) receives `now`, but we need the
-    // lease duration from config. Since the repository port doesn't take
-    // leaseMs (the reconciler reads config itself), we use the configured
-    // default. The reconciler passes `now` and the repository releases
-    // everything that was claimed before the lease window.
-    //
-    // We re-introduce the lease parameter at the repository level for
-    // flexibility — the use case passes it through.
-    //
-    // NOTE: The repository port signature has `now` only; the leaseMs is
-    // read by the reconciler and subtracted from `now` before calling.
-    return this.txHost.tx.$executeRaw`
-      UPDATE "outbox_messages"
-      SET "status" = 'PENDING', "claimedAt" = NULL, "claimToken" = NULL
-      WHERE "status" = 'PUBLISHING'
-        AND "claimedAt" < ${now}`;
-  }
-
+  /** Delete PUBLISHED rows past the retention window. Returns deleted count. */
   async deletePublishedOlderThan(hours: number): Promise<number> {
     const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
     const result = await this.txHost.tx.outboxMessage.deleteMany({
@@ -198,8 +177,8 @@ export class PrismaOutboxRepository extends OutboxRepositoryPort {
       headers: (row.headers as Record<string, string> | null) ?? null,
       occurredAt: row.occurredAt,
       createdAt: row.createdAt,
-      status: this.mapStatus(row.status),
-      availableAt: row.availableAt,
+      status: row.status as OutboxStatus,
+      nextRetryAt: row.nextRetryAt,
       attempts: row.attempts,
       claimedAt: row.claimedAt,
       claimToken: row.claimToken,
@@ -231,20 +210,5 @@ export class PrismaOutboxRepository extends OutboxRepositoryPort {
       correlationId: row.correlationId,
       causationId: row.causationId,
     };
-  }
-
-  private mapStatus(dbStatus: string): OutboxStatus {
-    switch (dbStatus) {
-      case 'PUBLISHING':
-        return OutboxStatus.CLAIMED;
-      case 'PUBLISHED':
-        return OutboxStatus.PUBLISHED;
-      case 'FAILED':
-        return OutboxStatus.FAILED;
-      case 'DEAD_LETTER':
-        return OutboxStatus.DEAD_LETTER;
-      default:
-        return OutboxStatus.PENDING;
-    }
   }
 }

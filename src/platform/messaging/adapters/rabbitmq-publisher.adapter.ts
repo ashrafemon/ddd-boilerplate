@@ -1,19 +1,17 @@
 import { ConfigService } from '@config/config.service';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { Injectable } from '@nestjs/common';
-import {
-  IntegrationMessage,
-  MessagePublisher,
-} from '@platform/messaging/ports/message-publisher.port';
+import { OutboxEnvelope } from '@platform/outbox/outbox.types';
+import { BrokerPublisher } from '../message-publisher.tokens';
 
 /**
- * RabbitMQ publisher adapter. Publishes the *whole* integration envelope to
- * the configured topic exchange, using the event type as routing key, so a
+ * RabbitMQ publisher adapter. Publishes the *whole* canonical envelope to the
+ * configured topic exchange, using the event type as routing key, so a
  * `@RabbitSubscribe` handler receives the same shape the Kafka and SQS
- * transports deliver (event type, aggregate id, payload, headers).
+ * transports deliver.
  */
 @Injectable()
-export class RabbitMQPublisherAdapter implements MessagePublisher {
+export class RabbitMQPublisherAdapter implements BrokerPublisher {
   private readonly exchange: string;
 
   constructor(
@@ -23,19 +21,21 @@ export class RabbitMQPublisherAdapter implements MessagePublisher {
     this.exchange = config.getRabbitMQ().exchange;
   }
 
-  public async publish(message: IntegrationMessage): Promise<void> {
+  public async publish(envelope: OutboxEnvelope): Promise<void> {
+    const headers = envelope.headers ?? {};
     await this.amqp.publish(
       this.exchange,
-      message.eventType,
+      envelope.eventType,
       {
-        eventType: message.eventType,
-        aggregateType: message.aggregateType,
-        aggregateId: message.aggregateId,
-        payload: message.payload,
-        headers: message.headers ?? {},
-        occurredAt: message.occurredAt.toISOString(),
+        eventId: envelope.eventId,
+        eventType: envelope.eventType,
+        aggregateType: envelope.aggregateType,
+        aggregateId: envelope.aggregateId,
+        payload: envelope.payload,
+        headers,
+        occurredAt: envelope.occurredAt.toISOString(),
       },
-      { persistent: true, headers: message.headers ?? {} },
+      { persistent: true, headers },
     );
   }
 }

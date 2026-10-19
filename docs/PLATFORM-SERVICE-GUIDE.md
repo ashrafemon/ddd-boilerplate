@@ -27,7 +27,7 @@ if it needs an aggregate's rules, it is a business module (§3 + §15).
 | controller | `http/<thing>.controller.ts` | `scheduler/http/scheduler.controller.ts` |
 | request DTO | `http/requests/<verb>-<noun>.request.dto.ts` → **ONE DTO per file** (shared zod schema: `<noun>.schema.ts`) | `idempotency/http/…` + `batch-operation/http/requests/batch-operation-selection.schema.ts` |
 | platform event | `events/<thing>-<past-verb>.event.ts` extends `OutboxEventBase` | `import/events/import-job-completed.event.ts` |
-| rehydrator wiring | `events/<service>.registry.ts` → `outboxEventRegistry.register('<EventClass>', p => new …)` | `recurring/events/recurring.registry.ts` |
+| event contract | `events/<svc>.event.ts` extends `OutboxEventBase` (`@platform/outbox/outbox.types`); the outbox delivers the payload verbatim (no rehydrator) | `import/events/import-job-completed.event.ts` |
 | cron converger | `<service>-reconciliation.ts` (or `usecases/sweep-<x>.usecase.ts` w/ `@Cron`) | `idempotency/idempotency-reconciliation.ts` |
 | in-memory fakes | `__testing__/in-memory-<thing>.repository.ts` | `batch-operation/__testing__/…` |
 | prisma schema | `prisma/schema/platform/<service>.prisma` (header comment = table contract) | `platform/idempotency.prisma` |
@@ -47,7 +47,7 @@ npx prisma generate                      # client -> src/generated (offline-safe
 # 5) use cases (one per file) + module (bindings only)
 # 6) HTTP: controller + one-DTO-per-file requests, ParseUUIDPipe on uuid params
 # 7) background: worker/cron files; wrap executions in requestContext.run(...)
-# 8) events (if it announces anything): events/*.event.ts + <svc>.registry.ts
+# 8) events (if it announces anything): events/*.event.ts (extends OutboxEventBase — no registry)
 # 9) src/platform/platform.module.ts -> imports + exports list
 # 10) src/platform/README.md catalog row; src/platform/<svc>/README.md (template §5)
 # 11) docs/DI-WIRING.md  -> npm run docs:di
@@ -154,16 +154,19 @@ export class XModule {}
 **Events the service announces** (so consumers can listen in-process or via
 brokers — extends the PLATFORM base, not `@business/**`):
 ```ts
-export class XCompleted extends OutboxEventBase { constructor(public readonly xId: string) { super(); } }
-// events/<svc>.registry.ts
-outboxEventRegistry.register('XCompleted', p => new XCompleted(String(p.xId)));
+// events/<svc>.event.ts
+export class XCompleted extends OutboxEventBase {
+  constructor(readonly xId: string) { super(); }
+}
+// append via OutboxWriterPort inside @Transactional; listeners read message.payload.
 // writer: this.outbox.append(new XCompleted(id), 'XType', id) inside @Transactional
 ```
 
-**Test pattern (no DB, no brokers):** colocated `*.spec.ts`, plain fakes
-(`{ rehydrate: jest.fn() } as unknown as Port`) or `__testing__/` in-memory
-repos; assert the guard rails (CAS where-clause, ticket release, reserve
-outcomes), not the ORM.
+**Test pattern (no DB, no brokers):** colocated `*.spec.ts`. Common services
+ship **no test doubles** — build mocks inline with `jest.fn()` (typed via
+`as unknown as Port`) rather than checking in `__testing__/` in-memory repos;
+assert the guard rails (CAS where-clause, ticket release, reserve outcomes), not
+the ORM.
 
 ## 4. Invariants checklist (enforced where noted)
 

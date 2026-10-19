@@ -16,7 +16,6 @@ import { FindPurchasableProductsBySkusUseCase } from './application/usecases/fin
 import { ListProductsUseCase } from './application/usecases/list-products.usecase';
 import { ProductStatusUseCase } from './application/usecases/product-status.usecase';
 import { UpdateProductUseCase } from './application/usecases/update-product.usecase';
-import './domain/events/product.registry';
 import { ProductCommandRepository } from './domain/repositories/product-command.repository';
 import { ProductQuery } from './application/queries/product.query';
 import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';

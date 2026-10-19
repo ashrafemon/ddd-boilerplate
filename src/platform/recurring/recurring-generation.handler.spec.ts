@@ -3,7 +3,7 @@ import { ConditionEvaluator } from '@platform/condition-engine/ports/condition-e
 import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
 import { RecurringGenerationHandler } from './recurring-generation.handler';
 import { RecurringOccurrenceRequested } from './events/recurring-occurrence-requested.event';
-import { OutboxEvent } from '@platform/events/bases/outbox-event.base';
+import { OutboxEvent } from '@platform/outbox/outbox.types';
 import { RecurringExecutionRepositoryPort } from './ports/recurring-execution-repository.port';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';
 import { RecurringTemplateRecord } from './recurring-template.types';

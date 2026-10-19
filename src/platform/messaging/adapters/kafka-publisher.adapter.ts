@@ -1,29 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import {
-  IntegrationMessage,
-  MessagePublisher,
-} from '@platform/messaging/ports/message-publisher.port';
+import { OutboxEnvelope } from '@platform/outbox/outbox.types';
 import { KafkaService } from '@infrastructure/messaging/kafka/kafka.service';
+import { BrokerPublisher } from '../message-publisher.tokens';
 
 /**
- * Kafka publisher adapter. Publishes integration messages through the shared
- * Kafka producer using the event type as topic.
+ * Kafka publisher adapter. Topic = event type; the whole canonical envelope is
+ * the value. Disabled without KAFKA_BROKERS (the publish use case throws for an
+ * unconfigured target so the outbox retries).
  */
 @Injectable()
-export class KafkaPublisherAdapter implements MessagePublisher {
+export class KafkaPublisherAdapter implements BrokerPublisher {
   constructor(private readonly kafkaService: KafkaService) {}
 
-  public async publish(message: IntegrationMessage): Promise<void> {
+  public async publish(envelope: OutboxEnvelope): Promise<void> {
     await this.kafkaService.send({
-      topic: message.eventType,
-      key: message.aggregateId,
+      topic: envelope.eventType,
+      key: envelope.aggregateId,
       value: JSON.stringify({
-        eventType: message.eventType,
-        aggregateType: message.aggregateType,
-        aggregateId: message.aggregateId,
-        payload: message.payload,
-        headers: message.headers ?? {},
-        occurredAt: message.occurredAt.toISOString(),
+        eventId: envelope.eventId,
+        eventType: envelope.eventType,
+        aggregateType: envelope.aggregateType,
+        aggregateId: envelope.aggregateId,
+        payload: envelope.payload,
+        headers: envelope.headers ?? {},
+        occurredAt: envelope.occurredAt.toISOString(),
       }),
     });
   }

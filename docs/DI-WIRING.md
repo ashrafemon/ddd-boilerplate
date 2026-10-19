@@ -114,10 +114,9 @@ flowchart LR
     NumberingModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ObservabilityModule -->|ConfigService| ConfigModule
     OutboxModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    OutboxModule -->|MessageQueuePort| MessagingModule__src_platform_messaging__2
     EventsModule["EventsModule"]
-    OutboxModule -->|MessageRoutingPolicy, EventBusPort| EventsModule
-    MessageQueueModule["MessageQueueModule"]
-    OutboxModule -->|MessagePublisher| MessageQueueModule
+    OutboxModule -->|InProcessEventBus| EventsModule
     OutboxModule -->|ConfigService| ConfigModule
     RecurringModule -->|OutboxWriterPort| OutboxModule
     SchedulerModule["SchedulerModule"]
@@ -130,7 +129,7 @@ flowchart LR
     SagaModule -->|PrismaWriteService| PrismaModule
     SagaModule -->|ConfigService| ConfigModule
     SchedulerModule -->|ConfigService| ConfigModule
-    SchedulerModule -->|RabbitMqPublisher| MessageQueueModule
+    SchedulerModule -->|MessageQueuePort| MessagingModule__src_platform_messaging__2
     SchedulerModule -->|RequestContextPort| ContextModule__src_platform_context__2
     SchedulerModule -->|AuditPort| AuditModule
     SchedulerModule -->|DistributedLockPort| LockingModule
@@ -482,70 +481,30 @@ flowchart LR
 
 #### EventsModule — `src/platform/events/events.module.ts`
 
-imports: ContextModule · exports: EventBusPort, DomainEventRegistry, MessageRoutingPolicy
+imports: — · exports: InProcessEventBus
 
 ```mermaid
 flowchart LR
-    MessageRoutingPolicy["MessageRoutingPolicy"]
-    DefaultMessageRoutingPolicy["DefaultMessageRoutingPolicy"]
-    MessageRoutingPolicy -.->|useExisting| DefaultMessageRoutingPolicy
-    EventBusPort["EventBusPort"]
+    InProcessEventBus["InProcessEventBus"]
     EventBusService["EventBusService"]
-    EventBusPort -.->|useExisting| EventBusService
-    DomainEventDispatcher["DomainEventDispatcher"]
-    DomainEventRegistry["DomainEventRegistry"]
-    DomainEventDispatcher -->|injects| DomainEventRegistry
-    PublishEventUseCase["PublishEventUseCase"]
-    PublishEventUseCase -->|injects| DomainEventDispatcher
-    RegisterEventHandlerUseCase["RegisterEventHandlerUseCase"]
-    RegisterEventHandlerUseCase -->|injects| DomainEventRegistry
-    UnregisterEventHandlerUseCase["UnregisterEventHandlerUseCase"]
-    UnregisterEventHandlerUseCase -->|injects| DomainEventRegistry
-    EventBusService -->|injects| PublishEventUseCase
-    EventBusService -->|injects| RegisterEventHandlerUseCase
-    EventBusService -->|injects| UnregisterEventHandlerUseCase
-    EventBusService -->|injects| PublishEventUseCase
-    EventBusService -->|injects| RegisterEventHandlerUseCase
-    EventBusService -->|injects| UnregisterEventHandlerUseCase
-```
-
-#### MessageQueueModule — `src/platform/messaging/message-queue.module.ts`
-
-imports: ContextModule · exports: MessageQueuePort, MessageConsumerRegistry
-
-```mermaid
-flowchart LR
-    MessageQueuePort["MessageQueuePort"]
-    MessageQueueService["MessageQueueService"]
-    MessageQueuePort -.->|useExisting| MessageQueueService
-    PublishMessageUseCase["PublishMessageUseCase"]
-    PublishMessageUseCase -->|injects| MessageQueuePort
-    SubscribeMessageUseCase["SubscribeMessageUseCase"]
-    SubscribeMessageUseCase -->|injects| MessageQueuePort
-    AcknowledgeMessageUseCase["AcknowledgeMessageUseCase"]
-    AcknowledgeMessageUseCase -->|injects| MessageQueuePort
-    RejectMessageUseCase["RejectMessageUseCase"]
-    RejectMessageUseCase -->|injects| MessageQueuePort
-    MessageQueueService -->|injects| PublishMessageUseCase
-    MessageQueueService -->|injects| SubscribeMessageUseCase
-    MessageQueueService -->|injects| AcknowledgeMessageUseCase
-    MessageQueueService -->|injects| RejectMessageUseCase
-    MessageQueueService -->|injects| PublishMessageUseCase
-    MessageQueueService -->|injects| SubscribeMessageUseCase
-    MessageQueueService -->|injects| AcknowledgeMessageUseCase
-    MessageQueueService -->|injects| RejectMessageUseCase
+    InProcessEventBus -.->|useExisting| EventBusService
+    NestEventBusAdapter["NestEventBusAdapter"]
+    EventEmitter2__library_["EventEmitter2 (library)"]
+    NestEventBusAdapter -->|injects| EventEmitter2__library_
+    EmitEventUseCase["EmitEventUseCase"]
+    EmitEventUseCase -->|injects| NestEventBusAdapter
+    EventBusService -->|injects| EmitEventUseCase
+    EventBusService -->|injects| EmitEventUseCase
 ```
 
 #### MessagingModule (src/platform/messaging) — `src/platform/messaging/messaging.module.ts`
 
-imports: InfraMessagingModule · exports: MessagePublisher, RabbitMqPublisher, KafkaPublisher, SqsPublisher
+imports: InfraMessagingModule · exports: MessageQueuePort
 
 ```mermaid
 flowchart LR
-    MessagePublisher["MessagePublisher"]
-    RabbitMQPublisherAdapter["RabbitMQPublisherAdapter"]
-    MessagePublisher -.->|useExisting| RabbitMQPublisherAdapter
     RabbitMqPublisher["RabbitMqPublisher"]
+    RabbitMQPublisherAdapter["RabbitMQPublisherAdapter"]
     RabbitMqPublisher -.->|useExisting| RabbitMQPublisherAdapter
     KafkaPublisher["KafkaPublisher"]
     KafkaPublisherAdapter["KafkaPublisherAdapter"]
@@ -553,6 +512,9 @@ flowchart LR
     SqsPublisher["SqsPublisher"]
     SqsPublisherAdapter["SqsPublisherAdapter"]
     SqsPublisher -.->|useExisting| SqsPublisherAdapter
+    MessageQueuePort["MessageQueuePort"]
+    MessageQueueService["MessageQueueService"]
+    MessageQueuePort -.->|useExisting| MessageQueueService
     KafkaService["KafkaService"]
     KafkaPublisherAdapter -->|injects| KafkaService
     AmqpConnection__library_["AmqpConnection (library)"]
@@ -564,71 +526,48 @@ flowchart LR
     SqsPublisherAdapter -->|injects via ConfigModule| ConfigService
     RabbitMQPublisherAdapter -->|injects| AmqpConnection__library_
     RabbitMQPublisherAdapter -->|injects via ConfigModule| ConfigService
-    RabbitMQPublisherAdapter -->|injects| AmqpConnection__library_
-    RabbitMQPublisherAdapter -->|injects via ConfigModule| ConfigService
     KafkaPublisherAdapter -->|injects| KafkaService
     SqsPublisherAdapter -->|injects| SqsService
     SqsPublisherAdapter -->|injects via ConfigModule| ConfigService
+    PublishMessageUseCase["PublishMessageUseCase"]
+    PublishMessageUseCase -->|injects| RabbitMqPublisher
+    PublishMessageUseCase -->|injects| KafkaPublisher
+    PublishMessageUseCase -->|injects| SqsPublisher
+    PublishMessageUseCase -->|injects via ConfigModule| ConfigService
+    MessageQueueService -->|injects| PublishMessageUseCase
+    MessageQueueService -->|injects| PublishMessageUseCase
 ```
 
 #### OutboxModule — `src/platform/outbox/outbox.module.ts`
 
-imports: MessagingModule, EventsModule, ContextModule · exports: OutboxPort, OutboxWriterPort
+imports: MessagingModule, EventsModule, ContextModule · exports: OutboxWriterPort
 
 ```mermaid
 flowchart LR
-    OutboxRepositoryPort["OutboxRepositoryPort"]
-    PrismaOutboxRepository["PrismaOutboxRepository"]
-    OutboxRepositoryPort -.->|useExisting| PrismaOutboxRepository
-    OutboxPort["OutboxPort"]
-    OutboxService["OutboxService"]
-    OutboxPort -.->|useExisting| OutboxService
     OutboxWriterPort["OutboxWriterPort"]
-    OutboxWriter["OutboxWriter"]
-    OutboxWriterPort -.->|useExisting| OutboxWriter
+    OutboxService["OutboxService"]
+    OutboxWriterPort -.->|useExisting| OutboxService
+    PrismaOutboxRepository["PrismaOutboxRepository"]
     TransactionHost__library_["TransactionHost (library)"]
     PrismaOutboxRepository -->|injects| TransactionHost__library_
-    PrismaOutboxRepository -->|injects| TransactionHost__library_
     AppendOutboxEventUseCase["AppendOutboxEventUseCase"]
-    AppendOutboxEventUseCase -->|injects| OutboxRepositoryPort
-    AppendOutboxEventsBatchUseCase["AppendOutboxEventsBatchUseCase"]
-    AppendOutboxEventsBatchUseCase -->|injects| OutboxRepositoryPort
-    ClaimOutboxMessagesUseCase["ClaimOutboxMessagesUseCase"]
-    ClaimOutboxMessagesUseCase -->|injects| OutboxRepositoryPort
-    MarkOutboxPublishedUseCase["MarkOutboxPublishedUseCase"]
-    MarkOutboxPublishedUseCase -->|injects| OutboxRepositoryPort
-    MarkOutboxFailedUseCase["MarkOutboxFailedUseCase"]
-    MarkOutboxFailedUseCase -->|injects| OutboxRepositoryPort
-    ReleaseOutboxClaimUseCase["ReleaseOutboxClaimUseCase"]
-    ReleaseOutboxClaimUseCase -->|injects| OutboxRepositoryPort
-    OutboxService -->|injects| AppendOutboxEventUseCase
-    OutboxService -->|injects| AppendOutboxEventsBatchUseCase
-    OutboxService -->|injects| AppendOutboxEventUseCase
-    OutboxService -->|injects| AppendOutboxEventsBatchUseCase
-    OutboxWriter -->|injects| OutboxPort
+    AppendOutboxEventUseCase -->|injects| PrismaOutboxRepository
     RequestContextPort["RequestContextPort"]
-    OutboxWriter -->|injects via ContextModule| RequestContextPort
-    OutboxWriter -->|injects| OutboxPort
-    OutboxWriter -->|injects via ContextModule| RequestContextPort
-    OutboxDispatcherAdapter["OutboxDispatcherAdapter"]
-    OutboxDispatcherAdapter -->|injects| ClaimOutboxMessagesUseCase
-    OutboxDispatcherAdapter -->|injects| MarkOutboxPublishedUseCase
-    OutboxDispatcherAdapter -->|injects| MarkOutboxFailedUseCase
-    MessageRoutingPolicy["MessageRoutingPolicy"]
-    OutboxDispatcherAdapter -->|injects via EventsModule| MessageRoutingPolicy
-    EventBusPort["EventBusPort"]
-    OutboxDispatcherAdapter -->|injects via EventsModule| EventBusPort
-    OutboxDispatcherAdapter -->|injects via ContextModule| RequestContextPort
-    MessagePublisher["MessagePublisher"]
-    OutboxDispatcherAdapter -->|injects via MessageQueueModule| MessagePublisher
+    AppendOutboxEventUseCase -->|injects via ContextModule| RequestContextPort
+    PublishPendingBatchUseCase["PublishPendingBatchUseCase"]
+    PublishPendingBatchUseCase -->|injects| PrismaOutboxRepository
+    MessageQueuePort["MessageQueuePort"]
+    PublishPendingBatchUseCase -->|injects via MessagingModule| MessageQueuePort
+    InProcessEventBus["InProcessEventBus"]
+    PublishPendingBatchUseCase -->|injects via EventsModule| InProcessEventBus
+    PublishPendingBatchUseCase -->|injects via ContextModule| RequestContextPort
     ConfigService["ConfigService"]
-    OutboxDispatcherAdapter -->|injects via ConfigModule| ConfigService
-    OutboxReconciler["OutboxReconciler"]
-    OutboxReconciler -->|injects| ReleaseOutboxClaimUseCase
-    OutboxReconciler -->|injects via ConfigModule| ConfigService
+    PublishPendingBatchUseCase -->|injects via ConfigModule| ConfigService
+    OutboxService -->|injects| AppendOutboxEventUseCase
+    OutboxService -->|injects| AppendOutboxEventUseCase
     OutboxScheduler["OutboxScheduler"]
-    OutboxScheduler -->|injects| OutboxDispatcherAdapter
-    OutboxScheduler -->|injects| OutboxReconciler
+    OutboxScheduler -->|injects| PublishPendingBatchUseCase
+    OutboxScheduler -->|injects| PrismaOutboxRepository
     OutboxScheduler -->|injects via ConfigModule| ConfigService
 ```
 
@@ -1253,9 +1192,9 @@ flowchart LR
     PrismaScheduledJobDispatchLogRepository -->|injects| TransactionHost__library_
     PrismaScheduledJobEditLogRepository -->|injects| TransactionHost__library_
     PrismaScheduledJobEditLogRepository -->|injects| TransactionHost__library_
-    RabbitMqPublisher["RabbitMqPublisher"]
-    RabbitMqSchedulerEventPublisher -->|injects via MessageQueueModule| RabbitMqPublisher
-    RabbitMqSchedulerEventPublisher -->|injects via MessageQueueModule| RabbitMqPublisher
+    MessageQueuePort["MessageQueuePort"]
+    RabbitMqSchedulerEventPublisher -->|injects via MessagingModule| MessageQueuePort
+    RabbitMqSchedulerEventPublisher -->|injects via MessagingModule| MessageQueuePort
     ScheduledJobProcessor["ScheduledJobProcessor"]
     ScheduledJobHandlerRegistry["ScheduledJobHandlerRegistry"]
     ScheduledJobProcessor -->|injects| ScheduledJobHandlerRegistry
