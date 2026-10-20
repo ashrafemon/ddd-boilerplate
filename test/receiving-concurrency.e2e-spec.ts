@@ -135,8 +135,8 @@ describe('PO-07 receiving concurrency (e2e)', () => {
     expectStatus(created, 201, 'create purchase order');
     const id = (created.body as { data: { id: string } }).data.id;
 
-    // Lines are added through their own command (POST /purchase-orders/:id/lines).
-    const added = await createJson('POST', `/api/v1/purchase-orders/${id}/lines`, {
+    // Lines are added through their own command (PATCH /purchase-orders/:id/lines).
+    const added = await createJson('PATCH', `/api/v1/purchase-orders/${id}/lines`, {
       productId,
       quantity: ORDERED,
       unitPrice: 10,
@@ -145,11 +145,11 @@ describe('PO-07 receiving concurrency (e2e)', () => {
     expectStatus(added, 201, 'add purchase order line');
 
     // DRAFT → SUBMITTED → APPROVED → ISSUED (the PO must be receiving-eligible).
-    // submit/approve are PATCH transitions; issue is a POST command.
+    // submit/approve/issue are PATCH transitions.
     for (const [method, step] of [
       ['PATCH', 'submit'],
       ['PATCH', 'approve'],
-      ['POST', 'issue'],
+      ['PATCH', 'issue'],
     ] as const) {
       const res = await createJson(method, `/api/v1/purchase-orders/${id}/${step}`, {});
       expectStatus(res, 200, `purchase order ${step}`);
@@ -181,8 +181,8 @@ describe('PO-07 receiving concurrency (e2e)', () => {
     // Both GRNs are received; post them at the same time. Jointly they claim
     // 2 x EACH units against an ORDERED line whose limit is ORDERED x 1.1.
     const [resA, resB] = await Promise.all([
-      createJson('POST', `/api/v1/grn/${grnA}/post`, {}),
-      createJson('POST', `/api/v1/grn/${grnB}/post`, {}),
+      createJson('PATCH', `/api/v1/grn/${grnA}/post`, {}),
+      createJson('PATCH', `/api/v1/grn/${grnB}/post`, {}),
     ]);
 
     const statuses = [resA.status, resB.status].sort();
@@ -216,12 +216,12 @@ describe('PO-07 receiving concurrency (e2e)', () => {
     purchaseOrderId = await createIssuedPurchaseOrder();
     const grnId = await createReceivedGrn(EACH);
 
-    const first = await createJson('POST', `/api/v1/grn/${grnId}/post`, {});
+    const first = await createJson('PATCH', `/api/v1/grn/${grnId}/post`, {});
     expect(first.status).toBe(200);
 
     // Same command again — the idempotency guard (scope `grn.post`, key falls
     // back to the GRN id) must replay the original result, not post twice.
-    const replay = await createJson('POST', `/api/v1/grn/${grnId}/post`, {});
+    const replay = await createJson('PATCH', `/api/v1/grn/${grnId}/post`, {});
     expect(replay.status).toBe(200);
     expect((replay.body as { data: { id: string } }).data.id).toBe(
       (first.body as { data: { id: string } }).data.id,

@@ -132,7 +132,7 @@ describe('platform services (e2e)', () => {
     expectStatus(created, 201, 'create purchase order');
     const id = (created.body as { data: { id: string } }).data.id;
 
-    const added = await call('POST', `/api/v1/purchase-orders/${id}/lines`, {
+    const added = await call('PATCH', `/api/v1/purchase-orders/${id}/lines`, {
       productId,
       quantity: 5,
       unitPrice: 10,

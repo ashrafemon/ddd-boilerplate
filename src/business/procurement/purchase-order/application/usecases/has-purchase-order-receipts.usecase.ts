@@ -1,15 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { TransactionHost } from '@nestjs-cls/transactional';
-import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
+import { PurchaseOrderQuery } from '../queries/purchase-order.query';
 
+/**
+ * Whether the order already carries received quantities — the signal the
+ * cancellation policy uses ("an order with posted receipts cannot be
+ * cancelled").
+ *
+ * Reads through the module's query port: the Prisma implementation applies
+ * the tenant scope, so a missing or foreign order is simply "no receipts".
+ * It never touches the write connection.
+ */
 @Injectable()
 export class HasPurchaseOrderReceiptsUseCase {
-  constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
+  constructor(private readonly purchaseOrderQueryRepo: PurchaseOrderQuery) {}
 
   async execute(purchaseOrderId: string): Promise<boolean> {
-    const count = await this.txHost.tx.purchaseOrderLine.count({
-      where: { purchaseOrderId, receivedQuantity: { gt: 0 } } as never,
-    });
-    return count > 0;
+    return this.purchaseOrderQueryRepo.hasReceipts(purchaseOrderId);
   }
 }

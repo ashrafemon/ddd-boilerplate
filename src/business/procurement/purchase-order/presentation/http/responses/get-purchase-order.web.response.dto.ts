@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import { wireDate } from '@shared-kernel/types/wire-date';
 
 const purchaseOrderLineWebSchema = z.object({
   productId: z.string(),
@@ -17,8 +18,8 @@ const getPurchaseOrderWebSchema = z.object({
   subtotal: z.number(),
   total: z.number(),
   lines: z.array(purchaseOrderLineWebSchema),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: wireDate,
+  updatedAt: wireDate,
 });
 
 export class GetPurchaseOrderWebResponseDto extends createZodDto(getPurchaseOrderWebSchema) {}

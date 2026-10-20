@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import { wireDate } from '@shared-kernel/types/wire-date';
 
 const createGrnWebSchema = z.object({
   id: z.string(),
@@ -11,9 +12,9 @@ const createGrnWebSchema = z.object({
   subtotal: z.number(),
   total: z.number(),
   lines: z.array(z.never()),
-  receivedAt: z.date().nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  receivedAt: wireDate.nullable(),
+  createdAt: wireDate,
+  updatedAt: wireDate,
 });
 
 export class CreateGrnWebResponseDto extends createZodDto(createGrnWebSchema) {}

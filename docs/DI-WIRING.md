@@ -22,11 +22,11 @@ flowchart LR
     ConfigModule["ConfigModule"]
     AppModule -->|ConfigService| ConfigModule
     StockMovementModule["StockMovementModule"]
+    InboxModule["InboxModule"]
+    StockMovementModule -->|InboxPort| InboxModule
     ContextModule__src_platform_context_["ContextModule (src/platform/context)"]
     ContextModule__src_platform_context__2["ContextModule__src_platform_context_"]
     StockMovementModule -->|PrismaReadPort, RequestContextPort| ContextModule__src_platform_context__2
-    InboxModule["InboxModule"]
-    StockMovementModule -->|InboxPort| InboxModule
     VendorModule["VendorModule"]
     VendorModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
     OutboxModule["OutboxModule"]
@@ -474,12 +474,10 @@ flowchart LR
     RegisterPurchaseOrderReceiptUseCase -->|injects| PurchaseOrderCommandRepository
     RegisterPurchaseOrderReceiptUseCase -->|injects| CompanyConfigPort
     RegisterPurchaseOrderReceiptUseCase -->|injects| ReadCachePort
-    TransactionHost__library_["TransactionHost (library)"]
-    HasPurchaseOrderReceiptsUseCase -->|injects| TransactionHost__library_
+    HasPurchaseOrderReceiptsUseCase -->|injects| PurchaseOrderQuery
     GetPurchaseOrderUseCase -->|injects| PurchaseOrderQuery
     GetPurchaseOrderUseCase -->|injects| ReadCachePort
-    PrismaReadPort["PrismaReadPort"]
-    GetPurchaseOrderReceiptsUseCase -->|injects via ContextModule| PrismaReadPort
+    GetPurchaseOrderReceiptsUseCase -->|injects| PurchaseOrderQuery
     GetPurchaseOrderRemainingQuantitiesUseCase -->|injects| GetPurchaseOrderReceiptsUseCase
     ListPurchaseOrdersUseCase -->|injects| PurchaseOrderQuery
     CreateRecurringPurchaseOrderUseCase -->|injects| OrderableVendorPort
@@ -509,8 +507,10 @@ flowchart LR
     PurchaseOrderForGrnFacade -->|injects| GetPurchaseOrderUseCase
     PurchaseOrderForGrnFacade -->|injects| RegisterPurchaseOrderReceiptUseCase
     PurchaseOrderForGrnFacade -->|injects| HasPurchaseOrderReceiptsUseCase
+    TransactionHost__library_["TransactionHost (library)"]
     PrismaPurchaseOrderCommandRepository -->|injects| TransactionHost__library_
     PrismaPurchaseOrderCommandRepository -->|injects via ContextModule| RequestContextPort
+    PrismaReadPort["PrismaReadPort"]
     PrismaPurchaseOrderQueryRepository -->|injects via ContextModule| PrismaReadPort
     PrismaPurchaseOrderQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]

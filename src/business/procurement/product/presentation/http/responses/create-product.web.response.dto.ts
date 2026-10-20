@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import { wireDate } from '@shared-kernel/types/wire-date';
 
 const createProductWebSchema = z.object({
   id: z.string(),
@@ -9,8 +10,8 @@ const createProductWebSchema = z.object({
   status: z.string(),
   unitPrice: z.number(),
   currency: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: wireDate,
+  updatedAt: wireDate,
 });
 
 export class CreateProductWebResponseDto extends createZodDto(createProductWebSchema) {}

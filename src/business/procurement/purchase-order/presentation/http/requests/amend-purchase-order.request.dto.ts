@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import { requestDate } from '@shared-kernel/types/wire-date';
 
 /**
  * Controlled amendment of an issued purchase order (spec §4
@@ -10,7 +11,7 @@ import { z } from 'zod';
  * lines that have not been received against yet.
  */
 export const amendPurchaseOrderSchema = z.object({
-  expectedDeliveryDate: z.coerce.date().optional(),
+  expectedDeliveryDate: requestDate.optional(),
   lineUnitPrices: z.record(z.string().uuid(), z.coerce.number().min(0)).optional(),
   reason: z.string().min(3).max(500),
 });

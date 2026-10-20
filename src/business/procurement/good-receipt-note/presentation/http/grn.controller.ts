@@ -102,7 +102,12 @@ export class GrnController {
       throw new NotFoundException('GRN not found');
     }
     return {
-      data: grn,
+      data: {
+        ...grn,
+        receivedAt: grn.receivedAt ? grn.receivedAt.toISOString() : null,
+        createdAt: grn.createdAt.toISOString(),
+        updatedAt: grn.updatedAt.toISOString(),
+      },
       message: 'GRN fetched',
     };
   }

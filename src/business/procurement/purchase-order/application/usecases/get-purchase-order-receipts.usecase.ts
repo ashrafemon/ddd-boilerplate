@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaReadPort } from '@platform/context/ports/prisma-read.port';
+import { PurchaseOrderQuery } from '../queries/purchase-order.query';
 
 export interface PurchaseOrderReceiptsResult {
   purchaseOrderId: string;
@@ -15,30 +15,26 @@ export interface PurchaseOrderReceiptsResult {
 
 /**
  * Read model for `GET /purchase-orders/:id/receipts` (plan Phase 3.6): the
- * PO's receipt projection with a derived receipt status. Reads go through
- * `PrismaReadPort` (replica) — never the command transaction, never aggregates.
+ * PO's receipt projection with a derived receipt status.
+ *
+ * Reads go through the module's QUERY port — the Prisma implementation reads
+ * the replica (`PrismaReadPort`) and applies the tenant scope, so a foreign
+ * order is NOT FOUND (404, never 403). The use case never touches Prisma.
  */
 @Injectable()
 export class GetPurchaseOrderReceiptsUseCase {
-  constructor(private readonly prismaRead: PrismaReadPort) {}
+  constructor(private readonly purchaseOrderQueryRepo: PurchaseOrderQuery) {}
 
   async execute(purchaseOrderId: string): Promise<PurchaseOrderReceiptsResult> {
-    const purchaseOrder = await this.prismaRead.purchaseOrder.findUnique({
-      where: { id: purchaseOrderId },
-      select: { id: true },
-    });
-    if (!purchaseOrder) {
+    const receipts = await this.purchaseOrderQueryRepo.findReceipts(purchaseOrderId);
+    if (!receipts) {
       throw new NotFoundException('Purchase order not found');
     }
 
-    const lines = (await this.prismaRead.purchaseOrderLine.findMany({
-      where: { purchaseOrderId },
-      orderBy: { productId: 'asc' },
-    })) as Array<{ productId: string; quantity: number; receivedQuantity: number }>;
-
+    const lines = receipts.lines;
     const fullyReceived =
-      lines.length > 0 && lines.every(l => (l.receivedQuantity ?? 0) >= l.quantity);
-    const anyReceived = lines.some(l => (l.receivedQuantity ?? 0) > 0);
+      lines.length > 0 && lines.every(l => l.receivedQuantity >= l.orderedQuantity);
+    const anyReceived = lines.some(l => l.receivedQuantity > 0);
     const receiptStatus = fullyReceived
       ? 'FULLY_RECEIVED'
       : anyReceived
@@ -46,14 +42,9 @@ export class GetPurchaseOrderReceiptsUseCase {
         : 'NOT_RECEIVED';
 
     return {
-      purchaseOrderId,
+      purchaseOrderId: receipts.purchaseOrderId,
       receiptStatus,
-      lines: lines.map(l => ({
-        productId: l.productId,
-        orderedQuantity: l.quantity,
-        receivedQuantity: l.receivedQuantity ?? 0,
-        remainingQuantity: l.quantity - (l.receivedQuantity ?? 0),
-      })),
+      lines,
     };
   }
 }

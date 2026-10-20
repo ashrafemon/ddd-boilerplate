@@ -107,7 +107,7 @@ describe('purchase order amendment (e2e)', () => {
     expectStatus(created, 201, 'create purchase order');
     const id = (created.body as { data: { id: string } }).data.id;
 
-    const added = await call('POST', `/api/v1/purchase-orders/${id}/lines`, {
+    const added = await call('PATCH', `/api/v1/purchase-orders/${id}/lines`, {
       productId,
       quantity: 5,
       unitPrice: 10,
@@ -119,7 +119,7 @@ describe('purchase order amendment (e2e)', () => {
       for (const [method, step] of [
         ['PATCH', 'submit'],
         ['PATCH', 'approve'],
-        ['POST', 'issue'],
+        ['PATCH', 'issue'],
       ] as const) {
         const res = await call(method, `/api/v1/purchase-orders/${id}/${step}`, {});
         expectStatus(res, 200, `purchase order ${step}`);

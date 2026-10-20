@@ -6,8 +6,10 @@ import { StockQueryFacade } from './application/facades/stock-query.facade';
 import { RecordStockMovementUseCase } from './application/usecases/record-stock-movement.usecase';
 import { RecordStockMovementReversalUseCase } from './application/usecases/record-stock-movement-reversal.usecase';
 import { GetStockLevelUseCase } from './application/usecases/get-stock-level.usecase';
+import { StockQuery } from './application/queries/stock.query';
 import { StockMovementCommandRepository } from './domain/repositories/stock-movement-command.repository';
 import { PrismaStockMovementCommandRepository } from './infrastructure/persistence/prisma-stock-movement-command.repository';
+import { PrismaStockQueryRepository } from './infrastructure/persistence/prisma-stock-query.repository';
 import { StockQueryPort } from './public';
 
 /**
@@ -28,6 +30,7 @@ import { StockQueryPort } from './public';
     GoodsReceiptPostedConsumer,
     GoodsReceiptReversedConsumer,
     { provide: StockMovementCommandRepository, useClass: PrismaStockMovementCommandRepository },
+    { provide: StockQuery, useClass: PrismaStockQueryRepository },
     { provide: StockQueryPort, useExisting: StockQueryFacade },
   ],
   exports: [StockQueryPort],

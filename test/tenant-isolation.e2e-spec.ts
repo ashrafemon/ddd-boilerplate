@@ -161,7 +161,7 @@ describe('tenant isolation (e2e)', () => {
     });
     expect(stamped).toEqual({ tenantId: tenantA, companyId: company });
 
-    const added = await call('POST', `/api/v1/purchase-orders/${purchaseOrderId}/lines`, tenantA, {
+    const added = await call('PATCH', `/api/v1/purchase-orders/${purchaseOrderId}/lines`, tenantA, {
       productId,
       quantity: 5,
       unitPrice: 10,
@@ -194,6 +194,56 @@ describe('tenant isolation (e2e)', () => {
     expect(ids).not.toContain(purchaseOrderId);
   }, 60_000);
 
+  it("hides another tenant's purchase order receipt read models (404, not 403)", async () => {
+    // The receipt read models (`/receipts`, `/remaining-quantities`) resolve
+    // the order through the tenant scope BEFORE reading the lines: the line
+    // table has no tenant column of its own, so the visibility gate has to
+    // happen on the order. A missing scope here leaks the whole projection.
+    await seedTenantAMasterData();
+
+    const created = await call('POST', '/api/v1/purchase-orders', tenantA, {
+      vendorId,
+      currency: 'USD',
+    });
+    expect(created.status).toBe(201);
+    purchaseOrderId = (created.body as { data: { id: string } }).data.id;
+
+    const added = await call('PATCH', `/api/v1/purchase-orders/${purchaseOrderId}/lines`, tenantA, {
+      productId,
+      quantity: 5,
+      unitPrice: 10,
+      currency: 'USD',
+    });
+    expect(added.status).toBe(201);
+
+    // Tenant A sees its own receipt projection.
+    const own = await call('GET', `/api/v1/purchase-orders/${purchaseOrderId}/receipts`, tenantA);
+    expect(own.status).toBe(200);
+    const ownLines = (
+      own.body as { data: { lines?: Array<{ productId: string; orderedQuantity: number }> } }
+    ).data.lines;
+    expect(ownLines).toHaveLength(1);
+    expect(ownLines?.[0].productId).toBe(productId);
+
+    // Tenant B gets NOT FOUND — no existence leak, no line data.
+    const foreign = await call(
+      'GET',
+      `/api/v1/purchase-orders/${purchaseOrderId}/receipts`,
+      tenantB,
+    );
+    expect(foreign.status).toBe(404);
+    expect(JSON.stringify(foreign.body)).not.toContain(productId);
+
+    // The remaining-quantities read model inherits the same scope.
+    const foreignRemaining = await call(
+      'GET',
+      `/api/v1/purchase-orders/${purchaseOrderId}/remaining-quantities`,
+      tenantB,
+    );
+    expect(foreignRemaining.status).toBe(404);
+    expect(JSON.stringify(foreignRemaining.body)).not.toContain(productId);
+  }, 60_000);
+
   it("refuses to mutate another tenant's purchase order", async () => {
     await seedTenantAMasterData();
 
@@ -215,7 +265,7 @@ describe('tenant isolation (e2e)', () => {
 
     // Tenant B tries to add a line to it — the shared product is visible to
     // tenant B, so the purchase-order scope is what refuses the write.
-    const line = await call('POST', `/api/v1/purchase-orders/${purchaseOrderId}/lines`, tenantB, {
+    const line = await call('PATCH', `/api/v1/purchase-orders/${purchaseOrderId}/lines`, tenantB, {
       productId: sharedProductId,
       quantity: 1,
       unitPrice: 10,

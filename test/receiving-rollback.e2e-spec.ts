@@ -149,7 +149,7 @@ describe('receiving rollback and retry (e2e)', () => {
     expectStatus(created, 201, 'create purchase order');
     const id = (created.body as { data: { id: string } }).data.id;
 
-    const added = await call('POST', `/api/v1/purchase-orders/${id}/lines`, {
+    const added = await call('PATCH', `/api/v1/purchase-orders/${id}/lines`, {
       productId,
       quantity: ORDERED,
       unitPrice: 10,
@@ -160,7 +160,7 @@ describe('receiving rollback and retry (e2e)', () => {
     for (const [method, step] of [
       ['PATCH', 'submit'],
       ['PATCH', 'approve'],
-      ['POST', 'issue'],
+      ['PATCH', 'issue'],
     ] as const) {
       const res = await call(method, `/api/v1/purchase-orders/${id}/${step}`, {});
       expectStatus(res, 200, `purchase order ${step}`);
@@ -191,12 +191,12 @@ describe('receiving rollback and retry (e2e)', () => {
     const grnB = await createReceivedGrn(EACH);
 
     // The first post succeeds: 8 of a limit of 11.
-    const first = await call('POST', `/api/v1/grn/${grnA}/post`, {});
+    const first = await call('PATCH', `/api/v1/grn/${grnA}/post`, {});
     expectStatus(first, 200, 'post first grn');
     expect(await receivedOnPo()).toBe(EACH);
 
     // The second would take the balance to 16 > 11 — refused with 422.
-    const refused = await call('POST', `/api/v1/grn/${grnB}/post`, {});
+    const refused = await call('PATCH', `/api/v1/grn/${grnB}/post`, {});
     expectStatus(refused, 422, 'post over-receipt grn');
 
     // ROLLBACK: nothing of the refused post survived.
@@ -241,10 +241,10 @@ describe('receiving rollback and retry (e2e)', () => {
     const grnA = await createReceivedGrn(EACH);
     const grnB = await createReceivedGrn(EACH);
 
-    const first = await call('POST', `/api/v1/grn/${grnA}/post`, {});
+    const first = await call('PATCH', `/api/v1/grn/${grnA}/post`, {});
     expectStatus(first, 200, 'post first grn');
 
-    const refused = await call('POST', `/api/v1/grn/${grnB}/post`, {});
+    const refused = await call('PATCH', `/api/v1/grn/${grnB}/post`, {});
     expectStatus(refused, 422, 'post over-receipt grn');
 
     // Wait for the receipt to be processed into a stock movement BEFORE
@@ -257,13 +257,13 @@ describe('receiving rollback and retry (e2e)', () => {
 
     // Reverse the first receipt: the balance returns to zero. The reversal is
     // a COMPENSATING document with its own id.
-    const reversed = await call('POST', `/api/v1/grn/${grnA}/reverse`, {});
+    const reversed = await call('PATCH', `/api/v1/grn/${grnA}/reverse`, {});
     expectStatus(reversed, 200, 'reverse first grn');
     const reversalId = (reversed.body as { data: { id: string } }).data.id;
     expect(await receivedOnPo()).toBe(0);
 
     // The SAME command now succeeds — the failure left nothing behind.
-    const retried = await call('POST', `/api/v1/grn/${grnB}/post`, {});
+    const retried = await call('PATCH', `/api/v1/grn/${grnB}/post`, {});
     expectStatus(retried, 200, 'retry the refused post');
     expect(await receivedOnPo()).toBe(EACH);
     expect(await receivedOnPo()).toBeLessThanOrEqual(LIMIT);

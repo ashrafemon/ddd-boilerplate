@@ -1,30 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaReadPort } from '@platform/context/ports/prisma-read.port';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { StockQuery } from '../queries/stock.query';
 
 /**
  * Read the stock-balance projection for one product inside a company
- * (plan Phase 5.4 consumer support). Reads go through `PrismaReadPort`
- * (replica); a missing balance means "never moved" → 0, and the tenant is
- * taken from the request context so one company's stock never leaks into
- * another tenant's view.
+ * (plan Phase 5.4 consumer support). Reads go through the module's query
+ * port (replica-backed, tenant-scoped); a missing balance means "never
+ * moved" → 0, and the tenant comes from the request context so one
+ * company's stock never leaks into another tenant's view.
  */
 @Injectable()
 export class GetStockLevelUseCase {
-  constructor(
-    private readonly prismaRead: PrismaReadPort,
-    private readonly requestContext: RequestContextPort,
-  ) {}
+  constructor(private readonly stockQueryRepo: StockQuery) {}
 
   async execute(productId: string, companyId: string): Promise<number> {
-    const tenantId = this.requestContext.getTenantId();
-    const balance = await this.prismaRead.stockBalance.findFirst({
-      where: {
-        productId,
-        companyId,
-        ...(tenantId ? { tenantId } : {}),
-      },
-    });
-    return balance?.quantity ?? 0;
+    const balance = await this.stockQueryRepo.findBalance(productId, companyId);
+    return balance ?? 0;
   }
 }

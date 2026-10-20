@@ -171,7 +171,11 @@ export class PurchaseOrderController {
       throw new NotFoundException('Purchase order not found');
     }
     return {
-      data: purchaseOrder,
+      data: {
+        ...purchaseOrder,
+        createdAt: purchaseOrder.createdAt.toISOString(),
+        updatedAt: purchaseOrder.updatedAt.toISOString(),
+      },
       message: 'Purchase order fetched',
     };
   }

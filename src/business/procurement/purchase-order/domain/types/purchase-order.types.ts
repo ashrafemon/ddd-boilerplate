@@ -100,6 +100,22 @@ export interface PurchaseOrderQueryRecord {
   updatedAt: Date;
 }
 
+/**
+ * Receipt projection of a purchase order — what has been received per line.
+ *
+ * Derived from the line rows, never stored; the receipt status itself is
+ * computed by the read use case from these numbers.
+ */
+export interface PurchaseOrderReceiptsQueryRecord {
+  purchaseOrderId: string;
+  lines: {
+    productId: string;
+    orderedQuantity: number;
+    receivedQuantity: number;
+    remainingQuantity: number;
+  }[];
+}
+
 export interface CreatePurchaseOrderRequest {
   vendorId: string;
   currency?: string;
