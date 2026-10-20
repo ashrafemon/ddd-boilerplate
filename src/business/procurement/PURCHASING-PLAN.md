@@ -438,14 +438,14 @@ Evidence column: the file that implements the item, or the reason it is still op
 | 7b | Cross-tenant isolation (AGENTS.md rule 1) | ✅ | `tenantId`/`companyId` on every business table, stamped on create and filtered on every read/write. **Proven** by `test/tenant-isolation.e2e-spec.ts` — another tenant's purchase order is 404 and cannot be mutated |
 | 8 | Posted transactions cannot be silently changed | ✅ | `grn.editable` → DRAFT only; `purchase-order.editable` → DRAFT only; a posted GRN is corrected by a reversal |
 | 9 | Reversals preserve historical records | ✅ | `reverse-grn.usecase.ts` creates a compensating document (`reversalOfId`); the original rows are never mutated |
-| 10 | Approval and authorization rules are tested | ⚠️ | Approval **policy** implemented and enforced (409 above the threshold). **Authorization** is the IAM build (`docs/IAM-BUILD-PLAN.md`) — not implemented, and the unit suite is not in the repo |
+| 10 | Approval and authorization rules are tested | ⚠️ | Approval **policy** implemented and enforced (409 above the threshold) and exercised by the e2e suite. **Authorization** (roles, SoD, centres) is the IAM build (`docs/IAM-BUILD-PLAN.md`) — not implemented |
 | 11 | Domain events persisted and delivered reliably | ✅ | Transactional outbox (`outbox_messages`), `FOR UPDATE SKIP LOCKED` claim, `DEAD_LETTER` parking, broker choice per envelope |
 | 12 | Supplier bill matching follows explicit policies | ❌ | Out of the agreed scope: workstream **H** (AP / three-way matching) is explicitly deferred — there is no AP module |
 | 13 | Database migrations preserve existing data | ✅ | The project has **no** migration folder: the schema folder is the contract and `npm run db:push` syncs it. Additive changes only, backfilled before mandatory |
-| 14 | Integration tests cover rollback, retries and concurrency | ⚠️ | Concurrency and idempotent-replay are covered by the e2e suite (5 tests). Rollback and retry coverage of the unit suite is not in the repo |
+| 14 | Integration tests cover rollback, retries and concurrency | ✅ | **Proven** by the e2e suite (16 tests): `receiving-concurrency` (two concurrent posts, one wins), `receiving-rollback` (a refused receipt rolls the transaction back completely and the same command succeeds on retry), `purchase-order-amendment` (the issued-order amendment path) |
 | 15 | Operational reconciliation and failure monitoring | ⚠️ | The platform provides outbox `DEAD_LETTER` + per-service reconciler crons and a `/metrics` endpoint. **PO↔receipt and stock↔ledger reconciliation jobs do not exist** |
 
-**Result: 11 met, 4 partial, 1 open.** The one open item (12) is the deferred
+**Result: 12 met, 2 partial, 1 open.** The one open item (12) is the deferred
 AP / three-way-matching scope, not a defect in the purchasing module.
 
 ### Still open against the spec (beyond the agreed plan scope)
