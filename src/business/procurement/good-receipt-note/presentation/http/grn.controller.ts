@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
@@ -44,6 +45,7 @@ import {
 import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
 import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
+import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 
 type GrnGetResponse = GetGrnMobileResponse | GetGrnWebResponse;
@@ -76,6 +78,7 @@ export class GrnController {
   }
 
   @Get()
+  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'List GRNs' })
   @DeviceResponse(ListGrnsMobileResponseDto, ListGrnsWebResponseDto)
   async list(@Query() query: GrnQueryDto): Promise<ApiResponse<GrnListResponse>> {
@@ -88,6 +91,7 @@ export class GrnController {
   }
 
   @Get(':id')
+  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'Get a GRN by id' })
   @DeviceResponse(GetGrnMobileResponseDto, GetGrnWebResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<GrnGetResponse>> {
@@ -103,7 +107,7 @@ export class GrnController {
     };
   }
 
-  @Post(':id/lines')
+  @Patch(':id/lines')
   @ApiOperation({ summary: 'Add a line to a GRN' })
   @HttpCode(HttpStatus.CREATED)
   async addLine(
@@ -149,7 +153,7 @@ export class GrnController {
     return { data: { id: grnId.toString() }, message: 'Inspection result recorded' };
   }
 
-  @Post(':id/post')
+  @Patch(':id/post')
   @Idempotent()
   @ApiOperation({ summary: 'Post a GRN (idempotent)' })
   @HttpCode(HttpStatus.OK)
@@ -158,7 +162,7 @@ export class GrnController {
     return { data: { id: grnId.toString() }, message: 'GRN posted' };
   }
 
-  @Post(':id/reverse')
+  @Patch(':id/reverse')
   @Idempotent()
   @ApiOperation({ summary: 'Reverse a posted GRN via a compensating document' })
   @HttpCode(HttpStatus.OK)

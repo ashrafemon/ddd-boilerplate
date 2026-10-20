@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Query,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
@@ -57,6 +58,7 @@ import {
 import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
 import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
+import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 
 type PurchaseOrderGetResponse = GetPurchaseOrderMobileResponse | GetPurchaseOrderWebResponse;
@@ -111,6 +113,7 @@ export class PurchaseOrderController {
   }
 
   @Get(':id/receipts')
+  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'Get receipt status and per-line received/remaining for a PO' })
   async receipts(@Param('id') id: string): Promise<ApiResponse<PurchaseOrderReceiptsResponse>> {
     const receipts = await this.getPurchaseOrderReceiptsUseCase.execute(id);
@@ -118,6 +121,7 @@ export class PurchaseOrderController {
   }
 
   @Get(':id/remaining-quantities')
+  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'Get remaining receivable quantities per PO line' })
   async remainingQuantities(
     @Param('id') id: string,
@@ -141,6 +145,7 @@ export class PurchaseOrderController {
   }
 
   @Get()
+  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'List purchase orders' })
   @DeviceResponse(ListPurchaseOrdersMobileResponseDto, ListPurchaseOrdersWebResponseDto)
   async list(
@@ -155,6 +160,7 @@ export class PurchaseOrderController {
   }
 
   @Get(':id')
+  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'Get a purchase order by id' })
   @DeviceResponse(GetPurchaseOrderMobileResponseDto, GetPurchaseOrderWebResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<PurchaseOrderGetResponse>> {
@@ -186,7 +192,7 @@ export class PurchaseOrderController {
     return { data: template, message: 'Recurring purchase order template created' };
   }
 
-  @Post(':id/lines')
+  @Patch(':id/lines')
   @ApiOperation({ summary: 'Add a line to a purchase order' })
   @HttpCode(HttpStatus.CREATED)
   async addLine(
@@ -287,7 +293,7 @@ export class PurchaseOrderController {
     return { data: { id: poId.toString() }, message: 'Purchase order completed' };
   }
 
-  @Post(':id/issue')
+  @Patch(':id/issue')
   @ApiOperation({ summary: 'Issue a purchase order' })
   @HttpCode(HttpStatus.OK)
   async issue(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
@@ -295,7 +301,7 @@ export class PurchaseOrderController {
     return { data: { id: poId.toString() }, message: 'Purchase order issued' };
   }
 
-  @Post(':id/close')
+  @Patch(':id/close')
   @ApiOperation({ summary: 'Close a purchase order' })
   @HttpCode(HttpStatus.OK)
   async close(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {

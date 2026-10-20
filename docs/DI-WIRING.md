@@ -35,10 +35,10 @@ flowchart LR
     VendorModule -->|CompanyConfigPort| ConfigurationModule
     GoodReceiptNoteModule["GoodReceiptNoteModule"]
     GoodReceiptNoteModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
-    IdempotencyModule["IdempotencyModule"]
-    GoodReceiptNoteModule -->|IdempotencyPort| IdempotencyModule
     AuditModule["AuditModule"]
     GoodReceiptNoteModule -->|AuditPort| AuditModule
+    IdempotencyModule["IdempotencyModule"]
+    GoodReceiptNoteModule -->|IdempotencyPort| IdempotencyModule
     GoodReceiptNoteModule -->|OutboxWriterPort| OutboxModule
     GoodReceiptNoteModule -->|CompanyConfigPort| ConfigurationModule
     PurchaseOrderModule["PurchaseOrderModule"]
@@ -89,6 +89,7 @@ flowchart LR
     BatchOperationModule -->|AuditPort| AuditModule
     CacheModule -->|ConfigService| ConfigModule
     CacheModule -->|RedisService| RedisModule
+    CacheModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ConfigurationModule -->|ConfigService| ConfigModule
     ConfigurationModule -->|RequestContextPort| ContextModule__src_platform_context__2
     ContextModule__src_platform_context__2 -->|ConfigService| ConfigModule
@@ -285,15 +286,12 @@ flowchart LR
     CreateGrnUseCase -->|injects| GrnIntegrationPort
     CreateGrnUseCase -->|injects| CompanyConfigPort
     CreateGrnUseCase -->|injects| NumberingPort
-    RequestContextPort["RequestContextPort"]
-    CreateGrnUseCase -->|injects via ContextModule| RequestContextPort
-    IdempotencyPort["IdempotencyPort"]
-    CreateGrnUseCase -->|injects via IdempotencyModule| IdempotencyPort
     AddGrnLineUseCase -->|injects| GrnCommandRepository
     AddGrnLineUseCase -->|injects| GrnIntegrationPort
     AddGrnLineUseCase -->|injects| ReadCachePort
     ReceiveGrnUseCase -->|injects| GrnCommandRepository
     ReceiveGrnUseCase -->|injects| GrnIntegrationPort
+    RequestContextPort["RequestContextPort"]
     ReceiveGrnUseCase -->|injects via ContextModule| RequestContextPort
     AuditPort["AuditPort"]
     ReceiveGrnUseCase -->|injects via AuditModule| AuditPort
@@ -313,6 +311,7 @@ flowchart LR
     PostGrnUseCase -->|injects via ContextModule| RequestContextPort
     PostGrnUseCase -->|injects via AuditModule| AuditPort
     PostGrnUseCase -->|injects| ReadCachePort
+    IdempotencyPort["IdempotencyPort"]
     PostGrnUseCase -->|injects via IdempotencyModule| IdempotencyPort
     ReverseGrnUseCase -->|injects| GrnCommandRepository
     ReverseGrnUseCase -->|injects| PurchaseOrderPort
@@ -732,7 +731,7 @@ flowchart LR
 
 #### CacheModule — `src/platform/cache/cache.module.ts`
 
-imports: InfraRedisModule · exports: CachePort
+imports: InfraRedisModule, ContextModule · exports: CachePort, CacheResponseInterceptor
 
 ```mermaid
 flowchart LR
@@ -758,6 +757,10 @@ flowchart LR
     CacheService -->|injects| SetCacheValueUseCase
     CacheService -->|injects| DeleteCacheValueUseCase
     CacheService -->|injects via ConfigModule| ConfigService
+    CacheResponseInterceptor["CacheResponseInterceptor"]
+    CacheResponseInterceptor -->|injects| CachePort
+    RequestContextPort["RequestContextPort"]
+    CacheResponseInterceptor -->|injects via ContextModule| RequestContextPort
 ```
 
 #### ConfigurationModule — `src/platform/configuration/configuration.module.ts`

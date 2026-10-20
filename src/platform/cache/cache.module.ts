@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
+import { ContextModule } from '@platform/context/context.module';
 import { RedisCacheAdapter } from './adapters/redis-cache.adapter';
 import { CacheService } from './services/cache.service';
 import { CachePort } from './ports/cache.port';
+import { CacheResponseInterceptor } from './interceptors/cache-response.interceptor';
 import { GetCacheValueUseCase } from './usecases/get-cache-value.usecase';
 import { SetCacheValueUseCase } from './usecases/set-cache-value.usecase';
 import { DeleteCacheValueUseCase } from './usecases/delete-cache-value.usecase';
@@ -14,7 +16,7 @@ import { DeleteCacheValueUseCase } from './usecases/delete-cache-value.usecase';
  * Business modules inject CachePort only — never the adapter directly.
  */
 @Module({
-  imports: [InfraRedisModule],
+  imports: [InfraRedisModule, ContextModule],
   providers: [
     // Concrete Redis adapter (injected directly into the use cases)
     RedisCacheAdapter,
@@ -27,7 +29,10 @@ import { DeleteCacheValueUseCase } from './usecases/delete-cache-value.usecase';
     // Facade → public port
     CacheService,
     { provide: CachePort, useExisting: CacheService },
+
+    // HTTP read cache — scoped per route with @UseInterceptors(...)
+    CacheResponseInterceptor,
   ],
-  exports: [CachePort],
+  exports: [CachePort, CacheResponseInterceptor],
 })
 export class CacheModule {}
