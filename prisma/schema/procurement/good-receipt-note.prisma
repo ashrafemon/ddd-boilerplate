@@ -17,10 +17,19 @@ model GoodReceiptNote {
   subtotal        Decimal      @default(0) @db.Decimal(18, 2)
   total           Decimal      @default(0) @db.Decimal(18, 2)
   receivedAt      DateTime?
+  postingDate     DateTime?    @map("posting_date")
   // Compensating reversal link (plan Phase 4.1) — lives on the reversal document.
   reversalOfId    String?            @db.Uuid
   reversalOf      GoodReceiptNote?   @relation("GrnReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
   reversals       GoodReceiptNote[]  @relation("GrnReversal")
+  reversedById    String?            @map("reversed_by_id") @db.Uuid
+  reversalReason  String?            @map("reversal_reason")
+  // Inspection
+  inspectionRequired Boolean         @default(false) @map("inspection_required")
+  inspectionStatus   String          @default("NOTREQUIRED") @map("inspection_status")
+  // Idempotency
+  inboundMessageId   String?         @unique @map("inbound_message_id")
+  idempotencyKey     String?         @unique @map("idempotency_key")
   // Actor trail (plan §1.2) — nullable, no backfill.
   createdBy       String?
   receivedBy      String?
@@ -55,6 +64,12 @@ model GrnLine {
   rejectedQuantity  Int             @default(0)
   unitPrice         Decimal         @db.Decimal(18, 2)
   total             Decimal         @db.Decimal(18, 2)
+  stockCategory     String          @default("UNRESTRICTED") @map("stock_category")
+  varianceFlag      Boolean         @default(false) @map("variance_flag")
+  varianceType      String?         @map("variance_type")
+  batchNo           String?         @map("batch_no")
+  serialNo          String?         @map("serial_no")
+  expiryDate        DateTime?       @map("expiry_date")
   goodReceiptNote   GoodReceiptNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
 
   @@unique([grnId, productId])
@@ -65,6 +80,10 @@ model GrnLine {
 enum GrnStatus {
   DRAFT
   RECEIVED
+  POSTED
+  INSPECTED
+  MATCHED
   COMPLETED
   CANCELLED
+  REVERSED
 }

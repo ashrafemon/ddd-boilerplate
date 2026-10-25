@@ -108,10 +108,14 @@ invariantRegistry.register<{ status: string; to: string }>('grn.status-transitio
     if (status === to) return;
 
     const validTransitions: Record<string, string[]> = {
-      DRAFT: ['RECEIVED', 'CANCELLED'],
-      RECEIVED: ['COMPLETED', 'CANCELLED'],
+      DRAFT: ['RECEIVED', 'POSTED', 'CANCELLED'],
+      RECEIVED: ['POSTED', 'INSPECTED', 'COMPLETED', 'CANCELLED'],
+      POSTED: ['INSPECTED', 'MATCHED', 'REVERSED'],
+      INSPECTED: ['POSTED', 'MATCHED', 'REVERSED'],
+      MATCHED: [],
       COMPLETED: [],
       CANCELLED: [],
+      REVERSED: [],
     };
 
     if (!validTransitions[status]?.includes(to)) {

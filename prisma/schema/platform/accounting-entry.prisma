@@ -1,0 +1,14 @@
+// GR/IR accounting entries for valuated stock
+model AccountingEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  grnId       String   @map("grn_id") @db.Uuid
+  account     String
+  debit       Decimal  @default(0) @db.Decimal(18, 4)
+  credit      Decimal  @default(0) @db.Decimal(18, 4)
+  currency    String   @db.VarChar(3)
+  postingDate DateTime @map("posting_date")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([grnId])
+  @@map("accounting_entries")
+}

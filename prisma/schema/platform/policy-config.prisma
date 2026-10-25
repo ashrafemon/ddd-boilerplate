@@ -1,0 +1,13 @@
+// Configurable policies per company/item group/supplier group
+model PolicyConfig {
+  id           String   @id @default(uuid()) @db.Uuid
+  companyCode  String   @map("company_code")
+  itemGroup    String?  @map("item_group")
+  supplierGroup String? @map("supplier_group")
+  policyKey    String   @map("policy_key")
+  config       Json     @db.JsonB
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([companyCode, policyKey])
+  @@map("policy_configs")
+}

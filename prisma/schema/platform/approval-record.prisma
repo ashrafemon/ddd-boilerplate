@@ -1,0 +1,13 @@
+// Approval trail for purchase orders
+model ApprovalRecord {
+  id         String   @id @default(uuid()) @db.Uuid
+  docId      String   @map("doc_id") @db.Uuid
+  level      Int
+  approverId String   @map("approver_id")
+  decision   String
+  reasonCode String?  @map("reason_code")
+  decidedAt  DateTime @default(now()) @map("decided_at")
+
+  @@index([docId])
+  @@map("approval_records")
+}

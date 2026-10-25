@@ -1,0 +1,14 @@
+// Gapless document numbering per companycode + fiscalyear + doctype.
+// Sequence table used by NumberingPort for race-safe allocation.
+model DocumentNumberSequence {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyCode String   @map("company_code")
+  fiscalYear  Int      @map("fiscal_year")
+  docType     String   @map("doc_type")
+  nextValue   Int      @map("next_value")
+  version     Int      @default(1)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyCode, fiscalYear, docType])
+  @@map("document_number_sequences")
+}

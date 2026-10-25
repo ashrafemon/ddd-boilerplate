@@ -56,24 +56,56 @@ invariantRegistry.register<{ status: PurchaseOrderStatus; to: PurchaseOrderStatu
     check: ({ status, to }) => {
       if (status === to) return;
 
-      const allowed: Record<PurchaseOrderStatus, PurchaseOrderStatus[]> = {
-        [PurchaseOrderStatus.DRAFT]: [PurchaseOrderStatus.SUBMITTED, PurchaseOrderStatus.CANCELLED],
+      const allowed: Record<string, string[]> = {
+        [PurchaseOrderStatus.DRAFT]: [
+          PurchaseOrderStatus.SUBMITTED,
+          PurchaseOrderStatus.PENDINGAPPROVAL,
+          PurchaseOrderStatus.CANCELLED,
+        ],
         [PurchaseOrderStatus.SUBMITTED]: [
+          PurchaseOrderStatus.PENDINGAPPROVAL,
           PurchaseOrderStatus.APPROVED,
           PurchaseOrderStatus.REJECTED,
           PurchaseOrderStatus.CANCELLED,
         ],
-        [PurchaseOrderStatus.APPROVED]: [PurchaseOrderStatus.ISSUED, PurchaseOrderStatus.CANCELLED],
+        [PurchaseOrderStatus.PENDINGAPPROVAL]: [
+          PurchaseOrderStatus.APPROVED,
+          PurchaseOrderStatus.REJECTED,
+          PurchaseOrderStatus.DRAFT,
+        ],
+        [PurchaseOrderStatus.APPROVED]: [
+          PurchaseOrderStatus.ISSUED,
+          PurchaseOrderStatus.HOLD,
+          PurchaseOrderStatus.REVISION,
+          PurchaseOrderStatus.CANCELLED,
+        ],
+        [PurchaseOrderStatus.HOLD]: [PurchaseOrderStatus.APPROVED],
+        [PurchaseOrderStatus.REVISION]: [PurchaseOrderStatus.APPROVED],
         // E-1: cancel is allowed from DRAFT/SUBMITTED/APPROVED only; an ISSUED
         // order is no longer freely cancelable — it closes (or is corrected
         // through the receipt-reversal workflow once goods arrived).
-        [PurchaseOrderStatus.ISSUED]: [PurchaseOrderStatus.COMPLETED],
+        [PurchaseOrderStatus.ISSUED]: [
+          PurchaseOrderStatus.PARTIALLYRECEIVED,
+          PurchaseOrderStatus.FULLYRECEIVED,
+          PurchaseOrderStatus.COMPLETED,
+          PurchaseOrderStatus.CLOSED,
+        ],
+        [PurchaseOrderStatus.PARTIALLYRECEIVED]: [
+          PurchaseOrderStatus.PARTIALLYRECEIVED,
+          PurchaseOrderStatus.FULLYRECEIVED,
+          PurchaseOrderStatus.COMPLETED,
+          PurchaseOrderStatus.CLOSED,
+          PurchaseOrderStatus.CANCELLED,
+        ],
+        [PurchaseOrderStatus.FULLYRECEIVED]: [PurchaseOrderStatus.COMPLETED, PurchaseOrderStatus.CLOSED],
         [PurchaseOrderStatus.REJECTED]: [],
         [PurchaseOrderStatus.CANCELLED]: [],
         [PurchaseOrderStatus.COMPLETED]: [],
+        [PurchaseOrderStatus.CLOSED]: [],
+        [PurchaseOrderStatus.ARCHIVED]: [],
       };
 
-      if (!allowed[status].includes(to)) {
+      if (!(allowed[status] || []).includes(to)) {
         throw Object.assign(new Error(`Invalid purchase order transition: ${status} -> ${to}`), {
           statusCode: 422,
         });
