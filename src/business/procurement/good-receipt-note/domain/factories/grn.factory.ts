@@ -2,9 +2,11 @@ import { invariantRegistry } from '@business/shared-business/domain/registries/i
 import { GoodReceiptNote } from '../aggregates/grn.aggregate';
 import { GrnLine, GrnProps, GrnStatus } from '../types/grn.types';
 import { CreateGrnInput, CreateGrnReversalInput } from '../types/grn.types';
-import { GrnId } from '../value-objects/grn.vos';
+import { GrnId } from '../value-objects/grn-id.vo';
 import { GrnCreated } from '../events/grn.created.event';
 import './../aggregates/grn.invariants';
+import '../value-objects/grn-number.invariants';
+import '../value-objects/received-quantity.invariants';
 
 export class GrnFactory {
   static create(input: CreateGrnInput): GoodReceiptNote {

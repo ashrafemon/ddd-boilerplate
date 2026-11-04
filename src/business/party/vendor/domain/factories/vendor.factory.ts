@@ -5,7 +5,7 @@ import { VendorCreated } from '../events/vendor.created.event';
 import '../policies/orderability.policy';
 import { VendorStatus } from '../types/vendor.enum';
 import { CreateVendorInput, VendorProps } from '../types/vendor.types';
-import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
+import { VendorId } from '@business/party/vendor/domain/value-objects/vendor-id.vo';
 import { VendorCode, VendorEmail, VendorName } from '../value-objects/vendor.vos';
 import '../value-objects/vendor-code.invariants';
 import '../value-objects/vendor-email.invariants';

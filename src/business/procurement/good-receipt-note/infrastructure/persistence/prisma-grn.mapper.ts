@@ -1,5 +1,5 @@
 import { GoodReceiptNote } from '../../domain/aggregates/grn.aggregate';
-import { GrnId } from '../../domain/value-objects/grn.vos';
+import { GrnId } from '../../domain/value-objects/grn-id.vo';
 import { GrnLine, GrnProps, GrnStatus } from '../../domain/types/grn.types';
 import { GrnQueryRecord } from '../../domain/types/grn.types';
 

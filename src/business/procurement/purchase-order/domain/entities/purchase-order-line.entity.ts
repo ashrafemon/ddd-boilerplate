@@ -1,5 +1,5 @@
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { ProductIdRef } from '../value-objects/purchase-order.vos';
+import { ProductIdRef } from '../value-objects/product-id-ref.vo';
 
 /**
  * Purchase order line — a child entity owned by the PurchaseOrder aggregate.

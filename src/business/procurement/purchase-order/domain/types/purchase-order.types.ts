@@ -1,4 +1,5 @@
-import { OrderNumber, VendorIdRef } from '../value-objects/purchase-order.vos';
+import { OrderNumber } from '../value-objects/order-number.vo';
+import { VendorIdRef } from '../value-objects/vendor-id-ref.vo';
 import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
 import { PurchaseOrderStatus } from './purchase-order.enum';
 import type { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';

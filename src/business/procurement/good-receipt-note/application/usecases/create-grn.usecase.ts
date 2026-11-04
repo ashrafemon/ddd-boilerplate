@@ -3,7 +3,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { CreateGrnRequest } from '../../domain/types/grn.types';
-import { GrnId } from '../../domain/value-objects/grn.vos';
+import { GrnId } from '../../domain/value-objects/grn-id.vo';
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';

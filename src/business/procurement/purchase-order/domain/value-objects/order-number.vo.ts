@@ -1,4 +1,6 @@
 import { ValueObject } from '@business/shared-business/domain/bases/value-object.base';
+import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
+import './order-number.invariants';
 
 export class OrderNumber extends ValueObject<{ value: string }> {
   private constructor(value: string) {
@@ -6,6 +8,7 @@ export class OrderNumber extends ValueObject<{ value: string }> {
   }
 
   static create(input: string): OrderNumber {
+    invariantRegistry.enforce('order-number.create', { orderNumber: input });
     return new OrderNumber(input.trim().toUpperCase());
   }
 
@@ -15,29 +18,5 @@ export class OrderNumber extends ValueObject<{ value: string }> {
 
   get value(): string {
     return this.props.value;
-  }
-}
-
-export class VendorIdRef {
-  constructor(public readonly value: string) {}
-
-  toString(): string {
-    return this.value;
-  }
-
-  equals(other?: VendorIdRef): boolean {
-    return !!other && this.value === other.value;
-  }
-}
-
-export class ProductIdRef {
-  constructor(public readonly value: string) {}
-
-  toString(): string {
-    return this.value;
-  }
-
-  equals(other?: ProductIdRef): boolean {
-    return !!other && this.value === other.value;
   }
 }

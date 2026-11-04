@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { UpdateVendorRequest } from '../../domain/types/vendor.types';
-import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
+import { VendorId } from '@business/party/vendor/domain/value-objects/vendor-id.vo';
 import { VendorCommandRepository } from '../../domain/repositories/vendor-command.repository';
 import { VendorIntegrationPort } from '../integrations/publishes/vendor.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';

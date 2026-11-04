@@ -38,17 +38,6 @@ invariantRegistry.register<{ lineCount: number }>('purchase-order.has-lines', {
   },
 });
 
-invariantRegistry.register<{ quantity: number }>('purchase-order.line-quantity', {
-  name: 'purchase-order-line-quantity-positive',
-  check: ({ quantity }) => {
-    if (!Number.isInteger(quantity) || quantity <= 0) {
-      throw Object.assign(new Error('Line quantity must be a positive integer'), {
-        statusCode: 422,
-      });
-    }
-  },
-});
-
 invariantRegistry.register<{ status: PurchaseOrderStatus; to: PurchaseOrderStatus }>(
   'purchase-order.status-transition',
   {

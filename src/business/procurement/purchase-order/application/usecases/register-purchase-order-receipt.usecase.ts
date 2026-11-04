@@ -3,6 +3,8 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
+import { OpenQuantityService } from '../../domain/services/open-quantity.service';
+import { PurchaseOrderStatusService } from '../../domain/services/purchase-order-status.service';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
 import {
@@ -41,13 +43,13 @@ export class RegisterPurchaseOrderReceiptUseCase {
 
     await this.readCache.invalidate(`purchase-order:${po.id.toString()}`);
 
-    const fullyReceived = po.lines.every(l => l.receivedQuantity >= l.quantity);
-    const anyReceived = po.lines.some(l => l.receivedQuantity > 0);
-    const receiptStatus: PurchaseOrderReceiptResult['receiptStatus'] = fullyReceived
-      ? 'FULLY_RECEIVED'
-      : anyReceived
-        ? 'PARTIALLY_RECEIVED'
-        : 'NOT_RECEIVED';
+    const derived = PurchaseOrderStatusService.deriveReceiptStatus(po.lines);
+    const receiptStatus: PurchaseOrderReceiptResult['receiptStatus'] =
+      derived === 'FULL'
+        ? 'FULLY_RECEIVED'
+        : derived === 'PARTIAL'
+          ? 'PARTIALLY_RECEIVED'
+          : 'NOT_RECEIVED';
 
     return {
       purchaseOrderId: request.purchaseOrderId,
@@ -56,7 +58,7 @@ export class RegisterPurchaseOrderReceiptUseCase {
         productId: l.productId.toString(),
         orderedQuantity: l.quantity,
         receivedQuantity: l.receivedQuantity,
-        remainingQuantity: Math.max(0, l.quantity - l.receivedQuantity),
+        remainingQuantity: OpenQuantityService.openQuantity(l.quantity, l.receivedQuantity),
       })),
     };
   }

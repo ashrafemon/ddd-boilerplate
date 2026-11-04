@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { GrnId } from '../../domain/value-objects/grn.vos';
+import { GrnId } from '../../domain/value-objects/grn-id.vo';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';

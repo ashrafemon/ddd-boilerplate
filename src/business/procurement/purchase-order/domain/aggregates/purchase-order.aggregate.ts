@@ -1,10 +1,11 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
+import { PurchaseOrderPricingService } from '../services/purchase-order-pricing.service';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { PurchaseOrderId } from '../value-objects/purchase-order-id.vo';
 import { PurchaseOrderProps, PurchaseOrderStatus } from '../types/purchase-order.types';
-import { ProductIdRef } from '../value-objects/purchase-order.vos';
+import { ProductIdRef } from '../value-objects/product-id-ref.vo';
 import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
 import { PurchaseOrderApproved } from '../events/purchase-order.approved.event';
 import { PurchaseOrderCancelled } from '../events/purchase-order.cancelled.event';
@@ -12,6 +13,7 @@ import { PurchaseOrderIssued } from '../events/purchase-order.issued.event';
 import { PurchaseOrderCompleted } from '../events/purchase-order.completed.event';
 import { PurchaseOrderAmended } from '../events/purchase-order.amended.event';
 import './purchase-order.invariants';
+import '../entities/purchase-order-line.entity.invariants';
 import '../policies/approval.policy';
 import '../policies/cancellation.policy';
 import { PurchaseOrderLineAdded } from '../events/purchase-order.line-added.event';
@@ -182,14 +184,14 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     const existing = this.props.lines.find(line => line.productId.toString() === productId);
     if (existing) {
       const newQty = existing.quantity + quantity;
-      const newTotal = unitPrice.multiply(newQty);
+      const newTotal = PurchaseOrderPricingService.lineTotal(unitPrice, newQty);
       this.props.lines = this.props.lines.map(line =>
         line.productId.toString() === productId
           ? line.withUpdatedQuantity(newQty, unitPrice, newTotal)
           : line,
       );
     } else {
-      const total = unitPrice.multiply(quantity);
+      const total = PurchaseOrderPricingService.lineTotal(unitPrice, quantity);
       this.props.lines.push(
         new PurchaseOrderLine(
           new ProductIdRef(productId),

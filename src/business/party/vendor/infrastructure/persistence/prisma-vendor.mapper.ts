@@ -1,5 +1,5 @@
 import { Vendor } from '../../domain/aggregates/vendor.aggregate';
-import { VendorId } from '@business/shared-business/domain/common/value-objects/vendor-id';
+import { VendorId } from '@business/party/vendor/domain/value-objects/vendor-id.vo';
 import { VendorCode, VendorEmail, VendorName } from '../../domain/value-objects/vendor.vos';
 import { VendorStatus } from '../../domain/types/vendor.enum';
 import { VendorQueryRecord } from '../../domain/types/vendor.types';

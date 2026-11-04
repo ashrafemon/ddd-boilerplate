@@ -15,6 +15,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
 import { CreateGrnUseCase } from '../../application/usecases/create-grn.usecase';
 import { AddGrnLineUseCase } from '../../application/usecases/add-grn-line.usecase';
+import { SetGrnLineTrackingUseCase } from '../../application/usecases/set-grn-line-tracking.usecase';
 import { ReceiveGrnUseCase } from '../../application/usecases/receive-grn.usecase';
 import { PostGrnUseCase } from '../../application/usecases/post-grn.usecase';
 import { ReverseGrnUseCase } from '../../application/usecases/reverse-grn.usecase';
@@ -24,6 +25,7 @@ import { GetGrnUseCase } from '../../application/usecases/get-grn.usecase';
 import { ListGrnsUseCase } from '../../application/usecases/list-grns.usecase';
 import { CreateGrnDto } from './requests/create-grn.request.dto';
 import { AddGrnLineDto } from './requests/add-grn-line.request.dto';
+import { SetGrnLineTrackingDto } from './requests/set-grn-line-tracking.request.dto';
 import { PostGrnDto } from './requests/post-grn.request.dto';
 import { ReverseGrnDto } from './requests/reverse-grn.request.dto';
 import { RecordInspectionResultDto } from './requests/record-inspection-result.request.dto';
@@ -57,6 +59,7 @@ export class GrnController {
   constructor(
     private readonly createGrnUseCase: CreateGrnUseCase,
     private readonly addGrnLineUseCase: AddGrnLineUseCase,
+    private readonly setGrnLineTrackingUseCase: SetGrnLineTrackingUseCase,
     private readonly receiveGrnUseCase: ReceiveGrnUseCase,
     private readonly postGrnUseCase: PostGrnUseCase,
     private readonly reverseGrnUseCase: ReverseGrnUseCase,
@@ -119,6 +122,22 @@ export class GrnController {
   ): Promise<ApiResponse<IdResponse>> {
     const grnId = await this.addGrnLineUseCase.execute({ id, ...dto });
     return { data: { id: grnId.toString() }, message: 'Line added' };
+  }
+
+  @Patch(':id/lines/:productId/tracking')
+  @ApiOperation({ summary: 'Set tracking for a GRN line' })
+  @HttpCode(HttpStatus.OK)
+  async setTracking(
+    @Param('id') id: string,
+    @Param('productId') productId: string,
+    @Body() dto: SetGrnLineTrackingDto,
+  ): Promise<ApiResponse<IdResponse>> {
+    const grnId = await this.setGrnLineTrackingUseCase.execute({
+      id,
+      productId,
+      entries: dto.entries,
+    });
+    return { data: { id: grnId.toString() }, message: 'Tracking set' };
   }
 
   @Patch(':id/receive')

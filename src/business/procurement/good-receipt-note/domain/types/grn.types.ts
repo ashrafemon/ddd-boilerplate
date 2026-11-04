@@ -1,57 +1,4 @@
-export class GrnLine {
-  private constructor(
-    public readonly productId: string,
-    public readonly orderedQuantity: number,
-    public readonly receivedQuantity: number,
-    public readonly acceptedQuantity: number,
-    public readonly rejectedQuantity: number,
-    public readonly unitPrice: number,
-  ) {}
-
-  static create(
-    productId: string,
-    orderedQuantity: number,
-    receivedQuantity: number,
-    unitPrice: number,
-    acceptedQuantity?: number,
-    rejectedQuantity?: number,
-  ): GrnLine {
-    const accepted = acceptedQuantity ?? receivedQuantity;
-    const rejected = rejectedQuantity ?? 0;
-    return new GrnLine(productId, orderedQuantity, receivedQuantity, accepted, rejected, unitPrice);
-  }
-
-  get total(): number {
-    return this.receivedQuantity * this.unitPrice;
-  }
-
-  get acceptedTotal(): number {
-    return this.acceptedQuantity * this.unitPrice;
-  }
-
-  withReceivedQuantity(receivedQuantity: number): GrnLine {
-    return new GrnLine(
-      this.productId,
-      this.orderedQuantity,
-      receivedQuantity,
-      this.acceptedQuantity,
-      this.rejectedQuantity,
-      this.unitPrice,
-    );
-  }
-
-  withInspection(acceptedQuantity: number, rejectedQuantity: number): GrnLine {
-    return new GrnLine(
-      this.productId,
-      this.orderedQuantity,
-      this.receivedQuantity,
-      acceptedQuantity,
-      rejectedQuantity,
-      this.unitPrice,
-    );
-  }
-}
-
+import type { GrnLine } from '../entities/grn-line.entity';
 export interface GrnProps {
   grnNumber: string;
   purchaseOrderId: string;
@@ -145,6 +92,7 @@ export interface GrnQueryRecord {
     rejectedQuantity: number;
     unitPrice: number;
     total: number;
+    tracking?: TrackingEntry[];
   }[];
   receivedAt: Date | null;
   reversalOfId?: string | null;
@@ -194,3 +142,19 @@ export enum GrnStatus {
 export interface GrnState {
   status: GrnStatus;
 }
+
+export interface TrackingEntry {
+  lotNo?: string;
+  serialNo?: string;
+  quantity: number;
+  manufactureDate?: Date;
+  expiryDate?: Date;
+}
+
+export interface SetGrnLineTrackingRequest {
+  id: string;
+  productId: string;
+  entries: TrackingEntry[];
+}
+
+export { GrnLine } from '../entities/grn-line.entity';

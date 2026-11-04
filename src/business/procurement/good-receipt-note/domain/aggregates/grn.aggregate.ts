@@ -1,13 +1,14 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { GrnId } from '../value-objects/grn.vos';
-import { GrnLine, GrnProps, GrnStatus } from '../types/grn.types';
+import { GrnId } from '../value-objects/grn-id.vo';
+import { GrnLine, GrnProps, GrnStatus, TrackingEntry } from '../types/grn.types';
 import { GrnTotalsService } from '../services/grn-totals.service';
 import { GrnCompleted } from '../events/grn.completed.event';
 import { GrnLineAdded } from '../events/grn.line-added.event';
 import { GrnReceived } from '../events/grn.received.event';
 import { GrnCancelled } from '../events/grn.cancelled.event';
 import './grn.invariants';
+import '../entities/grn-line.entity.invariants';
 
 export class GoodReceiptNote extends AggregateRoot<GrnId> {
   private props: GrnProps;
@@ -182,6 +183,13 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
           : l,
       );
     }
+    this.props.updatedAt = new Date();
+  }
+
+  setLineTracking(productId: string, entries: TrackingEntry[]): void {
+    this.props.lines = this.props.lines.map(line =>
+      line.productId === productId ? line.withTracking(entries) : line,
+    );
     this.props.updatedAt = new Date();
   }
 

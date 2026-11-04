@@ -15,6 +15,7 @@ import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.a
 import { ReadCacheAdapter } from './infrastructure/adapters/platform/read-cache.adapter';
 import { CreateGrnUseCase } from './application/usecases/create-grn.usecase';
 import { AddGrnLineUseCase } from './application/usecases/add-grn-line.usecase';
+import { SetGrnLineTrackingUseCase } from './application/usecases/set-grn-line-tracking.usecase';
 import { ReceiveGrnUseCase } from './application/usecases/receive-grn.usecase';
 import { CancelGrnUseCase } from './application/usecases/cancel-grn.usecase';
 import { PostGrnUseCase } from './application/usecases/post-grn.usecase';
@@ -42,6 +43,7 @@ import { GrnNotificationAdapter } from './infrastructure/adapters/platform/grn-n
     GrnNotificationAdapter,
     CreateGrnUseCase,
     AddGrnLineUseCase,
+    SetGrnLineTrackingUseCase,
     ReceiveGrnUseCase,
     // Read-model cache (plan §1.6): controllers, batch adapter and the PO-facing
     // facade all read through the caching decorator; commands invalidate.
