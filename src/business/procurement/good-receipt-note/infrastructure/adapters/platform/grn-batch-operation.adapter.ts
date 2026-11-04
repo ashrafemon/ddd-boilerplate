@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { BatchOperationHandler } from '@platform/batch-operation/ports/batch-operation-handler.port';
 import { ExecutionResult, ValidationResult } from '@platform/batch-operation/batch-operation.types';
-import { CompleteGrnUseCase } from '../../../application/usecases/complete-grn.usecase';
 import { GetGrnUseCase } from '../../../application/usecases/get-grn.usecase';
 import { ReceiveGrnUseCase } from '../../../application/usecases/receive-grn.usecase';
+import { PostGrnUseCase } from '../../../application/usecases/post-grn.usecase';
 
 export type GrnBatchOperation = 'receive' | 'complete';
 
@@ -27,7 +27,7 @@ export class GrnBatchOperationAdapter implements BatchOperationHandler {
   constructor(
     private readonly getGrn: GetGrnUseCase,
     private readonly receiveGrn: ReceiveGrnUseCase,
-    private readonly completeGrn: CompleteGrnUseCase,
+    private readonly postGrn: PostGrnUseCase,
   ) {}
 
   aggregateType(): string {
@@ -58,7 +58,7 @@ export class GrnBatchOperationAdapter implements BatchOperationHandler {
     if (operationCode === 'receive') {
       await this.receiveGrn.execute({ id: entityId });
     } else if (operationCode === 'complete') {
-      await this.completeGrn.execute(entityId);
+      await this.postGrn.execute({ id: entityId });
     } else {
       throw new Error(`Unsupported GRN batch operation '${operationCode}'`);
     }

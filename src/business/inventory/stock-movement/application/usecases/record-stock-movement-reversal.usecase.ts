@@ -2,23 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { StockMovement } from '../../domain/aggregates/stock-movement.aggregate';
 import { StockMovementCommandRepository } from '../../domain/repositories/stock-movement-command.repository';
-import { MovementType } from '../../domain/types/stock-movement.types';
-import { RecordStockMovementUseCase } from './record-stock-movement.usecase';
-
-export interface RecordStockMovementReversalInput {
-  /** Source-line key of the COMPENSATING entry: `${reversalGrnId}:${productId}`. */
-  grnLineId: string;
-  /** Source-line key of the ORIGINAL receipt line: `${originalGrnId}:${productId}`. */
-  originalGrnLineId: string;
-  productId: string;
-  /** Negative mirror of the originally recorded quantity. */
-  quantity: number;
-  sourceDocumentId: string;
-  sourceDocumentType: string;
-  companyId: string;
-  tenantId: string;
-  actorId?: string;
-}
+import { StockMovementFactory } from '../../domain/factories/stock-movement.factory';
+import {
+  MovementType,
+  RecordStockMovementReversalInput,
+} from '../../domain/types/stock-movement.types';
 
 /**
  * Compensating stock movement for `GoodsReceiptReversed` (plan Phase 5.5 /
@@ -34,10 +22,7 @@ export interface RecordStockMovementReversalInput {
  */
 @Injectable()
 export class RecordStockMovementReversalUseCase {
-  constructor(
-    private readonly repository: StockMovementCommandRepository,
-    private readonly recordMovement: RecordStockMovementUseCase,
-  ) {}
+  constructor(private readonly repository: StockMovementCommandRepository) {}
 
   @Transactional()
   async execute(input: RecordStockMovementReversalInput): Promise<StockMovement | null> {
@@ -49,7 +34,15 @@ export class RecordStockMovementReversalUseCase {
       return null;
     }
 
-    return this.recordMovement.execute({
+    const existing = await this.repository.findByGrnLineAndType(
+      input.grnLineId,
+      MovementType.GOODS_RECEIPT_REVERSAL,
+    );
+    if (existing) {
+      return existing;
+    }
+
+    const movement = StockMovementFactory.create({
       grnLineId: input.grnLineId,
       productId: input.productId,
       quantity: input.quantity,
@@ -61,5 +54,7 @@ export class RecordStockMovementReversalUseCase {
       actorId: input.actorId,
       reversalOfId: original.id.toString(),
     });
+    await this.repository.save(movement);
+    return movement;
   }
 }

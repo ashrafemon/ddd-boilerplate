@@ -5,15 +5,13 @@ import { PurchaseOrder } from '../../domain/aggregates/purchase-order.aggregate'
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
+import { CompanyConfigPort } from '../outbound-ports/company-config.port';
+import { OrderableVendorPort } from '../outbound-ports/vendor-query.port';
+import { NumberingPort } from '../outbound-ports/numbering.port';
+import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
-import { CreatePurchaseOrderUseCase } from './create-purchase-order.usecase';
-
-export interface ImportPurchaseOrderRequest {
-  externalReference: string;
-  vendorId: string;
-  currency?: string;
-  lines: { productId: string; quantity: number; unitPrice: number }[];
-}
+import { ImportPurchaseOrderRequest } from '../../domain/types/purchase-order.types';
 
 /**
  * Find-or-create a DRAFT purchase order by its external reference and set its lines,
@@ -26,7 +24,10 @@ export interface ImportPurchaseOrderRequest {
 export class ImportPurchaseOrderUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
-    private readonly createPurchaseOrder: CreatePurchaseOrderUseCase,
+    private readonly companyConfig: CompanyConfigPort,
+    private readonly vendorQueryPort: OrderableVendorPort,
+    private readonly numbering: NumberingPort,
+    private readonly requestContext: RequestContextPort,
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
     private readonly readCache: ReadCachePort,
   ) {}
@@ -73,17 +74,31 @@ export class ImportPurchaseOrderUseCase {
       return existing;
     }
 
-    const id = await this.createPurchaseOrder.execute({
-      vendorId: input.vendorId,
-      currency: input.currency,
-      externalReference: input.externalReference,
-    });
-    const created = await this.purchaseOrderRepository.findById(id);
-    if (!created) {
-      throw new ConflictException(
-        `Purchase order '${input.externalReference}' vanished after create`,
-      );
+    const company = await this.companyConfig.getCompanyConfig();
+    const currency = input.currency ?? company.defaultCurrency;
+
+    const vendor = await this.vendorQueryPort.getOrderableVendor(input.vendorId);
+    if (!vendor) {
+      throw new ConflictException('Vendor is not orderable (blocked or inactive)');
     }
-    return created;
+
+    const orderNumber = await this.numbering.nextNumber('purchase-order.number', {
+      prefix: 'PO-',
+      padding: 8,
+    });
+    const actorId = this.requestContext.getUserId();
+    const purchaseOrder = PurchaseOrderFactory.create({
+      orderNumber,
+      vendorId: input.vendorId,
+      currency,
+      externalReference: input.externalReference,
+      createdBy: actorId,
+    });
+
+    await this.purchaseOrderRepository.save(purchaseOrder);
+    for (const event of purchaseOrder.pullEvents()) {
+      await this.integrationEvent.send(event, purchaseOrder.id.toString());
+    }
+    return purchaseOrder;
   }
 }

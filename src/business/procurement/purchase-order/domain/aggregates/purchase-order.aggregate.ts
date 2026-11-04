@@ -416,16 +416,4 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     // event are COMPLETED / `PurchaseOrderCompleted`.
     this.close();
   }
-
-  /**
-   * Evaluate the approval policy. Enforces the registered policy and returns
-   * whether manual approval is required for the current aggregate state.
-   */
-  requiresManualApproval(threshold: number): boolean {
-    return policyRegistry.evaluate('purchase-order.approval', {
-      status: this.props.status,
-      totalAmount: this.total.amount,
-      autoApproveThreshold: threshold,
-    });
-  }
 }

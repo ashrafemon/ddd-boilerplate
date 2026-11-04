@@ -260,8 +260,6 @@ flowchart LR
     GrnController -->|injects| AddGrnLineUseCase
     ReceiveGrnUseCase["ReceiveGrnUseCase"]
     GrnController -->|injects| ReceiveGrnUseCase
-    CompleteGrnUseCase["CompleteGrnUseCase"]
-    GrnController -->|injects| CompleteGrnUseCase
     PostGrnUseCase["PostGrnUseCase"]
     GrnController -->|injects| PostGrnUseCase
     ReverseGrnUseCase["ReverseGrnUseCase"]
@@ -277,7 +275,7 @@ flowchart LR
     GrnBatchOperationAdapter["GrnBatchOperationAdapter"]
     GrnBatchOperationAdapter -->|injects| GetGrnUseCase
     GrnBatchOperationAdapter -->|injects| ReceiveGrnUseCase
-    GrnBatchOperationAdapter -->|injects| CompleteGrnUseCase
+    GrnBatchOperationAdapter -->|injects| PostGrnUseCase
     GrnNotificationAdapter["GrnNotificationAdapter"]
     GrnNotificationAdapter -->|injects| GetGrnUseCase
     GrnNotificationAdapter -->|injects| PurchaseOrderPort
@@ -296,7 +294,6 @@ flowchart LR
     AuditPort["AuditPort"]
     ReceiveGrnUseCase -->|injects via AuditModule| AuditPort
     ReceiveGrnUseCase -->|injects| ReadCachePort
-    CompleteGrnUseCase -->|injects| PostGrnUseCase
     GetGrnUseCase -->|injects| GrnQuery
     GetGrnUseCase -->|injects| ReadCachePort
     ListGrnsUseCase -->|injects| GrnQuery
@@ -426,7 +423,10 @@ flowchart LR
     RequestContextPort["RequestContextPort"]
     CreatePurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
     ImportPurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
-    ImportPurchaseOrderUseCase -->|injects| CreatePurchaseOrderUseCase
+    ImportPurchaseOrderUseCase -->|injects| CompanyConfigPort
+    ImportPurchaseOrderUseCase -->|injects| OrderableVendorPort
+    ImportPurchaseOrderUseCase -->|injects| NumberingPort
+    ImportPurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
     ImportPurchaseOrderUseCase -->|injects| PurchaseOrderIntegrationPort
     ImportPurchaseOrderUseCase -->|injects| ReadCachePort
     AddPurchaseOrderLineUseCase -->|injects| PurchaseOrderCommandRepository
@@ -449,8 +449,7 @@ flowchart LR
     PurchaseOrderTransitionUseCase -->|injects| PurchaseOrderCommandRepository
     PurchaseOrderTransitionUseCase -->|injects| PurchaseOrderIntegrationPort
     PurchaseOrderTransitionUseCase -->|injects| CompanyConfigPort
-    HasPurchaseOrderReceiptsUseCase["HasPurchaseOrderReceiptsUseCase"]
-    PurchaseOrderTransitionUseCase -->|injects| HasPurchaseOrderReceiptsUseCase
+    PurchaseOrderTransitionUseCase -->|injects| PurchaseOrderQuery
     PurchaseOrderTransitionUseCase -->|injects via ContextModule| RequestContextPort
     AuditPort["AuditPort"]
     PurchaseOrderTransitionUseCase -->|injects via AuditModule| AuditPort
@@ -474,36 +473,39 @@ flowchart LR
     RegisterPurchaseOrderReceiptUseCase -->|injects| PurchaseOrderCommandRepository
     RegisterPurchaseOrderReceiptUseCase -->|injects| CompanyConfigPort
     RegisterPurchaseOrderReceiptUseCase -->|injects| ReadCachePort
+    HasPurchaseOrderReceiptsUseCase["HasPurchaseOrderReceiptsUseCase"]
     HasPurchaseOrderReceiptsUseCase -->|injects| PurchaseOrderQuery
     GetPurchaseOrderUseCase -->|injects| PurchaseOrderQuery
     GetPurchaseOrderUseCase -->|injects| ReadCachePort
     GetPurchaseOrderReceiptsUseCase -->|injects| PurchaseOrderQuery
-    GetPurchaseOrderRemainingQuantitiesUseCase -->|injects| GetPurchaseOrderReceiptsUseCase
+    GetPurchaseOrderRemainingQuantitiesUseCase -->|injects| PurchaseOrderQuery
     ListPurchaseOrdersUseCase -->|injects| PurchaseOrderQuery
     CreateRecurringPurchaseOrderUseCase -->|injects| OrderableVendorPort
     CreateRecurringPurchaseOrderUseCase -->|injects| NumberingPort
     RecurringTemplatePort["RecurringTemplatePort"]
     CreateRecurringPurchaseOrderUseCase -->|injects via RecurringModule| RecurringTemplatePort
     CreateRecurringPurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
-    CreateRecurringFromPurchaseOrderUseCase -->|injects| GetPurchaseOrderUseCase
+    CreateRecurringFromPurchaseOrderUseCase -->|injects| PurchaseOrderQuery
     CreateRecurringFromPurchaseOrderUseCase -->|injects| NumberingPort
     CreateRecurringFromPurchaseOrderUseCase -->|injects via RecurringModule| RecurringTemplatePort
     CreateRecurringFromPurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
     GenerateRecurringPurchaseOrderUseCase["GenerateRecurringPurchaseOrderUseCase"]
-    GenerateRecurringPurchaseOrderUseCase -->|injects| CreatePurchaseOrderUseCase
-    GenerateRecurringPurchaseOrderUseCase -->|injects| AddPurchaseOrderLineUseCase
-    GenerateRecurringPurchaseOrderUseCase -->|injects| GetPurchaseOrderUseCase
-    GenerateRecurringPurchaseOrderUseCase -->|injects| PurchaseOrderTransitionUseCase
-    RecurringExecutionPort["RecurringExecutionPort"]
-    GenerateRecurringPurchaseOrderUseCase -->|injects via RecurringModule| RecurringExecutionPort
-    LoggerPort["LoggerPort"]
-    GenerateRecurringPurchaseOrderUseCase -->|injects via ObservabilityModule| LoggerPort
-    GenerateRecurringPurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
+    PurchaseOrderGenerationFacade["PurchaseOrderGenerationFacade"]
+    GenerateRecurringPurchaseOrderUseCase -->|injects| PurchaseOrderGenerationFacade
     RecurringOccurrenceRequestedRabbitMQListener["RecurringOccurrenceRequestedRabbitMQListener"]
     RecurringOccurrenceRequestedRabbitMQListener -->|injects| GenerateRecurringPurchaseOrderUseCase
     PurchaseOrderForGrnFacade -->|injects| GetPurchaseOrderUseCase
     PurchaseOrderForGrnFacade -->|injects| RegisterPurchaseOrderReceiptUseCase
     PurchaseOrderForGrnFacade -->|injects| HasPurchaseOrderReceiptsUseCase
+    PurchaseOrderGenerationFacade -->|injects| CreatePurchaseOrderUseCase
+    PurchaseOrderGenerationFacade -->|injects| AddPurchaseOrderLineUseCase
+    PurchaseOrderGenerationFacade -->|injects| GetPurchaseOrderUseCase
+    PurchaseOrderGenerationFacade -->|injects| PurchaseOrderTransitionUseCase
+    RecurringExecutionPort["RecurringExecutionPort"]
+    PurchaseOrderGenerationFacade -->|injects via RecurringModule| RecurringExecutionPort
+    LoggerPort["LoggerPort"]
+    PurchaseOrderGenerationFacade -->|injects via ObservabilityModule| LoggerPort
+    PurchaseOrderGenerationFacade -->|injects via ContextModule| RequestContextPort
     PurchaseOrderForGrnFacade -->|injects| GetPurchaseOrderUseCase
     PurchaseOrderForGrnFacade -->|injects| RegisterPurchaseOrderReceiptUseCase
     PurchaseOrderForGrnFacade -->|injects| HasPurchaseOrderReceiptsUseCase
@@ -570,18 +572,20 @@ flowchart LR
     GetInvoiceUseCase -->|injects| InvoiceQuery
     ListInvoicesUseCase -->|injects| InvoiceQuery
     GenerateRecurringInvoiceUseCase["GenerateRecurringInvoiceUseCase"]
-    GenerateRecurringInvoiceUseCase -->|injects| CreateInvoiceUseCase
-    GenerateRecurringInvoiceUseCase -->|injects| GetInvoiceUseCase
-    GenerateRecurringInvoiceUseCase -->|injects| PostInvoiceUseCase
-    RecurringExecutionPort["RecurringExecutionPort"]
-    GenerateRecurringInvoiceUseCase -->|injects via RecurringModule| RecurringExecutionPort
-    LoggerPort["LoggerPort"]
-    GenerateRecurringInvoiceUseCase -->|injects via ObservabilityModule| LoggerPort
-    RequestContextPort["RequestContextPort"]
-    GenerateRecurringInvoiceUseCase -->|injects via ContextModule| RequestContextPort
+    InvoiceGenerationFacade["InvoiceGenerationFacade"]
+    GenerateRecurringInvoiceUseCase -->|injects| InvoiceGenerationFacade
     RecurringOccurrenceRequestedRabbitMQListener["RecurringOccurrenceRequestedRabbitMQListener"]
     RecurringOccurrenceRequestedRabbitMQListener -->|injects| GenerateRecurringInvoiceUseCase
     InvoiceForReportsFacade -->|injects| GetInvoiceUseCase
+    InvoiceGenerationFacade -->|injects| CreateInvoiceUseCase
+    InvoiceGenerationFacade -->|injects| GetInvoiceUseCase
+    InvoiceGenerationFacade -->|injects| PostInvoiceUseCase
+    RecurringExecutionPort["RecurringExecutionPort"]
+    InvoiceGenerationFacade -->|injects via RecurringModule| RecurringExecutionPort
+    LoggerPort["LoggerPort"]
+    InvoiceGenerationFacade -->|injects via ObservabilityModule| LoggerPort
+    RequestContextPort["RequestContextPort"]
+    InvoiceGenerationFacade -->|injects via ContextModule| RequestContextPort
     InvoiceForReportsFacade -->|injects| GetInvoiceUseCase
     TransactionHost__library_["TransactionHost (library)"]
     PrismaInvoiceCommandRepository -->|injects| TransactionHost__library_

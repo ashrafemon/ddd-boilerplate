@@ -16,7 +16,6 @@ import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
 import { CreateGrnUseCase } from '../../application/usecases/create-grn.usecase';
 import { AddGrnLineUseCase } from '../../application/usecases/add-grn-line.usecase';
 import { ReceiveGrnUseCase } from '../../application/usecases/receive-grn.usecase';
-import { CompleteGrnUseCase } from '../../application/usecases/complete-grn.usecase';
 import { PostGrnUseCase } from '../../application/usecases/post-grn.usecase';
 import { ReverseGrnUseCase } from '../../application/usecases/reverse-grn.usecase';
 import { RecordInspectionResultUseCase } from '../../application/usecases/record-inspection-result.usecase';
@@ -59,7 +58,6 @@ export class GrnController {
     private readonly createGrnUseCase: CreateGrnUseCase,
     private readonly addGrnLineUseCase: AddGrnLineUseCase,
     private readonly receiveGrnUseCase: ReceiveGrnUseCase,
-    private readonly completeGrnUseCase: CompleteGrnUseCase,
     private readonly postGrnUseCase: PostGrnUseCase,
     private readonly reverseGrnUseCase: ReverseGrnUseCase,
     private readonly recordInspectionResultUseCase: RecordInspectionResultUseCase,
@@ -135,7 +133,7 @@ export class GrnController {
   @ApiOperation({ summary: 'Complete a GRN' })
   @HttpCode(HttpStatus.OK)
   async complete(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
-    const grnId = await this.completeGrnUseCase.execute(id);
+    const grnId = await this.postGrnUseCase.execute({ id });
     return { data: { id: grnId.toString() }, message: 'GRN completed' };
   }
 

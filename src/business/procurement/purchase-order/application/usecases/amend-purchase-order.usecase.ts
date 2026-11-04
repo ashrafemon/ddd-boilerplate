@@ -4,29 +4,12 @@ import { Money } from '@business/shared-business/domain/common/value-objects/mon
 import { AuditPort } from '@platform/audit/ports/audit.port';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
+import { AmendPurchaseOrderRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
-export interface AmendPurchaseOrderRequest {
-  id: string;
-  expectedDeliveryDate?: Date;
-  /** productId -> new unit price as a decimal amount (e.g. 12.50). */
-  lineUnitPrices?: Record<string, number>;
-  reason: string;
-  actorId?: string;
-}
-
-/**
- * Controlled amendment of an ISSUED purchase order (spec §4
- * "AmendPurchaseOrder", PO-06).
- *
- * An issued order is not freely editable: the aggregate decides what may
- * change, the reason is mandatory, and the trail (who / when / why / which
- * fields) is written to the audit log inside the same transaction as the
- * order itself. The `PurchaseOrderAmended` event carries the changed fields
- * to downstream consumers.
- */
+// Controlled amendment of an issued PO (spec §4, PO-06).
 @Injectable()
 export class AmendPurchaseOrderUseCase {
   constructor(

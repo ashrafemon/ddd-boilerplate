@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
 import { InvoiceForReportsFacade } from './application/facades/invoice-for-reports.facade';
+import { InvoiceGenerationFacade } from './application/facades/invoice-generation.facade';
 import { InvoiceEventEmitterListener } from './application/integrations/listeners/invoice.created.event-emitter.listener-event';
 import { InvoiceKafkaListener } from './application/integrations/listeners/invoice.created.kafka.listener-event';
 import { InvoiceRabbitMQListener } from './application/integrations/listeners/invoice.created.rabbitmq.listener-event';
@@ -47,6 +48,7 @@ import { InvoiceForReportsPort } from './public';
     InvoiceSqsListener,
     RecurringOccurrenceRequestedRabbitMQListener,
     InvoiceForReportsFacade,
+    InvoiceGenerationFacade,
     { provide: InvoiceForReportsPort, useExisting: InvoiceForReportsFacade },
     { provide: InvoiceCommandRepository, useClass: PrismaInvoiceCommandRepository },
     { provide: InvoiceQuery, useClass: PrismaInvoiceQueryRepository },

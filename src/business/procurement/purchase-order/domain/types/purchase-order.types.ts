@@ -1,6 +1,8 @@
 import { OrderNumber, VendorIdRef } from '../value-objects/purchase-order.vos';
 import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
 import { PurchaseOrderStatus } from './purchase-order.enum';
+import type { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
+import type { CreateRecurringTemplateInput } from '@platform/recurring/recurring-template.types';
 export { PurchaseOrderStatus } from './purchase-order.enum';
 
 export interface PurchaseOrderProps {
@@ -159,4 +161,81 @@ export interface PurchaseOrderTransitionRequest {
   transition: PurchaseOrderTransition;
   reason?: string;
   actorId?: string;
+}
+
+export interface AmendPurchaseOrderRequest {
+  id: string;
+  expectedDeliveryDate?: Date;
+  lineUnitPrices?: Record<string, number>;
+  reason: string;
+  actorId?: string;
+}
+
+export interface CreateRecurringFromPurchaseOrderInput {
+  purchaseOrderId: string;
+  name?: string;
+  triggerType: CreateRecurringTemplateInput['triggerType'];
+  eventName?: string;
+  frequency?: CreateRecurringTemplateInput['frequency'];
+  interval?: number;
+  startDate?: Date;
+  endDate?: Date;
+  timeZone?: string;
+  autoPost?: boolean;
+  autoEmail?: boolean;
+  autoApprove?: boolean;
+  generationCondition?: JsonObject;
+}
+
+export interface CreateRecurringPurchaseOrderLineInput {
+  [key: string]: JsonValue;
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface CreateRecurringPurchaseOrderInput {
+  name: string;
+  vendorId: string;
+  currency?: string;
+  lines: CreateRecurringPurchaseOrderLineInput[];
+  triggerType: CreateRecurringTemplateInput['triggerType'];
+  eventName?: string;
+  frequency?: CreateRecurringTemplateInput['frequency'];
+  interval?: number;
+  startDate?: Date;
+  endDate?: Date;
+  timeZone?: string;
+  autoPost?: boolean;
+  autoEmail?: boolean;
+  autoApprove?: boolean;
+  generationCondition?: JsonObject;
+}
+
+export interface PurchaseOrderReceiptsResult {
+  purchaseOrderId: string;
+  receiptStatus: 'NOT_RECEIVED' | 'PARTIALLY_RECEIVED' | 'FULLY_RECEIVED';
+  lines: {
+    productId: string;
+    orderedQuantity: number;
+    receivedQuantity: number;
+    remainingQuantity: number;
+  }[];
+}
+
+export interface PurchaseOrderRemainingQuantitiesResult {
+  purchaseOrderId: string;
+  lines: {
+    productId: string;
+    orderedQuantity: number;
+    receivedQuantity: number;
+    remainingQuantity: number;
+  }[];
+}
+
+export interface ImportPurchaseOrderRequest {
+  externalReference: string;
+  vendorId: string;
+  currency?: string;
+  lines: { productId: string; quantity: number; unitPrice: number }[];
 }

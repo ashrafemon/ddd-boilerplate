@@ -2,22 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { StockMovementFactory } from '../../domain/factories/stock-movement.factory';
 import { StockMovementCommandRepository } from '../../domain/repositories/stock-movement-command.repository';
-import { MovementType } from '../../domain/types/stock-movement.types';
+import { RecordStockMovementInput } from '../../domain/types/stock-movement.types';
 import { StockMovement } from '../../domain/aggregates/stock-movement.aggregate';
-
-export interface RecordStockMovementInput {
-  grnLineId: string;
-  productId: string;
-  quantity: number;
-  movementType: MovementType;
-  sourceDocumentId: string;
-  sourceDocumentType: string;
-  companyId: string;
-  tenantId: string;
-  actorId?: string;
-  /** Original movement this entry compensates (GOODS_RECEIPT_REVERSAL only). */
-  reversalOfId?: string;
-}
 
 @Injectable()
 export class RecordStockMovementUseCase {

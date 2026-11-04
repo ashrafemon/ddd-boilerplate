@@ -1,31 +1,12 @@
-import { JsonObject } from '@shared-kernel/types/json-value.type';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { RecurringTemplatePort } from '@platform/recurring/ports/recurring-template.port';
-import type {
-  CreateRecurringTemplateInput,
-  RecurringTemplateRecord,
-} from '@platform/recurring/recurring-template.types';
+import type { RecurringTemplateRecord } from '@platform/recurring/recurring-template.types';
 import { NumberingPort } from '../outbound-ports/numbering.port';
-import { GetPurchaseOrderUseCase } from './get-purchase-order.usecase';
+import { PurchaseOrderQuery } from '../queries/purchase-order.query';
+import { CreateRecurringFromPurchaseOrderInput } from '../../domain/types/purchase-order.types';
 
 const TEMPLATE_SEQUENCE = 'RecurringTemplate:PurchaseOrder';
-
-export interface CreateRecurringFromPurchaseOrderInput {
-  purchaseOrderId: string;
-  name?: string;
-  triggerType: CreateRecurringTemplateInput['triggerType'];
-  eventName?: string;
-  frequency?: CreateRecurringTemplateInput['frequency'];
-  interval?: number;
-  startDate?: Date;
-  endDate?: Date;
-  timeZone?: string;
-  autoPost?: boolean;
-  autoEmail?: boolean;
-  autoApprove?: boolean;
-  generationCondition?: JsonObject;
-}
 
 /**
  * Scenario "from an existing PurchaseOrder": snapshots the vendor, currency,
@@ -36,14 +17,14 @@ export interface CreateRecurringFromPurchaseOrderInput {
 @Injectable()
 export class CreateRecurringFromPurchaseOrderUseCase {
   constructor(
-    private readonly getPurchaseOrder: GetPurchaseOrderUseCase,
+    private readonly purchaseOrderQuery: PurchaseOrderQuery,
     private readonly numbering: NumberingPort,
     private readonly createRecurringTemplate: RecurringTemplatePort,
     private readonly requestContext: RequestContextPort,
   ) {}
 
   async execute(input: CreateRecurringFromPurchaseOrderInput): Promise<RecurringTemplateRecord> {
-    const purchaseOrder = await this.getPurchaseOrder.execute(input.purchaseOrderId);
+    const purchaseOrder = await this.purchaseOrderQuery.findById(input.purchaseOrderId);
     if (!purchaseOrder) {
       throw new NotFoundException('Purchase order not found');
     }

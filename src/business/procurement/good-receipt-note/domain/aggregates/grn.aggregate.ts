@@ -2,6 +2,7 @@ import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { GrnId } from '../value-objects/grn.vos';
 import { GrnLine, GrnProps, GrnStatus } from '../types/grn.types';
+import { GrnTotalsService } from '../services/grn-totals.service';
 import { GrnCompleted } from '../events/grn.completed.event';
 import { GrnLineAdded } from '../events/grn.line-added.event';
 import { GrnReceived } from '../events/grn.received.event';
@@ -185,7 +186,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
   }
 
   get subtotal(): number {
-    return this.props.lines.reduce((acc, line) => acc + line.total, 0);
+    return GrnTotalsService.subtotal(this.props.lines);
   }
 
   get total(): number {

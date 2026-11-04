@@ -16,7 +16,6 @@ import { ReadCacheAdapter } from './infrastructure/adapters/platform/read-cache.
 import { CreateGrnUseCase } from './application/usecases/create-grn.usecase';
 import { AddGrnLineUseCase } from './application/usecases/add-grn-line.usecase';
 import { ReceiveGrnUseCase } from './application/usecases/receive-grn.usecase';
-import { CompleteGrnUseCase } from './application/usecases/complete-grn.usecase';
 import { CancelGrnUseCase } from './application/usecases/cancel-grn.usecase';
 import { PostGrnUseCase } from './application/usecases/post-grn.usecase';
 import { ReverseGrnUseCase } from './application/usecases/reverse-grn.usecase';
@@ -44,7 +43,6 @@ import { GrnNotificationAdapter } from './infrastructure/adapters/platform/grn-n
     CreateGrnUseCase,
     AddGrnLineUseCase,
     ReceiveGrnUseCase,
-    CompleteGrnUseCase,
     // Read-model cache (plan §1.6): controllers, batch adapter and the PO-facing
     // facade all read through the caching decorator; commands invalidate.
     GetGrnUseCase,

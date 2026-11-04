@@ -5,27 +5,20 @@ import { AuditPort } from '@platform/audit/ports/audit.port';
 import { PurchaseOrderTransitionRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
+import { PurchaseOrderQuery } from '../queries/purchase-order.query';
+import { PurchaseOrderApprovalService } from '../../domain/services/purchase-order-approval.service';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
-import { HasPurchaseOrderReceiptsUseCase } from './has-purchase-order-receipts.usecase';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
-/**
- * Single mutation path for submit/approve/reject/cancel/complete.
- *
- * Phase 1 behaviors: actor comes from `RequestContextPort` with an explicit
- * `input.actorId` override (background batch/import workers restore context
- * via `run()`), and every successful transition writes an `AuditPort` row
- * inside this use case's own transaction — never after it. Failures write
- * nothing (the audit call sits after the state change and rolls back with it).
- */
+// Single mutation path for submit/approve/reject/cancel/complete.
 @Injectable()
 export class PurchaseOrderTransitionUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
     private readonly integrationEvent: PurchaseOrderIntegrationPort,
     private readonly companyConfig: CompanyConfigPort,
-    private readonly hasReceipts: HasPurchaseOrderReceiptsUseCase,
+    private readonly purchaseOrderQuery: PurchaseOrderQuery,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
     private readonly readCache: ReadCachePort,
@@ -47,7 +40,13 @@ export class PurchaseOrderTransitionUseCase {
         purchaseOrder.submit();
         break;
       case 'approve': {
-        if (purchaseOrder.requiresManualApproval(company.autoApproveThreshold)) {
+        if (
+          PurchaseOrderApprovalService.requiresManualApproval(
+            purchaseOrder.status,
+            purchaseOrder.total.amount,
+            company.autoApproveThreshold,
+          )
+        ) {
           throw new ConflictException('Manual approval required for this purchase order');
         }
         purchaseOrder.approve(actorId);
@@ -60,7 +59,9 @@ export class PurchaseOrderTransitionUseCase {
         break;
       case 'cancel': {
         // Plan Phase 2.4: CancellationPolicy — posted receipts block cancellation.
-        const hasPostedReceipts = await this.hasReceipts.execute(purchaseOrder.id.toString());
+        const hasPostedReceipts = await this.purchaseOrderQuery.hasReceipts(
+          purchaseOrder.id.toString(),
+        );
         purchaseOrder.cancel(actorId, hasPostedReceipts);
         break;
       }

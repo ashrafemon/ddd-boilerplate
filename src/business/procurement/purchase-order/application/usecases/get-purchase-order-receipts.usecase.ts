@@ -1,17 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PurchaseOrderQuery } from '../queries/purchase-order.query';
-
-export interface PurchaseOrderReceiptsResult {
-  purchaseOrderId: string;
-  /** Derived from the receipt projection (plan Phase 3.4) — never stored. */
-  receiptStatus: 'NOT_RECEIVED' | 'PARTIALLY_RECEIVED' | 'FULLY_RECEIVED';
-  lines: {
-    productId: string;
-    orderedQuantity: number;
-    receivedQuantity: number;
-    remainingQuantity: number;
-  }[];
-}
+import { PurchaseOrderReceiptService } from '../../domain/services/purchase-order-receipt.service';
+import { PurchaseOrderReceiptsResult } from '../../domain/types/purchase-order.types';
 
 /**
  * Read model for `GET /purchase-orders/:id/receipts` (plan Phase 3.6): the
@@ -31,20 +21,12 @@ export class GetPurchaseOrderReceiptsUseCase {
       throw new NotFoundException('Purchase order not found');
     }
 
-    const lines = receipts.lines;
-    const fullyReceived =
-      lines.length > 0 && lines.every(l => l.receivedQuantity >= l.orderedQuantity);
-    const anyReceived = lines.some(l => l.receivedQuantity > 0);
-    const receiptStatus = fullyReceived
-      ? 'FULLY_RECEIVED'
-      : anyReceived
-        ? 'PARTIALLY_RECEIVED'
-        : 'NOT_RECEIVED';
+    const receiptStatus = PurchaseOrderReceiptService.deriveStatus(receipts.lines);
 
     return {
       purchaseOrderId: receipts.purchaseOrderId,
       receiptStatus,
-      lines,
+      lines: receipts.lines,
     };
   }
 }

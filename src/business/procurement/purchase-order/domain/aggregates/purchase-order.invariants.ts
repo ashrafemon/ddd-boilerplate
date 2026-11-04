@@ -97,7 +97,10 @@ invariantRegistry.register<{ status: PurchaseOrderStatus; to: PurchaseOrderStatu
           PurchaseOrderStatus.CLOSED,
           PurchaseOrderStatus.CANCELLED,
         ],
-        [PurchaseOrderStatus.FULLYRECEIVED]: [PurchaseOrderStatus.COMPLETED, PurchaseOrderStatus.CLOSED],
+        [PurchaseOrderStatus.FULLYRECEIVED]: [
+          PurchaseOrderStatus.COMPLETED,
+          PurchaseOrderStatus.CLOSED,
+        ],
         [PurchaseOrderStatus.REJECTED]: [],
         [PurchaseOrderStatus.CANCELLED]: [],
         [PurchaseOrderStatus.COMPLETED]: [],

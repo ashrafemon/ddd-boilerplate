@@ -1,40 +1,12 @@
-import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { RecurringTemplatePort } from '@platform/recurring/ports/recurring-template.port';
-import type {
-  CreateRecurringTemplateInput,
-  RecurringTemplateRecord,
-} from '@platform/recurring/recurring-template.types';
+import type { RecurringTemplateRecord } from '@platform/recurring/recurring-template.types';
 import { OrderableVendorPort } from '../outbound-ports/vendor-query.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
+import { CreateRecurringPurchaseOrderInput } from '../../domain/types/purchase-order.types';
 
 const TEMPLATE_SEQUENCE = 'RecurringTemplate:PurchaseOrder';
-
-export interface CreateRecurringPurchaseOrderLineInput {
-  [key: string]: JsonValue;
-  productId: string;
-  quantity: number;
-  unitPrice: number;
-}
-
-export interface CreateRecurringPurchaseOrderInput {
-  name: string;
-  vendorId: string;
-  currency?: string;
-  lines: CreateRecurringPurchaseOrderLineInput[];
-  triggerType: CreateRecurringTemplateInput['triggerType'];
-  eventName?: string;
-  frequency?: CreateRecurringTemplateInput['frequency'];
-  interval?: number;
-  startDate?: Date;
-  endDate?: Date;
-  timeZone?: string;
-  autoPost?: boolean;
-  autoEmail?: boolean;
-  autoApprove?: boolean;
-  generationCondition?: JsonObject;
-}
 
 /**
  * Scenario "new data": create a Recurring template for PurchaseOrder from a
