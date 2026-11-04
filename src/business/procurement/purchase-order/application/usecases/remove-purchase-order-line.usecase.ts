@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { RemoveLineRequest } from '../../domain/types/purchase-order.types';
-import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
@@ -17,10 +16,10 @@ export class RemovePurchaseOrderLineUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: RemoveLineRequest): Promise<PurchaseOrderId> {
+  async execute(input: RemoveLineRequest): Promise<string> {
     await this.companyConfig.getCompanyConfig();
 
-    const id = PurchaseOrderId.fromString(input.id);
+    const id = input.id;
     const purchaseOrder = await this.purchaseOrderRepository.findById(id);
     if (!purchaseOrder) {
       throw new NotFoundException('Purchase order not found');
@@ -35,6 +34,6 @@ export class RemovePurchaseOrderLineUseCase {
 
     await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
 
-    return purchaseOrder.id;
+    return purchaseOrder.id.toString();
   }
 }

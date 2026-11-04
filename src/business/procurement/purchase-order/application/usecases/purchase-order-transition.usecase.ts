@@ -3,7 +3,6 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
 import { PurchaseOrderTransitionRequest } from '../../domain/types/purchase-order.types';
-import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from '../queries/purchase-order.query';
 import { PurchaseOrderApprovalService } from '../../domain/services/purchase-order-approval.service';
@@ -25,11 +24,11 @@ export class PurchaseOrderTransitionUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: PurchaseOrderTransitionRequest): Promise<PurchaseOrderId> {
+  async execute(input: PurchaseOrderTransitionRequest): Promise<string> {
     const company = await this.companyConfig.getCompanyConfig();
     const actorId = input.actorId ?? this.requestContext.getUserId();
 
-    const id = PurchaseOrderId.fromString(input.id);
+    const id = input.id;
     const purchaseOrder = await this.purchaseOrderRepository.findById(id);
     if (!purchaseOrder) {
       throw new NotFoundException('Purchase order not found');
@@ -88,6 +87,6 @@ export class PurchaseOrderTransitionUseCase {
 
     await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
 
-    return purchaseOrder.id;
+    return purchaseOrder.id.toString();
   }
 }

@@ -1,7 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { UpdatePurchaseOrderHeaderRequest } from '../../domain/types/purchase-order.types';
-import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
@@ -22,8 +21,8 @@ export class UpdatePurchaseOrderUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: UpdatePurchaseOrderHeaderRequest): Promise<PurchaseOrderId> {
-    const id = PurchaseOrderId.fromString(input.id);
+  async execute(input: UpdatePurchaseOrderHeaderRequest): Promise<string> {
+    const id = input.id;
     const purchaseOrder = await this.purchaseOrderRepository.findById(id);
     if (!purchaseOrder) {
       throw new NotFoundException('Purchase order not found');
@@ -55,6 +54,6 @@ export class UpdatePurchaseOrderUseCase {
 
     await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
 
-    return purchaseOrder.id;
+    return purchaseOrder.id.toString();
   }
 }

@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { InvoiceCommandRepository } from '../../domain/repositories/invoice-command.repository';
-import { InvoiceId } from '../../domain/value-objects/invoice-id.vo';
 import { InvoiceIntegrationPort } from '../integrations/publishes/invoice.integration-port';
 
 @Injectable()
@@ -12,7 +11,7 @@ export class PostInvoiceUseCase {
   ) {}
 
   @Transactional()
-  async execute(id: string): Promise<InvoiceId> {
+  async execute(id: string): Promise<string> {
     const invoice = await this.invoiceRepository.findById(id);
     if (!invoice) {
       throw new NotFoundException('Invoice not found');
@@ -22,6 +21,6 @@ export class PostInvoiceUseCase {
     for (const event of invoice.pullEvents()) {
       await this.integrationEvent.send(event, invoice.id.toString());
     }
-    return invoice.id;
+    return invoice.id.toString();
   }
 }

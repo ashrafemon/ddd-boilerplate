@@ -2,7 +2,6 @@ import { Injectable, ConflictException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { CreateVendorRequest } from '../../domain/types/vendor.types';
 import { VendorFactory } from '../../domain/factories/vendor.factory';
-import { VendorId } from '@business/party/vendor/domain/value-objects/vendor-id.vo';
 import { VendorCommandRepository } from '../../domain/repositories/vendor-command.repository';
 import { VendorIntegrationPort } from '../integrations/publishes/vendor.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
@@ -16,7 +15,7 @@ export class CreateVendorUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: CreateVendorRequest): Promise<VendorId> {
+  async execute(input: CreateVendorRequest): Promise<string> {
     await this.companyConfig.getCompanyConfig();
 
     const vendor = VendorFactory.create(input);
@@ -32,6 +31,6 @@ export class CreateVendorUseCase {
       await this.integrationEvent.send(event, vendor.id.toString());
     }
 
-    return vendor.id;
+    return vendor.id.toString();
   }
 }

@@ -258,6 +258,8 @@ flowchart LR
     GrnController -->|injects| CreateGrnUseCase
     AddGrnLineUseCase["AddGrnLineUseCase"]
     GrnController -->|injects| AddGrnLineUseCase
+    SetGrnLineTrackingUseCase["SetGrnLineTrackingUseCase"]
+    GrnController -->|injects| SetGrnLineTrackingUseCase
     ReceiveGrnUseCase["ReceiveGrnUseCase"]
     GrnController -->|injects| ReceiveGrnUseCase
     PostGrnUseCase["PostGrnUseCase"]
@@ -287,6 +289,9 @@ flowchart LR
     AddGrnLineUseCase -->|injects| GrnCommandRepository
     AddGrnLineUseCase -->|injects| GrnIntegrationPort
     AddGrnLineUseCase -->|injects| ReadCachePort
+    SetGrnLineTrackingUseCase -->|injects| GrnCommandRepository
+    SetGrnLineTrackingUseCase -->|injects| GrnIntegrationPort
+    SetGrnLineTrackingUseCase -->|injects| ReadCachePort
     ReceiveGrnUseCase -->|injects| GrnCommandRepository
     ReceiveGrnUseCase -->|injects| GrnIntegrationPort
     RequestContextPort["RequestContextPort"]
@@ -1464,7 +1469,7 @@ _Composition only._
 
 #### ProcurementModule — `src/business/procurement/procurement.module.ts`
 
-imports: ProductModule, PurchaseOrderModule, GoodReceiptNoteModule · exports: —
+imports: ProductModule, PurchaseOrderModule, GoodReceiptNoteModule, GoodsReturnModule · exports: —
 
 _Composition only._
 

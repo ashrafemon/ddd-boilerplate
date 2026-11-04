@@ -3,7 +3,6 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { CreateGrnRequest } from '../../domain/types/grn.types';
-import { GrnId } from '../../domain/value-objects/grn-id.vo';
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
@@ -33,7 +32,7 @@ export class CreateGrnUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: CreateGrnRequest, actorId?: string): Promise<GrnId> {
+  async execute(input: CreateGrnRequest, actorId?: string): Promise<string> {
     const company = await this.companyConfig.getCompanyConfig();
     const currency = input.currency ?? company.defaultCurrency;
 
@@ -90,6 +89,6 @@ export class CreateGrnUseCase {
       await this.integrationEvent.send(event, grn.id.toString());
     }
 
-    return grn.id;
+    return grn.id.toString();
   }
 }

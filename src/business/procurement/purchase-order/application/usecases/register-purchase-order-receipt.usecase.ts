@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
-import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { OpenQuantityService } from '../../domain/services/open-quantity.service';
 import { PurchaseOrderStatusService } from '../../domain/services/purchase-order-status.service';
@@ -22,7 +21,7 @@ export class RegisterPurchaseOrderReceiptUseCase {
 
   @Transactional()
   async execute(request: PurchaseOrderReceiptRequest): Promise<PurchaseOrderReceiptResult> {
-    const po = await this.repository.findById(PurchaseOrderId.fromString(request.purchaseOrderId));
+    const po = await this.repository.findById(request.purchaseOrderId);
     if (!po) {
       throw new NotFoundException('Purchase order not found');
     }

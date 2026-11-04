@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { GrnId } from '../../domain/value-objects/grn-id.vo';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
@@ -28,7 +27,7 @@ export class PostGrnUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: { id: string; actorId?: string; idempotencyKey?: string }): Promise<GrnId> {
+  async execute(input: { id: string; actorId?: string; idempotencyKey?: string }): Promise<string> {
     // Guarded by `IdempotencyPort` scope `grn.post` (plan §1.4/§3.5): posting is
     // the costly, side-effecting command — it registers the receipt on the PO,
     // moves stock and emits `GoodsReceiptPosted`. A redelivered request must
@@ -50,7 +49,7 @@ export class PostGrnUseCase {
     });
 
     if (reservation.status === 'REPLAY') {
-      return GrnId.fromString(String(reservation.result));
+      return String(reservation.result);
     }
     if (reservation.status === 'BUSY') {
       throw new ConflictException('A post with this idempotency key is already in progress');
@@ -72,7 +71,7 @@ export class PostGrnUseCase {
     }
   }
 
-  private async post(input: { id: string; actorId?: string }): Promise<GrnId> {
+  private async post(input: { id: string; actorId?: string }): Promise<string> {
     const tenantId = this.requestContext.getTenantId() ?? '';
     const companyId = this.requestContext.getCompanyId() ?? '';
     const actorId = input.actorId ?? this.requestContext.getUserId();
@@ -129,6 +128,6 @@ export class PostGrnUseCase {
 
     await this.readCache.invalidate(`grn:${grn.id.toString()}`);
 
-    return grn.id;
+    return grn.id.toString();
   }
 }

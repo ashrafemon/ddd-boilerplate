@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { ChangePriceRequest } from '../../domain/types/product.types';
-import { ProductId } from '../../domain/value-objects/product-id.vo';
 import { ProductCommandRepository } from '../../domain/repositories/product-command.repository';
 import { ProductIntegrationPort } from '../integrations/publishes/product.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
@@ -16,10 +15,10 @@ export class ChangePriceUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: ChangePriceRequest): Promise<ProductId> {
+  async execute(input: ChangePriceRequest): Promise<string> {
     const company = await this.companyConfig.getCompanyConfig();
 
-    const id = ProductId.fromString(input.id);
+    const id = input.id;
     const product = await this.productRepository.findById(id.toString());
     if (!product) {
       throw new NotFoundException('Product not found');
@@ -34,6 +33,6 @@ export class ChangePriceUseCase {
       await this.integrationEvent.send(event, product.id.toString());
     }
 
-    return product.id;
+    return product.id.toString();
   }
 }

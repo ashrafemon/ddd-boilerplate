@@ -3,7 +3,6 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { PurchaseOrder } from '../../domain/aggregates/purchase-order.aggregate';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
-import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { OrderableVendorPort } from '../outbound-ports/vendor-query.port';
@@ -33,7 +32,7 @@ export class ImportPurchaseOrderUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: ImportPurchaseOrderRequest): Promise<PurchaseOrderId> {
+  async execute(input: ImportPurchaseOrderRequest): Promise<string> {
     const purchaseOrder = await this.findOrCreate(input);
 
     let changed = false;
@@ -53,7 +52,7 @@ export class ImportPurchaseOrderUseCase {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());
     }
     await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
-    return purchaseOrder.id;
+    return purchaseOrder.id.toString();
   }
 
   private async findOrCreate(input: ImportPurchaseOrderRequest): Promise<PurchaseOrder> {

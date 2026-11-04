@@ -2,7 +2,6 @@ import { Injectable, ConflictException, NotFoundException } from '@nestjs/common
 import { Transactional } from '@nestjs-cls/transactional';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { AddLineRequest } from '../../domain/types/purchase-order.types';
-import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchasableProductPort } from '../outbound-ports/product-query.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
@@ -20,7 +19,7 @@ export class AddPurchaseOrderLineUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: AddLineRequest): Promise<PurchaseOrderId> {
+  async execute(input: AddLineRequest): Promise<string> {
     const company = await this.companyConfig.getCompanyConfig();
     const currency = input.currency ?? company.defaultCurrency;
 
@@ -29,7 +28,7 @@ export class AddPurchaseOrderLineUseCase {
       throw new ConflictException('Product is not purchasable');
     }
 
-    const id = PurchaseOrderId.fromString(input.id);
+    const id = input.id;
     const purchaseOrder = await this.purchaseOrderRepository.findById(id);
     if (!purchaseOrder) {
       throw new NotFoundException('Purchase order not found');
@@ -51,6 +50,6 @@ export class AddPurchaseOrderLineUseCase {
 
     await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
 
-    return purchaseOrder.id;
+    return purchaseOrder.id.toString();
   }
 }

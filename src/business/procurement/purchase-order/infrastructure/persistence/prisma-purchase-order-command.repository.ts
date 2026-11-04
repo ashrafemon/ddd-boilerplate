@@ -2,7 +2,6 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { PurchaseOrder } from '@business/procurement/purchase-order/domain/aggregates/purchase-order.aggregate';
-import { PurchaseOrderId } from '@business/procurement/purchase-order/domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderCommandRepository } from '@business/procurement/purchase-order/domain/repositories/purchase-order-command.repository';
 import { PrismaPurchaseOrderMapper } from './prisma-purchase-order.mapper';
 import { PageQuery } from '@shared-kernel/types/pagination';
@@ -78,7 +77,7 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
     return purchaseOrder;
   }
 
-  async findById(id: PurchaseOrderId): Promise<PurchaseOrder | null> {
+  async findById(id: string): Promise<PurchaseOrder | null> {
     const row = await this.txHost.tx.purchaseOrder.findFirst({
       where: { id: id.toString(), ...this.ownedScope() },
       include: { lines: true },

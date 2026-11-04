@@ -3,7 +3,6 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { CreatePurchaseOrderRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
-import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { OrderableVendorPort } from '../outbound-ports/vendor-query.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
@@ -22,7 +21,7 @@ export class CreatePurchaseOrderUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: CreatePurchaseOrderRequest): Promise<PurchaseOrderId> {
+  async execute(input: CreatePurchaseOrderRequest): Promise<string> {
     const company = await this.companyConfig.getCompanyConfig();
     const currency = input.currency ?? company.defaultCurrency;
 
@@ -51,6 +50,6 @@ export class CreatePurchaseOrderUseCase {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());
     }
 
-    return purchaseOrder.id;
+    return purchaseOrder.id.toString();
   }
 }

@@ -5,7 +5,6 @@ import { AuditPort } from '@platform/audit/ports/audit.port';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { AmendPurchaseOrderRequest } from '../../domain/types/purchase-order.types';
-import { PurchaseOrderId } from '../../domain/value-objects/purchase-order-id.vo';
 import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
@@ -21,11 +20,9 @@ export class AmendPurchaseOrderUseCase {
   ) {}
 
   @Transactional()
-  async execute(request: AmendPurchaseOrderRequest): Promise<PurchaseOrderId> {
+  async execute(request: AmendPurchaseOrderRequest): Promise<string> {
     const actorId = request.actorId ?? this.requestContext.getUserId();
-    const purchaseOrder = await this.purchaseOrderRepository.findById(
-      PurchaseOrderId.fromString(request.id),
-    );
+    const purchaseOrder = await this.purchaseOrderRepository.findById(request.id);
     if (!purchaseOrder) {
       throw new NotFoundException('Purchase order not found');
     }
@@ -68,6 +65,6 @@ export class AmendPurchaseOrderUseCase {
 
     await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
 
-    return purchaseOrder.id;
+    return purchaseOrder.id.toString();
   }
 }

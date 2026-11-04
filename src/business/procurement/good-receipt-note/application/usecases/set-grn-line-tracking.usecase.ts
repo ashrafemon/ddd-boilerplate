@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { SetGrnLineTrackingRequest } from '../../domain/types/grn.types';
-import { GrnId } from '../../domain/value-objects/grn-id.vo';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
@@ -15,8 +14,8 @@ export class SetGrnLineTrackingUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: SetGrnLineTrackingRequest): Promise<GrnId> {
-    const id = GrnId.fromString(input.id);
+  async execute(input: SetGrnLineTrackingRequest): Promise<string> {
+    const id = input.id;
     const grn = await this.grnRepository.findById(id.toString());
     if (!grn) {
       throw new NotFoundException('GRN not found');
@@ -31,6 +30,6 @@ export class SetGrnLineTrackingUseCase {
 
     await this.readCache.invalidate(`grn:${grn.id.toString()}`);
 
-    return grn.id;
+    return grn.id.toString();
   }
 }

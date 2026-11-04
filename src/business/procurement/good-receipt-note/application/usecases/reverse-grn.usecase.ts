@@ -7,7 +7,6 @@ import {
 import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
-import { GrnId } from '../../domain/value-objects/grn-id.vo';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
@@ -49,7 +48,7 @@ export class ReverseGrnUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: { id: string; actorId?: string; idempotencyKey?: string }): Promise<GrnId> {
+  async execute(input: { id: string; actorId?: string; idempotencyKey?: string }): Promise<string> {
     // Guarded by `IdempotencyPort` scope `grn.reverse`: a redelivered request
     // replays the original reversal id instead of compensating twice. The key
     // falls back to the GRN id (see `ReverseGrnDto`), so the command is
@@ -68,7 +67,7 @@ export class ReverseGrnUseCase {
     });
 
     if (reservation.status === 'REPLAY') {
-      return GrnId.fromString(String(reservation.result));
+      return String(reservation.result);
     }
     if (reservation.status === 'BUSY') {
       throw new ConflictException('A reversal with this idempotency key is already in progress');
@@ -90,7 +89,7 @@ export class ReverseGrnUseCase {
     }
   }
 
-  private async reverse(input: { id: string; actorId?: string }): Promise<GrnId> {
+  private async reverse(input: { id: string; actorId?: string }): Promise<string> {
     const tenantId = this.requestContext.getTenantId() ?? '';
     const companyId = this.requestContext.getCompanyId() ?? '';
     const actorId = input.actorId ?? this.requestContext.getUserId();
@@ -175,6 +174,6 @@ export class ReverseGrnUseCase {
       reversal.id.toString(),
     );
 
-    return reversal.id;
+    return reversal.id.toString();
   }
 }

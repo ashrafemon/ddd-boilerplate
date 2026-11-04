@@ -3,7 +3,6 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
 import { ReceiveGrnRequest } from '../../domain/types/grn.types';
-import { GrnId } from '../../domain/value-objects/grn-id.vo';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
@@ -19,9 +18,9 @@ export class ReceiveGrnUseCase {
   ) {}
 
   @Transactional()
-  async execute(input: ReceiveGrnRequest): Promise<GrnId> {
+  async execute(input: ReceiveGrnRequest): Promise<string> {
     const actorId = input.actorId ?? this.requestContext.getUserId();
-    const id = GrnId.fromString(input.id);
+    const id = input.id;
     const grn = await this.grnRepository.findById(id.toString());
     if (!grn) {
       throw new NotFoundException('GRN not found');
@@ -46,6 +45,6 @@ export class ReceiveGrnUseCase {
 
     await this.readCache.invalidate(`grn:${grn.id.toString()}`);
 
-    return grn.id;
+    return grn.id.toString();
   }
 }
