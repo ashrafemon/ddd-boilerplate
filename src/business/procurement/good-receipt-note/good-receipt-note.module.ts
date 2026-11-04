@@ -2,10 +2,6 @@ import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
 import { PurchaseOrderModule } from '@business/procurement/purchase-order/purchase-order.module';
 import { GrnForPurchaseOrderFacade } from './application/facades/grn-for-purchase-order.facade';
-import { GrnEventEmitterListener } from './application/integrations/listeners/grn.created.event-emitter.listener-event';
-import { GrnKafkaListener } from './application/integrations/listeners/grn.created.kafka.listener-event';
-import { GrnRabbitMQListener } from './application/integrations/listeners/grn.created.rabbitmq.listener-event';
-import { GrnSqsListener } from './application/integrations/listeners/grn.sqs.listener-event';
 import { GrnPublisherPort } from './application/integrations/publishes/grn.publisher-port';
 import { PurchaseOrderPort } from './application/outbound-ports/purchase-order-query.port';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
@@ -53,10 +49,6 @@ import { GrnNotificationAdapter } from './infrastructure/adapters/platform/grn-n
     PostGrnUseCase,
     ReverseGrnUseCase,
     RecordInspectionResultUseCase,
-    GrnEventEmitterListener,
-    GrnKafkaListener,
-    GrnRabbitMQListener,
-    GrnSqsListener,
     GrnForPurchaseOrderFacade,
     { provide: GrnForPurchaseOrderPort, useExisting: GrnForPurchaseOrderFacade },
     { provide: GrnCommandRepository, useClass: PrismaGrnCommandRepository },

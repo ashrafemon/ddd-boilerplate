@@ -1,10 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
 import { ProductForPurchaseFacade } from './application/facades/product-for-purchase.facade';
-import { ProductEventEmitterListener } from './application/integrations/listeners/product.created.event-emitter.listener-event';
-import { ProductKafkaListener } from './application/integrations/listeners/product.created.kafka.listener-event';
-import { ProductRabbitMQListener } from './application/integrations/listeners/product.created.rabbitmq.listener-event';
-import { ProductSqsListener } from './application/integrations/listeners/product.sqs.listener-event';
 import { ProductPublisherPort } from './application/integrations/publishes/product.publisher-port';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { ChangePriceUseCase } from './application/usecases/change-price.usecase';
@@ -44,10 +40,6 @@ import { ProductForPurchasePort } from '@business/procurement/product/public';
     GetPurchasableProductUseCase,
     FindPurchasableProductsBySkusUseCase,
     GetPurchasableProductsUseCase,
-    ProductRabbitMQListener,
-    ProductKafkaListener,
-    ProductSqsListener,
-    ProductEventEmitterListener,
     ProductForPurchaseFacade,
     { provide: ProductForPurchasePort, useExisting: ProductForPurchaseFacade },
     { provide: ProductCommandRepository, useClass: PrismaProductCommandRepository },

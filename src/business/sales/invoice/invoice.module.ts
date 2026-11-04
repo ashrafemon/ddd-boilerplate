@@ -2,11 +2,7 @@ import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
 import { InvoiceForReportsFacade } from './application/facades/invoice-for-reports.facade';
 import { InvoiceGenerationFacade } from './application/facades/invoice-generation.facade';
-import { InvoiceEventEmitterListener } from './application/integrations/listeners/invoice.created.event-emitter.listener-event';
-import { InvoiceKafkaListener } from './application/integrations/listeners/invoice.created.kafka.listener-event';
-import { InvoiceRabbitMQListener } from './application/integrations/listeners/invoice.created.rabbitmq.listener-event';
 import { RecurringOccurrenceRequestedRabbitMQListener } from './application/integrations/listeners/recurring-occurrence-requested.rabbitmq.listener-event';
-import { InvoiceSqsListener } from './application/integrations/listeners/invoice.sqs.listener-event';
 import { InvoicePublisherPort } from './application/integrations/publishes/invoice.publisher-port';
 import { InvoiceQuery } from './application/queries/invoice.query';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
@@ -42,10 +38,6 @@ import { InvoiceForReportsPort } from './public';
     GetInvoiceUseCase,
     ListInvoicesUseCase,
     GenerateRecurringInvoiceUseCase,
-    InvoiceEventEmitterListener,
-    InvoiceRabbitMQListener,
-    InvoiceKafkaListener,
-    InvoiceSqsListener,
     RecurringOccurrenceRequestedRabbitMQListener,
     InvoiceForReportsFacade,
     InvoiceGenerationFacade,

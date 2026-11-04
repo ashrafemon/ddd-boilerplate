@@ -24,11 +24,8 @@ import { ListPurchaseOrdersUseCase } from './application/usecases/list-purchase-
 import { CreateRecurringPurchaseOrderUseCase } from './application/usecases/create-recurring-purchase-order.usecase';
 import { CreateRecurringFromPurchaseOrderUseCase } from './application/usecases/create-recurring-from-purchase-order.usecase';
 import { GenerateRecurringPurchaseOrderUseCase } from './application/usecases/generate-recurring-purchase-order.usecase';
-import { PurchaseOrderEventEmitterListener } from './application/integrations/listeners/purchase-order.created.event-emitter.listener-event';
-import { PurchaseOrderKafkaListener } from './application/integrations/listeners/purchase-order.created.kafka.listener-event';
-import { PurchaseOrderRabbitMQListener } from './application/integrations/listeners/purchase-order.created.rabbitmq.listener-event';
-import { PurchaseOrderSqsListener } from './application/integrations/listeners/purchase-order.sqs.listener-event';
 import { RecurringOccurrenceRequestedRabbitMQListener } from './application/integrations/listeners/recurring-occurrence-requested.rabbitmq.listener-event';
+import { GoodsReceiptPostedListener } from './application/integrations/listeners/goods-receipt-posted.listener';
 import { PurchaseOrderCommandRepository } from './domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from './application/queries/purchase-order.query';
 import { PurchaseOrderPublisherPort } from './application/integrations/publishes/purchase-order.publisher-port';
@@ -79,11 +76,8 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     CreateRecurringPurchaseOrderUseCase,
     CreateRecurringFromPurchaseOrderUseCase,
     GenerateRecurringPurchaseOrderUseCase,
-    PurchaseOrderEventEmitterListener,
-    PurchaseOrderRabbitMQListener,
-    PurchaseOrderKafkaListener,
-    PurchaseOrderSqsListener,
     RecurringOccurrenceRequestedRabbitMQListener,
+    GoodsReceiptPostedListener,
     PurchaseOrderForGrnFacade,
     PurchaseOrderGenerationFacade,
     { provide: PurchaseOrderForGrnPort, useExisting: PurchaseOrderForGrnFacade },

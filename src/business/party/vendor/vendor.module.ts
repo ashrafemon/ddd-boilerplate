@@ -2,10 +2,6 @@ import { Module } from '@nestjs/common';
 import { VendorImportHandler } from './infrastructure/adapters/platform/vendor-import.adapter';
 import { PlatformModule } from '@platform/platform.module';
 import { VendorForPurchaseFacade } from './application/facades/vendor-for-purchase.facade';
-import { VendorEventEmitterListener } from './application/integrations/listeners/vendor.created.event-emitter.listener-event';
-import { VendorKafkaListener } from './application/integrations/listeners/vendor.created.kafka.listener-event';
-import { VendorRabbitMQListener } from './application/integrations/listeners/vendor.created.rabbitmq.listener-event';
-import { VendorSqsListener } from './application/integrations/listeners/vendor.sqs.listener-event';
 import { VendorPublisherPort } from './application/integrations/publishes/vendor.publisher-port';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { CreateVendorUseCase } from './application/usecases/create-vendor.usecase';
@@ -41,10 +37,6 @@ import { VendorForPurchasePort } from '@business/party/vendor/public';
     ListVendorsUseCase,
     GetOrderableVendorUseCase,
     FindOrderableVendorsByCodesUseCase,
-    VendorEventEmitterListener,
-    VendorRabbitMQListener,
-    VendorKafkaListener,
-    VendorSqsListener,
     VendorForPurchaseFacade,
     { provide: VendorForPurchasePort, useExisting: VendorForPurchaseFacade },
     { provide: VendorCommandRepository, useClass: PrismaVendorCommandRepository },
