@@ -6,7 +6,7 @@ import { VendorEventEmitterListener } from './application/integrations/listeners
 import { VendorKafkaListener } from './application/integrations/listeners/vendor.created.kafka.listener-event';
 import { VendorRabbitMQListener } from './application/integrations/listeners/vendor.created.rabbitmq.listener-event';
 import { VendorSqsListener } from './application/integrations/listeners/vendor.sqs.listener-event';
-import { VendorIntegrationPort } from './application/integrations/publishes/vendor.integration-port';
+import { VendorPublisherPort } from './application/integrations/publishes/vendor.publisher-port';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { CreateVendorUseCase } from './application/usecases/create-vendor.usecase';
 import { GetOrderableVendorUseCase } from './application/usecases/get-orderable-vendor.usecase';
@@ -49,7 +49,7 @@ import { VendorForPurchasePort } from '@business/party/vendor/public';
     { provide: VendorForPurchasePort, useExisting: VendorForPurchaseFacade },
     { provide: VendorCommandRepository, useClass: PrismaVendorCommandRepository },
     { provide: VendorQuery, useClass: PrismaVendorQueryRepository },
-    { provide: VendorIntegrationPort, useClass: OutboxAdapter },
+    { provide: VendorPublisherPort, useClass: OutboxAdapter },
     { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
   ],
   exports: [VendorForPurchasePort],

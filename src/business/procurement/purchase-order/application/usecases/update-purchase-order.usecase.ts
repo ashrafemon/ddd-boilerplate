@@ -2,7 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Transactional } from '@nestjs-cls/transactional';
 import { UpdatePurchaseOrderHeaderRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
-import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
+import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 /**
@@ -16,7 +16,7 @@ import { ReadCachePort } from '../outbound-ports/read-cache.port';
 export class UpdatePurchaseOrderUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
-    private readonly integrationEvent: PurchaseOrderIntegrationPort,
+    private readonly integrationEvent: PurchaseOrderPublisherPort,
     private readonly readCache: ReadCachePort,
   ) {}
 

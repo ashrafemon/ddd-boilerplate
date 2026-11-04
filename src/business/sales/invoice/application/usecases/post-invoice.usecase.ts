@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { InvoiceCommandRepository } from '../../domain/repositories/invoice-command.repository';
-import { InvoiceIntegrationPort } from '../integrations/publishes/invoice.integration-port';
+import { InvoicePublisherPort } from '../integrations/publishes/invoice.publisher-port';
 
 @Injectable()
 export class PostInvoiceUseCase {
   constructor(
     private readonly invoiceRepository: InvoiceCommandRepository,
-    private readonly integrationEvent: InvoiceIntegrationPort,
+    private readonly integrationEvent: InvoicePublisherPort,
   ) {}
 
   @Transactional()

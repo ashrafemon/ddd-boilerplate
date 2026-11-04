@@ -3,14 +3,14 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
-import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
+import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class ClosePurchaseOrderUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
-    private readonly integrationEvent: PurchaseOrderIntegrationPort,
+    private readonly integrationEvent: PurchaseOrderPublisherPort,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
     private readonly readCache: ReadCachePort,

@@ -5,7 +5,7 @@ import { ProductEventEmitterListener } from './application/integrations/listener
 import { ProductKafkaListener } from './application/integrations/listeners/product.created.kafka.listener-event';
 import { ProductRabbitMQListener } from './application/integrations/listeners/product.created.rabbitmq.listener-event';
 import { ProductSqsListener } from './application/integrations/listeners/product.sqs.listener-event';
-import { ProductIntegrationPort } from './application/integrations/publishes/product.integration-port';
+import { ProductPublisherPort } from './application/integrations/publishes/product.publisher-port';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { ChangePriceUseCase } from './application/usecases/change-price.usecase';
 import { CreateProductUseCase } from './application/usecases/create-product.usecase';
@@ -52,7 +52,7 @@ import { ProductForPurchasePort } from '@business/procurement/product/public';
     { provide: ProductForPurchasePort, useExisting: ProductForPurchaseFacade },
     { provide: ProductCommandRepository, useClass: PrismaProductCommandRepository },
     { provide: ProductQuery, useClass: PrismaProductQueryRepository },
-    { provide: ProductIntegrationPort, useClass: OutboxAdapter },
+    { provide: ProductPublisherPort, useClass: OutboxAdapter },
     { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
   ],
   exports: [ProductForPurchasePort],

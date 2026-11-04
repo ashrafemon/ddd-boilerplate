@@ -3,7 +3,7 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { InvoiceCommandRepository } from '../../domain/repositories/invoice-command.repository';
 import { InvoiceFactory } from '../../domain/factories/invoice.factory';
 import { CreateInvoiceRequest } from '../../domain/types/invoice.types';
-import { InvoiceIntegrationPort } from '../integrations/publishes/invoice.integration-port';
+import { InvoicePublisherPort } from '../integrations/publishes/invoice.publisher-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 
@@ -13,7 +13,7 @@ const INVOICE_SEQUENCE = 'invoice';
 export class CreateInvoiceUseCase {
   constructor(
     private readonly invoiceRepository: InvoiceCommandRepository,
-    private readonly integrationEvent: InvoiceIntegrationPort,
+    private readonly integrationEvent: InvoicePublisherPort,
     private readonly companyConfig: CompanyConfigPort,
     private readonly numbering: NumberingPort,
   ) {}

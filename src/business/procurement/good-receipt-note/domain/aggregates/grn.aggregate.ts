@@ -4,6 +4,7 @@ import { GrnId } from '../value-objects/grn-id.vo';
 import { GrnLine, GrnProps, GrnStatus, TrackingEntry } from '../types/grn.types';
 import { GrnTotalsService } from '../services/grn-totals.service';
 import { GrnCompleted } from '../events/grn.completed.event';
+import { GoodsReceiptPosted } from '../events/grn.posted.event';
 import { GrnLineAdded } from '../events/grn.line-added.event';
 import { GrnReceived } from '../events/grn.received.event';
 import { GrnCancelled } from '../events/grn.cancelled.event';
@@ -134,6 +135,18 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
     this.props.postedBy = actorId ?? null;
     this.props.updatedAt = new Date();
     this.addEvent(new GrnCompleted(this.id));
+    this.addEvent(
+      new GoodsReceiptPosted(
+        this.id.toString(),
+        this.props.purchaseOrderId,
+        this.props.lines.map(l => ({
+          grnLineId: `${this.id.toString()}:${l.productId}`,
+          productId: l.productId,
+          acceptedQuantity: l.acceptedQuantity > 0 ? l.acceptedQuantity : l.receivedQuantity,
+          unitPrice: l.unitPrice,
+        })),
+      ),
+    );
   }
 
   cancel(actorId?: string): void {

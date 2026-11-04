@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { RecordInspectionResultRequest } from '../../domain/types/grn.types';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
-import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
+import { GrnPublisherPort } from '../integrations/publishes/grn.publisher-port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 /**
@@ -18,7 +18,7 @@ import { ReadCachePort } from '../outbound-ports/read-cache.port';
 export class RecordInspectionResultUseCase {
   constructor(
     private readonly grnRepository: GrnCommandRepository,
-    private readonly integrationEvent: GrnIntegrationPort,
+    private readonly integrationEvent: GrnPublisherPort,
     private readonly readCache: ReadCachePort,
   ) {}
 

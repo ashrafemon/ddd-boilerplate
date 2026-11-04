@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { InvoiceIntegrationPort } from '@business/sales/invoice/application/integrations/publishes/invoice.integration-port';
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { InvoicePublisherPort } from '@business/sales/invoice/application/integrations/publishes/invoice.publisher-port';
+import { OutboxEvent } from '@platform/outbox/outbox.types';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 
 @Injectable()
-export class OutboxAdapter implements InvoiceIntegrationPort {
+export class OutboxAdapter implements InvoicePublisherPort {
   constructor(private readonly outboxWriter: OutboxWriterPort) {}
 
-  async send(event: DomainEvent, invoiceId: string): Promise<void> {
+  async send(event: OutboxEvent, invoiceId: string): Promise<void> {
     await this.outboxWriter.append(event, 'Invoice', invoiceId);
   }
 }

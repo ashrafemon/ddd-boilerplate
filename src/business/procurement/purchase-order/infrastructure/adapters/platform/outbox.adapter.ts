@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { PurchaseOrderIntegrationPort } from '@business/procurement/purchase-order/application/integrations/publishes/purchase-order.integration-port';
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { PurchaseOrderPublisherPort } from '@business/procurement/purchase-order/application/integrations/publishes/purchase-order.publisher-port';
+import { OutboxEvent } from '@platform/outbox/outbox.types';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 
 @Injectable()
-export class OutboxAdapter implements PurchaseOrderIntegrationPort {
+export class OutboxAdapter implements PurchaseOrderPublisherPort {
   constructor(private readonly outboxWriter: OutboxWriterPort) {}
 
-  async send(event: DomainEvent, purchaseOrderId: string): Promise<void> {
+  async send(event: OutboxEvent, purchaseOrderId: string): Promise<void> {
     await this.outboxWriter.append(event, 'PurchaseOrder', purchaseOrderId);
   }
 }

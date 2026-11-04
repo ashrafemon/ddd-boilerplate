@@ -31,7 +31,7 @@ import { PurchaseOrderSqsListener } from './application/integrations/listeners/p
 import { RecurringOccurrenceRequestedRabbitMQListener } from './application/integrations/listeners/recurring-occurrence-requested.rabbitmq.listener-event';
 import { PurchaseOrderCommandRepository } from './domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from './application/queries/purchase-order.query';
-import { PurchaseOrderIntegrationPort } from './application/integrations/publishes/purchase-order.integration-port';
+import { PurchaseOrderPublisherPort } from './application/integrations/publishes/purchase-order.publisher-port';
 import { PurchasableProductPort } from './application/outbound-ports/product-query.port';
 import { OrderableVendorPort } from './application/outbound-ports/vendor-query.port';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
@@ -89,7 +89,7 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     { provide: PurchaseOrderForGrnPort, useExisting: PurchaseOrderForGrnFacade },
     { provide: PurchaseOrderCommandRepository, useClass: PrismaPurchaseOrderCommandRepository },
     { provide: PurchaseOrderQuery, useClass: PrismaPurchaseOrderQueryRepository },
-    { provide: PurchaseOrderIntegrationPort, useClass: OutboxAdapter },
+    { provide: PurchaseOrderPublisherPort, useClass: OutboxAdapter },
     { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
     { provide: NumberingPort, useClass: NumberingAdapter },
     { provide: ReadCachePort, useClass: ReadCacheAdapter },

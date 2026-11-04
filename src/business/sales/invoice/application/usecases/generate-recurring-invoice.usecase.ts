@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { RecurringOccurrenceRequestedPayload } from '../integrations/publishes/recurring-occurrence.types';
+import { RecurringOccurrenceRequestedPayload } from '../types/recurring-occurrence.types';
 import { InvoiceGenerationFacade } from '../facades/invoice-generation.facade';
 
 @Injectable()

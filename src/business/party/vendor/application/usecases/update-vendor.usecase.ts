@@ -2,14 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { UpdateVendorRequest } from '../../domain/types/vendor.types';
 import { VendorCommandRepository } from '../../domain/repositories/vendor-command.repository';
-import { VendorIntegrationPort } from '../integrations/publishes/vendor.integration-port';
+import { VendorPublisherPort } from '../integrations/publishes/vendor.publisher-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class UpdateVendorUseCase {
   constructor(
     private readonly vendorRepository: VendorCommandRepository,
-    private readonly integrationEvent: VendorIntegrationPort,
+    private readonly integrationEvent: VendorPublisherPort,
     private readonly companyConfig: CompanyConfigPort,
   ) {}
 

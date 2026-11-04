@@ -7,7 +7,7 @@ import { InvoiceKafkaListener } from './application/integrations/listeners/invoi
 import { InvoiceRabbitMQListener } from './application/integrations/listeners/invoice.created.rabbitmq.listener-event';
 import { RecurringOccurrenceRequestedRabbitMQListener } from './application/integrations/listeners/recurring-occurrence-requested.rabbitmq.listener-event';
 import { InvoiceSqsListener } from './application/integrations/listeners/invoice.sqs.listener-event';
-import { InvoiceIntegrationPort } from './application/integrations/publishes/invoice.integration-port';
+import { InvoicePublisherPort } from './application/integrations/publishes/invoice.publisher-port';
 import { InvoiceQuery } from './application/queries/invoice.query';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { NumberingPort } from './application/outbound-ports/numbering.port';
@@ -52,7 +52,7 @@ import { InvoiceForReportsPort } from './public';
     { provide: InvoiceForReportsPort, useExisting: InvoiceForReportsFacade },
     { provide: InvoiceCommandRepository, useClass: PrismaInvoiceCommandRepository },
     { provide: InvoiceQuery, useClass: PrismaInvoiceQueryRepository },
-    { provide: InvoiceIntegrationPort, useClass: OutboxAdapter },
+    { provide: InvoicePublisherPort, useClass: OutboxAdapter },
     { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
     { provide: NumberingPort, useClass: NumberingAdapter },
   ],

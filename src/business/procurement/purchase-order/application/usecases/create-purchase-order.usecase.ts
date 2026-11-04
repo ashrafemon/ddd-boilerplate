@@ -5,7 +5,7 @@ import { CreatePurchaseOrderRequest } from '../../domain/types/purchase-order.ty
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { OrderableVendorPort } from '../outbound-ports/vendor-query.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
-import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
+import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 
@@ -14,7 +14,7 @@ export class CreatePurchaseOrderUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
     private readonly vendorQueryPort: OrderableVendorPort,
-    private readonly integrationEvent: PurchaseOrderIntegrationPort,
+    private readonly integrationEvent: PurchaseOrderPublisherPort,
     private readonly companyConfig: CompanyConfigPort,
     private readonly numbering: NumberingPort,
     private readonly requestContext: RequestContextPort,

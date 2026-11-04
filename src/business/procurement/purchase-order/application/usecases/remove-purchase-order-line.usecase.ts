@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { RemoveLineRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
-import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
+import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
@@ -10,7 +10,7 @@ import { ReadCachePort } from '../outbound-ports/read-cache.port';
 export class RemovePurchaseOrderLineUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
-    private readonly integrationEvent: PurchaseOrderIntegrationPort,
+    private readonly integrationEvent: PurchaseOrderPublisherPort,
     private readonly companyConfig: CompanyConfigPort,
     private readonly readCache: ReadCachePort,
   ) {}

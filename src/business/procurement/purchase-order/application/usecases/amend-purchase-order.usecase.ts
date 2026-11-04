@@ -5,7 +5,7 @@ import { AuditPort } from '@platform/audit/ports/audit.port';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { AmendPurchaseOrderRequest } from '../../domain/types/purchase-order.types';
-import { PurchaseOrderIntegrationPort } from '../integrations/publishes/purchase-order.integration-port';
+import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 // Controlled amendment of an issued PO (spec §4, PO-06).
@@ -13,7 +13,7 @@ import { ReadCachePort } from '../outbound-ports/read-cache.port';
 export class AmendPurchaseOrderUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
-    private readonly integrationEvent: PurchaseOrderIntegrationPort,
+    private readonly integrationEvent: PurchaseOrderPublisherPort,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
     private readonly readCache: ReadCachePort,

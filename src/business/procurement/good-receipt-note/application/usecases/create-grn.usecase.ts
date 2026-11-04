@@ -3,7 +3,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { CreateGrnRequest } from '../../domain/types/grn.types';
-import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
+import { GrnPublisherPort } from '../integrations/publishes/grn.publisher-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
@@ -26,7 +26,7 @@ export class CreateGrnUseCase {
   constructor(
     private readonly grnRepository: GrnCommandRepository,
     private readonly purchaseOrderQueryPort: PurchaseOrderPort,
-    private readonly integrationEvent: GrnIntegrationPort,
+    private readonly integrationEvent: GrnPublisherPort,
     private readonly companyConfig: CompanyConfigPort,
     private readonly numbering: NumberingPort,
   ) {}

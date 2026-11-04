@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
-import { GoodsReceiptPostedConsumer } from './application/integrations/listeners/goods-receipt-posted.consumer';
-import { GoodsReceiptReversedConsumer } from './application/integrations/listeners/goods-receipt-reversed.consumer';
+import { GoodsReceiptPostedConsumer } from './application/integrations/listeners/goods-receipt-posted.listen';
+import { GoodsReceiptReversedConsumer } from './application/integrations/listeners/goods-receipt-reversed.listen';
 import { StockQueryFacade } from './application/facades/stock-query.facade';
 import { RecordStockMovementUseCase } from './application/usecases/record-stock-movement.usecase';
 import { RecordStockMovementReversalUseCase } from './application/usecases/record-stock-movement-reversal.usecase';

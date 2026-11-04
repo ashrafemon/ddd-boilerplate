@@ -4,14 +4,14 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { ProductCommandRepository } from '../../domain/repositories/product-command.repository';
 import { ProductFactory } from '../../domain/factories/product.factory';
 import { CreateProductRequest } from '../../domain/types/product.types';
-import { ProductIntegrationPort } from '../integrations/publishes/product.integration-port';
+import { ProductPublisherPort } from '../integrations/publishes/product.publisher-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class CreateProductUseCase {
   constructor(
     private readonly productRepository: ProductCommandRepository,
-    private readonly integrationEvent: ProductIntegrationPort,
+    private readonly integrationEvent: ProductPublisherPort,
     private readonly companyConfig: CompanyConfigPort,
   ) {}
 

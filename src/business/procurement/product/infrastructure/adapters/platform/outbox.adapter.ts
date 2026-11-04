@@ -1,13 +1,13 @@
-import { ProductIntegrationPort } from '@business/procurement/product/application/integrations/publishes/product.integration-port';
-import { DomainEvent } from '@business/shared-business/domain/bases/event.base';
+import { ProductPublisherPort } from '@business/procurement/product/application/integrations/publishes/product.publisher-port';
+import { OutboxEvent } from '@platform/outbox/outbox.types';
 import { Injectable } from '@nestjs/common';
 import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
 
 @Injectable()
-export class OutboxAdapter implements ProductIntegrationPort {
+export class OutboxAdapter implements ProductPublisherPort {
   constructor(private readonly outboxWriter: OutboxWriterPort) {}
 
-  async send(event: DomainEvent, productId: string): Promise<void> {
+  async send(event: OutboxEvent, productId: string): Promise<void> {
     await this.outboxWriter.append(event, 'Product', productId);
   }
 }

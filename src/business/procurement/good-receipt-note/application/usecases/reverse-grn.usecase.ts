@@ -8,7 +8,7 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/context/ports/request-context.port';
 import { AuditPort } from '@platform/audit/ports/audit.port';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
-import { GrnIntegrationPort } from '../integrations/publishes/grn.integration-port';
+import { GrnPublisherPort } from '../integrations/publishes/grn.publisher-port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 import { GrnFactory } from '../../domain/factories/grn.factory';
@@ -39,7 +39,7 @@ export class ReverseGrnUseCase {
   constructor(
     private readonly grnRepository: GrnCommandRepository,
     private readonly purchaseOrderPort: PurchaseOrderPort,
-    private readonly integrationEvent: GrnIntegrationPort,
+    private readonly integrationEvent: GrnPublisherPort,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
     private readonly numbering: NumberingPort,
@@ -77,103 +77,95 @@ export class ReverseGrnUseCase {
     }
 
     try {
-      const id = await this.reverse(input);
+      const actorId = input.actorId ?? this.requestContext.getUserId();
+
+      const original = await this.grnRepository.findById(input.id);
+      if (!original) {
+        throw new NotFoundException('GRN not found');
+      }
+
+      if (String(original.status) !== 'COMPLETED') {
+        throw new ConflictException(
+          `Only a posted GRN can be reversed (status: ${original.status})`,
+        );
+      }
+
+      const alreadyReversed = await this.grnRepository.findByReversalOfId(original.id.toString());
+      if (alreadyReversed) {
+        throw new ConflictException('GRN has already been reversed');
+      }
+
+      const reversalLines = original.lines.map(line => {
+        const eligible = postedQuantity(line);
+        return {
+          productId: line.productId,
+          orderedQuantity: line.orderedQuantity,
+          receivedQuantity: -eligible,
+          acceptedQuantity: -eligible,
+          rejectedQuantity: 0,
+          unitPrice: line.unitPrice,
+        };
+      });
+
+      const grnNumber = await this.numbering.nextNumber('grn.number', {
+        prefix: 'GRN-',
+        padding: 8,
+      });
+
+      const reversal = GrnFactory.createReversal({
+        grnNumber,
+        reversalOfId: original.id.toString(),
+        purchaseOrderId: original.purchaseOrderId,
+        vendorId: original.vendorId,
+        currency: original.currency,
+        actorId,
+        lines: reversalLines,
+      });
+
+      await this.purchaseOrderPort.registerReceipt({
+        purchaseOrderId: original.purchaseOrderId,
+        lines: reversalLines.map(l => ({
+          productId: l.productId,
+          receivedQuantity: l.receivedQuantity,
+        })),
+      });
+
+      await this.grnRepository.save(reversal);
+      await this.readCache.invalidate(`grn:${original.id.toString()}`);
+
+      await this.audit.record({
+        action: 'grn.reverse',
+        entityType: 'GoodReceiptNote',
+        entityId: original.id.toString(),
+        actorId,
+        tenantId,
+        companyId,
+        changes: { reversalId: reversal.id.toString(), status: original.status },
+      });
+
+      await this.integrationEvent.send(
+        new GoodsReceiptReversed(
+          reversal.id.toString(),
+          original.id.toString(),
+          original.purchaseOrderId,
+          reversalLines.map(l => ({
+            grnLineId: `${reversal.id.toString()}:${l.productId}`,
+            productId: l.productId,
+            acceptedQuantity: l.acceptedQuantity,
+            unitPrice: l.unitPrice,
+          })),
+        ),
+        reversal.id.toString(),
+      );
+
       await this.idempotency.complete({
         reservation: reservation.reservation,
-        result: id.toString(),
+        result: reversal.id.toString(),
       });
-      return id;
+      return reversal.id.toString();
     } catch (error) {
       await this.idempotency.fail({ reservation: reservation.reservation });
       throw error;
     }
-  }
-
-  private async reverse(input: { id: string; actorId?: string }): Promise<string> {
-    const tenantId = this.requestContext.getTenantId() ?? '';
-    const companyId = this.requestContext.getCompanyId() ?? '';
-    const actorId = input.actorId ?? this.requestContext.getUserId();
-
-    const original = await this.grnRepository.findById(input.id);
-    if (!original) {
-      throw new NotFoundException('GRN not found');
-    }
-
-    if (String(original.status) !== 'COMPLETED') {
-      throw new ConflictException(`Only a posted GRN can be reversed (status: ${original.status})`);
-    }
-
-    const alreadyReversed = await this.grnRepository.findByReversalOfId(original.id.toString());
-    if (alreadyReversed) {
-      throw new ConflictException('GRN has already been reversed');
-    }
-
-    const reversalLines = original.lines.map(line => {
-      const eligible = postedQuantity(line);
-      return {
-        productId: line.productId,
-        orderedQuantity: line.orderedQuantity,
-        receivedQuantity: -eligible,
-        acceptedQuantity: -eligible,
-        rejectedQuantity: 0,
-        unitPrice: line.unitPrice,
-      };
-    });
-
-    const grnNumber = await this.numbering.nextNumber('grn.number', {
-      prefix: 'GRN-',
-      padding: 8,
-    });
-
-    const reversal = GrnFactory.createReversal({
-      grnNumber,
-      reversalOfId: original.id.toString(),
-      purchaseOrderId: original.purchaseOrderId,
-      vendorId: original.vendorId,
-      currency: original.currency,
-      actorId,
-      lines: reversalLines,
-    });
-
-    // PO receiving balance returns (mirror of what `post` registered).
-    await this.purchaseOrderPort.registerReceipt({
-      purchaseOrderId: original.purchaseOrderId,
-      lines: reversalLines.map(l => ({
-        productId: l.productId,
-        receivedQuantity: l.receivedQuantity,
-      })),
-    });
-
-    await this.grnRepository.save(reversal);
-    // The ORIGINAL's read model changed (it is now reversed); the new
-    // reversal document has never been cached.
-    await this.readCache.invalidate(`grn:${original.id.toString()}`);
-
-    await this.audit.record({
-      action: 'grn.reverse',
-      entityType: 'GoodReceiptNote',
-      entityId: original.id.toString(),
-      actorId,
-      tenantId,
-      companyId,
-      changes: { reversalId: reversal.id.toString(), status: original.status },
-    });
-
-    await this.integrationEvent.send(
-      new GoodsReceiptReversed(
-        reversal.id.toString(),
-        original.id.toString(),
-        original.purchaseOrderId,
-        reversalLines.map(l => ({
-          grnLineId: `${reversal.id.toString()}:${l.productId}`,
-          productId: l.productId,
-          acceptedQuantity: l.acceptedQuantity,
-          unitPrice: l.unitPrice,
-        })),
-      ),
-      reversal.id.toString(),
-    );
-
-    return reversal.id.toString();
   }
 }
