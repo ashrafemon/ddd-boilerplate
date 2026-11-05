@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { ChangePriceRequest } from '../../domain/types/product.types';
+import { ProductPricingService } from '../../domain/services/product-pricing.service';
 import { ProductCommandRepository } from '../../domain/repositories/product-command.repository';
 import { ProductPublisherPort } from '../integrations/publishes/product.publisher-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
@@ -25,7 +25,7 @@ export class ChangePriceUseCase {
     }
 
     product.changePrice(
-      Money.fromDecimal(input.unitPrice, input.currency ?? company.defaultCurrency),
+      ProductPricingService.toMoney(input.unitPrice, input.currency ?? company.defaultCurrency),
     );
     await this.productRepository.update(product);
 

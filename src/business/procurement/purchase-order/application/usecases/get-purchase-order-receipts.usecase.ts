@@ -21,11 +21,9 @@ export class GetPurchaseOrderReceiptsUseCase {
       throw new NotFoundException('Purchase order not found');
     }
 
-    const receiptStatus = PurchaseOrderReceiptService.deriveStatus(receipts.lines);
-
     return {
       purchaseOrderId: receipts.purchaseOrderId,
-      receiptStatus,
+      receiptStatus: PurchaseOrderReceiptService.deriveStatus(receipts.lines),
       lines: receipts.lines,
     };
   }

@@ -1,9 +1,9 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { UpdatePurchaseOrderLineRequest } from '../../domain/types/purchase-order.types';
 import { PurchasableProductPort } from '../outbound-ports/product-query.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
+import { PurchaseOrderPricingService } from '../../domain/services/purchase-order-pricing.service';
 import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
@@ -46,7 +46,7 @@ export class UpdatePurchaseOrderLineUseCase {
     const changed = purchaseOrder.setLine(
       input.productId,
       input.quantity,
-      Money.fromDecimal(input.unitPrice, currency),
+      PurchaseOrderPricingService.toMoney(input.unitPrice, currency),
       product.name,
     );
     if (!changed) {

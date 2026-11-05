@@ -105,7 +105,7 @@ export class InvoiceGenerationFacade {
     if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
       throw new ConflictException(`Recurring Invoice lines[${index}] must be an object`);
     }
-    return raw as Record<string, JsonValue>;
+    return raw;
   }
 
   private stringField(line: Record<string, JsonValue>, key: string, index: number): string {

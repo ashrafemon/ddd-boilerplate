@@ -94,7 +94,9 @@ export class PurchaseOrderGenerationFacade {
     }
   }
 
-  private asPurchaseOrderLines(lines: unknown[]): Omit<import('../../domain/types/purchase-order.types').AddLineInput, 'id'>[] {
+  private asPurchaseOrderLines(
+    lines: unknown[],
+  ): Omit<import('../../domain/types/purchase-order.types').AddLineInput, 'id'>[] {
     if (!Array.isArray(lines) || lines.length === 0) {
       throw new ConflictException('Recurring PurchaseOrder template must have at least one line');
     }

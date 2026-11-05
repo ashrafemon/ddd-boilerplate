@@ -1,8 +1,8 @@
-import { Money } from '@business/shared-business/domain/common/value-objects/money';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { ProductCommandRepository } from '../../domain/repositories/product-command.repository';
 import { ProductFactory } from '../../domain/factories/product.factory';
+import { ProductPricingService } from '../../domain/services/product-pricing.service';
 import { CreateProductRequest } from '../../domain/types/product.types';
 import { ProductPublisherPort } from '../integrations/publishes/product.publisher-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
@@ -24,7 +24,7 @@ export class CreateProductUseCase {
       sku: input.sku,
       name: input.name,
       description: input.description,
-      unitPrice: Money.fromDecimal(input.unitPrice, currency),
+      unitPrice: ProductPricingService.toMoney(input.unitPrice, currency),
       currency,
     });
 
