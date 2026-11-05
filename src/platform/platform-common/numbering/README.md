@@ -15,7 +15,7 @@ zero-pads, default 0. First value = 1.
 ## Public API
 
 ```ts
-import { NumberingPort } from '@platform/numbering/ports/numbering.port';
+import { NumberingPort } from '@platform/platform-common/numbering/ports/numbering.port';
 const docNo = await this.numbering.nextNumber('purchase-order', { prefix: 'PO-', padding: 6 });
 ```
 

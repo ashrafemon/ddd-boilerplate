@@ -1,6 +1,6 @@
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRecord } from '../batch-operation.types';
 

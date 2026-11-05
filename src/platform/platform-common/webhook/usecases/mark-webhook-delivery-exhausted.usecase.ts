@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
 import { WebhookDeliveryExhaustedEvent } from '../events/webhook-delivery-exhausted.event';
 import { WebhookDeliveryRepositoryPort } from '../ports/webhook-delivery-repository.port';
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaReadPort } from '@platform/context/ports/prisma-read.port';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { StockQuery } from '../../application/queries/stock.query';
+import { PrismaReadPort } from '@platform/platform-common/context/ports/prisma-read.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { StockQuery } from '../../../application/queries/stock.query';
 
 /**
  * Prisma implementation of the stock-movement query port.

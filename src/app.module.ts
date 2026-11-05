@@ -13,7 +13,7 @@ import { RequestIdInterceptor } from './shared-kernel/interceptors/request-id.in
 import { ResponseInterceptor } from './shared-kernel/interceptors/response.interceptor';
 import { HttpThrottlerGuard } from './shared-kernel/guards/http-throttler.guard';
 import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
-import { TenancyAuthGuard } from '@platform/context/guards/tenancy-auth.guard';
+import { TenancyAuthGuard } from '@platform/platform-common/context/guards/tenancy-auth.guard';
 
 @Module({
   imports: [

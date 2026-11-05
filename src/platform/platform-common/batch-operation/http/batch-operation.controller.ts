@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
+import { Idempotent } from '@platform/platform-common/idempotency/http/idempotent.decorator';
 import type { FastifyReply } from 'fastify';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 import { normalizePageQuery } from '@shared-kernel/types/pagination';

@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 import { numericEnv } from './env.util';
-import { ISagaConfig } from '@platform/saga/saga.types';
+import { ISagaConfig } from '@platform/platform-organization/saga/saga.types';
 
 /**
  * Saga process orchestration configuration (design 08).

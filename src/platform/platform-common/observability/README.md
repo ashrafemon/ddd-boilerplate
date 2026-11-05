@@ -17,9 +17,9 @@
 
 ## Public API
 ```ts
-import { LoggerPort } from '@platform/observability/ports/logger.port';
-import { MetricsPort } from '@platform/observability/ports/metrics.port';
-import { ErrorTrackingPort } from '@platform/observability/ports/error-tracking.port';
+import { LoggerPort } from '@platform/platform-common/observability/ports/logger.port';
+import { MetricsPort } from '@platform/platform-common/observability/ports/metrics.port';
+import { ErrorTrackingPort } from '@platform/platform-common/observability/ports/error-tracking.port';
 ```
 
 ## Layout / bindings / config

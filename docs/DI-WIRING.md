@@ -24,17 +24,17 @@ flowchart LR
     StockMovementModule["StockMovementModule"]
     InboxModule["InboxModule"]
     StockMovementModule -->|InboxPort| InboxModule
-    ContextModule__src_platform_context_["ContextModule (src/platform/context)"]
-    ContextModule__src_platform_context__2["ContextModule__src_platform_context_"]
-    StockMovementModule -->|PrismaReadPort, RequestContextPort| ContextModule__src_platform_context__2
+    ContextModule__src_platform_platform_common_context_["ContextModule (src/platform/platform-common/context)"]
+    ContextModule__src_platform_platform_common_context__2["ContextModule__src_platform_platform_common_context_"]
+    StockMovementModule -->|PrismaReadPort, RequestContextPort| ContextModule__src_platform_platform_common_context__2
     VendorModule["VendorModule"]
-    VendorModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
+    VendorModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     OutboxModule["OutboxModule"]
     VendorModule -->|OutboxWriterPort| OutboxModule
     ConfigurationModule["ConfigurationModule"]
     VendorModule -->|CompanyConfigPort| ConfigurationModule
     GoodReceiptNoteModule["GoodReceiptNoteModule"]
-    GoodReceiptNoteModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
+    GoodReceiptNoteModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     AuditModule["AuditModule"]
     GoodReceiptNoteModule -->|AuditPort| AuditModule
     IdempotencyModule["IdempotencyModule"]
@@ -48,10 +48,10 @@ flowchart LR
     CacheModule["CacheModule"]
     GoodReceiptNoteModule -->|CachePort| CacheModule
     ProductModule["ProductModule"]
-    ProductModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
+    ProductModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     ProductModule -->|OutboxWriterPort| OutboxModule
     ProductModule -->|CompanyConfigPort| ConfigurationModule
-    PurchaseOrderModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
+    PurchaseOrderModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     PurchaseOrderModule -->|AuditPort| AuditModule
     RecurringModule["RecurringModule"]
     PurchaseOrderModule -->|RecurringTemplatePort, RecurringExecutionPort| RecurringModule
@@ -66,7 +66,7 @@ flowchart LR
     InvoiceModule["InvoiceModule"]
     InvoiceModule -->|RecurringExecutionPort| RecurringModule
     InvoiceModule -->|LoggerPort| ObservabilityModule
-    InvoiceModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_context__2
+    InvoiceModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     InvoiceModule -->|OutboxWriterPort| OutboxModule
     InvoiceModule -->|CompanyConfigPort| ConfigurationModule
     InvoiceModule -->|NumberingPort| NumberingModule
@@ -80,50 +80,48 @@ flowchart LR
     NotificationModule__src_infrastructure_notification__2 -->|ConfigService| ConfigModule
     RedisModule["RedisModule"]
     RedisModule -->|ConfigService| ConfigModule
-    AuditModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    AuditModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
     BatchOperationModule["BatchOperationModule"]
     BatchOperationModule -->|OutboxWriterPort| OutboxModule
     BatchOperationModule -->|ConfigService| ConfigModule
     BatchOperationModule -->|NumberingPort| NumberingModule
-    BatchOperationModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    BatchOperationModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
     BatchOperationModule -->|AuditPort| AuditModule
     CacheModule -->|ConfigService| ConfigModule
     CacheModule -->|RedisService| RedisModule
-    CacheModule -->|RequestContextPort| ContextModule__src_platform_context__2
-    ConfigurationModule -->|ConfigService| ConfigModule
-    ConfigurationModule -->|RequestContextPort| ContextModule__src_platform_context__2
-    ContextModule__src_platform_context__2 -->|ConfigService| ConfigModule
-    ContextModule__src_platform_context__2 -->|PrismaWriteService| PrismaModule
+    CacheModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
+    ContextModule__src_platform_platform_common_context__2 -->|ConfigService| ConfigModule
+    ContextModule__src_platform_platform_common_context__2 -->|PrismaWriteService| PrismaModule
     IdempotencyModule -->|PrismaWriteService| PrismaModule
     IdempotencyModule -->|ConfigService| ConfigModule
     IdempotencyModule -->|RedisService| RedisModule
-    IdempotencyModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    IdempotencyModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
     ImportModule["ImportModule"]
     ImportModule -->|OutboxWriterPort| OutboxModule
     ImportModule -->|ConfigService| ConfigModule
-    StorageModule__src_platform_storage_["StorageModule (src/platform/storage)"]
-    StorageModule__src_platform_storage__2["StorageModule__src_platform_storage_"]
-    ImportModule -->|FileStoragePort| StorageModule__src_platform_storage__2
-    ImportModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    StorageModule__src_platform_platform_common_storage_["StorageModule (src/platform/platform-common/storage)"]
+    StorageModule__src_platform_platform_common_storage__2["StorageModule__src_platform_platform_common_storage_"]
+    ImportModule -->|FileStoragePort| StorageModule__src_platform_platform_common_storage__2
+    ImportModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
     ImportModule -->|NumberingPort| NumberingModule
     ImportModule -->|AuditPort| AuditModule
     InboxModule -->|ConfigService| ConfigModule
     LockingModule["LockingModule"]
     LockingModule -->|RedisService| RedisModule
     LockingModule -->|ConfigService| ConfigModule
-    MessagingModule__src_platform_messaging_["MessagingModule (src/platform/messaging)"]
-    MessagingModule__src_platform_messaging__2["MessagingModule__src_platform_messaging_"]
-    MessagingModule__src_platform_messaging__2 -->|ConfigService| ConfigModule
-    NotificationModule__src_platform_notification_["NotificationModule (src/platform/notification)"]
-    NotificationModule__src_platform_notification__2["NotificationModule__src_platform_notification_"]
-    NotificationModule__src_platform_notification__2 -->|RequestContextPort| ContextModule__src_platform_context__2
-    NotificationModule__src_platform_notification__2 -->|OutboxWriterPort| OutboxModule
-    NotificationModule__src_platform_notification__2 -->|ConfigService| ConfigModule
-    NotificationModule__src_platform_notification__2 -->|LoggerPort| ObservabilityModule
-    NumberingModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    MessagingModule__src_platform_platform_common_messaging_["MessagingModule (src/platform/platform-common/messaging)"]
+    MessagingModule__src_platform_platform_common_messaging__2["MessagingModule__src_platform_platform_common_messaging_"]
+    MessagingModule__src_platform_platform_common_messaging__2 -->|ConfigService| ConfigModule
+    NotificationModule__src_platform_platform_common_notification_["NotificationModule (src/platform/platform-common/notification)"]
+    NotificationModule__src_platform_platform_common_notification__2["NotificationModule__src_platform_platform_common_notification_"]
+    NotificationModule__src_platform_platform_common_notification__2 -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
+    NotificationModule__src_platform_platform_common_notification__2 -->|OutboxWriterPort| OutboxModule
+    NotificationModule__src_platform_platform_common_notification__2 -->|ConfigService| ConfigModule
+    NotificationModule__src_platform_platform_common_notification__2 -->|LoggerPort| ObservabilityModule
+    NumberingModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
     ObservabilityModule -->|ConfigService| ConfigModule
-    OutboxModule -->|RequestContextPort| ContextModule__src_platform_context__2
-    OutboxModule -->|MessageQueuePort| MessagingModule__src_platform_messaging__2
+    OutboxModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
+    OutboxModule -->|MessageQueuePort| MessagingModule__src_platform_platform_common_messaging__2
     EventsModule["EventsModule"]
     OutboxModule -->|InProcessEventBus| EventsModule
     OutboxModule -->|ConfigService| ConfigModule
@@ -132,22 +130,24 @@ flowchart LR
     RecurringModule -->|SchedulerPort, ScheduledJobHandlerRegistry| SchedulerModule
     ConditionEngineModule["ConditionEngineModule"]
     RecurringModule -->|ConditionEvaluator| ConditionEngineModule
-    RecurringModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    RecurringModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
     RecurringModule -->|AuditPort| AuditModule
-    SagaModule["SagaModule"]
-    SagaModule -->|OutboxWriterPort| OutboxModule
-    SagaModule -->|ConfigService| ConfigModule
-    SagaModule -->|RequestContextPort| ContextModule__src_platform_context__2
     SchedulerModule -->|ConfigService| ConfigModule
-    SchedulerModule -->|MessageQueuePort| MessagingModule__src_platform_messaging__2
-    SchedulerModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    SchedulerModule -->|MessageQueuePort| MessagingModule__src_platform_platform_common_messaging__2
+    SchedulerModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
     SchedulerModule -->|AuditPort| AuditModule
     SchedulerModule -->|DistributedLockPort| LockingModule
     WebhookModule["WebhookModule"]
-    WebhookModule -->|RequestContextPort| ContextModule__src_platform_context__2
+    WebhookModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
     WebhookModule -->|ConfigService| ConfigModule
     WebhookModule -->|OutboxWriterPort| OutboxModule
     WebhookModule -->|IdempotencyPort| IdempotencyModule
+    ConfigurationModule -->|ConfigService| ConfigModule
+    ConfigurationModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
+    SagaModule["SagaModule"]
+    SagaModule -->|OutboxWriterPort| OutboxModule
+    SagaModule -->|ConfigService| ConfigModule
+    SagaModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
 ```
 
 ---
@@ -604,812 +604,6 @@ flowchart LR
     NumberingAdapter -->|injects via NumberingModule| NumberingPort
 ```
 
-### Platform — core (outbox · events · messaging · context · database)
-
-#### ContextModule (src/platform/context) — `src/platform/context/context.module.ts`
-
-imports: InfrastructureModule · exports: RequestContextPort, PrismaReadPort
-
-```mermaid
-flowchart LR
-    RequestContextPort["RequestContextPort"]
-    ClsRequestContextService["ClsRequestContextService"]
-    RequestContextPort -.->|useClass| ClsRequestContextService
-    PrismaReadPort["PrismaReadPort"]
-    PrismaReadService["PrismaReadService"]
-    PrismaReadPort -.->|useExisting| PrismaReadService
-    ClsService__library_["ClsService (library)"]
-    ClsRequestContextService -->|injects| ClsService__library_
-    ClsRequestContextService -->|injects| ClsService__library_
-    ConfigService["ConfigService"]
-    PrismaReadService -->|injects via ConfigModule| ConfigService
-    PrismaWriteService["PrismaWriteService"]
-    PrismaReadService -->|injects via PrismaModule| PrismaWriteService
-```
-
-#### EventsModule — `src/platform/events/events.module.ts`
-
-imports: — · exports: InProcessEventBus
-
-```mermaid
-flowchart LR
-    InProcessEventBus["InProcessEventBus"]
-    EventBusService["EventBusService"]
-    InProcessEventBus -.->|useExisting| EventBusService
-    NestEventBusAdapter["NestEventBusAdapter"]
-    EventEmitter2__library_["EventEmitter2 (library)"]
-    NestEventBusAdapter -->|injects| EventEmitter2__library_
-    EmitEventUseCase["EmitEventUseCase"]
-    EmitEventUseCase -->|injects| NestEventBusAdapter
-    EventBusService -->|injects| EmitEventUseCase
-    EventBusService -->|injects| EmitEventUseCase
-```
-
-#### MessagingModule (src/platform/messaging) — `src/platform/messaging/messaging.module.ts`
-
-imports: InfraMessagingModule · exports: MessageQueuePort
-
-```mermaid
-flowchart LR
-    RabbitMqPublisher["RabbitMqPublisher"]
-    RabbitMQPublisherAdapter["RabbitMQPublisherAdapter"]
-    RabbitMqPublisher -.->|useExisting| RabbitMQPublisherAdapter
-    KafkaPublisher["KafkaPublisher"]
-    KafkaPublisherAdapter["KafkaPublisherAdapter"]
-    KafkaPublisher -.->|useExisting| KafkaPublisherAdapter
-    SqsPublisher["SqsPublisher"]
-    SqsPublisherAdapter["SqsPublisherAdapter"]
-    SqsPublisher -.->|useExisting| SqsPublisherAdapter
-    MessageQueuePort["MessageQueuePort"]
-    MessageQueueService["MessageQueueService"]
-    MessageQueuePort -.->|useExisting| MessageQueueService
-    KafkaService["KafkaService"]
-    KafkaPublisherAdapter -->|injects| KafkaService
-    AmqpConnection__library_["AmqpConnection (library)"]
-    RabbitMQPublisherAdapter -->|injects| AmqpConnection__library_
-    ConfigService["ConfigService"]
-    RabbitMQPublisherAdapter -->|injects via ConfigModule| ConfigService
-    SqsService["SqsService"]
-    SqsPublisherAdapter -->|injects| SqsService
-    SqsPublisherAdapter -->|injects via ConfigModule| ConfigService
-    RabbitMQPublisherAdapter -->|injects| AmqpConnection__library_
-    RabbitMQPublisherAdapter -->|injects via ConfigModule| ConfigService
-    KafkaPublisherAdapter -->|injects| KafkaService
-    SqsPublisherAdapter -->|injects| SqsService
-    SqsPublisherAdapter -->|injects via ConfigModule| ConfigService
-    PublishMessageUseCase["PublishMessageUseCase"]
-    PublishMessageUseCase -->|injects| RabbitMqPublisher
-    PublishMessageUseCase -->|injects| KafkaPublisher
-    PublishMessageUseCase -->|injects| SqsPublisher
-    PublishMessageUseCase -->|injects via ConfigModule| ConfigService
-    MessageQueueService -->|injects| PublishMessageUseCase
-    MessageQueueService -->|injects| PublishMessageUseCase
-```
-
-#### OutboxModule — `src/platform/outbox/outbox.module.ts`
-
-imports: MessagingModule, EventsModule, ContextModule · exports: OutboxWriterPort
-
-```mermaid
-flowchart LR
-    OutboxWriterPort["OutboxWriterPort"]
-    OutboxService["OutboxService"]
-    OutboxWriterPort -.->|useExisting| OutboxService
-    PrismaOutboxRepository["PrismaOutboxRepository"]
-    TransactionHost__library_["TransactionHost (library)"]
-    PrismaOutboxRepository -->|injects| TransactionHost__library_
-    AppendOutboxEventUseCase["AppendOutboxEventUseCase"]
-    AppendOutboxEventUseCase -->|injects| PrismaOutboxRepository
-    RequestContextPort["RequestContextPort"]
-    AppendOutboxEventUseCase -->|injects via ContextModule| RequestContextPort
-    PublishPendingBatchUseCase["PublishPendingBatchUseCase"]
-    PublishPendingBatchUseCase -->|injects| PrismaOutboxRepository
-    MessageQueuePort["MessageQueuePort"]
-    PublishPendingBatchUseCase -->|injects via MessagingModule| MessageQueuePort
-    InProcessEventBus["InProcessEventBus"]
-    PublishPendingBatchUseCase -->|injects via EventsModule| InProcessEventBus
-    PublishPendingBatchUseCase -->|injects via ContextModule| RequestContextPort
-    ConfigService["ConfigService"]
-    PublishPendingBatchUseCase -->|injects via ConfigModule| ConfigService
-    OutboxService -->|injects| AppendOutboxEventUseCase
-    OutboxService -->|injects| AppendOutboxEventUseCase
-    OutboxScheduler["OutboxScheduler"]
-    OutboxScheduler -->|injects| PublishPendingBatchUseCase
-    OutboxScheduler -->|injects| PrismaOutboxRepository
-    OutboxScheduler -->|injects via ConfigModule| ConfigService
-```
-
-### Platform — capabilities (configuration · audit · numbering · notification · cache · storage · observability)
-
-#### AuditModule — `src/platform/audit/audit.module.ts`
-
-imports: ContextModule · exports: AuditPort
-
-```mermaid
-flowchart LR
-    AuditPort["AuditPort"]
-    PrismaAuditRepository["PrismaAuditRepository"]
-    AuditPort -.->|useExisting| PrismaAuditRepository
-    TransactionHost__library_["TransactionHost (library)"]
-    PrismaAuditRepository -->|injects| TransactionHost__library_
-    RequestContextPort["RequestContextPort"]
-    PrismaAuditRepository -->|injects via ContextModule| RequestContextPort
-    PrismaAuditRepository -->|injects| TransactionHost__library_
-    PrismaAuditRepository -->|injects via ContextModule| RequestContextPort
-```
-
-#### CacheModule — `src/platform/cache/cache.module.ts`
-
-imports: InfraRedisModule, ContextModule · exports: CachePort, CacheResponseInterceptor
-
-```mermaid
-flowchart LR
-    CachePort["CachePort"]
-    CacheService["CacheService"]
-    CachePort -.->|useExisting| CacheService
-    RedisCacheAdapter["RedisCacheAdapter"]
-    ConfigService["ConfigService"]
-    RedisCacheAdapter -->|injects via ConfigModule| ConfigService
-    RedisService["RedisService"]
-    RedisCacheAdapter -->|injects via RedisModule| RedisService
-    GetCacheValueUseCase["GetCacheValueUseCase"]
-    GetCacheValueUseCase -->|injects| RedisCacheAdapter
-    SetCacheValueUseCase["SetCacheValueUseCase"]
-    SetCacheValueUseCase -->|injects| RedisCacheAdapter
-    DeleteCacheValueUseCase["DeleteCacheValueUseCase"]
-    DeleteCacheValueUseCase -->|injects| RedisCacheAdapter
-    CacheService -->|injects| GetCacheValueUseCase
-    CacheService -->|injects| SetCacheValueUseCase
-    CacheService -->|injects| DeleteCacheValueUseCase
-    CacheService -->|injects via ConfigModule| ConfigService
-    CacheService -->|injects| GetCacheValueUseCase
-    CacheService -->|injects| SetCacheValueUseCase
-    CacheService -->|injects| DeleteCacheValueUseCase
-    CacheService -->|injects via ConfigModule| ConfigService
-    CacheResponseInterceptor["CacheResponseInterceptor"]
-    CacheResponseInterceptor -->|injects| CachePort
-    RequestContextPort["RequestContextPort"]
-    CacheResponseInterceptor -->|injects via ContextModule| RequestContextPort
-```
-
-#### ConfigurationModule — `src/platform/configuration/configuration.module.ts`
-
-imports: ContextModule · exports: CompanyConfigPort
-
-```mermaid
-flowchart LR
-    CompanyConfigPort["CompanyConfigPort"]
-    PrismaCompanyConfigRepository["PrismaCompanyConfigRepository"]
-    CompanyConfigPort -.->|useExisting| PrismaCompanyConfigRepository
-    TransactionHost__library_["TransactionHost (library)"]
-    PrismaCompanyConfigRepository -->|injects| TransactionHost__library_
-    ConfigService["ConfigService"]
-    PrismaCompanyConfigRepository -->|injects via ConfigModule| ConfigService
-    RequestContextPort["RequestContextPort"]
-    PrismaCompanyConfigRepository -->|injects via ContextModule| RequestContextPort
-    PrismaCompanyConfigRepository -->|injects| TransactionHost__library_
-    PrismaCompanyConfigRepository -->|injects via ConfigModule| ConfigService
-    PrismaCompanyConfigRepository -->|injects via ContextModule| RequestContextPort
-```
-
-#### NotificationModule (src/platform/notification) — `src/platform/notification/notification.module.ts`
-
-imports: ContextModule, OutboxModule, ObservabilityModule, InfraNotificationModule, BullModule.registerQueue({ name: NOTIFICATION_QUEUE_NAME }) · exports: NotificationHandlerRegistry, ChannelProviderRegistry, SendNotificationUseCase
-
-```mermaid
-flowchart LR
-    NotificationRequestRepositoryPort["NotificationRequestRepositoryPort"]
-    PrismaNotificationRepository["PrismaNotificationRepository"]
-    NotificationRequestRepositoryPort -.->|useExisting| PrismaNotificationRepository
-    NotificationMessageRepositoryPort["NotificationMessageRepositoryPort"]
-    NotificationMessageRepositoryPort -.->|useExisting| PrismaNotificationRepository
-    NotificationTemplateRepositoryPort["NotificationTemplateRepositoryPort"]
-    NotificationTemplateRepositoryPort -.->|useExisting| PrismaNotificationRepository
-    NotificationPreferenceRepositoryPort["NotificationPreferenceRepositoryPort"]
-    NotificationPreferenceRepositoryPort -.->|useExisting| PrismaNotificationRepository
-    NotificationSuppressionRepositoryPort["NotificationSuppressionRepositoryPort"]
-    NotificationSuppressionRepositoryPort -.->|useExisting| PrismaNotificationRepository
-    NotificationOutboxWriterPort["NotificationOutboxWriterPort"]
-    PrismaNotificationOutboxWriter["PrismaNotificationOutboxWriter"]
-    NotificationOutboxWriterPort -.->|useExisting| PrismaNotificationOutboxWriter
-    NotificationQueuePublisherPort["NotificationQueuePublisherPort"]
-    BullMqNotificationQueueAdapter["BullMqNotificationQueueAdapter"]
-    NotificationQueuePublisherPort -.->|useExisting| BullMqNotificationQueueAdapter
-    NotificationController["NotificationController"]
-    SendNotificationUseCase["SendNotificationUseCase"]
-    NotificationController -->|injects| SendNotificationUseCase
-    GetNotificationStatusUseCase["GetNotificationStatusUseCase"]
-    NotificationController -->|injects| GetNotificationStatusUseCase
-    ListNotificationsUseCase["ListNotificationsUseCase"]
-    NotificationController -->|injects| ListNotificationsUseCase
-    ListNotificationPreferencesUseCase["ListNotificationPreferencesUseCase"]
-    NotificationController -->|injects| ListNotificationPreferencesUseCase
-    UpsertNotificationPreferenceUseCase["UpsertNotificationPreferenceUseCase"]
-    NotificationController -->|injects| UpsertNotificationPreferenceUseCase
-    ApplyDeliveryEventUseCase["ApplyDeliveryEventUseCase"]
-    NotificationController -->|injects| ApplyDeliveryEventUseCase
-    NotificationHandlerRegistry["NotificationHandlerRegistry"]
-    NotificationController -->|injects| NotificationHandlerRegistry
-    ChannelProviderRegistry["ChannelProviderRegistry"]
-    NotificationController -->|injects| ChannelProviderRegistry
-    RequestContextPort["RequestContextPort"]
-    NotificationController -->|injects via ContextModule| RequestContextPort
-    NotificationHandlerRegistry -->|injects| ChannelProviderRegistry
-    TransactionHost__library_["TransactionHost (library)"]
-    PrismaNotificationRepository -->|injects| TransactionHost__library_
-    PrismaNotificationRepository -->|injects| TransactionHost__library_
-    PrismaNotificationRepository -->|injects| TransactionHost__library_
-    PrismaNotificationRepository -->|injects| TransactionHost__library_
-    PrismaNotificationRepository -->|injects| TransactionHost__library_
-    PrismaNotificationRepository -->|injects| TransactionHost__library_
-    OutboxWriterPort["OutboxWriterPort"]
-    PrismaNotificationOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
-    PrismaNotificationOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
-    Queue__library_["Queue (library)"]
-    BullMqNotificationQueueAdapter -->|injects| Queue__library_
-    ConfigService["ConfigService"]
-    BullMqNotificationQueueAdapter -->|injects via ConfigModule| ConfigService
-    BullMqNotificationQueueAdapter -->|injects| Queue__library_
-    BullMqNotificationQueueAdapter -->|injects via ConfigModule| ConfigService
-    BullMqNotificationWorker["BullMqNotificationWorker"]
-    NotificationWorker["NotificationWorker"]
-    BullMqNotificationWorker -->|injects| NotificationWorker
-    NotificationWorker -->|injects| NotificationRequestRepositoryPort
-    NotificationWorker -->|injects| NotificationHandlerRegistry
-    RenderAndSendMessageUseCase["RenderAndSendMessageUseCase"]
-    NotificationWorker -->|injects| RenderAndSendMessageUseCase
-    FinaliseNotificationRequestUseCase["FinaliseNotificationRequestUseCase"]
-    NotificationWorker -->|injects| FinaliseNotificationRequestUseCase
-    NotificationReconciliationConsumer["NotificationReconciliationConsumer"]
-    NotificationReconciliationConsumer -->|injects| NotificationMessageRepositoryPort
-    NotificationReconciliationConsumer -->|injects| NotificationRequestRepositoryPort
-    NotificationReconciliationConsumer -->|injects| NotificationQueuePublisherPort
-    NotificationReconciliationConsumer -->|injects via ConfigModule| ConfigService
-    NotificationEventDispatcher["NotificationEventDispatcher"]
-    EventEmitter2__library_["EventEmitter2 (library)"]
-    NotificationEventDispatcher -->|injects| EventEmitter2__library_
-    NotificationEventDispatcher -->|injects| NotificationHandlerRegistry
-    NotificationEventDispatcher -->|injects| SendNotificationUseCase
-    SesEmailChannelAdapter["SesEmailChannelAdapter"]
-    SesService["SesService"]
-    SesEmailChannelAdapter -->|injects| SesService
-    SesEmailChannelAdapter -->|injects via ConfigModule| ConfigService
-    LoggerPort["LoggerPort"]
-    SesEmailChannelAdapter -->|injects via ObservabilityModule| LoggerPort
-    SnsSmsChannelAdapter["SnsSmsChannelAdapter"]
-    SnsService["SnsService"]
-    SnsSmsChannelAdapter -->|injects| SnsService
-    SnsSmsChannelAdapter -->|injects via ConfigModule| ConfigService
-    SnsSmsChannelAdapter -->|injects via ObservabilityModule| LoggerPort
-    SnsPushChannelAdapter["SnsPushChannelAdapter"]
-    SnsPushChannelAdapter -->|injects| SnsService
-    SnsPushChannelAdapter -->|injects via ConfigModule| ConfigService
-    SnsPushChannelAdapter -->|injects via ObservabilityModule| LoggerPort
-    SendNotificationUseCase -->|injects| NotificationRequestRepositoryPort
-    SendNotificationUseCase -->|injects| NotificationPreferenceRepositoryPort
-    SendNotificationUseCase -->|injects| NotificationSuppressionRepositoryPort
-    SendNotificationUseCase -->|injects| NotificationHandlerRegistry
-    SendNotificationUseCase -->|injects| NotificationWorker
-    SendNotificationUseCase -->|injects| NotificationQueuePublisherPort
-    SendNotificationUseCase -->|injects via ConfigModule| ConfigService
-    RenderAndSendMessageUseCase -->|injects| NotificationMessageRepositoryPort
-    RenderAndSendMessageUseCase -->|injects| NotificationRequestRepositoryPort
-    RenderAndSendMessageUseCase -->|injects| NotificationTemplateRepositoryPort
-    RenderAndSendMessageUseCase -->|injects| ChannelProviderRegistry
-    TemplateRenderer["TemplateRenderer"]
-    RenderAndSendMessageUseCase -->|injects| TemplateRenderer
-    RenderAndSendMessageUseCase -->|injects via ConfigModule| ConfigService
-    ApplyDeliveryEventUseCase -->|injects| NotificationMessageRepositoryPort
-    ApplyDeliveryEventUseCase -->|injects| NotificationSuppressionRepositoryPort
-    ApplyDeliveryEventUseCase -->|injects| ChannelProviderRegistry
-    FinaliseNotificationRequestUseCase -->|injects| NotificationRequestRepositoryPort
-    FinaliseNotificationRequestUseCase -->|injects| NotificationMessageRepositoryPort
-    FinaliseNotificationRequestUseCase -->|injects| NotificationOutboxWriterPort
-    GetNotificationStatusUseCase -->|injects| NotificationRequestRepositoryPort
-    ListNotificationsUseCase -->|injects| NotificationRequestRepositoryPort
-    ListNotificationPreferencesUseCase -->|injects| NotificationPreferenceRepositoryPort
-    UpsertNotificationPreferenceUseCase -->|injects| NotificationPreferenceRepositoryPort
-    NotificationModule_bootstrap["NotificationModule bootstrap"]
-    NotificationModule_bootstrap -->|registers or injects| ChannelProviderRegistry
-    NotificationModule_bootstrap -->|registers or injects| SesEmailChannelAdapter
-    NotificationModule_bootstrap -->|registers or injects| SnsSmsChannelAdapter
-    NotificationModule_bootstrap -->|registers or injects| SnsPushChannelAdapter
-```
-
-#### NumberingModule — `src/platform/numbering/numbering.module.ts`
-
-imports: ContextModule · exports: NumberingPort
-
-```mermaid
-flowchart LR
-    NumberingPort["NumberingPort"]
-    PrismaNumberingRepository["PrismaNumberingRepository"]
-    NumberingPort -.->|useExisting| PrismaNumberingRepository
-    TransactionHost__library_["TransactionHost (library)"]
-    PrismaNumberingRepository -->|injects| TransactionHost__library_
-    RequestContextPort["RequestContextPort"]
-    PrismaNumberingRepository -->|injects via ContextModule| RequestContextPort
-    PrismaNumberingRepository -->|injects| TransactionHost__library_
-    PrismaNumberingRepository -->|injects via ContextModule| RequestContextPort
-```
-
-#### ObservabilityModule — `src/platform/observability/observability.module.ts`
-
-imports: — · exports: LoggerPort, MetricsPort, ErrorTrackingPort
-
-```mermaid
-flowchart LR
-    LoggerPort["LoggerPort"]
-    ConsoleLoggerAdapter["ConsoleLoggerAdapter"]
-    LoggerPort -.->|useClass| ConsoleLoggerAdapter
-    MetricsPort["MetricsPort"]
-    PrometheusMetricsAdapter["PrometheusMetricsAdapter"]
-    MetricsPort -.->|useClass| PrometheusMetricsAdapter
-    ErrorTrackingPort["ErrorTrackingPort"]
-    SentryErrorTrackingAdapter["SentryErrorTrackingAdapter"]
-    ErrorTrackingPort -.->|useClass| SentryErrorTrackingAdapter
-    MetricsController["MetricsController"]
-    MetricsController -->|injects| MetricsPort
-    ConfigService["ConfigService"]
-    SentryErrorTrackingAdapter -->|injects via ConfigModule| ConfigService
-```
-
-#### StorageModule (src/platform/storage) — `src/platform/storage/storage.module.ts`
-
-imports: InfraStorageModule · exports: FileStoragePort
-
-```mermaid
-flowchart LR
-    FileStoragePort["FileStoragePort"]
-    S3FileStorageAdapter["S3FileStorageAdapter"]
-    FileStoragePort -.->|useClass| S3FileStorageAdapter
-    FileStorageService__library_["FileStorageService (library)"]
-    S3FileStorageAdapter -->|injects| FileStorageService__library_
-    S3FileStorageAdapter -->|injects| FileStorageService__library_
-```
-
-### Platform — services (scheduler · recurring · condition-engine · batch-operation · import)
-
-#### BatchOperationModule — `src/platform/batch-operation/batch-operation.module.ts`
-
-imports: ContextModule, AuditModule, NumberingModule, OutboxModule, BullModule.registerQueue({ name: BATCH_OPERATION_QUEUE_NAME }) · exports: BatchOperationHandlerRegistry, CreateBatchOperationJobUseCase, ValidateBatchOperationUseCase, ProcessBatchOperationRowUseCase, GetBatchOperationJobStatusUseCase, ListBatchOperationJobsUseCase, ListBatchOperationJobRowsUseCase, CancelBatchOperationJobUseCase
-
-```mermaid
-flowchart LR
-    BatchOperationJobRepositoryPort["BatchOperationJobRepositoryPort"]
-    PrismaBatchOperationJobRepository["PrismaBatchOperationJobRepository"]
-    BatchOperationJobRepositoryPort -.->|useExisting| PrismaBatchOperationJobRepository
-    BatchOperationJobRowRepositoryPort["BatchOperationJobRowRepositoryPort"]
-    BatchOperationJobRowRepositoryPort -.->|useExisting| PrismaBatchOperationJobRepository
-    BatchOperationJobOutboxWriterPort["BatchOperationJobOutboxWriterPort"]
-    PrismaBatchOperationJobOutboxWriter["PrismaBatchOperationJobOutboxWriter"]
-    BatchOperationJobOutboxWriterPort -.->|useExisting| PrismaBatchOperationJobOutboxWriter
-    BatchOperationQueuePublisherPort["BatchOperationQueuePublisherPort"]
-    BullMqBatchOperationQueueAdapter["BullMqBatchOperationQueueAdapter"]
-    BatchOperationQueuePublisherPort -.->|useExisting| BullMqBatchOperationQueueAdapter
-    BatchOperationController["BatchOperationController"]
-    CreateBatchOperationJobUseCase["CreateBatchOperationJobUseCase"]
-    BatchOperationController -->|injects| CreateBatchOperationJobUseCase
-    ValidateBatchOperationUseCase["ValidateBatchOperationUseCase"]
-    BatchOperationController -->|injects| ValidateBatchOperationUseCase
-    GetBatchOperationJobStatusUseCase["GetBatchOperationJobStatusUseCase"]
-    BatchOperationController -->|injects| GetBatchOperationJobStatusUseCase
-    ListBatchOperationJobsUseCase["ListBatchOperationJobsUseCase"]
-    BatchOperationController -->|injects| ListBatchOperationJobsUseCase
-    ListBatchOperationJobRowsUseCase["ListBatchOperationJobRowsUseCase"]
-    BatchOperationController -->|injects| ListBatchOperationJobRowsUseCase
-    CancelBatchOperationJobUseCase["CancelBatchOperationJobUseCase"]
-    BatchOperationController -->|injects| CancelBatchOperationJobUseCase
-    BatchOperationHandlerRegistry["BatchOperationHandlerRegistry"]
-    BatchOperationController -->|injects| BatchOperationHandlerRegistry
-    TransactionHost__library_["TransactionHost (library)"]
-    PrismaBatchOperationJobRepository -->|injects| TransactionHost__library_
-    PrismaBatchOperationJobRepository -->|injects| TransactionHost__library_
-    PrismaBatchOperationJobRepository -->|injects| TransactionHost__library_
-    OutboxWriterPort["OutboxWriterPort"]
-    PrismaBatchOperationJobOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
-    PrismaBatchOperationJobOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
-    Queue__library_["Queue (library)"]
-    BullMqBatchOperationQueueAdapter -->|injects| Queue__library_
-    ConfigService["ConfigService"]
-    BullMqBatchOperationQueueAdapter -->|injects via ConfigModule| ConfigService
-    BullMqBatchOperationQueueAdapter -->|injects| Queue__library_
-    BullMqBatchOperationQueueAdapter -->|injects via ConfigModule| ConfigService
-    BullMqBatchOperationWorker["BullMqBatchOperationWorker"]
-    BatchOperationWorker["BatchOperationWorker"]
-    BullMqBatchOperationWorker -->|injects| BatchOperationWorker
-    BatchOperationWorker -->|injects| BatchOperationJobRepositoryPort
-    BatchOperationWorker -->|injects| BatchOperationJobRowRepositoryPort
-    ProcessBatchOperationRowUseCase["ProcessBatchOperationRowUseCase"]
-    BatchOperationWorker -->|injects| ProcessBatchOperationRowUseCase
-    BatchOperationWorker -->|injects| BatchOperationJobOutboxWriterPort
-    BatchOperationReconciliationConsumer["BatchOperationReconciliationConsumer"]
-    BatchOperationReconciliationConsumer -->|injects| BatchOperationJobRepositoryPort
-    BatchOperationReconciliationConsumer -->|injects| BatchOperationJobRowRepositoryPort
-    BatchOperationReconciliationConsumer -->|injects| BatchOperationQueuePublisherPort
-    BatchOperationReconciliationConsumer -->|injects| BatchOperationJobOutboxWriterPort
-    BatchOperationReconciliationConsumer -->|injects via ConfigModule| ConfigService
-    CreateBatchOperationJobUseCase -->|injects| BatchOperationJobRepositoryPort
-    CreateBatchOperationJobUseCase -->|injects| BatchOperationHandlerRegistry
-    CreateBatchOperationJobUseCase -->|injects| BatchOperationWorker
-    CreateBatchOperationJobUseCase -->|injects| BatchOperationQueuePublisherPort
-    NumberingPort["NumberingPort"]
-    CreateBatchOperationJobUseCase -->|injects via NumberingModule| NumberingPort
-    CreateBatchOperationJobUseCase -->|injects via ConfigModule| ConfigService
-    RequestContextPort["RequestContextPort"]
-    CreateBatchOperationJobUseCase -->|injects via ContextModule| RequestContextPort
-    ValidateBatchOperationUseCase -->|injects| BatchOperationHandlerRegistry
-    ValidateBatchOperationUseCase -->|injects via ContextModule| RequestContextPort
-    ProcessBatchOperationRowUseCase -->|injects| BatchOperationJobRepositoryPort
-    ProcessBatchOperationRowUseCase -->|injects| BatchOperationJobRowRepositoryPort
-    ProcessBatchOperationRowUseCase -->|injects| BatchOperationHandlerRegistry
-    ProcessBatchOperationRowUseCase -->|injects via ConfigModule| ConfigService
-    ProcessBatchOperationRowUseCase -->|injects via ContextModule| RequestContextPort
-    GetBatchOperationJobStatusUseCase -->|injects| BatchOperationJobRepositoryPort
-    GetBatchOperationJobStatusUseCase -->|injects via ContextModule| RequestContextPort
-    ListBatchOperationJobsUseCase -->|injects| BatchOperationJobRepositoryPort
-    ListBatchOperationJobsUseCase -->|injects via ContextModule| RequestContextPort
-    ListBatchOperationJobRowsUseCase -->|injects| BatchOperationJobRepositoryPort
-    ListBatchOperationJobRowsUseCase -->|injects| BatchOperationJobRowRepositoryPort
-    ListBatchOperationJobRowsUseCase -->|injects via ContextModule| RequestContextPort
-    CancelBatchOperationJobUseCase -->|injects| BatchOperationJobRepositoryPort
-    CancelBatchOperationJobUseCase -->|injects| BatchOperationJobRowRepositoryPort
-    AuditPort["AuditPort"]
-    CancelBatchOperationJobUseCase -->|injects via AuditModule| AuditPort
-    CancelBatchOperationJobUseCase -->|injects via ContextModule| RequestContextPort
-```
-
-#### ConditionEngineModule — `src/platform/condition-engine/condition-engine.module.ts`
-
-imports: — · exports: ConditionEvaluator, FieldResolverRegistry
-
-```mermaid
-flowchart LR
-    ConditionEvaluator["ConditionEvaluator"]
-    ConditionEvaluationService["ConditionEvaluationService"]
-    ConditionEvaluator -.->|useExisting| ConditionEvaluationService
-    FieldResolverRegistry["FieldResolverRegistry"]
-    ConditionEvaluationService -->|injects| FieldResolverRegistry
-    ConditionEvaluationService -->|injects| FieldResolverRegistry
-```
-
-#### ImportModule — `src/platform/import/import.module.ts`
-
-imports: ContextModule, AuditModule, NumberingModule, OutboxModule, StorageModule, BullModule.registerQueue({ name: IMPORT_QUEUE_NAME }) · exports: ImportHandlerRegistry
-
-```mermaid
-flowchart LR
-    StorageObjectRepositoryPort["StorageObjectRepositoryPort"]
-    PrismaStorageObjectRepository["PrismaStorageObjectRepository"]
-    StorageObjectRepositoryPort -.->|useExisting| PrismaStorageObjectRepository
-    ImportJobRepositoryPort["ImportJobRepositoryPort"]
-    PrismaImportJobRepository["PrismaImportJobRepository"]
-    ImportJobRepositoryPort -.->|useExisting| PrismaImportJobRepository
-    ImportJobRowRepositoryPort["ImportJobRowRepositoryPort"]
-    PrismaImportJobRowRepository["PrismaImportJobRowRepository"]
-    ImportJobRowRepositoryPort -.->|useExisting| PrismaImportJobRowRepository
-    ImportJobOutboxWriterPort["ImportJobOutboxWriterPort"]
-    PrismaImportJobOutboxWriter["PrismaImportJobOutboxWriter"]
-    ImportJobOutboxWriterPort -.->|useExisting| PrismaImportJobOutboxWriter
-    ImportQueuePublisherPort["ImportQueuePublisherPort"]
-    BullMqImportQueueAdapter["BullMqImportQueueAdapter"]
-    ImportQueuePublisherPort -.->|useExisting| BullMqImportQueueAdapter
-    ImportController["ImportController"]
-    InitImportUseCase["InitImportUseCase"]
-    ImportController -->|injects| InitImportUseCase
-    CreateImportUploadUseCase["CreateImportUploadUseCase"]
-    ImportController -->|injects| CreateImportUploadUseCase
-    CreateImportJobUseCase["CreateImportJobUseCase"]
-    ImportController -->|injects| CreateImportJobUseCase
-    GetImportPreviewUseCase["GetImportPreviewUseCase"]
-    ImportController -->|injects| GetImportPreviewUseCase
-    UpdateImportMappingUseCase["UpdateImportMappingUseCase"]
-    ImportController -->|injects| UpdateImportMappingUseCase
-    GetImportReportUseCase["GetImportReportUseCase"]
-    ImportController -->|injects| GetImportReportUseCase
-    ExecuteImportJobUseCase["ExecuteImportJobUseCase"]
-    ImportController -->|injects| ExecuteImportJobUseCase
-    CancelImportJobUseCase["CancelImportJobUseCase"]
-    ImportController -->|injects| CancelImportJobUseCase
-    GetImportJobStatusUseCase["GetImportJobStatusUseCase"]
-    ImportController -->|injects| GetImportJobStatusUseCase
-    ListImportJobsUseCase["ListImportJobsUseCase"]
-    ImportController -->|injects| ListImportJobsUseCase
-    ImportHandlerRegistry["ImportHandlerRegistry"]
-    ImportController -->|injects| ImportHandlerRegistry
-    TransactionHost__library_["TransactionHost (library)"]
-    PrismaStorageObjectRepository -->|injects| TransactionHost__library_
-    PrismaStorageObjectRepository -->|injects| TransactionHost__library_
-    PrismaImportJobRepository -->|injects| TransactionHost__library_
-    PrismaImportJobRepository -->|injects| TransactionHost__library_
-    PrismaImportJobRowRepository -->|injects| TransactionHost__library_
-    PrismaImportJobRowRepository -->|injects| TransactionHost__library_
-    OutboxWriterPort["OutboxWriterPort"]
-    PrismaImportJobOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
-    PrismaImportJobOutboxWriter -->|injects via OutboxModule| OutboxWriterPort
-    Queue__library_["Queue (library)"]
-    BullMqImportQueueAdapter -->|injects| Queue__library_
-    ConfigService["ConfigService"]
-    BullMqImportQueueAdapter -->|injects via ConfigModule| ConfigService
-    BullMqImportQueueAdapter -->|injects| Queue__library_
-    BullMqImportQueueAdapter -->|injects via ConfigModule| ConfigService
-    BullMqImportWorker["BullMqImportWorker"]
-    ParseImportJobUseCase["ParseImportJobUseCase"]
-    BullMqImportWorker -->|injects| ParseImportJobUseCase
-    ValidateImportJobUseCase["ValidateImportJobUseCase"]
-    BullMqImportWorker -->|injects| ValidateImportJobUseCase
-    RunImportExecutionUseCase["RunImportExecutionUseCase"]
-    BullMqImportWorker -->|injects| RunImportExecutionUseCase
-    ImportReconciliationConsumer["ImportReconciliationConsumer"]
-    ImportReconciliationConsumer -->|injects via ConfigModule| ConfigService
-    ImportReconciliationConsumer -->|injects| ImportJobRepositoryPort
-    ImportReconciliationConsumer -->|injects| ImportJobRowRepositoryPort
-    ImportReconciliationConsumer -->|injects| ImportQueuePublisherPort
-    ImportReconciliationConsumer -->|injects| StorageObjectRepositoryPort
-    FileStoragePort["FileStoragePort"]
-    ImportReconciliationConsumer -->|injects via StorageModule| FileStoragePort
-    InitImportUseCase -->|injects| ImportHandlerRegistry
-    InitImportUseCase -->|injects| ImportJobRepositoryPort
-    RequestContextPort["RequestContextPort"]
-    InitImportUseCase -->|injects via ContextModule| RequestContextPort
-    CreateImportUploadUseCase -->|injects| ImportHandlerRegistry
-    CreateImportUploadUseCase -->|injects via ConfigModule| ConfigService
-    CreateImportUploadUseCase -->|injects via StorageModule| FileStoragePort
-    CreateImportUploadUseCase -->|injects| StorageObjectRepositoryPort
-    CreateImportUploadUseCase -->|injects via ContextModule| RequestContextPort
-    CreateImportJobUseCase -->|injects| ImportHandlerRegistry
-    CreateImportJobUseCase -->|injects via ConfigModule| ConfigService
-    CreateImportJobUseCase -->|injects via StorageModule| FileStoragePort
-    NumberingPort["NumberingPort"]
-    CreateImportJobUseCase -->|injects via NumberingModule| NumberingPort
-    CreateImportJobUseCase -->|injects| StorageObjectRepositoryPort
-    CreateImportJobUseCase -->|injects| ImportJobRepositoryPort
-    CreateImportJobUseCase -->|injects| ImportQueuePublisherPort
-    CreateImportJobUseCase -->|injects via ContextModule| RequestContextPort
-    GetImportPreviewUseCase -->|injects| ImportJobRepositoryPort
-    GetImportPreviewUseCase -->|injects| ImportJobRowRepositoryPort
-    GetImportPreviewUseCase -->|injects via ConfigModule| ConfigService
-    ImportFileParser["ImportFileParser"]
-    GetImportPreviewUseCase -->|injects| ImportFileParser
-    GetImportPreviewUseCase -->|injects via ContextModule| RequestContextPort
-    UpdateImportMappingUseCase -->|injects| ImportJobRepositoryPort
-    UpdateImportMappingUseCase -->|injects| ImportQueuePublisherPort
-    UpdateImportMappingUseCase -->|injects via ContextModule| RequestContextPort
-    ValidateImportJobUseCase -->|injects| ImportHandlerRegistry
-    ValidateImportJobUseCase -->|injects via ConfigModule| ConfigService
-    ValidateImportJobUseCase -->|injects| ImportJobRepositoryPort
-    ValidateImportJobUseCase -->|injects| ImportJobRowRepositoryPort
-    ValidateImportJobUseCase -->|injects| ImportJobOutboxWriterPort
-    ValidateImportJobUseCase -->|injects via ContextModule| RequestContextPort
-    ValidateImportJobUseCase -->|injects| ImportFileParser
-    ParseImportJobUseCase -->|injects via ConfigModule| ConfigService
-    ParseImportJobUseCase -->|injects via StorageModule| FileStoragePort
-    ParseImportJobUseCase -->|injects| ImportJobRepositoryPort
-    ParseImportJobUseCase -->|injects| ImportJobRowRepositoryPort
-    ParseImportJobUseCase -->|injects| StorageObjectRepositoryPort
-    ParseImportJobUseCase -->|injects| ImportJobOutboxWriterPort
-    ParseImportJobUseCase -->|injects via ContextModule| RequestContextPort
-    ParseImportJobUseCase -->|injects| ImportFileParser
-    ExecuteImportJobUseCase -->|injects| ImportJobRepositoryPort
-    ExecuteImportJobUseCase -->|injects| ImportQueuePublisherPort
-    AuditPort["AuditPort"]
-    ExecuteImportJobUseCase -->|injects via AuditModule| AuditPort
-    ExecuteImportJobUseCase -->|injects via ContextModule| RequestContextPort
-    CancelImportJobUseCase -->|injects| ImportJobRepositoryPort
-    CancelImportJobUseCase -->|injects| ImportJobOutboxWriterPort
-    CancelImportJobUseCase -->|injects via AuditModule| AuditPort
-    CancelImportJobUseCase -->|injects via ContextModule| RequestContextPort
-    GetImportJobStatusUseCase -->|injects| ImportJobRepositoryPort
-    GetImportJobStatusUseCase -->|injects via ContextModule| RequestContextPort
-    ListImportJobsUseCase -->|injects| ImportJobRepositoryPort
-    ListImportJobsUseCase -->|injects via ContextModule| RequestContextPort
-    GetImportReportUseCase -->|injects| ImportJobRepositoryPort
-    GetImportReportUseCase -->|injects| ImportJobRowRepositoryPort
-    GetImportReportUseCase -->|injects via ContextModule| RequestContextPort
-    RunImportExecutionUseCase -->|injects| ImportHandlerRegistry
-    RunImportExecutionUseCase -->|injects via ConfigModule| ConfigService
-    RunImportExecutionUseCase -->|injects| ImportJobRepositoryPort
-    RunImportExecutionUseCase -->|injects| ImportJobRowRepositoryPort
-    RunImportExecutionUseCase -->|injects| ImportJobOutboxWriterPort
-    RunImportExecutionUseCase -->|injects via ContextModule| RequestContextPort
-```
-
-#### RecurringModule — `src/platform/recurring/recurring.module.ts`
-
-imports: ContextModule, AuditModule, OutboxModule, SchedulerModule, ConditionEngineModule · exports: RecurringExecutionPort, RecurringTemplatePort
-
-```mermaid
-flowchart LR
-    RecurringTemplateRepositoryPort["RecurringTemplateRepositoryPort"]
-    PrismaRecurringTemplateRepository["PrismaRecurringTemplateRepository"]
-    RecurringTemplateRepositoryPort -.->|useExisting| PrismaRecurringTemplateRepository
-    RecurringExecutionRepositoryPort["RecurringExecutionRepositoryPort"]
-    PrismaRecurringExecutionRepository["PrismaRecurringExecutionRepository"]
-    RecurringExecutionRepositoryPort -.->|useExisting| PrismaRecurringExecutionRepository
-    RecurringExecutionPort["RecurringExecutionPort"]
-    RecurringExecutionAdapter["RecurringExecutionAdapter"]
-    RecurringExecutionPort -.->|useExisting| RecurringExecutionAdapter
-    RecurringTemplatePort["RecurringTemplatePort"]
-    RecurringTemplateAdapter["RecurringTemplateAdapter"]
-    RecurringTemplatePort -.->|useExisting| RecurringTemplateAdapter
-    RecurringTemplateController["RecurringTemplateController"]
-    CreateRecurringTemplateUseCase["CreateRecurringTemplateUseCase"]
-    RecurringTemplateController -->|injects| CreateRecurringTemplateUseCase
-    PauseRecurringTemplateUseCase["PauseRecurringTemplateUseCase"]
-    RecurringTemplateController -->|injects| PauseRecurringTemplateUseCase
-    ResumeRecurringTemplateUseCase["ResumeRecurringTemplateUseCase"]
-    RecurringTemplateController -->|injects| ResumeRecurringTemplateUseCase
-    CancelRecurringTemplateUseCase["CancelRecurringTemplateUseCase"]
-    RecurringTemplateController -->|injects| CancelRecurringTemplateUseCase
-    GetRecurringTemplateUseCase["GetRecurringTemplateUseCase"]
-    RecurringTemplateController -->|injects| GetRecurringTemplateUseCase
-    ListRecurringTemplatesUseCase["ListRecurringTemplatesUseCase"]
-    RecurringTemplateController -->|injects| ListRecurringTemplatesUseCase
-    TransactionHost__library_["TransactionHost (library)"]
-    PrismaRecurringTemplateRepository -->|injects| TransactionHost__library_
-    PrismaRecurringTemplateRepository -->|injects| TransactionHost__library_
-    PrismaRecurringExecutionRepository -->|injects| TransactionHost__library_
-    PrismaRecurringExecutionRepository -->|injects| TransactionHost__library_
-    RecurringGenerationHandler["RecurringGenerationHandler"]
-    RecurringGenerationHandler -->|injects| RecurringTemplateRepositoryPort
-    RecurringGenerationHandler -->|injects| RecurringExecutionRepositoryPort
-    OutboxWriterPort["OutboxWriterPort"]
-    RecurringGenerationHandler -->|injects via OutboxModule| OutboxWriterPort
-    SchedulerPort["SchedulerPort"]
-    RecurringGenerationHandler -->|injects via SchedulerModule| SchedulerPort
-    ConditionEvaluator["ConditionEvaluator"]
-    RecurringGenerationHandler -->|injects via ConditionEngineModule| ConditionEvaluator
-    RecurringExecutionAdapter -->|injects| RecurringExecutionRepositoryPort
-    RecurringExecutionAdapter -->|injects| RecurringExecutionRepositoryPort
-    RecurringTemplateAdapter -->|injects| CreateRecurringTemplateUseCase
-    RecurringTemplateAdapter -->|injects| CreateRecurringTemplateUseCase
-    DomainEventDispatcher["DomainEventDispatcher"]
-    EventEmitter2__library_["EventEmitter2 (library)"]
-    DomainEventDispatcher -->|injects| EventEmitter2__library_
-    DomainEventDispatcher -->|injects| RecurringTemplateRepositoryPort
-    ScheduledJobHandlerRegistry["ScheduledJobHandlerRegistry"]
-    DomainEventDispatcher -->|injects via SchedulerModule| ScheduledJobHandlerRegistry
-    CreateRecurringTemplateUseCase -->|injects| RecurringTemplateRepositoryPort
-    CreateRecurringTemplateUseCase -->|injects via SchedulerModule| SchedulerPort
-    RequestContextPort["RequestContextPort"]
-    CreateRecurringTemplateUseCase -->|injects via ContextModule| RequestContextPort
-    PauseRecurringTemplateUseCase -->|injects| RecurringTemplateRepositoryPort
-    PauseRecurringTemplateUseCase -->|injects via SchedulerModule| SchedulerPort
-    AuditPort["AuditPort"]
-    PauseRecurringTemplateUseCase -->|injects via AuditModule| AuditPort
-    PauseRecurringTemplateUseCase -->|injects via ContextModule| RequestContextPort
-    ResumeRecurringTemplateUseCase -->|injects| RecurringTemplateRepositoryPort
-    ResumeRecurringTemplateUseCase -->|injects via SchedulerModule| SchedulerPort
-    ResumeRecurringTemplateUseCase -->|injects via AuditModule| AuditPort
-    ResumeRecurringTemplateUseCase -->|injects via ContextModule| RequestContextPort
-    CancelRecurringTemplateUseCase -->|injects| RecurringTemplateRepositoryPort
-    CancelRecurringTemplateUseCase -->|injects via SchedulerModule| SchedulerPort
-    CancelRecurringTemplateUseCase -->|injects via AuditModule| AuditPort
-    CancelRecurringTemplateUseCase -->|injects via ContextModule| RequestContextPort
-    GetRecurringTemplateUseCase -->|injects| RecurringTemplateRepositoryPort
-    GetRecurringTemplateUseCase -->|injects via ContextModule| RequestContextPort
-    ListRecurringTemplatesUseCase -->|injects| RecurringTemplateRepositoryPort
-    ListRecurringTemplatesUseCase -->|injects via ContextModule| RequestContextPort
-    SweepStaleExecutionsUseCase["SweepStaleExecutionsUseCase"]
-    SweepStaleExecutionsUseCase -->|injects| RecurringExecutionRepositoryPort
-    RecurringModule_bootstrap["RecurringModule bootstrap"]
-    RecurringModule_bootstrap -->|registers or injects| ScheduledJobHandlerRegistry
-    RecurringModule_bootstrap -->|registers or injects| RecurringGenerationHandler
-```
-
-#### SchedulerModule — `src/platform/scheduler/scheduler.module.ts`
-
-imports: ContextModule, AuditModule, LockingModule, MessagingModule, BullModule.registerQueue({ name: SCHEDULER_QUEUE_NAME }) · exports: SchedulerPort, ScheduledJobHandlerRegistry
-
-```mermaid
-flowchart LR
-    ScheduledJobRepositoryPort["ScheduledJobRepositoryPort"]
-    PrismaScheduledJobRepository["PrismaScheduledJobRepository"]
-    ScheduledJobRepositoryPort -.->|useExisting| PrismaScheduledJobRepository
-    ScheduledJobDispatchLogRepositoryPort["ScheduledJobDispatchLogRepositoryPort"]
-    PrismaScheduledJobDispatchLogRepository["PrismaScheduledJobDispatchLogRepository"]
-    ScheduledJobDispatchLogRepositoryPort -.->|useExisting| PrismaScheduledJobDispatchLogRepository
-    ScheduledJobEditLogRepositoryPort["ScheduledJobEditLogRepositoryPort"]
-    PrismaScheduledJobEditLogRepository["PrismaScheduledJobEditLogRepository"]
-    ScheduledJobEditLogRepositoryPort -.->|useExisting| PrismaScheduledJobEditLogRepository
-    SchedulerEventPublisherPort["SchedulerEventPublisherPort"]
-    RabbitMqSchedulerEventPublisher["RabbitMqSchedulerEventPublisher"]
-    SchedulerEventPublisherPort -.->|useExisting| RabbitMqSchedulerEventPublisher
-    SchedulerJobQueuePort["SchedulerJobQueuePort"]
-    BullMqSchedulerQueueAdapter["BullMqSchedulerQueueAdapter"]
-    SchedulerJobQueuePort -.->|useExisting| BullMqSchedulerQueueAdapter
-    SchedulerPort["SchedulerPort"]
-    SchedulerAdapter["SchedulerAdapter"]
-    SchedulerPort -.->|useExisting| SchedulerAdapter
-    SchedulerController["SchedulerController"]
-    GetScheduledJobStatusUseCase["GetScheduledJobStatusUseCase"]
-    SchedulerController -->|injects| GetScheduledJobStatusUseCase
-    ListScheduledJobDispatchLogUseCase["ListScheduledJobDispatchLogUseCase"]
-    SchedulerController -->|injects| ListScheduledJobDispatchLogUseCase
-    UpdateScheduledJobUseCase["UpdateScheduledJobUseCase"]
-    SchedulerController -->|injects| UpdateScheduledJobUseCase
-    CancelScheduledJobUseCase["CancelScheduledJobUseCase"]
-    SchedulerController -->|injects| CancelScheduledJobUseCase
-    RescheduleExternalJobUseCase["RescheduleExternalJobUseCase"]
-    SchedulerController -->|injects| RescheduleExternalJobUseCase
-    SchedulerHealthController["SchedulerHealthController"]
-    GetSchedulerHealthMetricsUseCase["GetSchedulerHealthMetricsUseCase"]
-    SchedulerHealthController -->|injects| GetSchedulerHealthMetricsUseCase
-    TransactionHost__library_["TransactionHost (library)"]
-    PrismaScheduledJobRepository -->|injects| TransactionHost__library_
-    ConfigService["ConfigService"]
-    PrismaScheduledJobRepository -->|injects via ConfigModule| ConfigService
-    PrismaScheduledJobRepository -->|injects| TransactionHost__library_
-    PrismaScheduledJobRepository -->|injects via ConfigModule| ConfigService
-    PrismaScheduledJobDispatchLogRepository -->|injects| TransactionHost__library_
-    PrismaScheduledJobDispatchLogRepository -->|injects| TransactionHost__library_
-    PrismaScheduledJobEditLogRepository -->|injects| TransactionHost__library_
-    PrismaScheduledJobEditLogRepository -->|injects| TransactionHost__library_
-    MessageQueuePort["MessageQueuePort"]
-    RabbitMqSchedulerEventPublisher -->|injects via MessagingModule| MessageQueuePort
-    RabbitMqSchedulerEventPublisher -->|injects via MessagingModule| MessageQueuePort
-    ScheduledJobProcessor["ScheduledJobProcessor"]
-    ScheduledJobHandlerRegistry["ScheduledJobHandlerRegistry"]
-    ScheduledJobProcessor -->|injects| ScheduledJobHandlerRegistry
-    ScheduledJobProcessor -->|injects| SchedulerEventPublisherPort
-    ScheduledJobProcessor -->|injects| ScheduledJobRepositoryPort
-    Queue__library_["Queue (library)"]
-    BullMqSchedulerQueueAdapter -->|injects| Queue__library_
-    BullMqSchedulerQueueAdapter -->|injects via ConfigModule| ConfigService
-    BullMqSchedulerQueueAdapter -->|injects| Queue__library_
-    BullMqSchedulerQueueAdapter -->|injects via ConfigModule| ConfigService
-    BullMqSchedulerJobWorker["BullMqSchedulerJobWorker"]
-    BullMqSchedulerJobWorker -->|injects| ScheduledJobProcessor
-    BullMqSchedulerJobWorker -->|injects via ConfigModule| ConfigService
-    BullMqSchedulerJobWorker -->|injects| ScheduledJobRepositoryPort
-    BullMqSchedulerJobWorker -->|injects| ScheduledJobDispatchLogRepositoryPort
-    RequestContextPort["RequestContextPort"]
-    BullMqSchedulerJobWorker -->|injects via ContextModule| RequestContextPort
-    RegisterScheduledJobUseCase["RegisterScheduledJobUseCase"]
-    RegisterScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
-    CancelScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
-    AuditPort["AuditPort"]
-    CancelScheduledJobUseCase -->|injects via AuditModule| AuditPort
-    CancelScheduledJobUseCase -->|injects via ContextModule| RequestContextPort
-    RescheduleExternalJobUseCase -->|injects| ScheduledJobRepositoryPort
-    RescheduleExternalJobUseCase -->|injects via AuditModule| AuditPort
-    RescheduleExternalJobUseCase -->|injects via ContextModule| RequestContextPort
-    UpdateScheduledJobUseCase -->|injects| ScheduledJobRepositoryPort
-    UpdateScheduledJobUseCase -->|injects| ScheduledJobEditLogRepositoryPort
-    UpdateScheduledJobUseCase -->|injects via ContextModule| RequestContextPort
-    DispatchDueJobsUseCase["DispatchDueJobsUseCase"]
-    DispatchDueJobsUseCase -->|injects| ScheduledJobRepositoryPort
-    DistributedLockPort["DistributedLockPort"]
-    DispatchDueJobsUseCase -->|injects via LockingModule| DistributedLockPort
-    DispatchDueJobsUseCase -->|injects| SchedulerJobQueuePort
-    DispatchDueJobsUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
-    DispatchDueJobsUseCase -->|injects via ConfigModule| ConfigService
-    SchedulerTickHeartbeat["SchedulerTickHeartbeat"]
-    DispatchDueJobsUseCase -->|injects| SchedulerTickHeartbeat
-    ReconcileMissedJobsUseCase["ReconcileMissedJobsUseCase"]
-    ReconcileMissedJobsUseCase -->|injects| ScheduledJobRepositoryPort
-    GetScheduledJobStatusUseCase -->|injects| ScheduledJobRepositoryPort
-    GetScheduledJobStatusUseCase -->|injects via ContextModule| RequestContextPort
-    ListScheduledJobDispatchLogUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
-    ListScheduledJobDispatchLogUseCase -->|injects| ScheduledJobRepositoryPort
-    ListScheduledJobDispatchLogUseCase -->|injects via ContextModule| RequestContextPort
-    GetSchedulerHealthMetricsUseCase -->|injects| ScheduledJobRepositoryPort
-    GetSchedulerHealthMetricsUseCase -->|injects| ScheduledJobDispatchLogRepositoryPort
-    GetSchedulerHealthMetricsUseCase -->|injects| SchedulerTickHeartbeat
-    SchedulerAdapter -->|injects| RegisterScheduledJobUseCase
-    SchedulerAdapter -->|injects| CancelScheduledJobUseCase
-    SchedulerAdapter -->|injects| RescheduleExternalJobUseCase
-    SchedulerAdapter -->|injects| RegisterScheduledJobUseCase
-    SchedulerAdapter -->|injects| CancelScheduledJobUseCase
-    SchedulerAdapter -->|injects| RescheduleExternalJobUseCase
-    SchedulerTicker["SchedulerTicker"]
-    SchedulerTicker -->|injects| DispatchDueJobsUseCase
-    SchedulerTicker -->|injects| ReconcileMissedJobsUseCase
-    SchedulerTicker -->|injects via ConfigModule| ConfigService
-    SchedulerRegistry__library_["SchedulerRegistry (library)"]
-    SchedulerTicker -->|injects| SchedulerRegistry__library_
-```
-
 ### Composition-only modules
 
 #### AppModule — `src/app.module.ts`
@@ -1469,7 +663,7 @@ _Composition only._
 
 #### ProcurementModule — `src/business/procurement/procurement.module.ts`
 
-imports: ProductModule, PurchaseOrderModule, GoodReceiptNoteModule, GoodsReturnModule · exports: —
+imports: ProductModule, PurchaseOrderModule, GoodReceiptNoteModule · exports: —
 
 _Composition only._
 

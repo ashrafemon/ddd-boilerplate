@@ -1,7 +1,7 @@
 import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { ConfigService } from '@config/config.service';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ImportHandlerRegistry } from '../import-handler.registry';
 import { ImportJobOutboxWriterPort } from '../ports/import-job-outbox-writer.port';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';

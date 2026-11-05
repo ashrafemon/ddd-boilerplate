@@ -1,10 +1,10 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { Invoice } from '../../domain/aggregates/invoice.aggregate';
-import { InvoiceCommandRepository } from '../../domain/repositories/invoice-command.repository';
+import { Invoice } from '../../../domain/aggregates/invoice.aggregate';
+import { InvoiceCommandRepository } from '../../../domain/repositories/invoice-command.repository';
 import { PrismaInvoiceMapper } from './prisma-invoice.mapper';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { resolveCompanyId } from '@shared-kernel/constants/company';
 

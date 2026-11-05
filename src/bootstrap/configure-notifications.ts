@@ -1,7 +1,7 @@
 import { INestApplicationContext, Type } from '@nestjs/common';
-import { NotificationHandlerRegistry } from '@platform/notification/notification-handler.registry';
-import { NotificationHandler } from '@platform/notification/ports/notification-handler.port';
-import { NotificationPriority } from '@platform/notification/notification.types';
+import { NotificationHandlerRegistry } from '@platform/platform-common/notification/notification-handler.registry';
+import { NotificationHandler } from '@platform/platform-common/notification/ports/notification-handler.port';
+import { NotificationPriority } from '@platform/platform-common/notification/notification.types';
 import { PurchaseOrderModule } from '@business/procurement/purchase-order/purchase-order.module';
 import { PurchaseOrderNotificationAdapter } from '@business/procurement/purchase-order/infrastructure/adapters/platform/purchase-order-notification.adapter';
 import { GoodReceiptNoteModule } from '@business/procurement/good-receipt-note/good-receipt-note.module';

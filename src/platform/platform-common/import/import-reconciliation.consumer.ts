@@ -2,7 +2,7 @@ import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@config/config.service';
-import { FileStoragePort } from '@platform/storage/ports/file-storage.port';
+import { FileStoragePort } from '@platform/platform-common/storage/ports/file-storage.port';
 import { ImportJobRepositoryPort } from './ports/import-job-repository.port';
 import { ImportJobRowRepositoryPort } from './ports/import-job-row-repository.port';
 import { ImportQueuePublisherPort } from './ports/import-queue-publisher.port';

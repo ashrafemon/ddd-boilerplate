@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@config/config.service';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { Observable, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { IdempotencyPort } from '../ports/idempotency.port';

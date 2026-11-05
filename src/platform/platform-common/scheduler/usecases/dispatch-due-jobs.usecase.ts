@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createHash, randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
-import { DistributedLockPort } from '@platform/locking/ports/distributed-lock.port';
+import { DistributedLockPort } from '@platform/platform-common/locking/ports/distributed-lock.port';
 import { SchedulerJobQueuePort } from '../ports/scheduler-job-queue.port';
 import { ScheduledJobDispatchLogRepositoryPort } from '../ports/scheduled-job-dispatch-log-repository.port';
 import { ClaimedJob, DispatchStatus, ScheduleMode } from '../scheduler.types';

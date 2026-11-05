@@ -5,7 +5,7 @@ import { PurchaseOrder } from '@business/procurement/purchase-order/domain/aggre
 import { PurchaseOrderCommandRepository } from '@business/procurement/purchase-order/domain/repositories/purchase-order-command.repository';
 import { PrismaPurchaseOrderMapper } from './prisma-purchase-order.mapper';
 import { PageQuery } from '@shared-kernel/types/pagination';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { resolveCompanyId } from '@shared-kernel/constants/company';
 

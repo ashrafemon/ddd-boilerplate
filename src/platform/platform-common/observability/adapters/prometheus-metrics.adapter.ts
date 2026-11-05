@@ -5,7 +5,7 @@ import {
   GaugeOptions,
   HistogramOptions,
   MetricsPort,
-} from '@platform/observability/ports/metrics.port';
+} from '@platform/platform-common/observability/ports/metrics.port';
 
 /**
  * Prometheus-backed metrics adapter. Metrics are exposed by the platform

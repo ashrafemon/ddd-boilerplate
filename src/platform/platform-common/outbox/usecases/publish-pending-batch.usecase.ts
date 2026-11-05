@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { InProcessEventBus } from '@platform/events/ports/in-process-event-bus.port';
-import { MessageQueuePort } from '@platform/messaging/ports/message-queue.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { InProcessEventBus } from '@platform/platform-common/events/ports/in-process-event-bus.port';
+import { MessageQueuePort } from '@platform/platform-common/messaging/ports/message-queue.port';
 import { PrismaOutboxRepository } from '../repositories/prisma-outbox.repository';
 import {
   BrokerTarget,

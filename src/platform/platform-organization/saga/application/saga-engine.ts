@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
 import { SagaEmittedEvent } from '../events/saga-emitted.event';
 import {
   InsertInstanceInput,

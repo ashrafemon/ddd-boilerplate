@@ -14,7 +14,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 import { normalizePageQuery, PageResult } from '@shared-kernel/types/pagination';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { WebhookEventTypeRegistry } from '../webhook-event-type.registry';
 import { WebhookInboundSourceRegistry } from '../webhook-inbound-source.registry';
 import { CreateWebhookSubscriptionUseCase } from '../usecases/create-webhook-subscription.usecase';

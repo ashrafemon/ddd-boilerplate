@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { hostname } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { ConfigService } from '@config/config.service';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { SagaInstanceRepository, SagaStepRepository } from '../repositories/prisma-saga.repository';
 import {
   SagaActionResult,

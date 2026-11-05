@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { SchedulerPort } from '@platform/platform-common/scheduler/ports/scheduler.port';
 import { RecurringTemplateRepositoryPort } from '../ports/recurring-template-repository.port';
 import { CreateRecurringTemplateInput, RecurringTemplateRecord } from '../recurring-template.types';
 

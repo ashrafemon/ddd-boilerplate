@@ -1,7 +1,7 @@
 import { INestApplicationContext, Type } from '@nestjs/common';
-import { ImportHandlerRegistry } from '@platform/import/import-handler.registry';
-import { ImportDescriptor } from '@platform/import/import.types';
-import { ImportHandler } from '@platform/import/ports/import-handler.port';
+import { ImportHandlerRegistry } from '@platform/platform-common/import/import-handler.registry';
+import { ImportDescriptor } from '@platform/platform-common/import/import.types';
+import { ImportHandler } from '@platform/platform-common/import/ports/import-handler.port';
 import { VendorModule } from '@business/party/vendor/vendor.module';
 import {
   VendorImportHandler,

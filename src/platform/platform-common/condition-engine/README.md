@@ -17,8 +17,8 @@ upstream) — the engine never invents them.
 
 ## Public API
 ```ts
-import { ConditionEvaluator } from '@platform/condition-engine/ports/condition-evaluator.port';
-import { FieldResolverRegistry, FieldResolver } from '@platform/condition-engine/.../field-resolver.registry';
+import { ConditionEvaluator } from '@platform/platform-common/condition-engine/ports/condition-evaluator.port';
+import { FieldResolverRegistry, FieldResolver } from '@platform/platform-common/condition-engine/field-resolver.registry';
 registry.register('invoice', myInvoiceFieldResolver);       // owned by the field's module
 const { passed } = await evaluator.evaluate(cond, { tenantId, traceId });
 ```

@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { AuditPort } from '@platform/audit/ports/audit.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import { PurchaseOrderTransitionRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from '../queries/purchase-order.query';

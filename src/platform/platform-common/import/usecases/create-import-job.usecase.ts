@@ -1,8 +1,8 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ConfigService } from '@config/config.service';
-import { NumberingPort } from '@platform/numbering/ports/numbering.port';
-import { FileStoragePort } from '@platform/storage/ports/file-storage.port';
+import { NumberingPort } from '@platform/platform-common/numbering/ports/numbering.port';
+import { FileStoragePort } from '@platform/platform-common/storage/ports/file-storage.port';
 import { ImportHandlerRegistry } from '../import-handler.registry';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';
 import { ImportQueuePublisherPort } from '../ports/import-queue-publisher.port';

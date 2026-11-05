@@ -1,8 +1,8 @@
 import { INestApplicationContext, Type } from '@nestjs/common';
-import { WebhookEventTypeRegistry } from '@platform/webhook/webhook-event-type.registry';
-import { WebhookInboundSourceRegistry } from '@platform/webhook/webhook-inbound-source.registry';
-import { WebhookInboundHandlerPort } from '@platform/webhook/ports/webhook-inbound-handler.port';
-import { WebhookSignatureVerifier } from '@platform/webhook/webhook.types';
+import { WebhookEventTypeRegistry } from '@platform/platform-common/webhook/webhook-event-type.registry';
+import { WebhookInboundSourceRegistry } from '@platform/platform-common/webhook/webhook-inbound-source.registry';
+import { WebhookInboundHandlerPort } from '@platform/platform-common/webhook/ports/webhook-inbound-handler.port';
+import { WebhookSignatureVerifier } from '@platform/platform-common/webhook/webhook.types';
 
 /**
  * Composition-root bridge for the webhook opt-ins — same precedent as

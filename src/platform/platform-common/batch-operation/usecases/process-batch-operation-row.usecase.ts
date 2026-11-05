@@ -5,7 +5,7 @@ import { BatchOperationHandlerRegistry } from '../batch-operation-handler.regist
 import { BatchOperationHandler } from '../ports/batch-operation-handler.port';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import {
   BatchOperationContext,
   BatchOperationDispatch,

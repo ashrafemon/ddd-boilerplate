@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { ConfigService } from '@config/config.service';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ScheduledJobProcessor } from '../scheduled-job.processor';
 import { SchedulerQueuedJob } from '../ports/scheduler-job-queue.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';

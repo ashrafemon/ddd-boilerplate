@@ -1,4 +1,4 @@
-import type { OutboxEnvelope } from '@platform/outbox/outbox.types';
+import type { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
 
 /**
  * Public Message Queue port — the ONLY outbox/messaging port for cross-process

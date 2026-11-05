@@ -30,7 +30,7 @@ consumer + message id, with NULLs normalized to `''` at the repository edge.
 ## Public API
 
 ```ts
-import { InboxPort } from '@platform/inbox/ports/inbox.port';
+import { InboxPort } from '@platform/platform-common/inbox/ports/inbox.port';
 
 const delivery = await this.inbox.receive({
   consumer: 'inventory.reserve',

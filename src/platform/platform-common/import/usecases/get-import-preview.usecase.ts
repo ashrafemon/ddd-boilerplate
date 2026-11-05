@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ConfigService } from '@config/config.service';
 import { ImportFileParser } from '../import-file.parser';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';

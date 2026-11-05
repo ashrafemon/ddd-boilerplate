@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { MessageQueuePort } from '@platform/messaging/ports/message-queue.port';
+import { MessageQueuePort } from '@platform/platform-common/messaging/ports/message-queue.port';
 import {
   SchedulerEventPublisherPort,
   SchedulerJobDueEvent,

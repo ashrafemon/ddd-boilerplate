@@ -36,7 +36,7 @@ tick reclaims the row through the same claim clause.
 ## Public API
 
 ```ts
-import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
 
 // business command use case, inside @Transactional():
 await this.outbox.append(new OrderCreated(order), 'SalesOrder', order.id);

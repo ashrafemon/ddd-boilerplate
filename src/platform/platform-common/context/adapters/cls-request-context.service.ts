@@ -4,8 +4,8 @@ import {
   CLS_REQUEST_CONTEXT_KEY,
   RequestContext,
   RequestContextData,
-} from '@platform/context/ports/request-context';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+} from '@platform/platform-common/context/ports/request-context';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 
 /**
  * CLS-backed request context. `nestjs-cls` is the only supported transport.

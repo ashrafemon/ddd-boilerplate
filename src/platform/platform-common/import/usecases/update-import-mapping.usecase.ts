@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';
 import { ImportQueuePublisherPort } from '../ports/import-queue-publisher.port';
 import { ColumnMapping, ImportJobRecord } from '../import.types';

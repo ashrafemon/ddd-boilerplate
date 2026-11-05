@@ -1,7 +1,7 @@
 import { ConfigService } from '@config/config.service';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { Injectable } from '@nestjs/common';
-import { OutboxEnvelope } from '@platform/outbox/outbox.types';
+import { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
 import { BrokerPublisher } from '../message-publisher.tokens';
 
 /**

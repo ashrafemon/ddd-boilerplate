@@ -1,8 +1,8 @@
 import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { ConflictException, Injectable } from '@nestjs/common';
-import { LoggerPort } from '@platform/observability/ports/logger.port';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { RecurringExecutionPort } from '@platform/recurring/ports/recurring-execution.port';
+import { LoggerPort } from '@platform/platform-common/observability/ports/logger.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { RecurringExecutionPort } from '@platform/platform-common/recurring/ports/recurring-execution.port';
 import { asPurchaseOrderLines } from '../mappers/recurring-purchase-order.mapper';
 import { RecurringOccurrenceRequestedPayload } from '../types/recurring-occurrence.types';
 import { AddPurchaseOrderLineUseCase } from '../usecases/add-purchase-order-line.usecase';

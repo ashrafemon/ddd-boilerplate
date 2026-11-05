@@ -2,7 +2,7 @@ import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nes
 import { FastifyRequest } from 'fastify';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { CachePort } from '../ports/cache.port';
 
 /**

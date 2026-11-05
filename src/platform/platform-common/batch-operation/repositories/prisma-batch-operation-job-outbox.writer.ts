@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
 import { BatchOperationJobOutboxWriterPort } from '../ports/batch-operation-job-outbox-writer.port';
 import { BatchOperationJobCompletedEvent } from '../events/batch-operation-job-completed.event';
 import { BatchOperationJobRecord } from '../batch-operation.types';

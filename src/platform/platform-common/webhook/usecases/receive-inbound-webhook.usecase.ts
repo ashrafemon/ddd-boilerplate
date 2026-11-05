@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { Injectable } from '@nestjs/common';
-import { IdempotencyPort } from '@platform/idempotency/ports/idempotency.port';
+import { IdempotencyPort } from '@platform/platform-common/idempotency/ports/idempotency.port';
 import { WebhookInboundSourceRegistry } from '../webhook-inbound-source.registry';
 import { InboundWebhookContext } from '../webhook.types';
 import { InvalidWebhookSignatureError } from '../webhook.errors';

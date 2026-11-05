@@ -1,9 +1,9 @@
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { AuditPort } from '@platform/audit/ports/audit.port';
+import { SchedulerPort } from '@platform/platform-common/scheduler/ports/scheduler.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import { RecurringTemplateRepositoryPort } from '../ports/recurring-template-repository.port';
 import { RecurringTemplateRecord } from '../recurring-template.types';
 

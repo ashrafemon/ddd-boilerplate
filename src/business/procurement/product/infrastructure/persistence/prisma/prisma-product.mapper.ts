@@ -3,9 +3,9 @@ import { ProductId } from '@business/procurement/product/domain/value-objects/pr
 import { ProductName } from '@business/procurement/product/domain/value-objects/product-name.vo';
 import { Sku } from '@business/procurement/product/domain/value-objects/sku.vo';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { ProductQueryRecord } from '../../domain/types/product.types';
-import { ProductStatus } from '../../domain/types/product.enum';
-import { ProductProps } from '../../domain/types/product.types';
+import { ProductQueryRecord } from '../../../domain/types/product.types';
+import { ProductStatus } from '../../../domain/types/product.enum';
+import { ProductProps } from '../../../domain/types/product.types';
 
 export class PrismaProductMapper {
   static toDomain(row: {

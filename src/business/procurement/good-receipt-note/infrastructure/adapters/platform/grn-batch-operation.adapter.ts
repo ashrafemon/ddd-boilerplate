@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { BatchOperationHandler } from '@platform/batch-operation/ports/batch-operation-handler.port';
-import { ExecutionResult, ValidationResult } from '@platform/batch-operation/batch-operation.types';
+import { BatchOperationHandler } from '@platform/platform-common/batch-operation/ports/batch-operation-handler.port';
+import {
+  ExecutionResult,
+  ValidationResult,
+} from '@platform/platform-common/batch-operation/batch-operation.types';
 import { GetGrnUseCase } from '../../../application/usecases/get-grn.usecase';
 import { ReceiveGrnUseCase } from '../../../application/usecases/receive-grn.usecase';
 import { PostGrnUseCase } from '../../../application/usecases/post-grn.usecase';

@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/require-await -- in-memory test double: the port is async, the storage is a Map */
 import { randomUUID } from 'crypto';
 import { PageResult } from '@shared-kernel/types/pagination';
-import { WebhookSubscriptionRepositoryPort } from '@platform/webhook/ports/webhook-subscription-repository.port';
+import { WebhookSubscriptionRepositoryPort } from '@platform/platform-common/webhook/ports/webhook-subscription-repository.port';
 import {
   NewWebhookSubscription,
   UpdateWebhookSubscriptionInput,
   WebhookSubscriptionQuery,
   WebhookSubscriptionRecord,
-} from '@platform/webhook/webhook.types';
-import { WebhookSubscriptionNotFoundError } from '@platform/webhook/webhook.errors';
+} from '@platform/platform-common/webhook/webhook.types';
+import { WebhookSubscriptionNotFoundError } from '@platform/platform-common/webhook/webhook.errors';
 
 /** No DB, no BullMQ — plain in-memory fake for use-case specs. */
 export class InMemoryWebhookSubscriptionRepository implements WebhookSubscriptionRepositoryPort {

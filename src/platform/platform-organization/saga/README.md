@@ -39,10 +39,10 @@ settled by the sweep, never by the worker.
 ## Public ports
 
 ```ts
-import { FeatureGate } from '@platform/saga/ports/feature-gate.port';
-import { CompanySettingsReader } from '@platform/saga/ports/company-settings.port';
-import { SAGA_ACTION, SagaAction } from '@platform/saga/ports/saga-action.port';
-import { SagaInboundPort } from '@platform/saga/ports/saga-inbound.port';
+import { FeatureGate } from '@platform/platform-organization/saga/ports/feature-gate.port';
+import { CompanySettingsReader } from '@platform/platform-organization/saga/ports/company-settings.port';
+import { SAGA_ACTION, SagaAction } from '@platform/platform-organization/saga/ports/saga-action.port';
+import { SagaInboundPort } from '@platform/platform-organization/saga/ports/saga-inbound.port';
 
 // entitlement keys + settings are owned OUTSIDE the saga
 featureGate.enabled(companyId): Promise<ReadonlySet<string>>;

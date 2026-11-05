@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 import { numericEnv, stringEnv } from './env.util';
-import { IIdempotencyConfig } from '@platform/idempotency/idempotency.types';
+import { IIdempotencyConfig } from '@platform/platform-common/idempotency/idempotency.types';
 
 /**
  * Idempotency configuration (design `common/02-idempotency`).

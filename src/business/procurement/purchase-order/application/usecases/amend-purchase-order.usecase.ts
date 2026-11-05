@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { AuditPort } from '@platform/audit/ports/audit.port';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { AmendPurchaseOrderRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';
 import { ImportJobRowRepositoryPort } from '../ports/import-job-row-repository.port';
 import { requireVisibleJob } from './import-helpers';

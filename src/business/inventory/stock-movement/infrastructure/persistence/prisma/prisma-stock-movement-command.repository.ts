@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { StockMovement } from '../../domain/aggregates/stock-movement.aggregate';
-import { StockMovementId } from '../../domain/value-objects/stock-movement-id.vo';
-import { StockMovementCommandRepository } from '../../domain/repositories/stock-movement-command.repository';
-import { MovementType } from '../../domain/types/stock-movement.types';
+import { StockMovement } from '../../../domain/aggregates/stock-movement.aggregate';
+import { StockMovementId } from '../../../domain/value-objects/stock-movement-id.vo';
+import { StockMovementCommandRepository } from '../../../domain/repositories/stock-movement-command.repository';
+import { MovementType } from '../../../domain/types/stock-movement.types';
 
 @Injectable()
 export class PrismaStockMovementCommandRepository extends StockMovementCommandRepository {

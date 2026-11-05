@@ -1,7 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { RecurringTemplatePort } from '@platform/recurring/ports/recurring-template.port';
-import type { RecurringTemplateRecord } from '@platform/recurring/recurring-template.types';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { RecurringTemplatePort } from '@platform/platform-common/recurring/ports/recurring-template.port';
+import type { RecurringTemplateRecord } from '@platform/platform-common/recurring/recurring-template.types';
 import { OrderableVendorPort } from '../outbound-ports/vendor-query.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 import { CreateRecurringPurchaseOrderInput } from '../../domain/types/purchase-order.types';

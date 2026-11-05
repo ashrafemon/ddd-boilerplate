@@ -2,14 +2,14 @@ import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable, Logger } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { randomUUID } from 'crypto';
-import { ConditionEvaluator } from '@platform/condition-engine/ports/condition-evaluator.port';
-import { GenerationConditionParser } from '@platform/condition-engine/generation-condition.parser';
-import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
-import { SchedulerPort } from '@platform/scheduler/ports/scheduler.port';
+import { ConditionEvaluator } from '@platform/platform-common/condition-engine/ports/condition-evaluator.port';
+import { GenerationConditionParser } from '@platform/platform-common/condition-engine/generation-condition.parser';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
+import { SchedulerPort } from '@platform/platform-common/scheduler/ports/scheduler.port';
 import {
   ScheduledJobFireHandler,
   ScheduledJobPayload,
-} from '@platform/scheduler/ports/scheduled-job-fire-handler.port';
+} from '@platform/platform-common/scheduler/ports/scheduled-job-fire-handler.port';
 import { RecurringOccurrenceRequested } from './events/recurring-occurrence-requested.event';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';
 import { RecurringExecutionRepositoryPort } from './ports/recurring-execution-repository.port';

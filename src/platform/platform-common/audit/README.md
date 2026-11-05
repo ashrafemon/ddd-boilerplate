@@ -16,7 +16,7 @@ back atomically with the business change that triggered them.
 ## Public API
 
 ```ts
-import { AuditPort, AuditEntry } from '@platform/audit/ports/audit.port';
+import { AuditPort, AuditEntry } from '@platform/platform-common/audit/ports/audit.port';
 await this.audit.record({ action, entityType, entityId, changes });
 ```
 

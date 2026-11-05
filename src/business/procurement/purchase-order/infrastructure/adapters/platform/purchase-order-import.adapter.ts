@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
-import { ImportHandler } from '@platform/import/ports/import-handler.port';
+import { ImportHandler } from '@platform/platform-common/import/ports/import-handler.port';
 import {
   ImportDescriptor,
   PreloadedReferences,
   RowResult,
   RowVerdict,
-} from '@platform/import/import.types';
+} from '@platform/platform-common/import/import.types';
 import { ProductReference } from '@business/procurement/product/public/contracts/product-for-purchase.contract';
 import { VendorReference } from '@business/party/vendor/public/contracts/vendor-for-purchase.contract';
 import { ImportPurchaseOrderUseCase } from '../../../application/usecases/import-purchase-order.usecase';

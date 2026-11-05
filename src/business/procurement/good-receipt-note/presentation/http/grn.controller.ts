@@ -45,8 +45,8 @@ import {
 } from './responses/list-grns.web.response.dto';
 import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
-import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
-import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
+import { Idempotent } from '@platform/platform-common/idempotency/http/idempotent.decorator';
+import { CacheResponseInterceptor } from '@platform/platform-common/cache/interceptors/cache-response.interceptor';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 
 type GrnGetResponse = GetGrnMobileResponse | GetGrnWebResponse;

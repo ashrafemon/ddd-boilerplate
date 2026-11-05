@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { Prisma } from '../../../generated/client';
+import { Prisma } from '../../../../generated/client';
 import { PageResult } from '@shared-kernel/types/pagination';
 import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import { NotificationMessageRepositoryPort } from '../ports/notification-message-repository.port';

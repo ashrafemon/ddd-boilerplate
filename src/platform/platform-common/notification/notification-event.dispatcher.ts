@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
-import { MessageEnvelope } from '@platform/events/ports/in-process-event-bus.port';
+import { MessageEnvelope } from '@platform/platform-common/events/ports/in-process-event-bus.port';
 import { NotificationHandlerRegistry } from './notification-handler.registry';
 import { SendNotificationUseCase } from './usecases/send-notification.usecase';
 

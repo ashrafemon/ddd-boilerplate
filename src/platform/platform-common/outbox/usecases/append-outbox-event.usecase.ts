@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { PrismaOutboxRepository } from '../repositories/prisma-outbox.repository';
 import { AppendOutboxOptions } from '../ports/outbox-writer.port';
 import { DEFAULT_BROKER_TARGET, OutboxEvent } from '../outbox.types';

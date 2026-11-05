@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ScheduledJobDispatchLogRepositoryPort } from '../ports/scheduled-job-dispatch-log-repository.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { ScheduledJobDispatchLogRecord } from '../scheduler.types';

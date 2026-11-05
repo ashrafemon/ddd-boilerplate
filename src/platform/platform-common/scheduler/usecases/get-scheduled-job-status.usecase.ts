@@ -6,7 +6,7 @@ import {
   normalizePageQuery,
 } from '@shared-kernel/types/pagination';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { ScheduledJobRecord } from '../scheduler.types';
 

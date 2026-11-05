@@ -1,10 +1,10 @@
 import { GrnQueryRecord } from '@business/procurement/good-receipt-note/domain/types/grn.types';
 import { GrnQuery } from '@business/procurement/good-receipt-note/application/queries/grn.query';
-import { PrismaReadPort } from '@platform/context/ports/prisma-read.port';
+import { PrismaReadPort } from '@platform/platform-common/context/ports/prisma-read.port';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
 import { Injectable } from '@nestjs/common';
 import { PrismaGrnMapper } from './prisma-grn.mapper';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 
 @Injectable()

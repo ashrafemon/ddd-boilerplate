@@ -1,9 +1,9 @@
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { Invoice } from '../../domain/aggregates/invoice.aggregate';
-import { InvoiceId } from '../../domain/value-objects/invoice-id.vo';
-import { InvoiceLine } from '../../domain/value-objects/invoice-line.vo';
-import { InvoiceNumber } from '../../domain/value-objects/invoice-number.vo';
-import { InvoiceQueryRecord, InvoiceStatus } from '../../domain/types/invoice.types';
+import { Invoice } from '../../../domain/aggregates/invoice.aggregate';
+import { InvoiceId } from '../../../domain/value-objects/invoice-id.vo';
+import { InvoiceLine } from '../../../domain/value-objects/invoice-line.vo';
+import { InvoiceNumber } from '../../../domain/value-objects/invoice-number.vo';
+import { InvoiceQueryRecord, InvoiceStatus } from '../../../domain/types/invoice.types';
 
 interface InvoiceRow {
   id: string;

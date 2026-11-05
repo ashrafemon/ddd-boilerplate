@@ -1,7 +1,7 @@
-import { LockingModule } from '@platform/locking/locking.module';
-import { ContextModule } from '@platform/context/context.module';
-import { AuditModule } from '@platform/audit/audit.module';
-import { MessagingModule } from '@platform/messaging/messaging.module';
+import { LockingModule } from '@platform/platform-common/locking/locking.module';
+import { ContextModule } from '@platform/platform-common/context/context.module';
+import { AuditModule } from '@platform/platform-common/audit/audit.module';
+import { MessagingModule } from '@platform/platform-common/messaging/messaging.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ScheduledJobHandlerRegistry } from './scheduled-job-handler.registry';

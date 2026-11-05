@@ -16,8 +16,8 @@ import { ProductCommandRepository } from './domain/repositories/product-command.
 import { ProductQuery } from './application/queries/product.query';
 import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
-import { PrismaProductCommandRepository } from './infrastructure/persistence/prisma-product-command.repository';
-import { PrismaProductQueryRepository } from './infrastructure/persistence/prisma-product-query.repository';
+import { PrismaProductCommandRepository } from './infrastructure/persistence/prisma/prisma-product-command.repository';
+import { PrismaProductQueryRepository } from './infrastructure/persistence/prisma/prisma-product-query.repository';
 import { ProductController } from './presentation/http/product.controller';
 import { ProductForPurchasePort } from '@business/procurement/product/public/ports/product-for-purchase.port';
 

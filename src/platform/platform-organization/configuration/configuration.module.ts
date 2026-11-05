@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ContextModule } from '@platform/context/context.module';
+import { ContextModule } from '@platform/platform-common/context/context.module';
 import { PrismaCompanyConfigRepository } from './repositories/company-config.repository';
 import { CompanyConfigPort } from './ports/company-config.port';
 

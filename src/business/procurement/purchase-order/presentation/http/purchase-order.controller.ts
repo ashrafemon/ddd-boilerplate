@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
-import type { RecurringTemplateRecord } from '@platform/recurring/recurring-template.types';
+import type { RecurringTemplateRecord } from '@platform/platform-common/recurring/recurring-template.types';
 import { AddPurchaseOrderLineUseCase } from '../../application/usecases/add-purchase-order-line.usecase';
 import { UpdatePurchaseOrderUseCase } from '../../application/usecases/update-purchase-order.usecase';
 import { UpdatePurchaseOrderLineUseCase } from '../../application/usecases/update-purchase-order-line.usecase';
@@ -57,8 +57,8 @@ import {
 } from './responses/list-purchase-orders.web.response.dto';
 import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
-import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
-import { CacheResponseInterceptor } from '@platform/cache/interceptors/cache-response.interceptor';
+import { Idempotent } from '@platform/platform-common/idempotency/http/idempotent.decorator';
+import { CacheResponseInterceptor } from '@platform/platform-common/cache/interceptors/cache-response.interceptor';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 
 type PurchaseOrderGetResponse = GetPurchaseOrderMobileResponse | GetPurchaseOrderWebResponse;

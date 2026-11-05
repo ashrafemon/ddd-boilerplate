@@ -23,9 +23,9 @@ import { GrnCommandRepository } from './domain/repositories/grn-command.reposito
 import { GrnQuery } from './application/queries/grn.query';
 import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
-import { PurchaseOrderAdapter } from './infrastructure/adapters/module/purchase-order.adapter';
-import { PrismaGrnCommandRepository } from './infrastructure/persistence/prisma-grn-command.repository';
-import { PrismaGrnQueryRepository } from './infrastructure/persistence/prisma-grn-query.repository';
+import { PurchaseOrderAdapter } from './infrastructure/adapters/business-aggregate/purchase-order.adapter';
+import { PrismaGrnCommandRepository } from './infrastructure/persistence/prisma/prisma-grn-command.repository';
+import { PrismaGrnQueryRepository } from './infrastructure/persistence/prisma/prisma-grn-query.repository';
 import { GrnController } from './presentation/http/grn.controller';
 import { GrnForPurchaseOrderPort } from '@business/procurement/good-receipt-note/public/ports/grn-for-purchase-order.port';
 import { GrnBatchOperationAdapter } from './infrastructure/adapters/platform/grn-batch-operation.adapter';

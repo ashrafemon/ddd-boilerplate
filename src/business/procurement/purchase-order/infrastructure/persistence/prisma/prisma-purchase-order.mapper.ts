@@ -5,8 +5,11 @@ import { OrderNumber } from '@business/procurement/purchase-order/domain/value-o
 import { ProductIdRef } from '@business/procurement/purchase-order/domain/value-objects/product-id-ref.vo';
 import { VendorIdRef } from '@business/procurement/purchase-order/domain/value-objects/vendor-id-ref.vo';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { PurchaseOrderQueryRecord } from '../../domain/types/purchase-order.types';
-import { PurchaseOrderProps, PurchaseOrderStatus } from '../../domain/types/purchase-order.types';
+import { PurchaseOrderQueryRecord } from '../../../domain/types/purchase-order.types';
+import {
+  PurchaseOrderProps,
+  PurchaseOrderStatus,
+} from '../../../domain/types/purchase-order.types';
 
 export class PrismaPurchaseOrderMapper {
   static toDomain(row: {

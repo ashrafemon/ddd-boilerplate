@@ -1,6 +1,6 @@
 import { INestApplicationContext, Type } from '@nestjs/common';
-import { BatchOperationHandlerRegistry } from '@platform/batch-operation/batch-operation-handler.registry';
-import { BatchOperationHandler } from '@platform/batch-operation/ports/batch-operation-handler.port';
+import { BatchOperationHandlerRegistry } from '@platform/platform-common/batch-operation/batch-operation-handler.registry';
+import { BatchOperationHandler } from '@platform/platform-common/batch-operation/ports/batch-operation-handler.port';
 import { GoodReceiptNoteModule } from '@business/procurement/good-receipt-note/good-receipt-note.module';
 import { GrnBatchOperationAdapter } from '@business/procurement/good-receipt-note/infrastructure/adapters/platform/grn-batch-operation.adapter';
 import { PurchaseOrderModule } from '@business/procurement/purchase-order/purchase-order.module';

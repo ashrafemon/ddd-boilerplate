@@ -4,7 +4,7 @@ import { ConfigService } from '@config/config.service';
 import {
   ErrorTrackingContext,
   ErrorTrackingPort,
-} from '@platform/observability/ports/error-tracking.port';
+} from '@platform/platform-common/observability/ports/error-tracking.port';
 
 /**
  * Sentry-backed error tracking. Self-disables when SENTRY_DSN is not

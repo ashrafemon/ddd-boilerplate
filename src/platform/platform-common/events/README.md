@@ -19,7 +19,7 @@
 ## Public API
 
 ```ts
-import { InProcessEventBus } from '@platform/events/ports/in-process-event-bus.port';
+import { InProcessEventBus } from '@platform/platform-common/events/ports/in-process-event-bus.port';
 
 // publisher (usually the outbox, not business code)
 await this.eventBus.emit(envelope);

@@ -1,10 +1,10 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { GoodReceiptNote } from '../../domain/aggregates/grn.aggregate';
-import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
+import { GoodReceiptNote } from '../../../domain/aggregates/grn.aggregate';
+import { GrnCommandRepository } from '../../../domain/repositories/grn-command.repository';
 import { PrismaGrnMapper } from './prisma-grn.mapper';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { resolveCompanyId } from '@shared-kernel/constants/company';
 

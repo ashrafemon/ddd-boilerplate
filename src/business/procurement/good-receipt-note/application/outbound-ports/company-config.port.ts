@@ -1,4 +1,4 @@
-import { CompanyConfig } from '@platform/configuration/ports/company-config.port';
+import { CompanyConfig } from '@platform/platform-organization/configuration/ports/company-config.port';
 
 export abstract class CompanyConfigPort {
   abstract getCompanyConfig(): Promise<CompanyConfig>;

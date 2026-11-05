@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { WebhookSubscriptionRepositoryPort } from '../ports/webhook-subscription-repository.port';
 import { WebhookEventTypeRegistry } from '../webhook-event-type.registry';
 import { NewWebhookSubscription, WebhookSubscriptionRecord } from '../webhook.types';

@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
-import { FileStoragePort } from '@platform/storage/ports/file-storage.port';
+import { FileStoragePort } from '@platform/platform-common/storage/ports/file-storage.port';
 import { ImportHandlerRegistry } from '../import-handler.registry';
 import { StorageObjectRepositoryPort } from '../ports/storage-object-repository.port';
 

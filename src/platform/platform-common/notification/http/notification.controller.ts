@@ -16,7 +16,7 @@ import type { FastifyReply } from 'fastify';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 import { normalizePageQuery } from '@shared-kernel/types/pagination';
 import { PageResult } from '@shared-kernel/types/pagination';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ChannelProviderRegistry } from '../channel-provider.registry';
 import { NotificationHandlerRegistry } from '../notification-handler.registry';
 import { ApplyDeliveryEventUseCase } from '../usecases/apply-delivery-event.usecase';

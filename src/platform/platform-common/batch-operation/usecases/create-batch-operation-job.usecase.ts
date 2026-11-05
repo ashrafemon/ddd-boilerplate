@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { NumberingPort } from '@platform/numbering/ports/numbering.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { NumberingPort } from '@platform/platform-common/numbering/ports/numbering.port';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
 import { BatchOperationWorker } from '../batch-operation.worker';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';

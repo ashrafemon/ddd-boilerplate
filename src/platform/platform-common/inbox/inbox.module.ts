@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
-import { ContextModule } from '@platform/context/context.module';
+import { ContextModule } from '@platform/platform-common/context/context.module';
 import { InboxPort } from './ports/inbox.port';
 import { PrismaInboxRepository } from './repositories/prisma-inbox.repository';
 import { ReceiveInboxMessageUseCase } from './usecases/receive-inbox-message.usecase';

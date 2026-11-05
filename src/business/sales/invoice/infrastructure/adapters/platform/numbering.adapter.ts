@@ -3,7 +3,7 @@ import {
   NextNumberOptions,
   NumberingPort as InvoiceNumberingPort,
 } from '@business/sales/invoice/application/outbound-ports/numbering.port';
-import { NumberingPort } from '@platform/numbering/ports/numbering.port';
+import { NumberingPort } from '@platform/platform-common/numbering/ports/numbering.port';
 
 @Injectable()
 export class NumberingAdapter implements InvoiceNumberingPort {

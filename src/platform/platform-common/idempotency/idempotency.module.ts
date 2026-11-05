@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
-import { ContextModule } from '@platform/context/context.module';
+import { ContextModule } from '@platform/platform-common/context/context.module';
 import { IdempotencyInterceptor } from './http/idempotency.interceptor';
 import { IdempotencyReconciliation } from './idempotency.reconciliation';
 import { IdempotencyPort } from './ports/idempotency.port';

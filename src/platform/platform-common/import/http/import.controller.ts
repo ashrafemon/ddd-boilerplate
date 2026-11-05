@@ -21,7 +21,7 @@ import { ListImportJobsUseCase } from '../usecases/list-import-jobs.usecase';
 import { UpdateImportMappingUseCase } from '../usecases/update-import-mapping.usecase';
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Idempotent } from '@platform/idempotency/http/idempotent.decorator';
+import { Idempotent } from '@platform/platform-common/idempotency/http/idempotent.decorator';
 import { normalizePageQuery } from '@shared-kernel/types/pagination';
 import { ImportHandlerRegistry } from '../import-handler.registry';
 import { CreateJobDto } from './requests/create-import-job.request.dto';

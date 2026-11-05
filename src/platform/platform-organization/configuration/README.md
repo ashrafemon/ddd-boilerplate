@@ -17,7 +17,7 @@ built-in defaults (first boot / unseeded DB).
 ## Public API
 
 ```ts
-import { CompanyConfigPort, DEFAULT_COMPANY_ID } from '@platform/configuration/ports/company-config.port';
+import { CompanyConfigPort, DEFAULT_COMPANY_ID } from '@platform/platform-organization/configuration/ports/company-config.port';
 const company = await this.companyConfig.getCompanyConfig(); // context-scoped
 const other   = await this.companyConfig.getCompanyConfig(id);
 ```

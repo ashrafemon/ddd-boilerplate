@@ -17,7 +17,7 @@ content-type allowlist). Presigning throws if the disk lacks
 
 ## Public API
 ```ts
-import { FileStoragePort } from '@platform/storage/ports/file-storage.port';
+import { FileStoragePort } from '@platform/platform-common/storage/ports/file-storage.port';
 await this.storage.createPresignedUpload({ key, expiresInSeconds, maxBytes });
 ```
 

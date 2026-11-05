@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
 import { NotificationOutboxWriterPort } from '../ports/notification-outbox-writer.port';
 import { NotificationRequestCompletedEvent } from '../events/notification-request-completed.event';
 import { NotificationRequestRecord } from '../notification.types';

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
 import { InvoiceForReportsFacade } from './application/facades/invoice-for-reports.facade';
 import { InvoiceGenerationFacade } from './application/facades/invoice-generation.facade';
-import { RecurringOccurrenceRequestedRabbitMQListener } from './application/integrations/listeners/recurring-occurrence-requested.rabbitmq.listener-event';
+import { RecurringOccurrenceRequestedRabbitMQListener } from './application/integrations/listens/recurring-occurrence-requested.rabbitmq.listener-event';
 import { InvoicePublisherPort } from './application/integrations/publishes/invoice.publisher-port';
 import { InvoiceQuery } from './application/queries/invoice.query';
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
@@ -16,8 +16,8 @@ import { InvoiceCommandRepository } from './domain/repositories/invoice-command.
 import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
-import { PrismaInvoiceCommandRepository } from './infrastructure/persistence/prisma-invoice-command.repository';
-import { PrismaInvoiceQueryRepository } from './infrastructure/persistence/prisma-invoice-query.repository';
+import { PrismaInvoiceCommandRepository } from './infrastructure/persistence/prisma/prisma-invoice-command.repository';
+import { PrismaInvoiceQueryRepository } from './infrastructure/persistence/prisma/prisma-invoice-query.repository';
 import { InvoiceController } from './presentation/http/invoice.controller';
 import { InvoiceForReportsPort } from './public/ports/invoice-for-reports.port';
 

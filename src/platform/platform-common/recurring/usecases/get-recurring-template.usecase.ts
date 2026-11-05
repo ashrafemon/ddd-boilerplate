@@ -1,6 +1,6 @@
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { RecurringTemplateRepositoryPort } from '../ports/recurring-template-repository.port';
 import { RecurringTemplateRecord } from '../recurring-template.types';
 

@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../../generated/client';
+import { PrismaClient } from '../../../../generated/client';
 
 /**
  * Platform read-connection port. Query repositories in business modules read

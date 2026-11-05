@@ -7,12 +7,12 @@ import { ConfigService } from '@config/config.service';
 import {
   VERIFIED_IDENTITY_REQUEST_KEY,
   VerifiedIdentity,
-} from '@platform/context/guards/tenancy-auth.guard';
+} from '@platform/platform-common/context/guards/tenancy-auth.guard';
 import {
   CLS_REQUEST_CONTEXT_KEY,
   RequestContext,
   RequestContextData,
-} from '@platform/context/ports/request-context';
+} from '@platform/platform-common/context/ports/request-context';
 
 export const REQUEST_ID_KEY = 'requestId';
 export const CORRELATION_ID_KEY = 'correlationId';

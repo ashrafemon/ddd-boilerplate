@@ -4,7 +4,7 @@ import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-pr
 import { Product } from '@business/procurement/product/domain/aggregates/product.aggregate';
 import { ProductCommandRepository } from '@business/procurement/product/domain/repositories/product-command.repository';
 import { PrismaProductMapper } from './prisma-product.mapper';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 import { resolveCompanyId } from '@shared-kernel/constants/company';
 

@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { NotificationHandler } from '@platform/notification/ports/notification-handler.port';
-import { Recipient, TemplateModel } from '@platform/notification/notification.types';
+import { NotificationHandler } from '@platform/platform-common/notification/ports/notification-handler.port';
+import {
+  Recipient,
+  TemplateModel,
+} from '@platform/platform-common/notification/notification.types';
 import { GetGrnUseCase } from '../../../application/usecases/get-grn.usecase';
 import { PurchaseOrderPort } from '../../../application/outbound-ports/purchase-order-query.port';
 

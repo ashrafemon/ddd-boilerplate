@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { BatchOperationHandler } from '@platform/batch-operation/ports/batch-operation-handler.port';
-import { ExecutionResult, ValidationResult } from '@platform/batch-operation/batch-operation.types';
+import { BatchOperationHandler } from '@platform/platform-common/batch-operation/ports/batch-operation-handler.port';
+import {
+  ExecutionResult,
+  ValidationResult,
+} from '@platform/platform-common/batch-operation/batch-operation.types';
 import { PurchaseOrderTransition } from '../../../domain/types/purchase-order.types';
 import { GetPurchaseOrderUseCase } from '../../../application/usecases/get-purchase-order.usecase';
 import { PurchaseOrderTransitionUseCase } from '../../../application/usecases/purchase-order-transition.usecase';

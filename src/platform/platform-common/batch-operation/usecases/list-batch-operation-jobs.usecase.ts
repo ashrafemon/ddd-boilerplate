@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PageResult } from '@shared-kernel/types/pagination';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRecord, BatchOperationListQuery } from '../batch-operation.types';
 

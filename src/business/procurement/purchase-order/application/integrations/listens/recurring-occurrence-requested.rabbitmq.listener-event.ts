@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
-import type { OutboxEnvelope } from '@platform/outbox/outbox.types';
+import type { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
 import { GenerateRecurringPurchaseOrderUseCase } from '../../usecases/generate-recurring-purchase-order.usecase';
 import { RecurringOccurrenceRequestedPayload } from '../../types/recurring-occurrence.types';
 

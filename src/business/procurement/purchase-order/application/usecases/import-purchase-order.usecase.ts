@@ -7,7 +7,7 @@ import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-o
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { OrderableVendorPort } from '../outbound-ports/vendor-query.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
 import { ImportPurchaseOrderRequest } from '../../domain/types/purchase-order.types';

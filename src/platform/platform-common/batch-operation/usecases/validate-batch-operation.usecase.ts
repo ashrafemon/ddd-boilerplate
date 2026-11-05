@@ -1,7 +1,7 @@
 import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
 import {
   BatchOperationContext,

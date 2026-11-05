@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
-import { ContextModule } from '@platform/context/context.module';
+import { ContextModule } from '@platform/platform-common/context/context.module';
 import { RedisCacheAdapter } from './adapters/redis-cache.adapter';
 import { CacheService } from './services/cache.service';
 import { CachePort } from './ports/cache.port';

@@ -3,7 +3,7 @@ import { VendorIdRef } from '../value-objects/vendor-id-ref.vo';
 import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
 import { PurchaseOrderStatus } from './purchase-order.enum';
 import type { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
-import type { CreateRecurringTemplateInput } from '@platform/recurring/recurring-template.types';
+import type { CreateRecurringTemplateInput } from '@platform/platform-common/recurring/recurring-template.types';
 export { PurchaseOrderStatus } from './purchase-order.enum';
 
 export interface PurchaseOrderProps {

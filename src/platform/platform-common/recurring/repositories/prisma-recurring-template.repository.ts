@@ -2,7 +2,7 @@ import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { Prisma } from '../../../generated/client';
+import { Prisma } from '../../../../generated/client';
 import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
 import {
   RecurringTemplateRepositoryPort,

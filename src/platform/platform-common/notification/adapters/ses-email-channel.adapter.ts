@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { SendEmailCommand } from '@aws-sdk/client-ses';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { LoggerPort } from '@platform/observability/ports/logger.port';
+import { LoggerPort } from '@platform/platform-common/observability/ports/logger.port';
 import { SesService } from '@infrastructure/notification/ses/ses.service';
 import { ChannelProvider } from '../ports/channel-provider.port';
 import { InvalidWebhookSignatureError } from '../notification.errors';

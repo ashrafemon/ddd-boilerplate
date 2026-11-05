@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { AuditPort } from '@platform/audit/ports/audit.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { JobStatus, ScheduledJobRecord } from '../scheduler.types';
 

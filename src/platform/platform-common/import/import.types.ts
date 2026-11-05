@@ -3,7 +3,7 @@
  * ImportHandlerRegistry. Descriptors are data (snapshotted onto jobs), never behaviour.
  */
 
-import { PresignedUpload } from '@platform/storage/ports/file-storage.port';
+import { PresignedUpload } from '@platform/platform-common/storage/ports/file-storage.port';
 import { PageResult } from '@shared-kernel/types/pagination';
 
 export type ImportJobStatus =

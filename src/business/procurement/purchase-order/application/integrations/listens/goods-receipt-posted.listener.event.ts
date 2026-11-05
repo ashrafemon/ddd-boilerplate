@@ -1,3 +1,3 @@
-import { OutboxEnvelope } from '@platform/outbox/outbox.types';
+import { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
 
 export type GoodsReceiptPostedListenerEvent = OutboxEnvelope;

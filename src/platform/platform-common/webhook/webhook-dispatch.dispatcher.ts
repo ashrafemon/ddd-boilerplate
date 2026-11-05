@@ -3,7 +3,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JsonObject } from '@shared-kernel/types/json-value.type';
 import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
-import { MessageEnvelope } from '@platform/events/ports/in-process-event-bus.port';
+import { MessageEnvelope } from '@platform/platform-common/events/ports/in-process-event-bus.port';
 import { DispatchWebhookEventUseCase } from './usecases/dispatch-webhook-event.usecase';
 import { WebhookEventTypeRegistry } from './webhook-event-type.registry';
 

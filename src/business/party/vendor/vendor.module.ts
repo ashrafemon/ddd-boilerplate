@@ -15,8 +15,8 @@ import { VendorCommandRepository } from './domain/repositories/vendor-command.re
 import { VendorQuery } from './application/queries/vendor.query';
 import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
-import { PrismaVendorCommandRepository } from './infrastructure/persistence/prisma-vendor-command.repository';
-import { PrismaVendorQueryRepository } from './infrastructure/persistence/prisma-vendor-query.repository';
+import { PrismaVendorCommandRepository } from './infrastructure/persistence/prisma/prisma-vendor-command.repository';
+import { PrismaVendorQueryRepository } from './infrastructure/persistence/prisma/prisma-vendor-query.repository';
 import { VendorController } from './presentation/http/vendor.controller';
 import { VendorForPurchasePort } from '@business/party/vendor/public/ports/vendor-for-purchase.port';
 

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
-import type { OutboxEnvelope } from '@platform/outbox/outbox.types';
-import { InboxPort } from '@platform/inbox/ports/inbox.port';
+import { GoodsReceiptReversedListenerEvent } from './goods-receipt-reversed.listener.event';
+import { InboxPort } from '@platform/platform-common/inbox/ports/inbox.port';
 import { RecordStockMovementReversalUseCase } from '../../usecases/record-stock-movement-reversal.usecase';
 
 const EXCHANGE = 'erp.events';
@@ -27,7 +27,7 @@ export class GoodsReceiptReversedConsumer {
   ) {}
 
   @OnEvent('GoodsReceiptReversed')
-  async onGoodsReceiptReversed(envelope: OutboxEnvelope): Promise<void> {
+  async onGoodsReceiptReversed(envelope: GoodsReceiptReversedListenerEvent): Promise<void> {
     await this.handle(envelope);
   }
 
@@ -37,11 +37,11 @@ export class GoodsReceiptReversedConsumer {
     queue: QUEUE,
     queueOptions: { durable: true },
   })
-  async onRabbitMessage(envelope: OutboxEnvelope): Promise<void> {
+  async onRabbitMessage(envelope: GoodsReceiptReversedListenerEvent): Promise<void> {
     await this.handle(envelope);
   }
 
-  private async handle(envelope: OutboxEnvelope): Promise<void> {
+  private async handle(envelope: GoodsReceiptReversedListenerEvent): Promise<void> {
     const consumer = 'inventory.goods-receipt-reversed';
     const delivery = await this.inbox.receive({
       tenantId: envelope.tenantId ?? '',

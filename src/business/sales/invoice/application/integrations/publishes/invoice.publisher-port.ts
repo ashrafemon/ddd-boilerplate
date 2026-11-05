@@ -1,4 +1,4 @@
-import { OutboxEvent } from '@platform/outbox/outbox.types';
+import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
 
 /**
  * Send raised domain events to the transactional outbox (implemented by

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { OutboxWriterPort } from '@platform/outbox/ports/outbox-writer.port';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
 import { ImportJobOutboxWriterPort } from '../ports/import-job-outbox-writer.port';
 import { ImportJobCompletedEvent } from '../events/import-job-completed.event';
 import { ImportJobFailedEvent } from '../events/import-job-failed.event';

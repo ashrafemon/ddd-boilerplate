@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { OutboxEnvelope } from '@platform/outbox/outbox.types';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
 import {
   SagaCompanyConfigRepository,
   SagaDefinitionRepository,

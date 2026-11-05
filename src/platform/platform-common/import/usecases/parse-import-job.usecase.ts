@@ -8,8 +8,8 @@ import {
 } from '@nestjs/common';
 import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { ConfigService } from '@config/config.service';
-import { FileStoragePort } from '@platform/storage/ports/file-storage.port';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { FileStoragePort } from '@platform/platform-common/storage/ports/file-storage.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ImportFileParser } from '../import-file.parser';
 import { ImportJobOutboxWriterPort } from '../ports/import-job-outbox-writer.port';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';

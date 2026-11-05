@@ -5,8 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
-import { AuditPort } from '@platform/audit/ports/audit.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnPublisherPort } from '../integrations/publishes/grn.publisher-port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
@@ -14,7 +14,7 @@ import { NumberingPort } from '../outbound-ports/numbering.port';
 import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GoodsReceiptReversed } from '../../domain/events/grn.reversed.event';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
-import { IdempotencyPort } from '@platform/idempotency/ports/idempotency.port';
+import { IdempotencyPort } from '@platform/platform-common/idempotency/ports/idempotency.port';
 
 /** The quantity `post` registered on the PO — a reversal returns exactly this. */
 const postedQuantity = (line: { acceptedQuantity: number; receivedQuantity: number }): number =>

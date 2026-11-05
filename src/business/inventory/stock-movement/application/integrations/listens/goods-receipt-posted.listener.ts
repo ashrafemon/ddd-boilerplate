@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
-import type { OutboxEnvelope } from '@platform/outbox/outbox.types';
-import { InboxPort } from '@platform/inbox/ports/inbox.port';
+import { GoodsReceiptPostedListenerEvent } from './goods-receipt-posted.listener.event';
+import { InboxPort } from '@platform/platform-common/inbox/ports/inbox.port';
 import { RecordStockMovementUseCase } from '../../usecases/record-stock-movement.usecase';
 import { MovementType } from '../../../domain/types/stock-movement.types';
 
@@ -12,7 +12,7 @@ const QUEUE = 'goods-receipt-posted.erp';
 /**
  * Inventory consumer for GoodsReceiptPosted.
  *
- * Receives the canonical OutboxEnvelope, dedupes via InboxPort (keyed on
+ * Receives the canonical GoodsReceiptPostedListenerEvent, dedupes via InboxPort (keyed on
  * tenantId+companyId+consumer+eventId), then delegates to RecordStockMovementUseCase.
  * Never logic inline.
  */
@@ -26,7 +26,7 @@ export class GoodsReceiptPostedConsumer {
   ) {}
 
   @OnEvent('GoodsReceiptPosted')
-  async onGoodsReceiptPosted(envelope: OutboxEnvelope): Promise<void> {
+  async onGoodsReceiptPosted(envelope: GoodsReceiptPostedListenerEvent): Promise<void> {
     await this.handle(envelope);
   }
 
@@ -36,11 +36,11 @@ export class GoodsReceiptPostedConsumer {
     queue: QUEUE,
     queueOptions: { durable: true },
   })
-  async onRabbitMessage(envelope: OutboxEnvelope): Promise<void> {
+  async onRabbitMessage(envelope: GoodsReceiptPostedListenerEvent): Promise<void> {
     await this.handle(envelope);
   }
 
-  private async handle(envelope: OutboxEnvelope): Promise<void> {
+  private async handle(envelope: GoodsReceiptPostedListenerEvent): Promise<void> {
     const consumer = 'inventory.goods-receipt-posted';
     const delivery = await this.inbox.receive({
       tenantId: envelope.tenantId ?? '',

@@ -25,7 +25,7 @@ portable. Headers carry `event-id`, correlation, causation and tenant.
 ## Public API
 
 ```ts
-import { MessageQueuePort } from '@platform/messaging/ports/message-queue.port';
+import { MessageQueuePort } from '@platform/platform-common/messaging/ports/message-queue.port';
 
 // normally called by the outbox publisher, not business code
 await this.messageQueue.publish(envelope); // broker: 'rabbitmq' | 'kafka' | 'sqs'

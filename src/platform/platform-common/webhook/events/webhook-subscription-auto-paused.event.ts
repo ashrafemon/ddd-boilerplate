@@ -1,4 +1,4 @@
-import { OutboxEventBase } from '@platform/outbox/outbox.types';
+import { OutboxEventBase } from '@platform/platform-common/outbox/outbox.types';
 
 export class WebhookSubscriptionAutoPausedEvent extends OutboxEventBase {
   constructor(

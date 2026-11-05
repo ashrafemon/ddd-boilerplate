@@ -1,9 +1,9 @@
-import { Vendor } from '../../domain/aggregates/vendor.aggregate';
+import { Vendor } from '../../../domain/aggregates/vendor.aggregate';
 import { VendorId } from '@business/party/vendor/domain/value-objects/vendor-id.vo';
-import { VendorCode, VendorEmail, VendorName } from '../../domain/value-objects/vendor.vos';
-import { VendorStatus } from '../../domain/types/vendor.enum';
-import { VendorQueryRecord } from '../../domain/types/vendor.types';
-import { VendorProps } from '../../domain/types/vendor.types';
+import { VendorCode, VendorEmail, VendorName } from '../../../domain/value-objects/vendor.vos';
+import { VendorStatus } from '../../../domain/types/vendor.enum';
+import { VendorQueryRecord } from '../../../domain/types/vendor.types';
+import { VendorProps } from '../../../domain/types/vendor.types';
 
 export class PrismaVendorMapper {
   static toDomain(row: {

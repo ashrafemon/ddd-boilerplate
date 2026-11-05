@@ -1,5 +1,8 @@
-import { RequestContext, RequestContextData } from '@platform/context/ports/request-context';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import {
+  RequestContext,
+  RequestContextData,
+} from '@platform/platform-common/context/ports/request-context';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 
 /**
  * In-memory RequestContextPort fake for use-case unit tests (no CLS, no Nest

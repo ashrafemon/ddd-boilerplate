@@ -1,12 +1,12 @@
 import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { Injectable } from '@nestjs/common';
-import { ImportHandler } from '@platform/import/ports/import-handler.port';
+import { ImportHandler } from '@platform/platform-common/import/ports/import-handler.port';
 import {
   ImportDescriptor,
   PreloadedReferences,
   RowResult,
   RowVerdict,
-} from '@platform/import/import.types';
+} from '@platform/platform-common/import/import.types';
 import { CreateVendorUseCase } from '../../../application/usecases/create-vendor.usecase';
 
 export const VENDOR_IMPORT_DESCRIPTOR: ImportDescriptor = {

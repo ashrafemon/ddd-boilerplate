@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
-import { PrismaReadPort } from '@platform/context/ports/prisma-read.port';
-import { InvoiceQuery } from '../../application/queries/invoice.query';
-import { InvoiceQueryRecord } from '../../domain/types/invoice.types';
+import { PrismaReadPort } from '@platform/platform-common/context/ports/prisma-read.port';
+import { InvoiceQuery } from '../../../application/queries/invoice.query';
+import { InvoiceQueryRecord } from '../../../domain/types/invoice.types';
 import { PrismaInvoiceMapper } from './prisma-invoice.mapper';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
 
 @Injectable()

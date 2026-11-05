@@ -185,7 +185,7 @@ export default tseslint.config(
       'src/config/**',
       'src/bootstrap/**',
       'src/platform/**',
-      'src/business/**/application/integrations/listeners/**',
+      'src/business/**/application/integrations/listens/**',
     ],
     rules: {
       'no-restricted-imports': ['error', { paths: businessRawClientPaths }],
@@ -224,7 +224,7 @@ export default tseslint.config(
   // raw clients behind them, and they must delegate to use cases.
   // ------------------------------------------------------------------
   {
-    files: ['src/business/**/application/integrations/listeners/**'],
+    files: ['src/business/**/application/integrations/listens/**'],
     rules: {
       'no-restricted-imports': [
         'error',

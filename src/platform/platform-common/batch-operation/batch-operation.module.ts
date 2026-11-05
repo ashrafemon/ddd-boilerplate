@@ -1,9 +1,9 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ContextModule } from '@platform/context/context.module';
-import { AuditModule } from '@platform/audit/audit.module';
-import { NumberingModule } from '@platform/numbering/numbering.module';
-import { OutboxModule } from '@platform/outbox/outbox.module';
+import { ContextModule } from '@platform/platform-common/context/context.module';
+import { AuditModule } from '@platform/platform-common/audit/audit.module';
+import { NumberingModule } from '@platform/platform-common/numbering/numbering.module';
+import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
 import { BatchOperationHandlerRegistry } from './batch-operation-handler.registry';
 import { BatchOperationWorker } from './batch-operation.worker';
 import { BatchOperationReconciliationConsumer } from './batch-operation-reconciliation.consumer';

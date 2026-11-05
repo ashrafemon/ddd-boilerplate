@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 import { numericEnv } from './env.util';
-import { IInboxConfig } from '@platform/inbox/inbox.types';
+import { IInboxConfig } from '@platform/platform-common/inbox/inbox.types';
 
 /**
  * Inbox configuration (design 07).

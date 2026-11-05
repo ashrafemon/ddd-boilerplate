@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { RequestContextPort } from '@platform/context/ports/request-context.port';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { ScheduledJobEditLogRepositoryPort } from '../ports/scheduled-job-edit-log-repository.port';
 import { UpdateScheduledJobInput, ScheduleMode } from '../scheduler.types';

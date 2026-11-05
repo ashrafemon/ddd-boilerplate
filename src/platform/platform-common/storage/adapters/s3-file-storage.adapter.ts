@@ -6,7 +6,7 @@ import {
   FileStoragePort,
   FileUploadResult,
   PresignedUpload,
-} from '@platform/storage/ports/file-storage.port';
+} from '@platform/platform-common/storage/ports/file-storage.port';
 
 /**
  * File storage adapter backed by @amirrivand/nestjs-file-storage (S3 / local

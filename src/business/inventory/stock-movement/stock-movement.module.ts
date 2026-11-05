@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
-import { GoodsReceiptPostedConsumer } from './application/integrations/listeners/goods-receipt-posted.listener';
-import { GoodsReceiptReversedConsumer } from './application/integrations/listeners/goods-receipt-reversed.listener';
+import { GoodsReceiptPostedConsumer } from './application/integrations/listens/goods-receipt-posted.listener';
+import { GoodsReceiptReversedConsumer } from './application/integrations/listens/goods-receipt-reversed.listener';
 import { StockQueryFacade } from './application/facades/stock-query.facade';
 import { RecordStockMovementUseCase } from './application/usecases/record-stock-movement.usecase';
 import { RecordStockMovementReversalUseCase } from './application/usecases/record-stock-movement-reversal.usecase';
 import { GetStockLevelUseCase } from './application/usecases/get-stock-level.usecase';
 import { StockQuery } from './application/queries/stock.query';
 import { StockMovementCommandRepository } from './domain/repositories/stock-movement-command.repository';
-import { PrismaStockMovementCommandRepository } from './infrastructure/persistence/prisma-stock-movement-command.repository';
-import { PrismaStockQueryRepository } from './infrastructure/persistence/prisma-stock-query.repository';
+import { PrismaStockMovementCommandRepository } from './infrastructure/persistence/prisma/prisma-stock-movement-command.repository';
+import { PrismaStockQueryRepository } from './infrastructure/persistence/prisma/prisma-stock-query.repository';
 import { StockQueryPort } from './public/ports/stock-query.port';
 
 /**
