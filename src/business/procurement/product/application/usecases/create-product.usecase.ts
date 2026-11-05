@@ -1,24 +1,53 @@
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ConflictException, Injectable } from '@nestjs/common';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { AbacPort } from '@platform/platform-organization/authorization/ports/abac.port';
 import { ProductCommandRepository } from '../../domain/repositories/product-command.repository';
 import { ProductFactory } from '../../domain/factories/product.factory';
 import { ProductPricingService } from '../../domain/services/product-pricing.service';
 import { CreateProductRequest } from '../../domain/types/product.types';
 import { ProductPublisherPort } from '../integrations/publishes/product.publisher-port';
-import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 
 @Injectable()
 export class CreateProductUseCase {
   constructor(
     private readonly productRepository: ProductCommandRepository,
     private readonly integrationEvent: ProductPublisherPort,
-    private readonly companyConfig: CompanyConfigPort,
+    private readonly requestContext: RequestContextPort,
+    private readonly abac: AbacPort,
   ) {}
 
   @Transactional()
   async execute(input: CreateProductRequest): Promise<string> {
-    const company = await this.companyConfig.getCompanyConfig();
-    const currency = input.currency ?? company.defaultCurrency;
+    const ctx = this.requestContext.require();
+    const companyId = ctx.companyId;
+    if (!companyId) {
+      throw new NotFoundException('Company not found in request context');
+    }
+
+    const abacResult = await this.abac.evaluate({
+      context: {
+        tenantId: ctx.tenantId ?? '',
+        companyId,
+        userId: ctx.userId ?? '',
+        roles: ctx.roles,
+        defaultCurrency: ctx.defaultCurrency ?? 'USD',
+        autoApproveThreshold: ctx.autoApproveThreshold ?? 0,
+        overReceiptTolerance: ctx.overReceiptTolerance ?? 0,
+      },
+      resource: 'Product',
+      action: 'create',
+    });
+    if (abacResult.decision === 'DENY') {
+      throw new ForbiddenException(abacResult.reason ?? 'ABAC denied');
+    }
+
+    const currency = input.currency ?? ctx.defaultCurrency ?? 'USD';
 
     const product = ProductFactory.create({
       sku: input.sku,

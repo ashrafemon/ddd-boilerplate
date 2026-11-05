@@ -1,10 +1,16 @@
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { AbacPort } from '@platform/platform-organization/authorization/ports/abac.port';
 import { GrnFactory } from '../../domain/factories/grn.factory';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { CreateGrnRequest } from '../../domain/types/grn.types';
 import { GrnPublisherPort } from '../integrations/publishes/grn.publisher-port';
-import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 
@@ -27,14 +33,37 @@ export class CreateGrnUseCase {
     private readonly grnRepository: GrnCommandRepository,
     private readonly purchaseOrderQueryPort: PurchaseOrderPort,
     private readonly integrationEvent: GrnPublisherPort,
-    private readonly companyConfig: CompanyConfigPort,
     private readonly numbering: NumberingPort,
+    private readonly requestContext: RequestContextPort,
+    private readonly abac: AbacPort,
   ) {}
 
   @Transactional()
   async execute(input: CreateGrnRequest, actorId?: string): Promise<string> {
-    const company = await this.companyConfig.getCompanyConfig();
-    const currency = input.currency ?? company.defaultCurrency;
+    const ctx = this.requestContext.require();
+    const companyId = ctx.companyId;
+    if (!companyId) {
+      throw new NotFoundException('Company not found in request context');
+    }
+
+    const abacResult = await this.abac.evaluate({
+      context: {
+        tenantId: ctx.tenantId ?? '',
+        companyId,
+        userId: ctx.userId ?? '',
+        roles: ctx.roles,
+        defaultCurrency: ctx.defaultCurrency ?? 'USD',
+        autoApproveThreshold: ctx.autoApproveThreshold ?? 0,
+        overReceiptTolerance: ctx.overReceiptTolerance ?? 0,
+      },
+      resource: 'Grn',
+      action: 'create',
+    });
+    if (abacResult.decision === 'DENY') {
+      throw new ForbiddenException(abacResult.reason ?? 'ABAC denied');
+    }
+
+    const currency = input.currency ?? ctx.defaultCurrency ?? 'USD';
 
     const purchaseOrder = await this.purchaseOrderQueryPort.getPurchaseOrder(input.purchaseOrderId);
     if (!purchaseOrder) {

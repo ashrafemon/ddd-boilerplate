@@ -18,6 +18,12 @@ export interface RequestContextData {
   locale: string;
   ip?: string;
   userAgent?: string;
+  // Company configuration resolved by middleware and stamped into CLS so
+  // usecases read it from RequestContextPort instead of calling
+  // CompanyConfigPort directly (Rule 8).
+  defaultCurrency?: string;
+  autoApproveThreshold?: number;
+  overReceiptTolerance?: number;
 }
 
 /**
@@ -33,6 +39,9 @@ export class RequestContext {
   public readonly locale: string;
   public readonly ip?: string;
   public readonly userAgent?: string;
+  public readonly defaultCurrency?: string;
+  public readonly autoApproveThreshold?: number;
+  public readonly overReceiptTolerance?: number;
 
   private constructor(data: RequestContextData) {
     this.requestId = data.requestId;
@@ -44,6 +53,9 @@ export class RequestContext {
     this.locale = data.locale;
     this.ip = data.ip;
     this.userAgent = data.userAgent;
+    this.defaultCurrency = data.defaultCurrency;
+    this.autoApproveThreshold = data.autoApproveThreshold;
+    this.overReceiptTolerance = data.overReceiptTolerance;
   }
 
   public static create(data: RequestContextData): RequestContext {

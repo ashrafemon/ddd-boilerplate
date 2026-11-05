@@ -14,6 +14,7 @@ import { configureSentry } from './configure-sentry';
 import { configureServer } from './configure-server';
 import { configureShutdown } from './configure-shutdown';
 import { configureSwagger } from './configure-swagger';
+import { CompanyConfigContextMiddleware } from '../shared-kernel/middleware/company-config-context.middleware';
 
 /**
  * Bootstraps the application by composing each independent configuration
@@ -46,6 +47,11 @@ export async function bootstrap(): Promise<void> {
 
     app.useLogger(new Logger());
     app.flushLogs();
+
+    // Company configuration is resolved and stamped into the global CLS
+    // RequestContext by middleware (Rule 8), before any route handler runs.
+    const companyConfigContext = app.get(CompanyConfigContextMiddleware, { strict: true });
+    app.use((req, res, next) => companyConfigContext.use(req, res, next));
 
     // Composition-root opt-in bridge (ARCHITECTURE §9.1): must run before
     // listen() — NestFactory.create only instantiates providers; the

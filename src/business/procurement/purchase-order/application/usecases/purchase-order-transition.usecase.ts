@@ -1,13 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
+import { AbacPort } from '@platform/platform-organization/authorization/ports/abac.port';
 import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { PurchaseOrderTransitionRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from '../queries/purchase-order.query';
 import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
-import { CompanyConfigPort } from '../outbound-ports/company-config.port';
+import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 
 // Single mutation path for submit/approve/reject/cancel/complete.
 @Injectable()
@@ -15,15 +15,37 @@ export class PurchaseOrderTransitionUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
     private readonly integrationEvent: PurchaseOrderPublisherPort,
-    private readonly companyConfig: CompanyConfigPort,
     private readonly purchaseOrderQuery: PurchaseOrderQuery,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
+    private readonly abac: AbacPort,
   ) {}
 
   @Transactional()
   async execute(input: PurchaseOrderTransitionRequest): Promise<string> {
-    const company = await this.companyConfig.getCompanyConfig();
+    const ctx = this.requestContext.require();
+    const companyId = ctx.companyId;
+    if (!companyId) {
+      throw new NotFoundException('Company not found in request context');
+    }
+
+    const abacResult = await this.abac.evaluate({
+      context: {
+        tenantId: ctx.tenantId ?? '',
+        companyId,
+        userId: ctx.userId ?? '',
+        roles: ctx.roles,
+        defaultCurrency: ctx.defaultCurrency ?? 'USD',
+        autoApproveThreshold: ctx.autoApproveThreshold ?? 0,
+        overReceiptTolerance: ctx.overReceiptTolerance ?? 0,
+      },
+      resource: 'PurchaseOrder',
+      action: input.transition,
+    });
+    if (abacResult.decision === 'DENY') {
+      throw new ForbiddenException(abacResult.reason ?? 'ABAC denied');
+    }
+
     const actorId = input.actorId ?? this.requestContext.getUserId();
 
     const id = input.id;
@@ -40,18 +62,15 @@ export class PurchaseOrderTransitionUseCase {
         policyRegistry.enforce('purchase-order.can-approve', {
           status: purchaseOrder.status,
           totalAmount: purchaseOrder.total.amount,
-          autoApproveThreshold: company.autoApproveThreshold,
+          autoApproveThreshold: ctx.autoApproveThreshold ?? 0,
         });
         purchaseOrder.approve(actorId);
         break;
       }
       case 'reject':
-        // Plan Phase 2.3: the HTTP DTO makes `reason` required — no silent
-        // default reaches the domain from the API layer.
         purchaseOrder.reject(input.reason ?? 'Rejected', actorId);
         break;
       case 'cancel': {
-        // Plan Phase 2.4: CancellationPolicy — posted receipts block cancellation.
         const hasPostedReceipts = await this.purchaseOrderQuery.hasReceipts(
           purchaseOrder.id.toString(),
         );

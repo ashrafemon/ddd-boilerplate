@@ -32,14 +32,12 @@ import { PurchaseOrderQuery } from './application/queries/purchase-order.query';
 import { PurchaseOrderPublisherPort } from './application/integrations/publishes/purchase-order.publisher-port';
 import { PurchasableProductPort } from './application/outbound-ports/product-query.port';
 import { OrderableVendorPort } from './application/outbound-ports/vendor-query.port';
-import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { NumberingPort } from './application/outbound-ports/numbering.port';
 import { ReadCachePort } from './application/outbound-ports/read-cache.port';
 import { PurchaseOrderForGrnPort } from '@business/procurement/purchase-order/public/ports/purchase-order-for-grn.port';
 import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence/prisma/prisma-purchase-order-command.repository';
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence/prisma/prisma-purchase-order-query.repository';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
-import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
 import { ReadCacheAdapter } from './infrastructure/adapters/platform/read-cache.adapter';
 import { PurchasableProductAdapter } from './infrastructure/adapters/business-aggregate/purchasable-product.adapter';
@@ -86,7 +84,6 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     { provide: PurchaseOrderCommandRepository, useClass: PrismaPurchaseOrderCommandRepository },
     { provide: PurchaseOrderQuery, useClass: PrismaPurchaseOrderQueryRepository },
     { provide: PurchaseOrderPublisherPort, useClass: OutboxAdapter },
-    { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
     { provide: NumberingPort, useClass: NumberingAdapter },
     { provide: ReadCachePort, useClass: ReadCacheAdapter },
     { provide: PurchasableProductPort, useClass: PurchasableProductAdapter },

@@ -4,7 +4,6 @@ import { PurchaseOrderModule } from '@business/procurement/purchase-order/purcha
 import { GrnForPurchaseOrderFacade } from './application/facades/grn-for-purchase-order.facade';
 import { GrnPublisherPort } from './application/integrations/publishes/grn.publisher-port';
 import { PurchaseOrderPort } from './application/outbound-ports/purchase-order-query.port';
-import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { NumberingPort } from './application/outbound-ports/numbering.port';
 import { ReadCachePort } from './application/outbound-ports/read-cache.port';
 import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
@@ -21,7 +20,6 @@ import { GetGrnUseCase } from './application/usecases/get-grn.usecase';
 import { ListGrnsUseCase } from './application/usecases/list-grns.usecase';
 import { GrnCommandRepository } from './domain/repositories/grn-command.repository';
 import { GrnQuery } from './application/queries/grn.query';
-import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
 import { PurchaseOrderAdapter } from './infrastructure/adapters/business-aggregate/purchase-order.adapter';
 import { PrismaGrnCommandRepository } from './infrastructure/persistence/prisma/prisma-grn-command.repository';
@@ -54,7 +52,6 @@ import { GrnNotificationAdapter } from './infrastructure/adapters/platform/grn-n
     { provide: GrnCommandRepository, useClass: PrismaGrnCommandRepository },
     { provide: GrnQuery, useClass: PrismaGrnQueryRepository },
     { provide: GrnPublisherPort, useClass: OutboxAdapter },
-    { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
     { provide: PurchaseOrderPort, useClass: PurchaseOrderAdapter },
     { provide: NumberingPort, useClass: NumberingAdapter },
     { provide: ReadCachePort, useClass: ReadCacheAdapter },

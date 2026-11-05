@@ -21,20 +21,22 @@ flowchart LR
     AppModule["AppModule"]
     ConfigModule["ConfigModule"]
     AppModule -->|ConfigService| ConfigModule
-    VendorModule["VendorModule"]
+    AuthorizationModule["AuthorizationModule"]
+    AppModule -->|RbacPort| AuthorizationModule
     ContextModule__src_platform_platform_common_context_["ContextModule (src/platform/platform-common/context)"]
     ContextModule__src_platform_platform_common_context__2["ContextModule__src_platform_platform_common_context_"]
+    AppModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
+    VendorModule["VendorModule"]
     VendorModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
+    VendorModule -->|AbacPort| AuthorizationModule
     OutboxModule["OutboxModule"]
     VendorModule -->|OutboxWriterPort| OutboxModule
-    ConfigurationModule["ConfigurationModule"]
-    VendorModule -->|CompanyConfigPort| ConfigurationModule
     GoodReceiptNoteModule["GoodReceiptNoteModule"]
     GoodReceiptNoteModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
+    GoodReceiptNoteModule -->|AbacPort| AuthorizationModule
     AuditModule["AuditModule"]
     GoodReceiptNoteModule -->|AuditPort| AuditModule
     GoodReceiptNoteModule -->|OutboxWriterPort| OutboxModule
-    GoodReceiptNoteModule -->|CompanyConfigPort| ConfigurationModule
     PurchaseOrderModule["PurchaseOrderModule"]
     GoodReceiptNoteModule -->|PurchaseOrderForGrnPort| PurchaseOrderModule
     NumberingModule["NumberingModule"]
@@ -43,9 +45,10 @@ flowchart LR
     GoodReceiptNoteModule -->|CachePort| CacheModule
     ProductModule["ProductModule"]
     ProductModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
+    ProductModule -->|AbacPort| AuthorizationModule
     ProductModule -->|OutboxWriterPort| OutboxModule
-    ProductModule -->|CompanyConfigPort| ConfigurationModule
     PurchaseOrderModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
+    PurchaseOrderModule -->|AbacPort| AuthorizationModule
     PurchaseOrderModule -->|AuditPort| AuditModule
     RecurringModule["RecurringModule"]
     PurchaseOrderModule -->|RecurringTemplatePort, RecurringExecutionPort| RecurringModule
@@ -54,18 +57,17 @@ flowchart LR
     InboxModule["InboxModule"]
     PurchaseOrderModule -->|InboxPort| InboxModule
     PurchaseOrderModule -->|OutboxWriterPort| OutboxModule
-    PurchaseOrderModule -->|CompanyConfigPort| ConfigurationModule
     PurchaseOrderModule -->|NumberingPort| NumberingModule
     PurchaseOrderModule -->|CachePort| CacheModule
     PurchaseOrderModule -->|ProductForPurchasePort| ProductModule
     PurchaseOrderModule -->|VendorForPurchasePort| VendorModule
     InvoiceModule["InvoiceModule"]
+    InvoiceModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
+    InvoiceModule -->|AbacPort| AuthorizationModule
     InvoiceModule -->|RecurringExecutionPort| RecurringModule
     InvoiceModule -->|LoggerPort| ObservabilityModule
-    InvoiceModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     InvoiceModule -->|InboxPort| InboxModule
     InvoiceModule -->|OutboxWriterPort| OutboxModule
-    InvoiceModule -->|CompanyConfigPort| ConfigurationModule
     InvoiceModule -->|NumberingPort| NumberingModule
     PrismaModule["PrismaModule"]
     PrismaModule -->|ConfigService| ConfigModule
@@ -140,6 +142,7 @@ flowchart LR
     WebhookModule -->|ConfigService| ConfigModule
     WebhookModule -->|OutboxWriterPort| OutboxModule
     WebhookModule -->|IdempotencyPort| IdempotencyModule
+    ConfigurationModule["ConfigurationModule"]
     ConfigurationModule -->|ConfigService| ConfigModule
     ConfigurationModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
     SagaModule["SagaModule"]
@@ -172,9 +175,6 @@ flowchart LR
     VendorPublisherPort["VendorPublisherPort"]
     OutboxAdapter["OutboxAdapter"]
     VendorPublisherPort -.->|useClass| OutboxAdapter
-    CompanyConfigPort["CompanyConfigPort"]
-    CompanyConfigAdapter["CompanyConfigAdapter"]
-    CompanyConfigPort -.->|useClass| CompanyConfigAdapter
     VendorController["VendorController"]
     CreateVendorUseCase["CreateVendorUseCase"]
     VendorController -->|injects| CreateVendorUseCase
@@ -190,13 +190,18 @@ flowchart LR
     VendorImportHandler -->|injects| CreateVendorUseCase
     CreateVendorUseCase -->|injects| VendorCommandRepository
     CreateVendorUseCase -->|injects| VendorPublisherPort
-    CreateVendorUseCase -->|injects| CompanyConfigPort
+    RequestContextPort["RequestContextPort"]
+    CreateVendorUseCase -->|injects via ContextModule| RequestContextPort
+    AbacPort["AbacPort"]
+    CreateVendorUseCase -->|injects via AuthorizationModule| AbacPort
     UpdateVendorUseCase -->|injects| VendorCommandRepository
     UpdateVendorUseCase -->|injects| VendorPublisherPort
-    UpdateVendorUseCase -->|injects| CompanyConfigPort
+    UpdateVendorUseCase -->|injects via ContextModule| RequestContextPort
+    UpdateVendorUseCase -->|injects via AuthorizationModule| AbacPort
     VendorStatusUseCase -->|injects| VendorCommandRepository
     VendorStatusUseCase -->|injects| VendorPublisherPort
-    VendorStatusUseCase -->|injects| CompanyConfigPort
+    VendorStatusUseCase -->|injects via ContextModule| RequestContextPort
+    VendorStatusUseCase -->|injects via AuthorizationModule| AbacPort
     GetVendorUseCase -->|injects| VendorQuery
     ListVendorsUseCase -->|injects| VendorQuery
     GetOrderableVendorUseCase["GetOrderableVendorUseCase"]
@@ -209,14 +214,12 @@ flowchart LR
     VendorForPurchaseFacade -->|injects| FindOrderableVendorsByCodesUseCase
     TransactionHost__library_["TransactionHost (library)"]
     PrismaVendorCommandRepository -->|injects| TransactionHost__library_
-    RequestContextPort["RequestContextPort"]
     PrismaVendorCommandRepository -->|injects via ContextModule| RequestContextPort
     PrismaReadPort["PrismaReadPort"]
     PrismaVendorQueryRepository -->|injects via ContextModule| PrismaReadPort
     PrismaVendorQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
-    CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
 ```
 
 ### Business — procurement
@@ -239,9 +242,6 @@ flowchart LR
     GrnPublisherPort["GrnPublisherPort"]
     OutboxAdapter["OutboxAdapter"]
     GrnPublisherPort -.->|useClass| OutboxAdapter
-    CompanyConfigPort["CompanyConfigPort"]
-    CompanyConfigAdapter["CompanyConfigAdapter"]
-    CompanyConfigPort -.->|useClass| CompanyConfigAdapter
     PurchaseOrderPort["PurchaseOrderPort"]
     PurchaseOrderAdapter["PurchaseOrderAdapter"]
     PurchaseOrderPort -.->|useClass| PurchaseOrderAdapter
@@ -282,15 +282,17 @@ flowchart LR
     CreateGrnUseCase -->|injects| GrnCommandRepository
     CreateGrnUseCase -->|injects| PurchaseOrderPort
     CreateGrnUseCase -->|injects| GrnPublisherPort
-    CreateGrnUseCase -->|injects| CompanyConfigPort
     CreateGrnUseCase -->|injects| NumberingPort
+    RequestContextPort["RequestContextPort"]
+    CreateGrnUseCase -->|injects via ContextModule| RequestContextPort
+    AbacPort["AbacPort"]
+    CreateGrnUseCase -->|injects via AuthorizationModule| AbacPort
     AddGrnLineUseCase -->|injects| GrnCommandRepository
     AddGrnLineUseCase -->|injects| GrnPublisherPort
     SetGrnLineTrackingUseCase -->|injects| GrnCommandRepository
     SetGrnLineTrackingUseCase -->|injects| GrnPublisherPort
     ReceiveGrnUseCase -->|injects| GrnCommandRepository
     ReceiveGrnUseCase -->|injects| GrnPublisherPort
-    RequestContextPort["RequestContextPort"]
     ReceiveGrnUseCase -->|injects via ContextModule| RequestContextPort
     AuditPort["AuditPort"]
     ReceiveGrnUseCase -->|injects via AuditModule| AuditPort
@@ -323,7 +325,6 @@ flowchart LR
     PrismaGrnQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
-    CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
     PurchaseOrderForGrnPort["PurchaseOrderForGrnPort"]
     PurchaseOrderAdapter -->|injects via PurchaseOrderModule| PurchaseOrderForGrnPort
     NumberingAdapter -->|injects via NumberingModule| NumberingPort
@@ -350,9 +351,6 @@ flowchart LR
     PurchaseOrderPublisherPort["PurchaseOrderPublisherPort"]
     OutboxAdapter["OutboxAdapter"]
     PurchaseOrderPublisherPort -.->|useClass| OutboxAdapter
-    CompanyConfigPort["CompanyConfigPort"]
-    CompanyConfigAdapter["CompanyConfigAdapter"]
-    CompanyConfigPort -.->|useClass| CompanyConfigAdapter
     NumberingPort["NumberingPort"]
     NumberingAdapter["NumberingAdapter"]
     NumberingPort -.->|useClass| NumberingAdapter
@@ -410,37 +408,41 @@ flowchart LR
     CreatePurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
     CreatePurchaseOrderUseCase -->|injects| OrderableVendorPort
     CreatePurchaseOrderUseCase -->|injects| PurchaseOrderPublisherPort
-    CreatePurchaseOrderUseCase -->|injects| CompanyConfigPort
     CreatePurchaseOrderUseCase -->|injects| NumberingPort
     RequestContextPort["RequestContextPort"]
     CreatePurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
+    AbacPort["AbacPort"]
+    CreatePurchaseOrderUseCase -->|injects via AuthorizationModule| AbacPort
     ImportPurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
-    ImportPurchaseOrderUseCase -->|injects| CompanyConfigPort
     ImportPurchaseOrderUseCase -->|injects| OrderableVendorPort
     ImportPurchaseOrderUseCase -->|injects| NumberingPort
     ImportPurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
     ImportPurchaseOrderUseCase -->|injects| PurchaseOrderPublisherPort
     ImportPurchaseOrderUseCase -->|injects| ReadCachePort
+    ImportPurchaseOrderUseCase -->|injects via AuthorizationModule| AbacPort
     AddPurchaseOrderLineUseCase -->|injects| PurchaseOrderCommandRepository
     AddPurchaseOrderLineUseCase -->|injects| PurchasableProductPort
     AddPurchaseOrderLineUseCase -->|injects| PurchaseOrderPublisherPort
-    AddPurchaseOrderLineUseCase -->|injects| CompanyConfigPort
+    AddPurchaseOrderLineUseCase -->|injects via ContextModule| RequestContextPort
+    AddPurchaseOrderLineUseCase -->|injects via AuthorizationModule| AbacPort
     UpdatePurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
     UpdatePurchaseOrderUseCase -->|injects| PurchaseOrderPublisherPort
     UpdatePurchaseOrderLineUseCase -->|injects| PurchaseOrderCommandRepository
     UpdatePurchaseOrderLineUseCase -->|injects| PurchasableProductPort
     UpdatePurchaseOrderLineUseCase -->|injects| PurchaseOrderPublisherPort
-    UpdatePurchaseOrderLineUseCase -->|injects| CompanyConfigPort
+    UpdatePurchaseOrderLineUseCase -->|injects via ContextModule| RequestContextPort
+    UpdatePurchaseOrderLineUseCase -->|injects via AuthorizationModule| AbacPort
     RemovePurchaseOrderLineUseCase -->|injects| PurchaseOrderCommandRepository
     RemovePurchaseOrderLineUseCase -->|injects| PurchaseOrderPublisherPort
-    RemovePurchaseOrderLineUseCase -->|injects| CompanyConfigPort
+    RemovePurchaseOrderLineUseCase -->|injects via ContextModule| RequestContextPort
+    RemovePurchaseOrderLineUseCase -->|injects via AuthorizationModule| AbacPort
     PurchaseOrderTransitionUseCase -->|injects| PurchaseOrderCommandRepository
     PurchaseOrderTransitionUseCase -->|injects| PurchaseOrderPublisherPort
-    PurchaseOrderTransitionUseCase -->|injects| CompanyConfigPort
     PurchaseOrderTransitionUseCase -->|injects| PurchaseOrderQuery
     PurchaseOrderTransitionUseCase -->|injects via ContextModule| RequestContextPort
     AuditPort["AuditPort"]
     PurchaseOrderTransitionUseCase -->|injects via AuditModule| AuditPort
+    PurchaseOrderTransitionUseCase -->|injects via AuthorizationModule| AbacPort
     AmendPurchaseOrderUseCase -->|injects| PurchaseOrderCommandRepository
     AmendPurchaseOrderUseCase -->|injects| PurchaseOrderPublisherPort
     AmendPurchaseOrderUseCase -->|injects via ContextModule| RequestContextPort
@@ -455,7 +457,8 @@ flowchart LR
     ClosePurchaseOrderUseCase -->|injects via AuditModule| AuditPort
     RegisterPurchaseOrderReceiptUseCase["RegisterPurchaseOrderReceiptUseCase"]
     RegisterPurchaseOrderReceiptUseCase -->|injects| PurchaseOrderCommandRepository
-    RegisterPurchaseOrderReceiptUseCase -->|injects| CompanyConfigPort
+    RegisterPurchaseOrderReceiptUseCase -->|injects via ContextModule| RequestContextPort
+    RegisterPurchaseOrderReceiptUseCase -->|injects via AuthorizationModule| AbacPort
     HasPurchaseOrderReceiptsUseCase["HasPurchaseOrderReceiptsUseCase"]
     HasPurchaseOrderReceiptsUseCase -->|injects| PurchaseOrderQuery
     GetPurchaseOrderUseCase -->|injects| PurchaseOrderQuery
@@ -509,7 +512,6 @@ flowchart LR
     PrismaPurchaseOrderQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
-    CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
     NumberingAdapter -->|injects via NumberingModule| NumberingPort
     CachePort["CachePort"]
     ReadCacheAdapter -->|injects via CacheModule| CachePort
@@ -540,9 +542,6 @@ flowchart LR
     InvoicePublisherPort["InvoicePublisherPort"]
     OutboxAdapter["OutboxAdapter"]
     InvoicePublisherPort -.->|useClass| OutboxAdapter
-    CompanyConfigPort["CompanyConfigPort"]
-    CompanyConfigAdapter["CompanyConfigAdapter"]
-    CompanyConfigPort -.->|useClass| CompanyConfigAdapter
     NumberingPort["NumberingPort"]
     NumberingAdapter["NumberingAdapter"]
     NumberingPort -.->|useClass| NumberingAdapter
@@ -557,8 +556,11 @@ flowchart LR
     InvoiceController -->|injects| ListInvoicesUseCase
     CreateInvoiceUseCase -->|injects| InvoiceCommandRepository
     CreateInvoiceUseCase -->|injects| InvoicePublisherPort
-    CreateInvoiceUseCase -->|injects| CompanyConfigPort
     CreateInvoiceUseCase -->|injects| NumberingPort
+    RequestContextPort["RequestContextPort"]
+    CreateInvoiceUseCase -->|injects via ContextModule| RequestContextPort
+    AbacPort["AbacPort"]
+    CreateInvoiceUseCase -->|injects via AuthorizationModule| AbacPort
     PostInvoiceUseCase -->|injects| InvoiceCommandRepository
     PostInvoiceUseCase -->|injects| InvoicePublisherPort
     GetInvoiceUseCase -->|injects| InvoiceQuery
@@ -571,7 +573,6 @@ flowchart LR
     GenerateRecurringInvoiceUseCase -->|injects via RecurringModule| RecurringExecutionPort
     LoggerPort["LoggerPort"]
     GenerateRecurringInvoiceUseCase -->|injects via ObservabilityModule| LoggerPort
-    RequestContextPort["RequestContextPort"]
     GenerateRecurringInvoiceUseCase -->|injects via ContextModule| RequestContextPort
     RecurringOccurrenceRequestedRabbitMQListener["RecurringOccurrenceRequestedRabbitMQListener"]
     RecurringOccurrenceRequestedRabbitMQListener -->|injects| GenerateRecurringInvoiceUseCase
@@ -588,7 +589,6 @@ flowchart LR
     PrismaInvoiceQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
     OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
-    CompanyConfigAdapter -->|injects via ConfigurationModule| CompanyConfigPort
     NumberingAdapter -->|injects via NumberingModule| NumberingPort
 ```
 
@@ -614,6 +614,8 @@ flowchart LR
     APP_GUARD -.->|useClass| HttpThrottlerGuard
     TenancyAuthGuard["TenancyAuthGuard"]
     APP_GUARD -.->|useClass| TenancyAuthGuard
+    RbacGuard["RbacGuard"]
+    APP_GUARD -.->|useClass| RbacGuard
     APP_FILTER["APP_FILTER"]
     HttpExceptionsFilter["HttpExceptionsFilter"]
     APP_FILTER -.->|useClass| HttpExceptionsFilter
@@ -630,9 +632,15 @@ flowchart LR
     TenancyAuthGuard -->|injects via ConfigModule| ConfigService
     Reflector__library_["Reflector (library)"]
     TenancyAuthGuard -->|injects| Reflector__library_
+    RbacGuard -->|injects| Reflector__library_
+    RbacPort["RbacPort"]
+    RbacGuard -->|injects via AuthorizationModule| RbacPort
+    RequestContextPort["RequestContextPort"]
+    RbacGuard -->|injects via ContextModule| RequestContextPort
     ClsService__library_["ClsService (library)"]
     RequestIdInterceptor -->|injects| ClsService__library_
     RequestIdInterceptor -->|injects via ConfigModule| ConfigService
+    RequestIdInterceptor -->|injects via ContextModule| RequestContextPort
     LoggingInterceptor -->|injects| ClsService__library_
     DeviceResponseInterceptor -->|injects| ClsService__library_
 ```

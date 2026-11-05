@@ -12,6 +12,7 @@ import { LoggingInterceptor } from './shared-kernel/interceptors/logging.interce
 import { RequestIdInterceptor } from './shared-kernel/interceptors/request-id.interceptor';
 import { ResponseInterceptor } from './shared-kernel/interceptors/response.interceptor';
 import { HttpThrottlerGuard } from './shared-kernel/guards/http-throttler.guard';
+import { RbacGuard } from './shared-kernel/guards/rbac.guard';
 import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
 import { TenancyAuthGuard } from '@platform/platform-common/context/guards/tenancy-auth.guard';
 
@@ -34,6 +35,7 @@ import { TenancyAuthGuard } from '@platform/platform-common/context/guards/tenan
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_GUARD, useClass: HttpThrottlerGuard },
     { provide: APP_GUARD, useClass: TenancyAuthGuard },
+    { provide: APP_GUARD, useClass: RbacGuard },
     { provide: APP_FILTER, useClass: HttpExceptionsFilter },
     { provide: APP_PIPE, useClass: AppValidationPipe },
     { provide: APP_INTERCEPTOR, useClass: RequestIdInterceptor },

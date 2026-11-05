@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { AbacPort } from '@platform/platform-organization/authorization/ports/abac.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { OpenQuantityService } from '../../domain/services/open-quantity.service';
 import { PurchaseOrderStatusService } from '../../domain/services/purchase-order-status.service';
-import { CompanyConfigPort } from '../outbound-ports/company-config.port';
 import {
   PurchaseOrderReceiptRequest,
   PurchaseOrderReceiptResult,
@@ -14,25 +15,47 @@ import {
 export class RegisterPurchaseOrderReceiptUseCase {
   constructor(
     private readonly repository: PurchaseOrderCommandRepository,
-    private readonly companyConfig: CompanyConfigPort,
+    private readonly requestContext: RequestContextPort,
+    private readonly abac: AbacPort,
   ) {}
 
   @Transactional()
   async execute(request: PurchaseOrderReceiptRequest): Promise<PurchaseOrderReceiptResult> {
+    const ctx = this.requestContext.require();
+    const companyId = ctx.companyId;
+    if (!companyId) {
+      throw new NotFoundException('Company not found in request context');
+    }
+
+    const abacResult = await this.abac.evaluate({
+      context: {
+        tenantId: ctx.tenantId ?? '',
+        companyId,
+        userId: ctx.userId ?? '',
+        roles: ctx.roles,
+        defaultCurrency: ctx.defaultCurrency ?? 'USD',
+        autoApproveThreshold: ctx.autoApproveThreshold ?? 0,
+        overReceiptTolerance: ctx.overReceiptTolerance ?? 0,
+      },
+      resource: 'PurchaseOrder',
+      action: 'receive',
+    });
+    if (abacResult.decision === 'DENY') {
+      throw new ForbiddenException(abacResult.reason ?? 'ABAC denied');
+    }
+
     const po = await this.repository.findById(request.purchaseOrderId);
     if (!po) {
       throw new NotFoundException('Purchase order not found');
     }
 
-    const company = await this.companyConfig.getCompanyConfig();
-
     PurchaseOrderFactory.openPoForReceipt(
       po,
       request,
-      company.overReceiptTolerance,
+      ctx.overReceiptTolerance ?? 0,
       false,
       '',
-      company.defaultCurrency,
+      ctx.defaultCurrency ?? 'USD',
       request.actorId,
     );
 

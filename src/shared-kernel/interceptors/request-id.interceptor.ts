@@ -4,15 +4,11 @@ import { randomUUID } from 'crypto';
 import { Observable } from 'rxjs';
 import { ClsService } from 'nestjs-cls';
 import { ConfigService } from '@config/config.service';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import {
   VERIFIED_IDENTITY_REQUEST_KEY,
   VerifiedIdentity,
 } from '@platform/platform-common/context/guards/tenancy-auth.guard';
-import {
-  CLS_REQUEST_CONTEXT_KEY,
-  RequestContext,
-  RequestContextData,
-} from '@platform/platform-common/context/ports/request-context';
 
 export const REQUEST_ID_KEY = 'requestId';
 export const CORRELATION_ID_KEY = 'correlationId';
@@ -26,12 +22,17 @@ export const CORRELATION_ID_KEY = 'correlationId';
  * the request by `TenancyAuthGuard` (JWT claims) is the only accepted source;
  * raw `x-tenant-id` style headers are ignored. In `single` mode the headers
  * remain trusted (internal deployments / verified gateways).
+ *
+ * Uses `RequestContextPort.set()` (merge) rather than raw `cls.set()` so that
+ * company configuration stamped into CLS by `CompanyConfigContextMiddleware`
+ * (which runs before this interceptor) is preserved.
  */
 @Injectable()
 export class RequestIdInterceptor implements NestInterceptor {
   constructor(
     private readonly cls: ClsService,
     private readonly config: ConfigService,
+    private readonly requestContext: RequestContextPort,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
@@ -57,20 +58,17 @@ export class RequestIdInterceptor implements NestInterceptor {
 
     const identity = this.resolveIdentity(request);
 
-    this.cls.set(
-      CLS_REQUEST_CONTEXT_KEY,
-      RequestContext.create({
-        requestId,
-        correlationId,
-        tenantId: identity.tenantId,
-        companyId: identity.companyId,
-        userId: identity.userId,
-        roles: identity.roles,
-        locale: (request.headers['accept-language'] as string) || 'en',
-        ip: request.ip,
-        userAgent: request.headers['user-agent'],
-      } satisfies RequestContextData),
-    );
+    this.requestContext.set({
+      requestId,
+      correlationId,
+      tenantId: identity.tenantId,
+      companyId: identity.companyId,
+      userId: identity.userId,
+      roles: identity.roles,
+      locale: request.headers['accept-language'] ?? 'en',
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
+    });
 
     return next.handle();
   }
@@ -87,8 +85,6 @@ export class RequestIdInterceptor implements NestInterceptor {
       return { roles: [] };
     }
 
-    // Outside HTTP there are no headers: the identity travels in the envelope
-    // and is restored by the platform before the handler runs.
     const headers = request?.headers ?? {};
     return {
       tenantId: (headers['x-tenant-id'] as string) ?? undefined,

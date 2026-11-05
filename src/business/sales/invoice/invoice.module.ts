@@ -4,7 +4,6 @@ import { InvoiceForReportsFacade } from './application/facades/invoice-for-repor
 import { RecurringOccurrenceRequestedRabbitMQListener } from './application/integrations/listens/recurring-occurrence-requested.rabbitmq.listener-event';
 import { InvoicePublisherPort } from './application/integrations/publishes/invoice.publisher-port';
 import { InvoiceQuery } from './application/queries/invoice.query';
-import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { NumberingPort } from './application/outbound-ports/numbering.port';
 import { CreateInvoiceUseCase } from './application/usecases/create-invoice.usecase';
 import { GenerateRecurringInvoiceUseCase } from './application/usecases/generate-recurring-invoice.usecase';
@@ -12,11 +11,10 @@ import { GetInvoiceUseCase } from './application/usecases/get-invoice.usecase';
 import { ListInvoicesUseCase } from './application/usecases/list-invoices.usecase';
 import { PostInvoiceUseCase } from './application/usecases/post-invoice.usecase';
 import { InvoiceCommandRepository } from './domain/repositories/invoice-command.repository';
-import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';
-import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
-import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
 import { PrismaInvoiceCommandRepository } from './infrastructure/persistence/prisma/prisma-invoice-command.repository';
 import { PrismaInvoiceQueryRepository } from './infrastructure/persistence/prisma/prisma-invoice-query.repository';
+import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';
+import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
 import { InvoiceController } from './presentation/http/invoice.controller';
 import { InvoiceForReportsPort } from './public/ports/invoice-for-reports.port';
 
@@ -27,6 +25,10 @@ import { InvoiceForReportsPort } from './public/ports/invoice-for-reports.port';
  * outbox). Recurring path: Recurring writes RecurringOccurrenceRequested to
  * the outbox; this module listens on RabbitMQ and generates via
  * GenerateRecurringInvoiceUseCase, completing the claimed execution.
+ *
+ * Command usecases now read company configuration from the global CLS
+ * `RequestContext` (stamped by middleware) instead of injecting
+ * `CompanyConfigPort` directly (Rule 8).
  */
 @Module({
   imports: [PlatformModule],
@@ -43,7 +45,6 @@ import { InvoiceForReportsPort } from './public/ports/invoice-for-reports.port';
     { provide: InvoiceCommandRepository, useClass: PrismaInvoiceCommandRepository },
     { provide: InvoiceQuery, useClass: PrismaInvoiceQueryRepository },
     { provide: InvoicePublisherPort, useClass: OutboxAdapter },
-    { provide: CompanyConfigPort, useClass: CompanyConfigAdapter },
     { provide: NumberingPort, useClass: NumberingAdapter },
   ],
   exports: [InvoiceForReportsPort],
