@@ -4,6 +4,7 @@ import { GrnLine, GrnProps, GrnStatus } from '../types/grn.types';
 import { CreateGrnInput, CreateGrnReversalInput } from '../types/grn.types';
 import { GrnId } from '../value-objects/grn-id.vo';
 import { GrnCreated } from '../events/grn.created.event';
+import { GoodsReceiptReversed } from '../events/grn.reversed.event';
 import './../aggregates/grn.invariants';
 import '../value-objects/grn-number.invariants';
 import '../value-objects/received-quantity.invariants';
@@ -96,6 +97,21 @@ export class GrnFactory {
         rejectedQuantity: line.rejectedQuantity,
       });
     }
+
+    grn.addEvent(
+      new GoodsReceiptReversed(
+        grn.id.toString(),
+        input.reversalOfId,
+        input.purchaseOrderId,
+        grn.lines.map(line => ({
+          grnLineId: `${grn.id.toString()}:${line.productId}`,
+          productId: line.productId,
+          acceptedQuantity: line.acceptedQuantity,
+          unitPrice: line.unitPrice,
+        })),
+      ),
+    );
+
     return grn;
   }
 

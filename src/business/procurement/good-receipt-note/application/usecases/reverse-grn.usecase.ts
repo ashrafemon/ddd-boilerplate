@@ -12,7 +12,6 @@ import { GrnPublisherPort } from '../integrations/publishes/grn.publisher-port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 import { GrnFactory } from '../../domain/factories/grn.factory';
-import { GoodsReceiptReversed } from '../../domain/events/grn.reversed.event';
 import { ReadCachePort } from '../outbound-ports/read-cache.port';
 import { IdempotencyPort } from '@platform/platform-common/idempotency/ports/idempotency.port';
 
@@ -131,6 +130,7 @@ export class ReverseGrnUseCase {
       });
 
       await this.grnRepository.save(reversal);
+
       await this.readCache.invalidate(`grn:${original.id.toString()}`);
 
       await this.audit.record({
@@ -143,20 +143,9 @@ export class ReverseGrnUseCase {
         changes: { reversalId: reversal.id.toString(), status: original.status },
       });
 
-      await this.integrationEvent.send(
-        new GoodsReceiptReversed(
-          reversal.id.toString(),
-          original.id.toString(),
-          original.purchaseOrderId,
-          reversalLines.map(l => ({
-            grnLineId: `${reversal.id.toString()}:${l.productId}`,
-            productId: l.productId,
-            acceptedQuantity: l.acceptedQuantity,
-            unitPrice: l.unitPrice,
-          })),
-        ),
-        reversal.id.toString(),
-      );
+      for (const event of reversal.pullEvents()) {
+        await this.integrationEvent.send(event, reversal.id.toString());
+      }
 
       await this.idempotency.complete({
         reservation: reservation.reservation,
