@@ -1,47 +1,79 @@
 # ERP Boilerplate — NestJS Event-Driven Modular Monolith
 
-A production-oriented ERP backend foundation using **NestJS 11 + TypeScript + PostgreSQL
-(Prisma 7)**, structured as a **DDD / Hexagonal (Ports & Adapters) modular monolith** with a
-**transactional outbox**, **domain events**, a **CQRS-style command/query split**, a
-**routing policy for RabbitMQ / Kafka / SQS**, in-app consumers, schedulers, and a strict
-**business ↔ infrastructure boundary** enforced by ESLint.
+A production-oriented ERP backend foundation using **NestJS 11 + TypeScript (strict) + PostgreSQL (Prisma 7)**,
+structured as a **DDD / Hexagonal (Ports & Adapters) modular monolith** with a **transactional outbox**,
+**domain events**, a **CQRS-style command/query split**, **RBAC/ABAC authorization**, **multi-tenancy**, and
+a strict **business ↔ infrastructure boundary** enforced by ESLint.
 
-Documentation:
+## What this project is
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — design, layers, outbox, events, data model
-- [docs/FLOWCHARTS.md](./docs/FLOWCHARTS.md) — flowcharts: request lifecycles, port/adapter wiring, platform service internals
-- [docs/DI-WIRING.md](./docs/DI-WIRING.md) — generated DI graph: who injects whom, token→implementation bindings (`npm run docs:di`)
-- [docs/architecture/business-modules/README.md](./docs/architecture/business-modules/README.md) — **business-module standardization**: rules, layer/boundary definitions, request lifecycle, authorization, events, caching/idempotency, roadmap, progress tracker, ADRs, AI handover
-- [docs/IAM-BUILD-PLAN.md](./docs/IAM-BUILD-PLAN.md) — **deferred**: the ERP IAM/Auth domain is designed but not yet built (read before starting it)
+This is an ERP boilerplate that demonstrates how to build a modular, domain-driven backend where:
 
----
+- **Business modules** (Vendor, Product, Purchase Order, Good Receipt Note, Invoice) own their aggregates,
+  domain logic, and persistence through port/adapter boundaries.
+- **Platform services** (Outbox, Context, Authentication, Authorization, Configuration, Numbering, Audit,
+  Cache, Idempotency, Messaging, Inbox, Scheduler, Recurring, Batch Operation, Import, Saga, Webhook,
+  Notification, Storage, Condition Engine, Observability, Locking) expose capabilities as injectable ports.
+- **Infrastructure** initializes third-party clients (Prisma, Redis, RabbitMQ, Kafka, SQS, SES, S3) and
+  exposes them only to platform services.
+- **Tenancy** is enforced at the data layer — every business table carries `tenantId`/`companyId`, and
+  cross-tenant access returns 404 (never 403).
+- **Authorization** flows through CLS-request context → RBAC guard (route level) → ABAC port (usecase level),
+  with no-op adapters until the full IAM service is implemented.
+- **Side effects** leave via the transactional outbox — domain events are persisted atomically with the
+  aggregate change and published by a scheduler.
 
-## Quick Start
+## Documentation index
+
+| Document | Purpose |
+|----------|---------|
+| [`docs/architecture.md`](docs/architecture.md) | System architecture, layers, dependency direction, port/adapter rules |
+| [`docs/business-modules.md`](docs/business-modules.md) | Business module anatomy, aggregate patterns, use case conventions |
+| [`docs/platform-services.md`](docs/platform-services.md) | Platform layer services, ports, adapters, registration |
+| [`docs/authentication-authorization.md`](docs/authentication-authorization.md) | Tenancy, CLS context, RBAC guard, ABAC port, no-op IAM adapters |
+| [`docs/outbox-events-messaging.md`](docs/outbox-events-messaging.md) | Transactional outbox, domain/integration events, brokers, listeners |
+| [`docs/data-model.md`](docs/data-model.md) | Prisma schema, tables, tenancy model, natural keys |
+| [`docs/api-endpoints.md`](docs/api-endpoints.md) | HTTP API, controllers, DTOs, response envelopes, versioning |
+| [`docs/getting-started.md`](docs/getting-started.md) | Quick start, environment setup, scripts |
+| [`docs/verification.md`](docs/verification.md) | Type checking, lint, format, build, DI smoke test, e2e tests |
+| [`docs/ai-models-agents.md`](docs/ai-models-agents.md) | AI models and agents: architecture, capabilities, integration, workflows |
+| [`docs/service-module-development.md`](docs/service-module-development.md) | How to design, develop, extend, and maintain service modules |
+| [`rules/architecture-rules.md`](rules/architecture-rules.md) | Hard rules enforced by ESLint architecture boundaries |
+| [`rules/coding-standards.md`](rules/coding-standards.md) | TypeScript, NestJS, naming conventions |
+
+## Quick start
 
 ```bash
 cp .env.example .env
 docker compose up -d          # PostgreSQL, Redis, RabbitMQ, Kafka
-npm install                   # also runs prisma generate (postinstall)
-npm run db:push               # create the database straight from prisma/schema
-npm run db:seed               # sample products & vendors
-npm run start:dev             # API + Swagger
+npm install                   # postinstall runs prisma generate
+npm run db:push               # create/sync database straight from prisma/schema
+npm run start:dev             # API + Swagger on http://localhost:4000/api/v1
 ```
 
 Then:
 
-- REST API: <http://localhost:4000/api/v1>
-- Swagger: <http://localhost:4000/api/docs>
-- RabbitMQ UI: <http://localhost:15672> (guest/guest)
+- REST API: `http://localhost:4000/api/v1`
+- Swagger: `http://localhost:4000/api/docs`
+- RabbitMQ UI: `http://localhost:15672` (guest/guest)
 
-> **No Prisma migrations.** The database is created straight from `prisma/schema`
-> with `prisma db push` — there is no `prisma/migrations/` folder and no
-> `db:migrate` / `db:deploy` script. Change the schema, then re-run
-> `npm run db:push`. Introduce a versioned migration folder only when a
-> released schema needs a forward-only rollout.
+## Core technology stack
 
----
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js + NestJS 11 |
+| Language | TypeScript (strict mode) |
+| Database | PostgreSQL + Prisma 7 ORM |
+| Caching | Redis or Memcached (driver-selectable) |
+| Messaging | RabbitMQ / Kafka / SQS (abstraction via `MessageQueuePort`) |
+| CLS / Request context | `nestjs-cls` |
+| Validation | Zod via `nestjs-zod` (`createZodDto`) |
+| HTTP server | Fastify |
+| API docs | Swagger (`/api/docs`, disabled in production) |
+| Error tracking | Sentry |
+| Observability | Prometheus metrics + structured JSON logging |
 
-## Example API Flow
+## Example API flow
 
 ```bash
 # Create a product
@@ -54,7 +86,7 @@ curl -X POST http://localhost:4000/api/v1/vendors \
   -H "Content-Type: application/json" \
   -d '{"code":"VEN-100","name":"Acme Supplies","email":"billing@acme.com"}'
 
-# Create a purchase order (vendorId + productId from the responses above)
+# Create a purchase order
 curl -X POST http://localhost:4000/api/v1/purchase-orders \
   -H "Content-Type: application/json" -d '{"vendorId":"<vendor-id>"}'
 
@@ -63,66 +95,21 @@ curl -X POST http://localhost:4000/api/v1/purchase-orders/<po-id>/lines \
   -H "Content-Type: application/json" \
   -d '{"productId":"<product-id>","quantity":3,"unitPrice":19.99}'
 
-# Submit — publishes PurchaseOrderSubmitted; the approval policy then auto-approves
-# orders under the company's autoApproveThreshold (higher orders await manual approval)
+# Submit — ABAC evaluated from CLS context; domain events written to outbox
 curl -X POST http://localhost:4000/api/v1/purchase-orders/<po-id>/submit
 ```
 
-Every state change writes the resulting domain events into the **transactional outbox** (in
-the same DB transaction) and the scheduler publishes them to **RabbitMQ** (and optionally
-**Kafka** / **SQS** via `MessageRoutingPolicy`), re-dispatching them in-process for local
-reactions.
+## Verification battery
 
----
+Run after every change:
 
-## Project Layout
-
-```text
-src/
-├── config/            # .env-driven typed configuration
-├── shared-kernel/     # NestJS technical concerns + platform ports (filters, interceptors, pipes)
-├── bootstrap/         # app bootstrap (security, cors, http, swagger, shutdown, sentry)
-├── infrastructure/    # cross-cutting adapters: Prisma, Redis, RabbitMQ, Kafka, SQS, SES, S3, Sentry
-├── platform/          # outbox, event bus, routing policy, audit, numbering, notification, configuration
-└── business/
-    ├── shared-business/   # domain/application/port primitives (framework-independent)
-    ├── party/vendor/              # Vendor aggregate
-    ├── procurement/product/       # Product aggregate
-    ├── procurement/purchase-order/    # PurchaseOrder aggregate (uses vendor/product outbound ports)
-    ├── procurement/good-receipt-note/ # GoodReceiptNote aggregate
-    └── sales/invoice/               # Invoice aggregate
+```bash
+npx tsc --noEmit -p tsconfig.json
+npm run lint:check
+npm run format:check
+npm run docs:di
+npm run build
+NODE_ENV=test node -e "(async()=>{const{NestFactory}=require('@nestjs/core');const{AppModule}=require('./dist/app.module.js');const a=await NestFactory.create(AppModule,{preview:true});await a.init();await a.close();})()"
 ```
 
-Each aggregate module keeps its own `domain`, `application` (use cases, cross-module
-adapters, consumers), `infrastructure/persistence` (Prisma repos + mappers), and
-`presentation/http` (controllers + DTOs). Cross-module calls go through outbound ports
-resolved via the Nest container — modules never import each other.
-
----
-
-## Multi-Tenancy Mode
-
-`TENANCY_MODE` in `.env` controls the platform trust boundary:
-
-- `single` (default): `x-tenant-id`/`x-organization-id` headers are trusted — for dev,
-  internal deployments, or when a verified gateway sits in front.
-- `multi`: every request needs `Authorization: Bearer <JWT>` signed with `JWT_ACCESS_SECRET`
-  and carrying a `tenantId` claim (`companyId`, `sub`, `roles` optional). Raw identity
-  headers are ignored, anonymous requests are rejected (except `@SkipTenancy()` routes such
-  as `GET /api/v1/metrics`), and missing tenant/company config rows fail hard instead of
-  falling back to defaults.
-
-## Scripts
-
-| Command                 | Purpose                                                                   |
-| ----------------------- | ------------------------------------------------------------------------- |
-| `npm run start:dev`     | watch mode dev server                                                     |
-| `npm run build`         | compile to `dist/`                                                        |
-| `npm run lint`          | ESLint + architecture import restrictions (`--fix`)                       |
-| `npm run lint:check`    | ESLint + architecture checks (read-only)                                  |
-| `npm test`              | unit tests — the repo currently ships none (`--passWithNoTests`)          |
-| `npm run test:e2e`      | e2e smoke (requires `docker compose up -d`)                               |
-| `npm run db:push`       | create/sync the database from `prisma/schema` (no migrations — see below) |
-| `npm run db:generate`   | regenerate the Prisma client into `src/generated/`                        |
-| `npm run db:seed`       | seed products/vendors                                                     |
-| `npm run prisma:studio` | Prisma Studio UI                                                          |
+See [`docs/verification.md`](docs/verification.md) for details.
