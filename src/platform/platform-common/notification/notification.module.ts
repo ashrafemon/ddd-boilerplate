@@ -2,7 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { ObservabilityModule } from '@platform/platform-common/observability/observability.module';
-import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
+import { OutboxModule } from '@infrastructure/outbox/outbox.module';
 import { NotificationModule as InfraNotificationModule } from '@infrastructure/notification/notification.module';
 import { ChannelProviderRegistry } from './channel-provider.registry';
 import { NotificationHandlerRegistry } from './notification-handler.registry';

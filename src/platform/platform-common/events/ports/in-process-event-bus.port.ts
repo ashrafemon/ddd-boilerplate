@@ -1,4 +1,4 @@
-import type { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
+import type { OutboxEnvelope } from '@infrastructure/outbox/outbox.types';
 
 /** The `message` a listener receives — the canonical transport envelope. */
 export type MessageEnvelope = OutboxEnvelope;

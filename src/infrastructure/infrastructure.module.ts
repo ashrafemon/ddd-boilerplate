@@ -1,18 +1,23 @@
 import { Module } from '@nestjs/common';
 import { ContextModule } from './context/context.module';
-import { PrismaModule } from './database/prisma/prisma.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { NotificationModule } from './notification/notification.module';
+import { PrismaModule } from './database/prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
 import { RedisModule } from './redis/redis.module';
 import { StorageModule } from './storage/storage.module';
 
 /**
- * Infrastructure layer — only client initialization/setup.
+ * Infrastructure layer — client initialization/setup only.
  *
  * Each sub-module registers third-party clients (Prisma, Kafka, RabbitMQ,
  * SQS, Redis, Memcached, S3, SES, SNS, CLS). No ports or adapters live here;
  * the platform layer wraps these clients into services for business modules.
+ *
+ * Outbox and Inbox live here as directories but are wired by PlatformModule
+ * (not InfrastructureModule) to avoid a circular dependency:
+ *   OutboxModule → ContextModule → InfrastructureModule
+ * If InfrastructureModule also imported OutboxModule, that would form a cycle.
  *
  * Deliberately NOT `@Global()`: raw clients must stay invisible to business
  * modules, so every consumer has to import this module (or a sub-module)

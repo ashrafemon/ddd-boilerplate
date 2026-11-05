@@ -1,5 +1,5 @@
 import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
-import { OutboxEventBase } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEventBase } from '@infrastructure/outbox/outbox.types';
 
 /**
  * Raised by RecurringGenerationHandler after a claimed, eligible occurrence.

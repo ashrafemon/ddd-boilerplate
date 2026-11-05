@@ -4,7 +4,7 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { randomUUID } from 'crypto';
 import { ConditionEvaluator } from '@platform/platform-common/condition-engine/ports/condition-evaluator.port';
 import { GenerationConditionParser } from '@platform/platform-common/condition-engine/generation-condition.parser';
-import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
+import { OutboxWriterPort } from '@infrastructure/outbox/ports/outbox-writer.port';
 import { SchedulerPort } from '@platform/platform-common/scheduler/ports/scheduler.port';
 import {
   ScheduledJobFireHandler,

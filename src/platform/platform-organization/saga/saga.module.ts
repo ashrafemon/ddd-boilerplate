@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
 import { ContextModule } from '../../platform-common/context/context.module';
-import { OutboxModule } from '../../platform-common/outbox/outbox.module';
+import { OutboxModule } from '@infrastructure/outbox/outbox.module';
 import { EmptyCompanySettingsReader } from './adapters/empty-company-settings.reader';
 import { EmptyFeatureGate } from './adapters/empty-feature-gate.adapter';
 import { PlanBuilder } from './application/plan-builder';

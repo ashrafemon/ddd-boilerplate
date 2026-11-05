@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ContextModule } from '../context/context.module';
-import { EventsModule } from '../events/events.module';
-import { MessagingModule } from '../messaging/messaging.module';
+import { ContextModule } from '@platform/platform-common/context/context.module';
+import { EventsModule } from '@platform/platform-common/events/events.module';
+import { MessagingModule } from '@platform/platform-common/messaging/messaging.module';
 import { PrismaOutboxRepository } from './repositories/prisma-outbox.repository';
 import { AppendOutboxEventUseCase } from './usecases/append-outbox-event.usecase';
 import { PublishPendingBatchUseCase } from './usecases/publish-pending-batch.usecase';

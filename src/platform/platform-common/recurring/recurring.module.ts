@@ -2,7 +2,7 @@ import { Module, OnApplicationBootstrap } from '@nestjs/common';
 import { ConditionEngineModule } from '@platform/platform-common/condition-engine/condition-engine.module';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { AuditModule } from '@platform/platform-common/audit/audit.module';
-import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
+import { OutboxModule } from '@infrastructure/outbox/outbox.module';
 import { ScheduledJobHandlerRegistry } from '@platform/platform-common/scheduler/scheduled-job-handler.registry';
 import { SchedulerModule } from '@platform/platform-common/scheduler/scheduler.module';
 import { DomainEventDispatcher } from './domain-event.dispatcher';

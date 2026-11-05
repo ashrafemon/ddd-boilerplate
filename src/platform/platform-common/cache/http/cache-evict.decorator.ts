@@ -15,4 +15,5 @@ export interface CacheEvictOptions {
  * the `{ resource, :id }` cache entry is evicted so the next read fetches
  * fresh data. Fail-open: a failed eviction is swallowed. Keys are tenant-scoped.
  */
-export const CacheEvict = (options: CacheEvictOptions = {}) => SetMetadata(CACHE_EVICT_KEY, options);
+export const CacheEvict = (options: CacheEvictOptions = {}) =>
+  SetMetadata(CACHE_EVICT_KEY, options);

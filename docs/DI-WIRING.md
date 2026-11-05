@@ -29,14 +29,14 @@ flowchart LR
     VendorModule["VendorModule"]
     VendorModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     VendorModule -->|AbacPort| AuthorizationModule
-    OutboxModule["OutboxModule"]
-    VendorModule -->|OutboxWriterPort| OutboxModule
+    PlatformModule["PlatformModule"]
+    VendorModule -->|OutboxWriterPort| PlatformModule
     GoodReceiptNoteModule["GoodReceiptNoteModule"]
     GoodReceiptNoteModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     GoodReceiptNoteModule -->|AbacPort| AuthorizationModule
     AuditModule["AuditModule"]
     GoodReceiptNoteModule -->|AuditPort| AuditModule
-    GoodReceiptNoteModule -->|OutboxWriterPort| OutboxModule
+    GoodReceiptNoteModule -->|OutboxWriterPort| PlatformModule
     PurchaseOrderModule["PurchaseOrderModule"]
     GoodReceiptNoteModule -->|PurchaseOrderForGrnPort| PurchaseOrderModule
     NumberingModule["NumberingModule"]
@@ -46,7 +46,7 @@ flowchart LR
     ProductModule["ProductModule"]
     ProductModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     ProductModule -->|AbacPort| AuthorizationModule
-    ProductModule -->|OutboxWriterPort| OutboxModule
+    ProductModule -->|OutboxWriterPort| PlatformModule
     PurchaseOrderModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     PurchaseOrderModule -->|AbacPort| AuthorizationModule
     PurchaseOrderModule -->|AuditPort| AuditModule
@@ -54,9 +54,7 @@ flowchart LR
     PurchaseOrderModule -->|RecurringTemplatePort, RecurringExecutionPort| RecurringModule
     ObservabilityModule["ObservabilityModule"]
     PurchaseOrderModule -->|LoggerPort| ObservabilityModule
-    InboxModule["InboxModule"]
-    PurchaseOrderModule -->|InboxPort| InboxModule
-    PurchaseOrderModule -->|OutboxWriterPort| OutboxModule
+    PurchaseOrderModule -->|InboxPort, OutboxWriterPort| PlatformModule
     PurchaseOrderModule -->|NumberingPort| NumberingModule
     PurchaseOrderModule -->|CachePort| CacheModule
     PurchaseOrderModule -->|ProductForPurchasePort| ProductModule
@@ -66,17 +64,26 @@ flowchart LR
     InvoiceModule -->|AbacPort| AuthorizationModule
     InvoiceModule -->|RecurringExecutionPort| RecurringModule
     InvoiceModule -->|LoggerPort| ObservabilityModule
-    InvoiceModule -->|InboxPort| InboxModule
-    InvoiceModule -->|OutboxWriterPort| OutboxModule
+    InvoiceModule -->|InboxPort, OutboxWriterPort| PlatformModule
     InvoiceModule -->|NumberingPort| NumberingModule
     PrismaModule["PrismaModule"]
     PrismaModule -->|ConfigService| ConfigModule
+    InboxModule["InboxModule"]
+    InboxModule -->|ConfigService| ConfigModule
     MessagingModule__src_infrastructure_messaging_["MessagingModule (src/infrastructure/messaging)"]
     MessagingModule__src_infrastructure_messaging__2["MessagingModule__src_infrastructure_messaging_"]
     MessagingModule__src_infrastructure_messaging__2 -->|ConfigService| ConfigModule
     NotificationModule__src_infrastructure_notification_["NotificationModule (src/infrastructure/notification)"]
     NotificationModule__src_infrastructure_notification__2["NotificationModule__src_infrastructure_notification_"]
     NotificationModule__src_infrastructure_notification__2 -->|ConfigService| ConfigModule
+    OutboxModule["OutboxModule"]
+    OutboxModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
+    MessagingModule__src_platform_platform_common_messaging_["MessagingModule (src/platform/platform-common/messaging)"]
+    MessagingModule__src_platform_platform_common_messaging__2["MessagingModule__src_platform_platform_common_messaging_"]
+    OutboxModule -->|MessageQueuePort| MessagingModule__src_platform_platform_common_messaging__2
+    EventsModule["EventsModule"]
+    OutboxModule -->|InProcessEventBus| EventsModule
+    OutboxModule -->|ConfigService| ConfigModule
     RedisModule["RedisModule"]
     RedisModule -->|ConfigService| ConfigModule
     AuditModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
@@ -105,12 +112,9 @@ flowchart LR
     ImportModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
     ImportModule -->|NumberingPort| NumberingModule
     ImportModule -->|AuditPort| AuditModule
-    InboxModule -->|ConfigService| ConfigModule
     LockingModule["LockingModule"]
     LockingModule -->|RedisService| RedisModule
     LockingModule -->|ConfigService| ConfigModule
-    MessagingModule__src_platform_platform_common_messaging_["MessagingModule (src/platform/platform-common/messaging)"]
-    MessagingModule__src_platform_platform_common_messaging__2["MessagingModule__src_platform_platform_common_messaging_"]
     MessagingModule__src_platform_platform_common_messaging__2 -->|ConfigService| ConfigModule
     NotificationModule__src_platform_platform_common_notification_["NotificationModule (src/platform/platform-common/notification)"]
     NotificationModule__src_platform_platform_common_notification__2["NotificationModule__src_platform_platform_common_notification_"]
@@ -120,11 +124,6 @@ flowchart LR
     NotificationModule__src_platform_platform_common_notification__2 -->|LoggerPort| ObservabilityModule
     NumberingModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
     ObservabilityModule -->|ConfigService| ConfigModule
-    OutboxModule -->|RequestContextPort| ContextModule__src_platform_platform_common_context__2
-    OutboxModule -->|MessageQueuePort| MessagingModule__src_platform_platform_common_messaging__2
-    EventsModule["EventsModule"]
-    OutboxModule -->|InProcessEventBus| EventsModule
-    OutboxModule -->|ConfigService| ConfigModule
     RecurringModule -->|OutboxWriterPort| OutboxModule
     SchedulerModule["SchedulerModule"]
     RecurringModule -->|SchedulerPort, ScheduledJobHandlerRegistry| SchedulerModule
@@ -219,7 +218,7 @@ flowchart LR
     PrismaVendorQueryRepository -->|injects via ContextModule| PrismaReadPort
     PrismaVendorQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
-    OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
+    OutboxAdapter -->|injects via PlatformModule| OutboxWriterPort
 ```
 
 ### Business — procurement
@@ -324,7 +323,7 @@ flowchart LR
     PrismaGrnQueryRepository -->|injects via ContextModule| PrismaReadPort
     PrismaGrnQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
-    OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
+    OutboxAdapter -->|injects via PlatformModule| OutboxWriterPort
     PurchaseOrderForGrnPort["PurchaseOrderForGrnPort"]
     PurchaseOrderAdapter -->|injects via PurchaseOrderModule| PurchaseOrderForGrnPort
     NumberingAdapter -->|injects via NumberingModule| NumberingPort
@@ -487,14 +486,14 @@ flowchart LR
     RecurringOccurrenceRequestedRabbitMQListener["RecurringOccurrenceRequestedRabbitMQListener"]
     RecurringOccurrenceRequestedRabbitMQListener -->|injects| GenerateRecurringPurchaseOrderUseCase
     InboxPort["InboxPort"]
-    RecurringOccurrenceRequestedRabbitMQListener -->|injects via InboxModule| InboxPort
+    RecurringOccurrenceRequestedRabbitMQListener -->|injects via PlatformModule| InboxPort
     RecurringOccurrenceRequestedRabbitMQListener -->|injects via ContextModule| RequestContextPort
     GoodsReceiptPostedListener["GoodsReceiptPostedListener"]
-    GoodsReceiptPostedListener -->|injects via InboxModule| InboxPort
+    GoodsReceiptPostedListener -->|injects via PlatformModule| InboxPort
     GoodsReceiptPostedListener -->|injects| RegisterPurchaseOrderReceiptUseCase
     GoodsReceiptPostedListener -->|injects via ContextModule| RequestContextPort
     VendorBillPostedListener["VendorBillPostedListener"]
-    VendorBillPostedListener -->|injects via InboxModule| InboxPort
+    VendorBillPostedListener -->|injects via PlatformModule| InboxPort
     VendorBillPostedListener -->|injects via ContextModule| RequestContextPort
     HandleVendorBillPostedUseCase["HandleVendorBillPostedUseCase"]
     VendorBillPostedListener -->|injects| HandleVendorBillPostedUseCase
@@ -511,7 +510,7 @@ flowchart LR
     PrismaPurchaseOrderQueryRepository -->|injects via ContextModule| PrismaReadPort
     PrismaPurchaseOrderQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
-    OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
+    OutboxAdapter -->|injects via PlatformModule| OutboxWriterPort
     NumberingAdapter -->|injects via NumberingModule| NumberingPort
     CachePort["CachePort"]
     ReadCacheAdapter -->|injects via CacheModule| CachePort
@@ -577,7 +576,7 @@ flowchart LR
     RecurringOccurrenceRequestedRabbitMQListener["RecurringOccurrenceRequestedRabbitMQListener"]
     RecurringOccurrenceRequestedRabbitMQListener -->|injects| GenerateRecurringInvoiceUseCase
     InboxPort["InboxPort"]
-    RecurringOccurrenceRequestedRabbitMQListener -->|injects via InboxModule| InboxPort
+    RecurringOccurrenceRequestedRabbitMQListener -->|injects via PlatformModule| InboxPort
     RecurringOccurrenceRequestedRabbitMQListener -->|injects via ContextModule| RequestContextPort
     InvoiceForReportsFacade -->|injects| GetInvoiceUseCase
     InvoiceForReportsFacade -->|injects| GetInvoiceUseCase
@@ -588,7 +587,7 @@ flowchart LR
     PrismaInvoiceQueryRepository -->|injects via ContextModule| PrismaReadPort
     PrismaInvoiceQueryRepository -->|injects via ContextModule| RequestContextPort
     OutboxWriterPort["OutboxWriterPort"]
-    OutboxAdapter -->|injects via OutboxModule| OutboxWriterPort
+    OutboxAdapter -->|injects via PlatformModule| OutboxWriterPort
     NumberingAdapter -->|injects via NumberingModule| NumberingPort
 ```
 

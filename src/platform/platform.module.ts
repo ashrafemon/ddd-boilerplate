@@ -12,19 +12,19 @@ import { EventsModule } from './platform-common/events/events.module';
 import { IdempotencyModule } from './platform-common/idempotency/idempotency.module';
 import { IdentityModule } from './platform-common/identity/identity.module';
 import { ImportModule } from './platform-common/import/import.module';
-import { InboxModule } from './platform-common/inbox/inbox.module';
 import { LockingModule } from './platform-common/locking/locking.module';
 import { MessagingModule } from './platform-common/messaging/messaging.module';
 import { NotificationModule } from './platform-common/notification/notification.module';
 import { NumberingModule } from './platform-common/numbering/numbering.module';
 import { ObservabilityModule } from './platform-common/observability/observability.module';
-import { OutboxModule } from './platform-common/outbox/outbox.module';
 import { RecurringModule } from './platform-common/recurring/recurring.module';
 import { SagaModule } from './platform-organization/saga/saga.module';
 import { AuthorizationModule } from './platform-organization/authorization/authorization.module';
 import { SchedulerModule } from './platform-common/scheduler/scheduler.module';
 import { StorageModule } from './platform-common/storage/storage.module';
 import { WebhookModule } from './platform-common/webhook/webhook.module';
+import { InboxModule } from '@infrastructure/inbox/inbox.module';
+import { OutboxModule } from '@infrastructure/outbox/outbox.module';
 
 /**
  * Platform composition root. Not global on purpose: a module that wants a
@@ -67,10 +67,10 @@ import { WebhookModule } from './platform-common/webhook/webhook.module';
     WebhookModule,
   ],
   exports: [
-    OutboxModule,
     EventsModule,
     MessagingModule,
     InboxModule,
+    OutboxModule,
     StorageModule,
     ObservabilityModule,
     CacheModule,

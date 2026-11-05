@@ -1,4 +1,4 @@
-# platform/outbox — Transactional Outbox
+# infrastructure/outbox — Transactional Outbox
 
 > The only sanctioned way to cross a process boundary from a business
 > transaction: domain events are INSERTed as `outbox_messages` rows in the
@@ -36,7 +36,7 @@ tick reclaims the row through the same claim clause.
 ## Public API
 
 ```ts
-import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
+import { OutboxWriterPort } from '@infrastructure/outbox/ports/outbox-writer.port';
 
 // business command use case, inside @Transactional():
 await this.outbox.append(new OrderCreated(order), 'SalesOrder', order.id);

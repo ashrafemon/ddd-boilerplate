@@ -1,4 +1,4 @@
-import { OutboxEventBase } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEventBase } from '@infrastructure/outbox/outbox.types';
 import { ImportJobStatus } from '../import.types';
 
 /**

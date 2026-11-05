@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEnvelope } from '@infrastructure/outbox/outbox.types';
 import { MessageQueuePort } from '../ports/message-queue.port';
 import { PublishMessageUseCase } from '../usecases/publish-message.usecase';
 

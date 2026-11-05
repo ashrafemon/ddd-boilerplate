@@ -1,7 +1,7 @@
 import { ConfigService } from '@config/config.service';
 import { Injectable } from '@nestjs/common';
 import { SqsService } from '@ssut/nestjs-sqs';
-import { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEnvelope } from '@infrastructure/outbox/outbox.types';
 import { BrokerPublisher } from '../message-publisher.tokens';
 
 /**

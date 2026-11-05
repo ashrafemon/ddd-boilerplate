@@ -5,7 +5,7 @@ import { CreateProductUseCase } from './../src/business/procurement/product/appl
 import { GetPurchasableProductUseCase } from './../src/business/procurement/product/application/usecases/get-purchasable-product.usecase';
 import { GetOrderableVendorUseCase } from './../src/business/party/vendor/application/usecases/get-orderable-vendor.usecase';
 import { CreatePurchaseOrderUseCase } from './../src/business/procurement/purchase-order/application/usecases/create-purchase-order.usecase';
-import { OutboxWriterPort } from './../src/platform/platform-common/outbox/ports/outbox-writer.port';
+import { OutboxWriterPort } from '@infrastructure/outbox/ports/outbox-writer.port';
 import { SchedulerPort } from '../src/platform/platform-common/scheduler/ports/scheduler.port';
 import { ScheduledJobHandlerRegistry } from '../src/platform/platform-common/scheduler/scheduled-job-handler.registry';
 import { RecurringExecutionPort } from '../src/platform/platform-common/recurring/ports/recurring-execution.port';

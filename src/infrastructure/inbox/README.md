@@ -1,4 +1,4 @@
-# platform/inbox — Consumer-Side Deduplication
+# infrastructure/inbox — Consumer-Side Deduplication
 
 > The consumer counterpart of Outbox: the same logical message plus the same
 > consumer yields exactly one business execution under at-least-once
@@ -30,7 +30,7 @@ consumer + message id, with NULLs normalized to `''` at the repository edge.
 ## Public API
 
 ```ts
-import { InboxPort } from '@platform/platform-common/inbox/ports/inbox.port';
+import { InboxPort } from '@infrastructure/inbox/ports/inbox.port';
 
 const delivery = await this.inbox.receive({
   consumer: 'inventory.reserve',

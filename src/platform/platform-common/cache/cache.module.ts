@@ -46,11 +46,6 @@ import { DeleteCacheValueUseCase } from './usecases/delete-cache-value.usecase';
     CacheEvictInterceptor,
     { provide: APP_INTERCEPTOR, useExisting: CacheEvictInterceptor },
   ],
-  exports: [
-    CachePort,
-    CacheResponseInterceptor,
-    CacheableInterceptor,
-    CacheEvictInterceptor,
-  ],
+  exports: [CachePort, CacheResponseInterceptor, CacheableInterceptor, CacheEvictInterceptor],
 })
 export class CacheModule {}
