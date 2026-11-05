@@ -12,6 +12,6 @@ export interface PurchaseOrderReference {
     unitPrice: number;
     total: number;
   }[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }

@@ -6,7 +6,6 @@ import { PurchaseOrderCommandRepository } from '../../domain/repositories/purcha
 import { PurchaseOrderPricingService } from '../../domain/services/purchase-order-pricing.service';
 import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class AddPurchaseOrderLineUseCase {
@@ -15,7 +14,6 @@ export class AddPurchaseOrderLineUseCase {
     private readonly productQueryPort: PurchasableProductPort,
     private readonly integrationEvent: PurchaseOrderPublisherPort,
     private readonly companyConfig: CompanyConfigPort,
-    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -47,8 +45,6 @@ export class AddPurchaseOrderLineUseCase {
     for (const event of purchaseOrder.pullEvents()) {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());
     }
-
-    await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
 
     return purchaseOrder.id.toString();
   }

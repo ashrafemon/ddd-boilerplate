@@ -6,7 +6,6 @@ import { PurchaseOrderCommandRepository } from '../../domain/repositories/purcha
 import { PurchaseOrderPricingService } from '../../domain/services/purchase-order-pricing.service';
 import { AmendPurchaseOrderRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 // Controlled amendment of an issued PO (spec §4, PO-06).
 @Injectable()
@@ -16,7 +15,6 @@ export class AmendPurchaseOrderUseCase {
     private readonly integrationEvent: PurchaseOrderPublisherPort,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
-    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -53,8 +51,6 @@ export class AmendPurchaseOrderUseCase {
     for (const event of purchaseOrder.pullEvents()) {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());
     }
-
-    await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
 
     return purchaseOrder.id.toString();
   }

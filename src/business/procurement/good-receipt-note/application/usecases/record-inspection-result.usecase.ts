@@ -3,7 +3,6 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { RecordInspectionResultRequest } from '../../domain/types/grn.types';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnPublisherPort } from '../integrations/publishes/grn.publisher-port';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 /**
  * Record the accepted/rejected split per line (plan Phase 3.2 / GRN-01):
@@ -19,7 +18,6 @@ export class RecordInspectionResultUseCase {
   constructor(
     private readonly grnRepository: GrnCommandRepository,
     private readonly integrationEvent: GrnPublisherPort,
-    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -35,8 +33,6 @@ export class RecordInspectionResultUseCase {
     for (const event of grn.pullEvents()) {
       await this.integrationEvent.send(event, grn.id.toString());
     }
-
-    await this.readCache.invalidate(`grn:${grn.id.toString()}`);
 
     return grn.id.toString();
   }

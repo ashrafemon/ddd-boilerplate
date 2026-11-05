@@ -3,14 +3,12 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { SetGrnLineTrackingRequest } from '../../domain/types/grn.types';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnPublisherPort } from '../integrations/publishes/grn.publisher-port';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class SetGrnLineTrackingUseCase {
   constructor(
     private readonly grnRepository: GrnCommandRepository,
     private readonly integrationEvent: GrnPublisherPort,
-    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -27,8 +25,6 @@ export class SetGrnLineTrackingUseCase {
     for (const event of grn.pullEvents()) {
       await this.integrationEvent.send(event, grn.id.toString());
     }
-
-    await this.readCache.invalidate(`grn:${grn.id.toString()}`);
 
     return grn.id.toString();
   }

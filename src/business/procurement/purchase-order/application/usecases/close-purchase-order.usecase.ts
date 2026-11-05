@@ -4,7 +4,6 @@ import { RequestContextPort } from '@platform/platform-common/context/ports/requ
 import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class ClosePurchaseOrderUseCase {
@@ -13,7 +12,6 @@ export class ClosePurchaseOrderUseCase {
     private readonly integrationEvent: PurchaseOrderPublisherPort,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
-    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -42,8 +40,6 @@ export class ClosePurchaseOrderUseCase {
     for (const event of purchaseOrder.pullEvents()) {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());
     }
-
-    await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
 
     return purchaseOrder.id.toString();
   }

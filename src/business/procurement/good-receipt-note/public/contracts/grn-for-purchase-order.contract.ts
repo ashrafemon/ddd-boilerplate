@@ -14,7 +14,7 @@ export interface GrnReference {
     unitPrice: number;
     total: number;
   }[];
-  receivedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  receivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }

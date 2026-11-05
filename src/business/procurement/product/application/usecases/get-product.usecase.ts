@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ProductQuery } from '../../application/queries/product.query';
 import { ProductQueryRecord } from '../../domain/types/product.types';
 
@@ -9,7 +9,11 @@ import { ProductQueryRecord } from '../../domain/types/product.types';
 export class GetProductUseCase {
   constructor(private readonly productQueryRepo: ProductQuery) {}
 
-  async execute(id: string): Promise<ProductQueryRecord | null> {
-    return this.productQueryRepo.findById(id);
+  async execute(id: string): Promise<ProductQueryRecord> {
+    const record = await this.productQueryRepo.findById(id);
+    if (!record) {
+      throw new NotFoundException('Product not found');
+    }
+    return record;
   }
 }

@@ -94,3 +94,15 @@ invariantRegistry.register<{ status: string; to: string }>('grn.status-transitio
     }
   },
 });
+
+/** GRN-06: only a COMPLETED (posted) GRN can be reversed. */
+invariantRegistry.register<{ status: string }>('grn.reversible', {
+  name: 'grn-reversible',
+  check: ({ status }) => {
+    if (status !== 'COMPLETED') {
+      throw Object.assign(new Error(`Only a posted GRN can be reversed (status: ${status})`), {
+        statusCode: 422,
+      });
+    }
+  },
+});

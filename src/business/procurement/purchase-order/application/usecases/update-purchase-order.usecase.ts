@@ -3,7 +3,6 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { UpdatePurchaseOrderHeaderRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 /**
  * Update the draft header of a purchase order (plan Phase 2.2 / spec §3.1).
@@ -17,7 +16,6 @@ export class UpdatePurchaseOrderUseCase {
   constructor(
     private readonly purchaseOrderRepository: PurchaseOrderCommandRepository,
     private readonly integrationEvent: PurchaseOrderPublisherPort,
-    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -51,8 +49,6 @@ export class UpdatePurchaseOrderUseCase {
     for (const event of purchaseOrder.pullEvents()) {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());
     }
-
-    await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
 
     return purchaseOrder.id.toString();
   }

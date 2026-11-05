@@ -1,14 +1,13 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
+import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { PurchaseOrderTransitionRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from '../queries/purchase-order.query';
-import { PurchaseOrderApprovalService } from '../../domain/services/purchase-order-approval.service';
 import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 // Single mutation path for submit/approve/reject/cancel/complete.
 @Injectable()
@@ -20,7 +19,6 @@ export class PurchaseOrderTransitionUseCase {
     private readonly purchaseOrderQuery: PurchaseOrderQuery,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
-    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -39,15 +37,11 @@ export class PurchaseOrderTransitionUseCase {
         purchaseOrder.submit();
         break;
       case 'approve': {
-        if (
-          PurchaseOrderApprovalService.requiresManualApproval(
-            purchaseOrder.status,
-            purchaseOrder.total.amount,
-            company.autoApproveThreshold,
-          )
-        ) {
-          throw new ConflictException('Manual approval required for this purchase order');
-        }
+        policyRegistry.enforce('purchase-order.can-approve', {
+          status: purchaseOrder.status,
+          totalAmount: purchaseOrder.total.amount,
+          autoApproveThreshold: company.autoApproveThreshold,
+        });
         purchaseOrder.approve(actorId);
         break;
       }
@@ -84,8 +78,6 @@ export class PurchaseOrderTransitionUseCase {
     for (const event of purchaseOrder.pullEvents()) {
       await this.integrationEvent.send(event, purchaseOrder.id.toString());
     }
-
-    await this.readCache.invalidate(`purchase-order:${purchaseOrder.id.toString()}`);
 
     return purchaseOrder.id.toString();
   }

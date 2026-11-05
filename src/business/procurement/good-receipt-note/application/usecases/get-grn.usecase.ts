@@ -1,23 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { GrnQuery } from '../../application/queries/grn.query';
 import { GrnQueryRecord } from '../../domain/types/grn.types';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 /**
  * Read a single goods receipt note.
  *
- * Cached under `grn:<id>`; the command use cases that mutate the GRN
- * invalidate that key after a successful write, so a cached entry can never
- * outlive the state it describes.
+ * Read-side caching is owned by the `@Cacheable()` controller decorator
+ * (tenant-scoped, fail-open); this use case only reads the authoritative
+ * repository inside the request's CLS transaction.
  */
 @Injectable()
 export class GetGrnUseCase {
-  constructor(
-    private readonly grnQueryRepo: GrnQuery,
-    private readonly readCache: ReadCachePort,
-  ) {}
+  constructor(private readonly grnQueryRepo: GrnQuery) {}
 
-  async execute(id: string): Promise<GrnQueryRecord | null> {
-    return this.readCache.getOrLoad(`grn:${id}`, () => this.grnQueryRepo.findById(id));
+  async execute(id: string): Promise<GrnQueryRecord> {
+    const record = await this.grnQueryRepo.findById(id);
+    if (!record) {
+      throw new NotFoundException('GRN not found');
+    }
+    return record;
   }
 }

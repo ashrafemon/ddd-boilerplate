@@ -136,14 +136,14 @@ export class PrismaGrnMapper {
       subtotal: r.subtotal,
       total: r.total,
       lines: r.lines,
-      receivedAt: r.receivedAt,
+      receivedAt: r.receivedAt?.toISOString() ?? null,
       reversalOfId: r.reversalOfId ?? null,
       createdBy: r.createdBy ?? null,
       receivedBy: r.receivedBy ?? null,
       postedBy: r.postedBy ?? null,
       cancelledBy: r.cancelledBy ?? null,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
     };
   }
 }

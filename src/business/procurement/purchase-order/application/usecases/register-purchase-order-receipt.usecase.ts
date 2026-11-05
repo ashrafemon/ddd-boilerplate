@@ -5,7 +5,6 @@ import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.fact
 import { OpenQuantityService } from '../../domain/services/open-quantity.service';
 import { PurchaseOrderStatusService } from '../../domain/services/purchase-order-status.service';
 import { CompanyConfigPort } from '../outbound-ports/company-config.port';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
 import {
   PurchaseOrderReceiptRequest,
   PurchaseOrderReceiptResult,
@@ -16,7 +15,6 @@ export class RegisterPurchaseOrderReceiptUseCase {
   constructor(
     private readonly repository: PurchaseOrderCommandRepository,
     private readonly companyConfig: CompanyConfigPort,
-    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -39,8 +37,6 @@ export class RegisterPurchaseOrderReceiptUseCase {
     );
 
     await this.repository.update(po);
-
-    await this.readCache.invalidate(`purchase-order:${po.id.toString()}`);
 
     const derived = PurchaseOrderStatusService.deriveReceiptStatus(po.lines);
     const receiptStatus: PurchaseOrderReceiptResult['receiptStatus'] =

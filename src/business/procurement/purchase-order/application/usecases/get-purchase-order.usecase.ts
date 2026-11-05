@@ -1,25 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PurchaseOrderQuery } from '../../application/queries/purchase-order.query';
 import { PurchaseOrderQueryRecord } from '../../domain/types/purchase-order.types';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 /**
  * Read a single purchase order.
  *
- * Cached under `purchase-order:<id>`; the command use cases that mutate the
- * order invalidate that key after a successful write, so a cached entry can
- * never outlive the state it describes.
+ * Read-side caching is owned by the `@Cacheable()` controller decorator
+ * (tenant-scoped, fail-open); this use case only reads the authoritative
+ * repository inside the request's CLS transaction.
  */
 @Injectable()
 export class GetPurchaseOrderUseCase {
-  constructor(
-    private readonly purchaseOrderQueryRepo: PurchaseOrderQuery,
-    private readonly readCache: ReadCachePort,
-  ) {}
+  constructor(private readonly purchaseOrderQueryRepo: PurchaseOrderQuery) {}
 
-  async execute(id: string): Promise<PurchaseOrderQueryRecord | null> {
-    return this.readCache.getOrLoad(`purchase-order:${id}`, () =>
-      this.purchaseOrderQueryRepo.findById(id),
-    );
+  async execute(id: string): Promise<PurchaseOrderQueryRecord> {
+    const record = await this.purchaseOrderQueryRepo.findById(id);
+    if (!record) {
+      throw new NotFoundException('Purchase order not found');
+    }
+    return record;
   }
 }

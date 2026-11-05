@@ -89,8 +89,8 @@ export interface PurchaseOrderQueryRecord {
   currency: string;
   subtotal: number;
   total: number;
-  orderDate?: Date | null;
-  expectedDeliveryDate?: Date | null;
+  orderDate?: string | null;
+  expectedDeliveryDate?: string | null;
   lines: {
     productId: string;
     quantity: number;
@@ -99,8 +99,8 @@ export interface PurchaseOrderQueryRecord {
     unitPrice: number;
     total: number;
   }[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -179,8 +179,8 @@ export interface CreateRecurringFromPurchaseOrderInput {
   eventName?: string;
   frequency?: CreateRecurringTemplateInput['frequency'];
   interval?: number;
-  startDate?: Date;
-  endDate?: Date;
+  startDate?: string | Date;
+  endDate?: string | Date;
   timeZone?: string;
   autoPost?: boolean;
   autoEmail?: boolean;
@@ -204,8 +204,8 @@ export interface CreateRecurringPurchaseOrderInput {
   eventName?: string;
   frequency?: CreateRecurringTemplateInput['frequency'];
   interval?: number;
-  startDate?: Date;
-  endDate?: Date;
+  startDate?: string | Date;
+  endDate?: string | Date;
   timeZone?: string;
   autoPost?: boolean;
   autoEmail?: boolean;

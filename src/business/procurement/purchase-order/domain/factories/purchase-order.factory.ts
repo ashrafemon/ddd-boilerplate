@@ -12,6 +12,7 @@ import { PurchaseOrderCreated } from '../events/purchase-order.created.event';
 import './../aggregates/purchase-order.invariants';
 import '../value-objects/order-number.invariants';
 import './../policies/approval.policy';
+import './../policies/can-approve.policy';
 import './../policies/cancellation.policy';
 import './../policies/over-receipt.policy';
 

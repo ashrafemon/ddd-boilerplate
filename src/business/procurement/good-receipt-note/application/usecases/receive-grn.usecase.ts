@@ -5,7 +5,6 @@ import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import { ReceiveGrnRequest } from '../../domain/types/grn.types';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnPublisherPort } from '../integrations/publishes/grn.publisher-port';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
 
 @Injectable()
 export class ReceiveGrnUseCase {
@@ -14,7 +13,6 @@ export class ReceiveGrnUseCase {
     private readonly integrationEvent: GrnPublisherPort,
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
-    private readonly readCache: ReadCachePort,
   ) {}
 
   @Transactional()
@@ -42,8 +40,6 @@ export class ReceiveGrnUseCase {
     for (const event of grn.pullEvents()) {
       await this.integrationEvent.send(event, grn.id.toString());
     }
-
-    await this.readCache.invalidate(`grn:${grn.id.toString()}`);
 
     return grn.id.toString();
   }

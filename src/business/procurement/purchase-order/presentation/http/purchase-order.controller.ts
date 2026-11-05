@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -59,6 +58,8 @@ import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
 import { Idempotent } from '@platform/platform-common/idempotency/http/idempotent.decorator';
 import { CacheResponseInterceptor } from '@platform/platform-common/cache/interceptors/cache-response.interceptor';
+import { Cacheable } from '@platform/platform-common/cache/http/cacheable.decorator';
+import { CacheEvict } from '@platform/platform-common/cache/http/cache-evict.decorator';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 
 type PurchaseOrderGetResponse = GetPurchaseOrderMobileResponse | GetPurchaseOrderWebResponse;
@@ -104,6 +105,7 @@ export class PurchaseOrderController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update a draft purchase order header' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'purchase-order' })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdatePurchaseOrderDto,
@@ -136,11 +138,7 @@ export class PurchaseOrderController {
   async createRecurring(
     @Body() dto: CreateRecurringPurchaseOrderDto,
   ): Promise<ApiResponse<RecurringTemplateRecord>> {
-    const template = await this.createRecurringPurchaseOrderUseCase.execute({
-      ...dto,
-      startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-      endDate: dto.endDate ? new Date(dto.endDate) : undefined,
-    });
+    const template = await this.createRecurringPurchaseOrderUseCase.execute({ ...dto });
     return { data: template, message: 'Recurring purchase order template created' };
   }
 
@@ -160,24 +158,12 @@ export class PurchaseOrderController {
   }
 
   @Get(':id')
-  @UseInterceptors(CacheResponseInterceptor)
+  @Cacheable({ resource: 'purchase-order' })
   @ApiOperation({ summary: 'Get a purchase order by id' })
   @DeviceResponse(GetPurchaseOrderMobileResponseDto, GetPurchaseOrderWebResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<PurchaseOrderGetResponse>> {
     const purchaseOrder = await this.getPurchaseOrderUseCase.execute(id);
-    if (!purchaseOrder) {
-      // Missing or owned by another tenant — NOT FOUND either way, so a
-      // foreign row leaks no existence (plan §C: missing/foreign rows 404).
-      throw new NotFoundException('Purchase order not found');
-    }
-    return {
-      data: {
-        ...purchaseOrder,
-        createdAt: purchaseOrder.createdAt.toISOString(),
-        updatedAt: purchaseOrder.updatedAt.toISOString(),
-      },
-      message: 'Purchase order fetched',
-    };
+    return { data: purchaseOrder, message: 'Purchase order fetched' };
   }
 
   @Post(':id/recurring')
@@ -190,8 +176,6 @@ export class PurchaseOrderController {
     const template = await this.createRecurringFromPurchaseOrderUseCase.execute({
       ...dto,
       purchaseOrderId: id,
-      startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-      endDate: dto.endDate ? new Date(dto.endDate) : undefined,
     });
     return { data: template, message: 'Recurring purchase order template created' };
   }
@@ -199,6 +183,7 @@ export class PurchaseOrderController {
   @Patch(':id/lines')
   @ApiOperation({ summary: 'Add a line to a purchase order' })
   @HttpCode(HttpStatus.CREATED)
+  @CacheEvict({ resource: 'purchase-order' })
   async addLine(
     @Param('id') id: string,
     @Body() dto: AddLineDto,
@@ -210,6 +195,7 @@ export class PurchaseOrderController {
   @Patch(':id/lines/:productId')
   @ApiOperation({ summary: 'Rewrite a draft purchase order line' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'purchase-order' })
   async updateLine(
     @Param('id') id: string,
     @Param('productId') productId: string,
@@ -226,6 +212,7 @@ export class PurchaseOrderController {
   @Delete(':id/lines/:productId')
   @ApiOperation({ summary: 'Remove a line from a purchase order' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'purchase-order' })
   async removeLine(
     @Param('id') id: string,
     @Param('productId') productId: string,
@@ -237,6 +224,7 @@ export class PurchaseOrderController {
   @Patch(':id/submit')
   @ApiOperation({ summary: 'Submit a purchase order' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'purchase-order' })
   async submit(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.purchaseOrderTransitionUseCase.execute({ id, transition: 'submit' });
     return { data: { id: poId.toString() }, message: 'Purchase order submitted' };
@@ -245,6 +233,7 @@ export class PurchaseOrderController {
   @Patch(':id/approve')
   @ApiOperation({ summary: 'Approve a purchase order' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'purchase-order' })
   async approve(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.purchaseOrderTransitionUseCase.execute({ id, transition: 'approve' });
     return { data: { id: poId.toString() }, message: 'Purchase order approved' };
@@ -253,6 +242,7 @@ export class PurchaseOrderController {
   @Patch(':id/amend')
   @ApiOperation({ summary: 'Amend an issued purchase order (controlled change)' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'purchase-order' })
   async amend(
     @Param('id') id: string,
     @Body() dto: AmendPurchaseOrderDto,
@@ -269,6 +259,7 @@ export class PurchaseOrderController {
   @Patch(':id/reject')
   @ApiOperation({ summary: 'Reject a purchase order' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'purchase-order' })
   async reject(
     @Param('id') id: string,
     @Body() dto: RejectPurchaseOrderDto,
@@ -284,6 +275,7 @@ export class PurchaseOrderController {
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancel a purchase order' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'purchase-order' })
   async cancel(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.purchaseOrderTransitionUseCase.execute({ id, transition: 'cancel' });
     return { data: { id: poId.toString() }, message: 'Purchase order cancelled' };
@@ -292,6 +284,7 @@ export class PurchaseOrderController {
   @Patch(':id/complete')
   @ApiOperation({ summary: 'Complete a purchase order' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'purchase-order' })
   async complete(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.purchaseOrderTransitionUseCase.execute({ id, transition: 'complete' });
     return { data: { id: poId.toString() }, message: 'Purchase order completed' };
@@ -300,6 +293,7 @@ export class PurchaseOrderController {
   @Patch(':id/issue')
   @ApiOperation({ summary: 'Issue a purchase order' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'purchase-order' })
   async issue(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.issuePurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order issued' };
@@ -308,6 +302,7 @@ export class PurchaseOrderController {
   @Patch(':id/close')
   @ApiOperation({ summary: 'Close a purchase order' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'purchase-order' })
   async close(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.closePurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order closed' };

@@ -1,19 +1,13 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
+import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnPublisherPort } from '../integrations/publishes/grn.publisher-port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 import { GrnFactory } from '../../domain/factories/grn.factory';
-import { ReadCachePort } from '../outbound-ports/read-cache.port';
-import { IdempotencyPort } from '@platform/platform-common/idempotency/ports/idempotency.port';
 
 /** The quantity `post` registered on the PO — a reversal returns exactly this. */
 const postedQuantity = (line: { acceptedQuantity: number; receivedQuantity: number }): number =>
@@ -27,9 +21,7 @@ const postedQuantity = (line: { acceptedQuantity: number; receivedQuantity: numb
  * - Returns the PO receiving balance by registering the mirror via the PO
  *   public port — PO-07's upper bound is unaffected by negatives, so a
  *   reversal can never exceed what the original posted.
- * - Guarded by `IdempotencyPort` scope `grn.reverse`: redelivery replays the
- *   original result, never a second compensation. At most one reversal per
- *   original (409 otherwise).
+ * - Idempotency is enforced at the controller endpoint via `@Idempotent()`.
  * - Emits `GoodsReceiptReversed` for inventory's compensating movements and
  *   writes an audit row — all inside this use case's transaction.
  */
@@ -42,119 +34,77 @@ export class ReverseGrnUseCase {
     private readonly requestContext: RequestContextPort,
     private readonly audit: AuditPort,
     private readonly numbering: NumberingPort,
-    private readonly readCache: ReadCachePort,
-    private readonly idempotency: IdempotencyPort,
   ) {}
 
   @Transactional()
-  async execute(input: { id: string; actorId?: string; idempotencyKey?: string }): Promise<string> {
-    // Guarded by `IdempotencyPort` scope `grn.reverse`: a redelivered request
-    // replays the original reversal id instead of compensating twice. The key
-    // falls back to the GRN id (see `ReverseGrnDto`), so the command is
-    // replay-safe even when the client sends no key — a second reversal of the
-    // same original can never mint a second compensation document.
-    const key = input.idempotencyKey ?? input.id;
-
+  async execute(input: { id: string; actorId?: string }): Promise<string> {
+    const actorId = input.actorId ?? this.requestContext.getUserId();
     const tenantId = this.requestContext.getTenantId() ?? '';
     const companyId = this.requestContext.getCompanyId() ?? '';
 
-    const reservation = await this.idempotency.reserve({
-      tenantId,
-      companyId,
-      scope: 'grn.reverse',
-      key,
+    const original = await this.grnRepository.findById(input.id);
+    if (!original) {
+      throw new NotFoundException('GRN not found');
+    }
+
+    invariantRegistry.enforce('grn.reversible', { status: original.status });
+
+    const alreadyReversed = await this.grnRepository.findByReversalOfId(original.id.toString());
+    if (alreadyReversed) {
+      throw new ConflictException('GRN has already been reversed');
+    }
+
+    const reversalLines = original.lines.map(line => {
+      const eligible = postedQuantity(line);
+      return {
+        productId: line.productId,
+        orderedQuantity: line.orderedQuantity,
+        receivedQuantity: -eligible,
+        acceptedQuantity: -eligible,
+        rejectedQuantity: 0,
+        unitPrice: line.unitPrice,
+      };
     });
 
-    if (reservation.status === 'REPLAY') {
-      return String(reservation.result);
+    const grnNumber = await this.numbering.nextNumber('grn.number', {
+      prefix: 'GRN-',
+      padding: 8,
+    });
+
+    const reversal = GrnFactory.createReversal({
+      grnNumber,
+      reversalOfId: original.id.toString(),
+      purchaseOrderId: original.purchaseOrderId,
+      vendorId: original.vendorId,
+      currency: original.currency,
+      actorId,
+      lines: reversalLines,
+    });
+
+    await this.purchaseOrderPort.registerReceipt({
+      purchaseOrderId: original.purchaseOrderId,
+      lines: reversalLines.map(l => ({
+        productId: l.productId,
+        receivedQuantity: l.receivedQuantity,
+      })),
+    });
+
+    await this.grnRepository.save(reversal);
+
+    await this.audit.record({
+      action: 'grn.reverse',
+      entityType: 'GoodReceiptNote',
+      entityId: original.id.toString(),
+      actorId,
+      tenantId,
+      companyId,
+      changes: { reversalId: reversal.id.toString(), status: original.status },
+    });
+
+    for (const event of reversal.pullEvents()) {
+      await this.integrationEvent.send(event, reversal.id.toString());
     }
-    if (reservation.status === 'BUSY') {
-      throw new ConflictException('A reversal with this idempotency key is already in progress');
-    }
-    if (reservation.status === 'KEY_MISMATCH') {
-      throw new BadRequestException('This idempotency key was used for a different request');
-    }
 
-    try {
-      const actorId = input.actorId ?? this.requestContext.getUserId();
-
-      const original = await this.grnRepository.findById(input.id);
-      if (!original) {
-        throw new NotFoundException('GRN not found');
-      }
-
-      if (String(original.status) !== 'COMPLETED') {
-        throw new ConflictException(
-          `Only a posted GRN can be reversed (status: ${original.status})`,
-        );
-      }
-
-      const alreadyReversed = await this.grnRepository.findByReversalOfId(original.id.toString());
-      if (alreadyReversed) {
-        throw new ConflictException('GRN has already been reversed');
-      }
-
-      const reversalLines = original.lines.map(line => {
-        const eligible = postedQuantity(line);
-        return {
-          productId: line.productId,
-          orderedQuantity: line.orderedQuantity,
-          receivedQuantity: -eligible,
-          acceptedQuantity: -eligible,
-          rejectedQuantity: 0,
-          unitPrice: line.unitPrice,
-        };
-      });
-
-      const grnNumber = await this.numbering.nextNumber('grn.number', {
-        prefix: 'GRN-',
-        padding: 8,
-      });
-
-      const reversal = GrnFactory.createReversal({
-        grnNumber,
-        reversalOfId: original.id.toString(),
-        purchaseOrderId: original.purchaseOrderId,
-        vendorId: original.vendorId,
-        currency: original.currency,
-        actorId,
-        lines: reversalLines,
-      });
-
-      await this.purchaseOrderPort.registerReceipt({
-        purchaseOrderId: original.purchaseOrderId,
-        lines: reversalLines.map(l => ({
-          productId: l.productId,
-          receivedQuantity: l.receivedQuantity,
-        })),
-      });
-
-      await this.grnRepository.save(reversal);
-
-      await this.readCache.invalidate(`grn:${original.id.toString()}`);
-
-      await this.audit.record({
-        action: 'grn.reverse',
-        entityType: 'GoodReceiptNote',
-        entityId: original.id.toString(),
-        actorId,
-        tenantId,
-        companyId,
-        changes: { reversalId: reversal.id.toString(), status: original.status },
-      });
-
-      for (const event of reversal.pullEvents()) {
-        await this.integrationEvent.send(event, reversal.id.toString());
-      }
-
-      await this.idempotency.complete({
-        reservation: reservation.reservation,
-        result: reversal.id.toString(),
-      });
-      return reversal.id.toString();
-    } catch (error) {
-      await this.idempotency.fail({ reservation: reservation.reservation });
-      throw error;
-    }
+    return reversal.id.toString();
   }
 }

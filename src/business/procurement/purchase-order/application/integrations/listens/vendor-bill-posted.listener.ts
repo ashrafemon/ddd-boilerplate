@@ -3,6 +3,8 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { InboxPort } from '@platform/platform-common/inbox/ports/inbox.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
+import { HandleVendorBillPostedUseCase } from '../../usecases/handle-vendor-bill-posted.usecase';
+import type { VendorBillPostedPayload } from '../../usecases/handle-vendor-bill-posted.usecase';
 
 @Injectable()
 export class VendorBillPostedListener {
@@ -11,6 +13,7 @@ export class VendorBillPostedListener {
   constructor(
     private readonly inbox: InboxPort,
     private readonly requestContext: RequestContextPort,
+    private readonly handleVendorBillPosted: HandleVendorBillPostedUseCase,
   ) {}
 
   @OnEvent('VendorBillPosted')
@@ -35,7 +38,8 @@ export class VendorBillPostedListener {
       }
 
       try {
-        this.logger.log(`Received VendorBillPosted for ${envelope.aggregateId}`);
+        const payload = envelope.payload as unknown as VendorBillPostedPayload;
+        await this.handleVendorBillPosted.execute(payload);
         await this.inbox.complete({ reservation: delivery.reservation });
       } catch (err) {
         this.logger.error(`VendorBillPosted handling failed: ${(err as Error).message}`);

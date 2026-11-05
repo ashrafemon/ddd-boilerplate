@@ -4,7 +4,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -47,6 +46,8 @@ import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
 import { Idempotent } from '@platform/platform-common/idempotency/http/idempotent.decorator';
 import { CacheResponseInterceptor } from '@platform/platform-common/cache/interceptors/cache-response.interceptor';
+import { Cacheable } from '@platform/platform-common/cache/http/cacheable.decorator';
+import { CacheEvict } from '@platform/platform-common/cache/http/cache-evict.decorator';
 import { ApiResponse } from '@shared-kernel/types/api-response.type';
 
 type GrnGetResponse = GetGrnMobileResponse | GetGrnWebResponse;
@@ -92,30 +93,18 @@ export class GrnController {
   }
 
   @Get(':id')
-  @UseInterceptors(CacheResponseInterceptor)
+  @Cacheable({ resource: 'grn' })
   @ApiOperation({ summary: 'Get a GRN by id' })
   @DeviceResponse(GetGrnMobileResponseDto, GetGrnWebResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<GrnGetResponse>> {
     const grn = await this.getGrnUseCase.execute(id);
-    if (!grn) {
-      // Missing or owned by another tenant — NOT FOUND either way, so a
-      // foreign row leaks no existence (plan §C: missing/foreign rows 404).
-      throw new NotFoundException('GRN not found');
-    }
-    return {
-      data: {
-        ...grn,
-        receivedAt: grn.receivedAt ? grn.receivedAt.toISOString() : null,
-        createdAt: grn.createdAt.toISOString(),
-        updatedAt: grn.updatedAt.toISOString(),
-      },
-      message: 'GRN fetched',
-    };
+    return { data: grn, message: 'GRN fetched' };
   }
 
   @Patch(':id/lines')
   @ApiOperation({ summary: 'Add a line to a GRN' })
   @HttpCode(HttpStatus.CREATED)
+  @CacheEvict({ resource: 'grn' })
   async addLine(
     @Param('id') id: string,
     @Body() dto: AddGrnLineDto,
@@ -127,6 +116,7 @@ export class GrnController {
   @Patch(':id/lines/:productId/tracking')
   @ApiOperation({ summary: 'Set tracking for a GRN line' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'grn' })
   async setTracking(
     @Param('id') id: string,
     @Param('productId') productId: string,
@@ -143,6 +133,7 @@ export class GrnController {
   @Patch(':id/receive')
   @ApiOperation({ summary: 'Receive a GRN' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'grn' })
   async receive(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const grnId = await this.receiveGrnUseCase.execute({ id });
     return { data: { id: grnId.toString() }, message: 'GRN received' };
@@ -151,6 +142,7 @@ export class GrnController {
   @Patch(':id/complete')
   @ApiOperation({ summary: 'Complete a GRN' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'grn' })
   async complete(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const grnId = await this.postGrnUseCase.execute({ id });
     return { data: { id: grnId.toString() }, message: 'GRN completed' };
@@ -159,6 +151,7 @@ export class GrnController {
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancel a GRN' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'grn' })
   async cancel(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const grnId = await this.cancelGrnUseCase.execute(id);
     return { data: { id: grnId.toString() }, message: 'GRN cancelled' };
@@ -167,6 +160,7 @@ export class GrnController {
   @Patch(':id/inspection')
   @ApiOperation({ summary: 'Record accepted/rejected quantities per GRN line' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'grn' })
   async recordInspection(
     @Param('id') id: string,
     @Body() dto: RecordInspectionResultDto,
@@ -179,6 +173,7 @@ export class GrnController {
   @Idempotent()
   @ApiOperation({ summary: 'Post a GRN (idempotent)' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'grn' })
   async post(@Param('id') id: string, @Body() dto: PostGrnDto): Promise<ApiResponse<IdResponse>> {
     const grnId = await this.postGrnUseCase.execute({ id, ...dto });
     return { data: { id: grnId.toString() }, message: 'GRN posted' };
@@ -188,6 +183,7 @@ export class GrnController {
   @Idempotent()
   @ApiOperation({ summary: 'Reverse a posted GRN via a compensating document' })
   @HttpCode(HttpStatus.OK)
+  @CacheEvict({ resource: 'grn' })
   async reverse(
     @Param('id') id: string,
     @Body() dto: ReverseGrnDto,

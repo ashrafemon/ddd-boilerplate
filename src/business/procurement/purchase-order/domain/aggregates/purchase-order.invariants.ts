@@ -119,3 +119,59 @@ invariantRegistry.register<{ status: PurchaseOrderStatus }>('purchase-order.edit
     }
   },
 });
+
+invariantRegistry.register<{ lines: unknown[] }>('recurring-po-lines.create', {
+  name: 'recurring-po-lines-required',
+  check: ({ lines }) => {
+    if (!Array.isArray(lines) || lines.length < 1) {
+      throw Object.assign(
+        new Error('Recurring PurchaseOrder template must have at least one line'),
+        { statusCode: 422 },
+      );
+    }
+  },
+});
+
+invariantRegistry.register<{ line: unknown; index: number }>('recurring-po-line.product-id', {
+  name: 'recurring-po-line-product-id-required',
+  check: ({ line, index }) => {
+    const record = line as Record<string, unknown>;
+    const productId = record?.productId;
+    if (typeof productId !== 'string' || !productId.trim()) {
+      throw Object.assign(
+        new Error(`Recurring PurchaseOrder lines[${index}].productId is required`),
+        { statusCode: 422 },
+      );
+    }
+  },
+});
+
+invariantRegistry.register<{ line: unknown; index: number }>('recurring-po-line.quantity', {
+  name: 'recurring-po-line-quantity-number',
+  check: ({ line, index }) => {
+    const record = line as Record<string, unknown>;
+    const quantity = record?.quantity;
+    const numeric = typeof quantity === 'number' ? quantity : Number(quantity);
+    if (!Number.isFinite(numeric)) {
+      throw Object.assign(
+        new Error(`Recurring PurchaseOrder lines[${index}].quantity must be a number`),
+        { statusCode: 422 },
+      );
+    }
+  },
+});
+
+invariantRegistry.register<{ line: unknown; index: number }>('recurring-po-line.unit-price', {
+  name: 'recurring-po-line-unit-price-number',
+  check: ({ line, index }) => {
+    const record = line as Record<string, unknown>;
+    const unitPrice = record?.unitPrice;
+    const numeric = typeof unitPrice === 'number' ? unitPrice : Number(unitPrice);
+    if (!Number.isFinite(numeric)) {
+      throw Object.assign(
+        new Error(`Recurring PurchaseOrder lines[${index}].unitPrice must be a number`),
+        { statusCode: 422 },
+      );
+    }
+  },
+});

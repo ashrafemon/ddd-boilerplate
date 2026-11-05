@@ -9,6 +9,7 @@ import { AddPurchaseOrderLineUseCase } from './add-purchase-order-line.usecase';
 import { CreatePurchaseOrderUseCase } from './create-purchase-order.usecase';
 import { GetPurchaseOrderUseCase } from './get-purchase-order.usecase';
 import { PurchaseOrderTransitionUseCase } from './purchase-order-transition.usecase';
+import { PurchaseOrderRecurringLineService } from '../../domain/services/purchase-order-recurring-line.service';
 
 @Injectable()
 export class GenerateRecurringPurchaseOrderUseCase {
@@ -56,7 +57,7 @@ export class GenerateRecurringPurchaseOrderUseCase {
 
     const startedAt = Date.now();
     try {
-      const lines = this.asPurchaseOrderLines(command.lines);
+      const lines = PurchaseOrderRecurringLineService.validateAndMap(command.lines);
       const purchaseOrderId = await this.createPurchaseOrder.execute({
         vendorId: command.partyId,
         currency: command.currency,
@@ -96,36 +97,5 @@ export class GenerateRecurringPurchaseOrderUseCase {
         `Recurring purchase order generation failed for execution ${command.executionId}: ${message}`,
       );
     }
-  }
-
-  private asPurchaseOrderLines(
-    lines: unknown[],
-  ): Omit<import('../../domain/types/purchase-order.types').AddLineInput, 'id'>[] {
-    if (!Array.isArray(lines) || lines.length === 0) {
-      throw new ConflictException('Recurring PurchaseOrder template must have at least one line');
-    }
-    return lines.map((raw, index) => {
-      const line = raw as Record<string, unknown>;
-      const productId = this.stringField(line, 'productId', `lines[${index}]`);
-      const quantity = this.numberField(line, 'quantity', `lines[${index}]`);
-      const unitPrice = this.numberField(line, 'unitPrice', `lines[${index}]`);
-      return { productId, quantity, unitPrice };
-    });
-  }
-
-  private stringField(source: Record<string, unknown>, key: string, prefix: string): string {
-    const value = source[key];
-    if (typeof value !== 'string' || !value.trim()) {
-      throw new ConflictException(`Recurring PurchaseOrder ${prefix}.${key} is required`);
-    }
-    return value;
-  }
-
-  private numberField(source: Record<string, unknown>, key: string, prefix: string): number {
-    const value = Number(source[key]);
-    if (!Number.isFinite(value)) {
-      throw new ConflictException(`Recurring PurchaseOrder ${prefix}.${key} must be a number`);
-    }
-    return value;
   }
 }

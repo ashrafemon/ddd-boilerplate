@@ -154,8 +154,8 @@ export class PrismaPurchaseOrderMapper {
       externalReference: r.externalReference ?? null,
       status: r.status,
       currency: r.currency,
-      orderDate: r.orderDate ?? null,
-      expectedDeliveryDate: r.expectedDeliveryDate ?? null,
+      orderDate: r.orderDate?.toISOString() ?? null,
+      expectedDeliveryDate: r.expectedDeliveryDate?.toISOString() ?? null,
       subtotal: Number(r.subtotal.toString()),
       total: Number(r.total.toString()),
       lines: r.lines.map(line => ({
@@ -166,8 +166,8 @@ export class PrismaPurchaseOrderMapper {
         unitPrice: Number(line.unitPrice.toString()),
         total: Number(line.total.toString()),
       })),
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
     };
   }
 }

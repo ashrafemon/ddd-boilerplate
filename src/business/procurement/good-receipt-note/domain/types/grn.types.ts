@@ -94,14 +94,14 @@ export interface GrnQueryRecord {
     total: number;
     tracking?: TrackingEntry[];
   }[];
-  receivedAt: Date | null;
+  receivedAt: string | null;
   reversalOfId?: string | null;
   createdBy?: string | null;
   receivedBy?: string | null;
   postedBy?: string | null;
   cancelledBy?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateGrnRequest {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InvoiceQuery } from '../queries/invoice.query';
 import { InvoiceQueryRecord } from '../../domain/types/invoice.types';
 
@@ -6,7 +6,11 @@ import { InvoiceQueryRecord } from '../../domain/types/invoice.types';
 export class GetInvoiceUseCase {
   constructor(private readonly invoiceQueryRepo: InvoiceQuery) {}
 
-  async execute(id: string): Promise<InvoiceQueryRecord | null> {
-    return this.invoiceQueryRepo.findById(id);
+  async execute(id: string): Promise<InvoiceQueryRecord> {
+    const record = await this.invoiceQueryRepo.findById(id);
+    if (!record) {
+      throw new NotFoundException('Invoice not found');
+    }
+    return record;
   }
 }

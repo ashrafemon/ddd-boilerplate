@@ -25,6 +25,8 @@ import { CreateRecurringFromPurchaseOrderUseCase } from './application/usecases/
 import { GenerateRecurringPurchaseOrderUseCase } from './application/usecases/generate-recurring-purchase-order.usecase';
 import { RecurringOccurrenceRequestedRabbitMQListener } from './application/integrations/listens/recurring-occurrence-requested.rabbitmq.listener-event';
 import { GoodsReceiptPostedListener } from './application/integrations/listens/goods-receipt-posted.listener';
+import { VendorBillPostedListener } from './application/integrations/listens/vendor-bill-posted.listener';
+import { HandleVendorBillPostedUseCase } from './application/usecases/handle-vendor-bill-posted.usecase';
 import { PurchaseOrderCommandRepository } from './domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from './application/queries/purchase-order.query';
 import { PurchaseOrderPublisherPort } from './application/integrations/publishes/purchase-order.publisher-port';
@@ -77,6 +79,8 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     GenerateRecurringPurchaseOrderUseCase,
     RecurringOccurrenceRequestedRabbitMQListener,
     GoodsReceiptPostedListener,
+    VendorBillPostedListener,
+    HandleVendorBillPostedUseCase,
     PurchaseOrderForGrnFacade,
     { provide: PurchaseOrderForGrnPort, useExisting: PurchaseOrderForGrnFacade },
     { provide: PurchaseOrderCommandRepository, useClass: PrismaPurchaseOrderCommandRepository },
