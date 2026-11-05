@@ -1,6 +1,8 @@
 # Business Module Architecture Standard
 
-> **Status:** Phase 0 complete (documentation only). Implementation has **not** started.
+> **Status:** Phase 0 complete (documentation only), including the 2026-11-05
+> architectural clarifications. Implementation has **not** started; Phase 1 awaits
+> confirmation.
 > **Scope:** every aggregate module under `src/business/**`.
 > **Last verified:** 2026-11-05.
 
@@ -66,13 +68,13 @@ silently reinterpreting the rule.
 
 | Document | Purpose |
 | --- | --- |
-| [`ARCHITECTURE-RULES.md`](./ARCHITECTURE-RULES.md) | Normative rules R-01…R-43, reproduced from the standardization mandate; inherited hard rules. |
+| [`ARCHITECTURE-RULES.md`](./ARCHITECTURE-RULES.md) | Normative rules R-01…R-46, reproduced from the standardization mandate plus the 2026-11-05 clarifications; inherited hard rules. |
 | [`LAYER-RESPONSIBILITIES.md`](./LAYER-RESPONSIBILITIES.md) | Responsibility, allowed dependencies, and prohibitions for every component. |
 | [`DEPENDENCY-BOUNDARIES.md`](./DEPENDENCY-BOUNDARIES.md) | Allowed/prohibited dependency directions, domain-file access, exceptions, examples, enforcement gaps. |
 | [`REQUEST-LIFECYCLE.md`](./REQUEST-LIFECYCLE.md) | Middleware → context → tenancy/auth → company config → guard → controller → use case → ABAC → orchestration. |
 | [`AUTHORIZATION.md`](./AUTHORIZATION.md) | RBAC, ABAC, middleware/guard boundaries, context requirements, current gaps. |
-| [`EVENT-INTEGRATION.md`](./EVENT-INTEGRATION.md) | Incoming contracts/listeners + inbox-first sequence; outgoing contracts/publishers; naming; tests. |
-| [`CROSS-CUTTING-CONCERNS.md`](./CROSS-CUTTING-CONCERNS.md) | Cache and idempotency decorators; prohibition on direct port calls from use cases. |
+| [`EVENT-INTEGRATION.md`](./EVENT-INTEGRATION.md) | Incoming contracts/listeners + inbox-first sequence; outgoing contracts/publishers; event access boundary; unavailable integrations; naming; tests. |
+| [`CROSS-CUTTING-CONCERNS.md`](./CROSS-CUTTING-CONCERNS.md) | Cache/idempotency decorators at controller endpoints only; use cases keep only `@Transactional()`; prohibition on direct port calls. |
 | [`IMPLEMENTATION-ROADMAP.md`](./IMPLEMENTATION-ROADMAP.md) | Phases 0–10 with every task's scope, requirements, acceptance criteria, validation, dependencies, status. |
 | [`PROGRESS.md`](./PROGRESS.md) | Persistent task tracker, completed work, blockers, verification, current phase, exact next action. |
 | [`ARCHITECTURAL-DECISIONS.md`](./ARCHITECTURAL-DECISIONS.md) | ADR log: decisions, rationale, consequences, unresolved questions, conflicts. |
@@ -139,6 +141,24 @@ Use these values consistently in the roadmap and progress tracker:
 **Completion requires verification.** Code changes alone do not make a task
 `COMPLETED`; the acceptance criteria and validation must pass and be recorded.
 
+### 5.1 Post-Phase-0 clarifications (2026-11-05)
+
+These are architectural requirements, not optional guidance:
+
+1. **Types may cross layers; events may not.** Non-event type declarations may be
+   accessed/used across layers where necessary (prefer `import type`). Events remain
+   restricted: domain events are domain-only; incoming/outgoing contracts are used only
+   by their dedicated listener/publisher and carrying port. (R-44; ADR-005 resolved.)
+2. **Unavailable modules/integrations are port-only.** Define the port and contract;
+   business modules depend on and invoke the port. Do not implement or recreate the
+   missing module/integration; supply the adapter later. (R-45; ADR-018.)
+3. **Decorator placement.** Cache/idempotency decorators belong only at controller
+   endpoints. Use cases may use only `@Transactional()`, never cache/idempotency
+   decorators or ports. Background duplicate suppression uses the Inbox. (R-46;
+   ADR-009 clarified.)
+
+See §9 for task coverage.
+
 ---
 
 ## 6. Roadmap and progress process
@@ -187,6 +207,7 @@ Use these values consistently in the roadmap and progress tracker:
 - [x] Architectural decision log created.
 - [x] AI handover instructions created.
 - [x] Documentation cross-checked for internal consistency; no source code modified.
+- [x] 2026-11-05 clarifications incorporated (R-44…R-46, ADR-005/ADR-009 updates, ADR-018).
 
 ---
 
@@ -197,18 +218,21 @@ Use these values consistently in the roadmap and progress tracker:
 | §2.1 | Thin controllers; no logic; delegate orchestration | R-01…R-03; `LAYER-RESPONSIBILITIES.md`; `DEPENDENCY-BOUNDARIES.md` |
 | §2.2 | Use cases orchestrate only; no business/domain work; no facades; variables; context sequence | R-04…R-11; `REQUEST-LIFECYCLE.md` |
 | §2.3 | Facades invoke use cases/services; no facade-to-facade; no business logic | R-12…R-15; `LAYER-RESPONSIBILITIES.md`; ADR-016 |
-| §2.4 | Domain-only access; permitted services/repos/factories; invariants/policies/errors | R-16…R-23; `DEPENDENCY-BOUNDARIES.md`; ADR-005/ADR-006 |
+| §2.4 | Domain-only runtime access; permitted services/repos/factories; types across layers; events restricted; invariants/policies/errors | R-16…R-23, R-44; `DEPENDENCY-BOUNDARIES.md`; ADR-005/ADR-006 |
 | §2.5 | No required application DTOs/mappers; no unnecessary abstractions | R-24…R-25; `LAYER-RESPONSIBILITIES.md`; ADR-007 |
-| §2.6 | Separate incoming/outgoing events; contracts/listeners; inbox-first; publishers | R-26…R-31; `EVENT-INTEGRATION.md`; ADR-008 |
-| §2.7 | Cache/idempotency via decorators; no direct ports; audit | R-32…R-35; `CROSS-CUTTING-CONCERNS.md`; ADR-009 |
+| §2.6 | Separate incoming/outgoing events; contracts/listeners; inbox-first; publishers; unavailable integrations | R-26…R-31, R-45; `EVENT-INTEGRATION.md`; ADR-008/ADR-018 |
+| §2.7 | Cache/idempotency decorators at controller endpoints only; use cases only `@Transactional()`; no direct ports; audit | R-32…R-35, R-46; `CROSS-CUTTING-CONCERNS.md`; ADR-009 |
 | §2.8 | Middleware context/tenancy/auth/config; guard RBAC; use-case context+ABAC | R-36…R-43; `REQUEST-LIFECYCLE.md`; `AUTHORIZATION.md`; ADR-010/ADR-013 |
 | §3 | Documentation-first; no source changes in Phase 0 | This README; Phase 0 in `IMPLEMENTATION-ROADMAP.md`; `PROGRESS.md` |
 | §4 | Required document structure/content | §3 document index of this README; all package files |
-| §5 | Phased roadmap with small, independently executable tasks | `IMPLEMENTATION-ROADMAP.md` (131 tasks) |
+| §5 | Phased roadmap with small, independently executable tasks | `IMPLEMENTATION-ROADMAP.md` (135 tasks) |
 | §6 | Task execution sequence and status values | `IMPLEMENTATION-ROADMAP.md` §1; `PROGRESS.md` |
 | §7 | Persistent progress tracking | `PROGRESS.md` |
 | §8 | AI handover/model continuity | `AI-HANDOVER.md` |
 | §9 | Execution constraints | This README §7; `IMPLEMENTATION-ROADMAP.md` §1 |
 | §10 | Phase 0 only; report; wait for confirmation | Phase 0 completed; `PROGRESS.md` §8 |
 | §11 | Definition of success | Phase 10 tasks; `PROGRESS.md` phase gates |
+| Clarification 2026-11-05 | Types across layers; events restricted | R-44; ADR-005; P1-06, P2-02, P2-09, P9-05, P10-06 |
+| Clarification 2026-11-05 | Unavailable modules/integrations are port-only | R-45; ADR-018; P6-01, P6-07, P6-12, P9-04, P10-08 |
+| Clarification 2026-11-05 | Cache/idempotency decorators only at controller endpoints; only `@Transactional()` in use cases | R-46; ADR-009; P1-13, P7-05…P7-11, P9-07, P10-09 |
 

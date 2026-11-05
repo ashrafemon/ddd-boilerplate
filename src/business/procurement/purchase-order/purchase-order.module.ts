@@ -4,7 +4,6 @@ import { ProductModule } from '@business/procurement/product/product.module';
 import { VendorModule } from '@business/party/vendor/vendor.module';
 import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
 import { PurchaseOrderForGrnFacade } from './application/facades/purchase-order-for-grn.facade';
-import { PurchaseOrderGenerationFacade } from './application/facades/purchase-order-generation.facade';
 import { CreatePurchaseOrderUseCase } from './application/usecases/create-purchase-order.usecase';
 import { AddPurchaseOrderLineUseCase } from './application/usecases/add-purchase-order-line.usecase';
 import { UpdatePurchaseOrderUseCase } from './application/usecases/update-purchase-order.usecase';
@@ -79,7 +78,6 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     RecurringOccurrenceRequestedRabbitMQListener,
     GoodsReceiptPostedListener,
     PurchaseOrderForGrnFacade,
-    PurchaseOrderGenerationFacade,
     { provide: PurchaseOrderForGrnPort, useExisting: PurchaseOrderForGrnFacade },
     { provide: PurchaseOrderCommandRepository, useClass: PrismaPurchaseOrderCommandRepository },
     { provide: PurchaseOrderQuery, useClass: PrismaPurchaseOrderQueryRepository },

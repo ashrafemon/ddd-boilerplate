@@ -45,8 +45,8 @@ export class PrismaInvoiceCommandRepository extends InvoiceCommandRepository {
     // join the WHERE clause. Zero rows ⇒ the row is gone or belongs to another
     // tenant — the use case already 404s a foreign row on its scoped read.
     const res = await this.txHost.tx.invoice.updateMany({
-      where: { id: invoice.id.toString(), ...this.ownedScope() },
-      data: { ...PrismaInvoiceMapper.toRow(invoice) } as never,
+      where: { id: invoice.id.toString(), version: invoice.getVersion(), ...this.ownedScope() },
+      data: { ...PrismaInvoiceMapper.toRow(invoice), version: { increment: 1 } } as never,
     });
     if (res.count === 0) {
       throw new ConflictException('Invoice was modified concurrently (not found in scope)');

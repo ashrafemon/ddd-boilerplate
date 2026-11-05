@@ -5,7 +5,8 @@
 > [`ARCHITECTURAL-DECISIONS.md`](./ARCHITECTURAL-DECISIONS.md).
 > **Applies to:** all modules under `src/business/**`.
 > **Source:** Section 2 of the Business Module Architecture Standardization mandate,
-> consolidated verbatim in intent and tagged with stable rule IDs.
+> consolidated verbatim in intent and tagged with stable rule IDs. The 2026-11-05
+> clarifications add R-44…R-46 without renumbering existing rules.
 
 The rules below are the **business-module** standard. They do not replace the
 repo-wide hard rules in `AGENTS.md` and `ARCHITECTURE.md` (tenancy scoping, outbox-only
@@ -58,7 +59,7 @@ business modules and the conflict is recorded in an ADR.
 - **R-15 — No business-logic layer.** Facades MUST NOT become an additional layer for
   implementing business logic.
 
-## 4. Domain layer and dependency boundaries (R-16…R-23)
+## 4. Domain layer and dependency boundaries (R-16…R-23, R-44)
 
 - **R-16 — Domain isolation.** Domain files MUST only be accessed and used within the
   Domain layer.
@@ -85,13 +86,24 @@ business modules and the conflict is recorded in an ADR.
   enforced by invariants/policies, not by services.
 - **R-23 — Strict boundaries.** Maintain strict dependency boundaries and ensure that
   domain implementation details are not unnecessarily exposed to other layers.
+- **R-44 — Types may cross layers; events may not (clarification 2026-11-05).**
+  Non-event type declarations (interfaces, type aliases, plain data shapes) MAY be
+  accessed and used across layers where necessary; prefer `import type` so no runtime
+  dependency is created. Events MUST NOT be accessed or used across layers where they
+  are not explicitly allowed. Domain events remain domain-only. Incoming/outgoing event
+  contracts are application-layer plain types and may be used only by their dedicated
+  listener/publisher (and the port that carries them). A use case must not import a
+  domain event; it invokes a publisher/outbound port instead. The platform's structural
+  `OutboxEvent` transport envelope is permitted only at the publisher/outbox-port
+  boundary, not as a domain/application event carried through controllers or use cases.
 
-> **R-16/R-17 interpretation note.** Read literally, only domain services, repositories,
-> and factories are accessible outside the domain layer. Domain `types/`, `events/`,
-> aggregates, entities, and value objects are therefore not permitted as direct
-> application-layer imports. The consequences (especially for input/query types and
-> event contracts) and the open clarification are tracked in ADR-005. Until resolved,
-> do not widen the exception silently.
+> **R-16/R-17 clarified by R-44 (2026-11-05).** Non-event type declarations MAY be
+> accessed and used across layers where necessary (prefer `import type`). Runtime value
+> imports of domain aggregates/entities/VOs/invariants/policies remain limited to the
+> permitted components (domain services, repositories, factories). Events are **not**
+> covered by this type exception: domain events remain domain-only, and application
+> event contracts are used only by their listener/publisher and the port that carries
+> them. See ADR-005.
 
 ## 5. Application-layer DTOs and mappers (R-24…R-25)
 
@@ -104,7 +116,7 @@ business modules and the conflict is recorded in an ADR.
 > application-layer DTOs; they remain an infrastructure concern under the repo-wide
 > architecture. See [`LAYER-RESPONSIBILITIES.md`](./LAYER-RESPONSIBILITIES.md).
 
-## 6. Event integrations (R-26…R-31)
+## 6. Event integrations (R-26…R-31, R-45)
 
 - **R-26 — Separate directions.** Event integrations MUST follow a consistent
   separation between incoming and outgoing events.
@@ -121,8 +133,14 @@ business modules and the conflict is recorded in an ADR.
   contracts and separate publisher files.
 - **R-31 — Publishing separate from business logic.** Publishing responsibilities MUST
   be kept separate from use-case business logic.
+- **R-45 — Unavailable modules/integrations are port-only (clarification
+  2026-11-05).** When a required module or integration is unavailable, define the
+  necessary outbound port and its contract. Business modules MUST depend on and invoke
+  that port. Do NOT implement or recreate the unavailable module/integration. The real
+  implementation/adapter may be supplied later without changing business-module
+  orchestration. Do not create fake behavior that pretends the integration exists.
 
-## 7. Caching and idempotency (R-32…R-35)
+## 7. Caching and idempotency (R-32…R-35, R-46)
 
 - **R-32 — Decorators only.** Caching and idempotency MUST be implemented through
   decorators.
@@ -132,6 +150,13 @@ business modules and the conflict is recorded in an ADR.
   remain separate from use-case orchestration.
 - **R-35 — Audit existing usage.** Existing implementations MUST be audited to identify
   direct cache or idempotency dependencies inside use cases.
+- **R-46 — Decorator placement (clarification 2026-11-05).** Cache and idempotency
+  decorators MUST be applied only at controller endpoints, never on use-case methods or
+  inside use cases. Use cases MUST NOT apply or invoke caching or idempotency decorators
+  directly. The only decorator permitted at the use-case level is `@Transactional()`,
+  which use cases MAY use to manage transaction boundaries. Caching and idempotency
+  remain outside use-case execution and are handled through decorators at controller
+  endpoints. Background duplicate suppression uses the Inbox, not these decorators.
 
 ## 8. Request context, configuration, and authorization (R-36…R-43)
 
@@ -205,3 +230,15 @@ These come from `AGENTS.md` / `ARCHITECTURE.md` and apply to every business modu
 4. Rule IDs are stable. New rules get new IDs; superseded rules are marked
    `Superseded by ADR-xxx` rather than deleted.
 5. The final compliance report (P10-14) maps every rule to its verification evidence.
+
+---
+
+## 11. Clarification log
+
+| Date | Rule | Clarification | ADR |
+| --- | --- | --- | --- |
+| 2026-11-05 | R-44 | Types may be accessed across layers where necessary; events remain restricted to explicit contracts/listeners/publishers. | ADR-005 (resolved) |
+| 2026-11-05 | R-45 | Unavailable modules/integrations are represented by ports/contracts; do not implement or recreate them. | ADR-018 |
+| 2026-11-05 | R-46 | Cache/idempotency decorators only at controller endpoints; use cases only `@Transactional()`. | ADR-009 (clarified) |
+
+Rule IDs are stable: R-44…R-46 were added after Phase 0 without renumbering R-01…R-43.

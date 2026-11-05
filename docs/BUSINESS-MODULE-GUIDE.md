@@ -7,7 +7,10 @@
 > **`docs/architecture/business-modules/`**. Where they differ, the target standard
 > governs business modules and the migration is tracked in that package. Read
 > `docs/architecture/business-modules/README.md` before starting a new module or a
-> refactor.
+> refactor. In particular, the 2026-11-05 clarifications are normative: non-event types
+> may cross layers (events may not), unavailable integrations are port-only, and
+> cache/idempotency decorators belong only at controller endpoints (use cases keep only
+> `@Transactional()`).
 
 Companion to `ARCHITECTURE.md` §3 (anatomy), §5 (ports), §15 (checklist). The
 reference implementation for EVERY pattern below is the existing

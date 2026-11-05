@@ -2,7 +2,7 @@
 
 > Records decisions, reasoning, consequences, and unresolved questions for the
 > business-module standardization initiative.
-> Format: ADR-<nnn>. Status: Proposed / Accepted / Superseded.
+> Format: ADR-<nnn>. Status: Proposed / Accepted / Resolved / Clarified / Superseded.
 > Do not delete decisions; supersede them and link the replacement.
 
 ---
@@ -64,22 +64,28 @@
   orchestration; calling `aggregate.approve()` is a domain operation and must move to a
   service. Record concrete patterns during P3-03/P4-01.
 
-## ADR-005 — Strict domain access and the domain `types/`/`events/` ambiguity
+## ADR-005 — Types may cross layers; events remain restricted
 
-- **Status:** Accepted with open question (2026-11-05)
+- **Status:** Resolved (2026-11-05); supersedes the earlier "strict literal" reading.
 - **Context:** R-16/R-17 permit only domain services, repositories, and factories to be
   accessed outside the domain. Current use cases import domain `types/` (request
-  contracts) and domain `events/`; publishers may reference event shapes.
-- **Decision:** Apply the literal rule: only services/repositories/factories are
-  permitted. Treat aggregate/entity/VO/invariant/policy/type/event imports as migration
-  debt. Define application-layer contracts where a type is needed; publisher ports use
-  structural event contracts.
-- **Consequences:** Requires application contracts for inputs/query records and
-  structural event contracts. This is a significant refactor and may be impractical
-  for query records. The ambiguity must be resolved before Phase 2/3 refactors.
-- **Unresolved:** Should domain `types/` and `events/` be added as permitted
-  "contracts" (a rule amendment + ADR), or should application contracts fully replace
-  them? Owner decision needed; until then, no silent widening.
+  contracts) and domain `events/`; publishers may reference event shapes. The
+  2026-11-05 clarification resolves the ambiguity.
+- **Decision:** Non-event **types** MAY be accessed and used across layers where
+  necessary; prefer `import type` so no runtime dependency is created. Runtime value
+  imports of domain aggregates/entities/VOs/invariants/policies remain limited to the
+  permitted components (domain services, repositories, factories). **Events are not
+  covered by this exception:** domain events remain domain-only; incoming/outgoing event
+  contracts are application-layer plain types used only by their dedicated
+  listener/publisher and the port that carries them. A use case must not import a domain
+  event; it passes drained events opaquely to a publisher/outbound port. The platform
+  structural `OutboxEvent` envelope is a transport type permitted only at the
+  publisher/outbox-port boundary.
+- **Consequences:** Query/input types no longer require artificial application copies.
+  Architecture tests must distinguish type-only imports (allowed) from runtime domain
+  value imports and event imports (restricted). See R-44 and
+  `DEPENDENCY-BOUNDARIES.md` §3.2.
+- **Unresolved:** none.
 
 ## ADR-006 — Invariants/policies own domain errors; services do not throw them
 
@@ -115,9 +121,9 @@
 - **Context:** Delivery is at-least-once; existing listeners mostly log and do not use
   the Inbox.
 - **Decision:** Every incoming listener: receive event → Inbox check → stop if
-  duplicate → invoke use case. The Inbox check is mandatory before business work.
-  Broker listeners always use it; in-process listeners use it when they cause side
-  effects.
+  duplicate → invoke use case. The Inbox check is mandatory before business work for
+  every incoming listener, including in-process, log-only, and observational listeners;
+  there is no default exemption.
 - **Consequences:** Exactly-once effect for consumers, at the cost of an Inbox write per
   event. Phase 6 standardizes listeners and tests duplicates.
 - **Resolved:** **every** incoming listener claims the Inbox, including in-process,
@@ -125,18 +131,23 @@
   exemption. If a future case genuinely cannot claim, it requires a new ADR that
   documents the conflict rather than a silent bypass.
 
-## ADR-009 — Cache and idempotency via decorators only
+## ADR-009 — Cache/idempotency decorators only at controller endpoints
 
-- **Status:** Accepted (2026-11-05)
+- **Status:** Accepted; clarified 2026-11-05.
 - **Context:** PurchaseOrder use cases inject `ReadCachePort` directly; `@Idempotent()`
-  exists for HTTP but is not uniform.
-- **Decision:** Cache and idempotency are decorator-driven. Use cases never inject or
-  call cache/idempotency ports. Decorators live at the boundary and are backed by
-  platform ports.
-- **Consequences:** Requires cache decorators (not yet present) and possibly a
-  programmatic idempotency decorator. Phase 7 implements and removes direct usage.
-- **Unresolved:** decorator placement for non-HTTP use-case invocations and how
-  idempotency interacts with `@Transactional()`; resolve in P7-05.
+  exists for HTTP but is not uniform. The earlier decision left non-HTTP placement open.
+- **Decision:** Cache and idempotency decorators are applied **only at controller
+  endpoints**. Use cases never inject/call cache/idempotency ports and never use
+  cache/idempotency decorators. The only decorator permitted at use-case level is
+  `@Transactional()`, used to manage the transaction boundary. Background duplicate
+  suppression uses the Inbox, not `@Idempotent()`. Endpoint decorators run after guards
+  and before the use case; they are outside the use-case transaction.
+- **Consequences:** Requires cache decorators (not yet present) and moving cache
+  application from use cases to controller endpoints. Phase 7 implements this and
+  removes direct usage. Cache keys must include tenant/company and authorization scope;
+  guards still run before a cache hit.
+- **Unresolved:** none architecturally; specific decorator names/TTLs are implementation
+  details.
 
 ## ADR-010 — Middleware/guard/use-case responsibilities and the IAM dependency
 
@@ -248,12 +259,31 @@
   it. The dependency direction stays inward (infrastructure → domain), which preserves
   dependency inversion. Adapters contain mapping/persistence only, no business logic.
   This exception does not allow `application/**` or `presentation/**` to import domain
-  aggregates/entities/VOs/types/events; R-16/R-17 and ADR-005 still govern those.
+  runtime classes or events; non-event type-only imports are allowed by ADR-005/R-44.
 - **Consequences:** Persistence works without weakening domain isolation. Architecture
   tests must distinguish "infrastructure implements domain port" (allowed) from
   "application/controller imports domain internals" (forbidden).
 - **Unresolved:** whether application query repositories need domain types for query
   records; decide during the Phase 1/2 audit without widening the rule silently.
+
+## ADR-018 — Unavailable modules/integrations are port-and-contract dependencies
+
+- **Status:** Accepted (2026-11-05)
+- **Context:** Some modules and integrations required by business flows are not
+  available. Implementing or recreating them inside a business module would couple
+  orchestration to a temporary workaround and make later replacement harder.
+- **Decision:** When a required module/integration is unavailable, define the necessary
+  outbound port (abstract class = DI token) and its plain contract. Business modules
+  depend on and invoke that port. Do NOT implement or recreate the unavailable
+  module/integration, and do not create a fake that pretends it exists. The real
+  adapter can be supplied later without changing business-module orchestration. For
+  unavailable incoming integrations, define the event contract and use-case entry point;
+  defer the listener/adapter. Tests use test doubles for the port.
+- **Consequences:** Business orchestration stays stable and testable; Phase 6 must
+  inventory the unavailable capabilities and their ports (P6-12). No production
+  no-op/fake adapters that silently drop work.
+- **Unresolved:** the exact list of unavailable modules/integrations must be enumerated
+  in P6-12 and recorded in `PROGRESS.md`.
 
 ---
 
@@ -265,11 +295,11 @@
 | 002 | Documentation location and precedence | Accepted |
 | 003 | Thin controllers | Accepted |
 | 004 | Use-case orchestration-only | Accepted |
-| 005 | Strict domain access / type-event ambiguity | Accepted with open question |
+| 005 | Types may cross layers; events remain restricted | Resolved |
 | 006 | Invariants/policies own domain errors | Accepted |
 | 007 | No unnecessary application DTOs/mappers | Accepted |
 | 008 | Inbox-first listeners | Accepted |
-| 009 | Cache/idempotency decorators only | Accepted |
+| 009 | Cache/idempotency decorators only at controller endpoints | Accepted (clarified) |
 | 010 | Middleware/guard/use-case + IAM dependency | Accepted with open question |
 | 011 | Application services optional | Accepted |
 | 012 | Documentation conflict handling | Accepted |
@@ -278,3 +308,4 @@
 | 015 | Current implementation is migration input | Accepted |
 | 016 | Facade service access is narrow | Accepted |
 | 017 | Infrastructure adapters may implement domain ports | Accepted |
+| 018 | Unavailable modules/integrations are port-only | Accepted |

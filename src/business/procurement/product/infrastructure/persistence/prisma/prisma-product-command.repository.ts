@@ -59,8 +59,8 @@ export class PrismaProductCommandRepository extends ProductCommandRepository {
     // join the WHERE clause. Zero rows ⇒ the row is gone or belongs to another
     // tenant — the use case already 404s a foreign row on its scoped read.
     const res = await this.txHost.tx.product.updateMany({
-      where: { id: product.id.toString(), ...this.sharedScope() },
-      data: { ...PrismaProductMapper.toRow(product) } as never,
+      where: { id: product.id.toString(), version: product.getVersion(), ...this.sharedScope() },
+      data: { ...PrismaProductMapper.toRow(product), version: { increment: 1 } } as never,
     });
     if (res.count === 0) {
       throw new ConflictException('Product was modified concurrently (not found in scope)');

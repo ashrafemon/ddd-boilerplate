@@ -23,12 +23,13 @@ HTTP request
   │      • verify the authenticated subject's roles/permissions for the route
   │      • reject/allow before the controller runs
   │
-  ├─ 3. Controller (thin)
+  ├─ 3. Controller endpoint (thin) + endpoint decorators
   │      • bind route/query/body (Zod DTO validation)
+  │      • @Idempotent / @Cacheable / @CacheEvict at this endpoint only (R-46)
   │      • invoke the use case
   │      • return { data, message }
   │
-  ├─ 4. Use case (entry point)
+  ├─ 4. Use case (entry point) — @Transactional() only
   │      • retrieve the complete request context (R-40)
   │      • configure the base ABAC context (R-41)
   │      • orchestrate sequentially (R-42):
@@ -85,13 +86,18 @@ Rules:
   existence (foreign/unauthorized resource reads remain 404 where the repository scopes
   them).
 
-### 2.3 Controller — transport only (R-01…R-03)
+### 2.3 Controller — transport only (R-01…R-03, R-46)
 
 - Validate/bind input, call exactly the use case(s) needed, return the response envelope.
+- Cache and idempotency decorators (`@Idempotent`, `@Cacheable`, `@CacheEvict`) are
+  applied **only at controller endpoints**. They run after guards (so RBAC still
+  applies) and before the use case.
 - No conditional business logic, calculations, repository/domain access, or platform
   port usage.
+- No `@Transactional()` at the controller; the transaction boundary belongs to the use
+  case.
 
-### 2.4 Use case — context first, then orchestration (R-11, R-40…R-43)
+### 2.4 Use case — context first, then orchestration (R-11, R-40…R-43, R-46)
 
 Mandatory opening sequence:
 
@@ -112,8 +118,10 @@ After the opening sequence the use case may orchestrate:
 - domain services,
 - domain factories.
 
-It MUST NOT call facades, perform calculations/business logic, or inject
-cache/idempotency ports (use decorators).
+It MUST NOT call facades, perform calculations/business logic, use cache/idempotency
+decorators, or inject cache/idempotency ports. The **only** decorator permitted at the
+use-case level is `@Transactional()`; it may be used to manage the transaction boundary
+(R-46).
 
 ### 2.5 Application/domain execution
 
@@ -123,6 +131,9 @@ cache/idempotency ports (use decorators).
 - Repositories persist through ports; command repos participate in the use case's
   `@Transactional()` boundary.
 - Outbox appends happen inside the same transaction; no direct broker publish.
+- **Unavailable capabilities (R-45):** business modules depend on the outbound port and
+  its contract; do not implement or recreate the unavailable module/integration. The
+  adapter can be supplied later without changing orchestration.
 
 ### 2.6 Response
 
@@ -182,6 +193,8 @@ Rules:
   it.
 - The use-case opening sequence (context retrieval + base ABAC) still applies; a
   missing context is a failure, not a silent default.
+- Duplicate suppression in background consumers uses the Inbox, not `@Idempotent()`;
+  cache/idempotency decorators remain HTTP-controller-endpoint concerns (R-46).
 - Recorded as ADR-013 (middleware-only wording vs. background execution).
 
 ---
@@ -215,3 +228,9 @@ The IAM dependency may block parts of Phase 5; see ADR-010 and
    concern (foreign ⇒ 404, no existence leak).
 5. A missing/incomplete context in a tenant-aware operation fails fast.
 6. Transaction, outbox append, and aggregate persistence remain in one unit of work.
+7. Guards run before controller endpoint decorators; cache/idempotency must not bypass
+   RBAC or tenant scoping.
+8. Use cases use only `@Transactional()`; cache/idempotency decorators and ports are
+   outside use-case execution.
+9. Unavailable integrations remain port/contract dependencies, not fake or recreated
+   modules.

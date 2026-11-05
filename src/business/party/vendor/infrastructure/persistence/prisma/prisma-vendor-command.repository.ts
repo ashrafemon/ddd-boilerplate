@@ -45,8 +45,8 @@ export class PrismaVendorCommandRepository extends VendorCommandRepository {
     // join the WHERE clause. Zero rows ⇒ the row is gone or belongs to another
     // tenant — the use case already 404s a foreign row on its scoped read.
     const res = await this.txHost.tx.vendor.updateMany({
-      where: { id: vendor.id.toString(), ...this.sharedScope() },
-      data: { ...PrismaVendorMapper.toRow(vendor) } as never,
+      where: { id: vendor.id.toString(), version: vendor.getVersion(), ...this.sharedScope() },
+      data: { ...PrismaVendorMapper.toRow(vendor), version: { increment: 1 } } as never,
     });
     if (res.count === 0) {
       throw new ConflictException('Vendor was modified concurrently (not found in scope)');

@@ -42,17 +42,17 @@ import outer layers.
 
 | Layer | MAY import | Notes |
 | --- | --- | --- |
-| `presentation/http` | own application use cases, request/response DTOs, shared-kernel types/decorators | Controllers call use cases directly; no inbound-port/mediator layer. |
-| `application/usecases` | application services, outbound ports, domain services, domain repositories, domain factories, platform **ports** (through module-local ports), shared-kernel types | R-04; no facade calls; no direct cache/idempotency ports. |
-| `application/facades` | own use cases, own application services, domain services when necessary | R-12/R-13; no facade→facade; no repository/factory/outbound-port access. |
+| `presentation/http` | own application use cases, request/response DTOs, non-event types (including `import type` domain types where necessary), shared-kernel types/decorators | Controllers call use cases directly; no inbound-port/mediator layer. No runtime domain classes/events. |
+| `application/usecases` | application services, outbound ports, domain services, domain repositories, domain factories, non-event types (including `import type` domain types), platform **ports** (through module-local ports), shared-kernel types, `@Transactional()` | R-04/R-44/R-46; no facade calls; no direct cache/idempotency ports or decorators; only `@Transactional()` at use-case level; no domain events. |
+| `application/facades` | own use cases, own application services, domain services when necessary, non-event public-contract types | R-12/R-13/R-44; no facade→facade; no repository/factory/outbound-port access; no event classes outside its public surface. |
 | `application/queries` | shared-kernel pagination/types, application query-record types | Query ports return plain records, not aggregates. |
-| `application/integrations/listens` | event contracts, InboxPort, use cases, transport decorators | Only place broker subscribe decorators are allowed. |
-| `application/integrations/publishes` | integration/outbox port, event contracts | One publisher per event; no business logic. |
+| `application/integrations/listens` | its incoming event contracts (explicitly allowed), InboxPort, use cases, transport decorators | R-44: the only place an incoming event contract may be consumed; no domain events. |
+| `application/integrations/publishes` | integration/outbox port, its outgoing event contracts (explicitly allowed), non-event types | R-44/R-45: one publisher per event; no business logic; no domain events. |
 | `domain/**` | own domain files, shared-business primitives | No NestJS, platform, infrastructure, HTTP, persistence. |
 | `infrastructure/persistence` | domain ports/types, generated Prisma client by **relative path**, mappers, platform `PrismaReadPort` / `TransactionHost` | Command repos use `TransactionHost`; query repos use `PrismaReadPort`. |
 | `infrastructure/adapters/platform` | module-local outbound ports, platform ports | Delegate; never import platform concrete services or `@infrastructure` raw clients. |
 | `infrastructure/adapters/business-aggregate` | consumer outbound port, producer `public/` contract/port | Cross-module reads only through the producer's exported token. |
-| `public/**` | shared-business/simple primitives, plain contracts | The only cross-module surface; no domain classes or internals. |
+| `public/**` | shared-business/simple primitives, plain contracts, non-event types | The only cross-module surface; no domain classes, events, or internals. |
 | `bootstrap/**` | business handlers, platform registries | Composition-root bridge only; the only layer allowed to know both sides. |
 
 ---
@@ -61,8 +61,8 @@ import outer layers.
 
 ### 3.1 Cross-layer
 
-- `presentation` → `domain/**`, `infrastructure/**`, platform concrete services, repositories.
-- `application` → `presentation/**`, `infrastructure/**` (except through ports), platform concrete services.
+- `presentation` → domain runtime classes/events, `infrastructure/**`, platform concrete services, repositories. Type-only imports of non-event domain types are allowed (R-44).
+- `application` → `presentation/**`, `infrastructure/**` (except through ports), platform concrete services, domain runtime classes/events. Type-only imports of non-event domain types are allowed (R-44).
 - `domain` → `application/**`, `presentation/**`, `infrastructure/**`, `@platform/**`, `@nestjs/*`.
 - `shared-business` → `@platform/**`, `@infrastructure/**`, any concrete business module.
 - `platform` → any `@business/**` (single ESLint regex; composition root is the bridge).
@@ -70,32 +70,44 @@ import outer layers.
   `ioredis`, `redis`, `@golevelup/nestjs-rabbitmq`, `@ssut/nestjs-sqs`,
   `@nestjs/schedule` outside platform).
 
-### 3.2 Domain-file access (R-16/R-17)
+### 3.2 Domain-file access (R-16/R-17, clarified by R-44)
 
-Only these domain components may be accessed from outside the domain layer:
+Only these domain **runtime components** may be accessed from outside the domain layer:
 
 1. domain services,
 2. domain repositories,
 3. domain factories.
 
-Everything else — aggregates, entities, value objects, invariants, policies, domain
-`types/`, domain `events/` — is domain-internal. In particular:
+**Type-only access is allowed (R-44, 2026-11-05).** Non-event type declarations
+(interfaces, type aliases, plain data shapes — including domain `types/`) MAY be
+imported across layers where necessary; prefer `import type` so the import is erased and
+creates no runtime dependency. This does not permit runtime value imports of aggregates,
+entities, value objects, invariants, policies, or factories outside the permitted
+components.
 
-- A use case MUST NOT import an aggregate/entity/VO/invariant/policy/event/type file
-  directly.
-- A controller MUST NOT import any domain file.
-- A facade MUST NOT import any domain file except the permitted three.
-- A listener/publisher MUST NOT import domain files.
+**Events are not covered by the type exception.** Domain events remain domain-only.
+Application event contracts are plain types in `application/integrations/**` and may be
+used only by their dedicated listener/publisher and the port that carries them. A use
+case MUST NOT import a domain event; it invokes a publisher/outbound port. In particular:
+
+- A use case MAY import non-event domain types (prefer `import type`) but MUST NOT import
+  aggregates/entities/VOs/invariants/policies/events as runtime values.
+- A controller MAY import non-event types but MUST NOT import domain runtime classes or
+  events.
+- A facade MAY import non-event types but MUST NOT import domain runtime classes/events;
+  it delegates behavior to use cases/services.
+- A listener MAY import only its incoming event contract; a publisher MAY import only its
+  outgoing event contract. Neither may import domain events/classes.
+- The platform structural `OutboxEvent` envelope is permitted only at the
+  publisher/outbox-port boundary; it is not a domain/application event.
 - **Adapter exception (ADR-017):** infrastructure adapters that implement a domain port
   MAY import that port and the domain types required to implement it (the dependency
   points inward). This does not permit application/presentation/listener/publisher
-  imports of domain internals.
+  imports of domain runtime internals.
 
-> **Open interpretation (ADR-005).** The rule is literal and strict. In practice, use
-> cases currently import domain input/request types and events. Until the ambiguity is
-> resolved, treat those imports as migration debt, not as permitted. Define
-> application-layer contracts where a type is needed; the event publisher port types
-> against a structural event contract, not a domain event class.
+> **Resolved by ADR-005 (2026-11-05).** Types may cross layers where necessary; events
+> remain explicitly restricted. Use `import type` for domain type dependencies and keep
+> event handling at the listener/publisher/port boundary.
 
 ### 3.3 Use case and facade restrictions
 
@@ -107,7 +119,11 @@ Everything else — aggregates, entities, value objects, invariants, policies, d
   delegate to a use case. A facade MAY invoke an application/domain service when
   necessary (R-13), but must not become a business-logic layer.
 - Facade → domain internals beyond permitted domain services: **forbidden**.
-- Use case → direct cache/idempotency port: **forbidden** (R-33); use decorators.
+- Use case → direct cache/idempotency port: **forbidden** (R-33); use controller-endpoint decorators.
+- Use case → cache/idempotency decorator: **forbidden** (R-46); only `@Transactional()` is permitted at use-case level.
+- Controller endpoint → cache/idempotency decorator: **allowed** (R-46); guards run before the endpoint.
+- Use case/facade/listener/publisher → domain event: **forbidden** (R-44); use the explicit event contract/port.
+- Recreating or faking an unavailable module/integration: **forbidden** (R-45); define a port and contract.
 
 ### 3.4 Cross-module
 
@@ -145,6 +161,9 @@ constructor(
   private readonly factory: typeof ProductFactory,      // domain factory (permitted)
   private readonly companyConfig: CompanyConfigPort,    // outbound port (permitted)
 ) {}
+
+// Type-only domain imports are allowed where necessary (R-44):
+import type { ProductPricingInput } from '../../domain/types/...';
 ```
 
 ### 4.3 Facade → own use case
@@ -213,6 +232,17 @@ await this.inbox.receive(...);
 // ❌ Use case injects the cache/idempotency port.
 constructor(private readonly cache: CachePort, private readonly idempotency: IdempotencyPort) {}
 
+// ❌ Use case uses a cache/idempotency decorator; only @Transactional is allowed there.
+@Cacheable({ key: 'po' })
+@Idempotent()
+async execute(id: string) { ... }
+
+// ❌ Use case imports a domain event.
+import { PurchaseOrderApprovedEvent } from '../../domain/events/...';
+
+// ❌ Recreating an unavailable integration instead of defining a port/contract.
+class FakeTaxIntegration { /* pretend implementation */ }
+
 // ❌ Domain imports NestJS/platform/infrastructure.
 import { Injectable } from '@nestjs/common';
 import { OutboxWriterPort } from '@platform/...';
@@ -253,12 +283,16 @@ Already enforced by `eslint.config.mjs`:
 - controller contains business logic/conditionals;
 - use case → facade;
 - facade → facade;
-- use case → aggregate/entity/VO/type/event imports;
+- use case → aggregate/entity/VO runtime imports and domain event imports; type-only non-event imports are allowed (R-44);
 - listener → use case before Inbox;
-- use case → cache/idempotency port;
+- use case → cache/idempotency port or decorator; only `@Transactional()` allowed at use-case level;
+- event classes used outside explicit listener/publisher/port contracts;
+- type-only imports vs. runtime domain value imports (R-44 distinction);
+- recreation/faking of unavailable modules instead of port/contract (R-45);
 - middleware vs guard responsibility boundaries;
 - use case context/ABAC sequence.
 
 Until Phase 9, these are review-enforced and must be checked manually in every task's
 validation. Do not assume `lint:check` proves compliance with R-04…R-15, R-28/R-29,
-R-33, or R-36…R-43.
+R-33, R-36…R-46, or the type/event, unavailable-port, and decorator-placement
+clarifications.

@@ -9,7 +9,7 @@
 ## 1. Read order (mandatory)
 
 1. [`README.md`](./README.md) — purpose, precedence, document index, status model.
-2. [`ARCHITECTURE-RULES.md`](./ARCHITECTURE-RULES.md) — normative rules R-01…R-43 and
+2. [`ARCHITECTURE-RULES.md`](./ARCHITECTURE-RULES.md) — normative rules R-01…R-46 and
    inherited hard rules INH-01…08.
 3. [`LAYER-RESPONSIBILITIES.md`](./LAYER-RESPONSIBILITIES.md) and
    [`DEPENDENCY-BOUNDARIES.md`](./DEPENDENCY-BOUNDARIES.md).
@@ -33,11 +33,11 @@ changing anything.
 
 | Field | Value |
 | --- | --- |
-| Current phase | **Phase 0 — COMPLETED** |
-| Last completed task | **P0-15** (documentation consistency review) |
+| Current phase | **Phase 0 — COMPLETED** (including 2026-11-05 clarifications) |
+| Last completed task | **P0-16** (clarifications incorporated) |
 | Current/interrupted task | None |
 | Exact next task | **P1-01 — Identify all business modules** (Phase 1), **only after Phase 0 is confirmed** |
-| Overall completion | 15 / 131 tasks (11.5%) |
+| Overall completion | 16 / 135 tasks (11.9%) |
 | Blockers | None confirmed. Potential IAM dependency for Phase 5 (ADR-010). |
 | Working branch | `dev-v1` |
 | Source of truth | `docs/architecture/business-modules/` |
@@ -76,6 +76,12 @@ Cross-links added to existing docs (documentation only):
 - `docs/BUSINESS-MODULE-GUIDE.md` — banner distinguishing current patterns from the
   target standard.
 
+Clarification update (P0-16): added R-44 (types across layers / event restrictions),
+R-45 (unavailable modules are port-only), and R-46 (cache/idempotency decorators only at
+controller endpoints; use cases only `@Transactional()`); resolved ADR-005, clarified
+ADR-009, added ADR-018, updated roadmap/progress acceptance criteria, and added a
+normative-clarification notice to `docs/BUSINESS-MODULE-GUIDE.md`.
+
 No application source code (`src/**`, `test/**`, `prisma/**`) was modified.
 
 ---
@@ -102,24 +108,26 @@ source changes.
 ## 5. Validation performed
 
 - Existing docs inventoried and cataloged.
-- Rules consolidated with stable IDs (R-01…R-43, INH-01…08).
+- Rules consolidated with stable IDs (R-01…R-46, INH-01…08).
 - Every required document created.
-- Roadmap contains Phases 0–10 and 131 tasks.
+- Roadmap contains Phases 0–10 and 135 tasks.
 - Progress tracker contains every task and the completed-work record.
 - Cross-links added to existing docs.
 - Consistency checks performed against the mandate's Section 2 and required document
   contents.
-- Verified 131 roadmap/progress task IDs match; R-01…R-43 present; 17 ADRs; relative
+- Verified 135 roadmap/progress task IDs match; R-01…R-46 present; 18 ADRs; relative
   links resolve; `git diff --check` clean.
 - `git status`/`diff` used to confirm no source changes (verify on resume).
 
 ## 6. Validation still required
 
 - **Human/owner confirmation of Phase 0** (explicit gate).
-- Resolve ambiguous decisions before the affected phases:
-  - ADR-005: domain `types/`/`events/` access.
+- Resolve remaining ambiguous decisions before the affected phases:
   - ADR-010: minimal RBAC/ABAC vs. full IAM.
-  - ADR-009: decorator placement/transaction interaction.
+  - ADR-003: transport-status mapping.
+  - ADR-007: query records vs. application DTOs.
+  - ADR-018: enumerate unavailable modules/integrations (P6-12).
+- ADR-005 and ADR-009 are resolved/clarified (no open decision).
 - Phase 1 audit (P1-01 onward) has not started.
 
 ---
@@ -130,8 +138,10 @@ source changes.
 - **Phase 5 risk:** RBAC/ABAC depends on the deferred IAM design. Resolve ADR-010 at
   P5-07/P5-09. If unresolved, mark those tasks `BLOCKED` with the exact resolution
   needed.
-- **Phase 2/3 risk:** ADR-005 (domain type/event access) may require an owner decision
-  before refactoring use cases.
+- **Phase 2/3 risk:** the clarified type/event boundary (R-44) must be applied carefully:
+  type-only non-event imports are allowed, but event leakage must be removed.
+- **Phase 6 risk:** the unavailable modules/integrations are not yet inventoried; P6-12
+  must list them and define ports/contracts without implementing them (ADR-018).
 - **Documentation drift:** existing docs still reference `listeners`,
   `adapters/module`, `public/index.ts`, and flat platform paths. Do not "fix" these
   silently; reconcile in P10-12 (or earlier if a task requires it) and update ADR-002.
@@ -145,23 +155,26 @@ important for resuming:
 
 - ADR-001 — documentation-first; no source changes in Phase 0.
 - ADR-002 — precedence order.
-- ADR-005 — strict domain access; domain types/events ambiguity (open).
+- ADR-005 — types may cross layers; events remain restricted (resolved).
+- ADR-009 — cache/idempotency decorators only at controller endpoints; use cases only
+  `@Transactional()` (clarified).
 - ADR-010 — middleware/guard/use-case split; IAM dependency (open).
 - ADR-015 — current implementation is migration input, not the target.
 - ADR-016 — facades may invoke services, but repository/factory/outbound-port
   orchestration stays in a use case.
 - ADR-017 — infrastructure adapters may depend on domain ports/types to implement
   persistence (dependency inversion).
+- ADR-018 — unavailable modules/integrations are port-and-contract dependencies.
 
 Outstanding questions:
 
-1. Are domain `types/` and `events/` permitted as application contracts, or must
-   application-owned contracts replace them? (ADR-005)
-2. Minimal RBAC/ABAC facade vs. wait for IAM? (ADR-010)
-3. Where exactly do cache/idempotency decorators sit for non-HTTP use-case invocation?
-   (ADR-009)
-4. Where does transport-status mapping live (controller vs. use case vs. filter)?
+1. Minimal RBAC/ABAC facade vs. wait for IAM? (ADR-010)
+2. Where does transport-status mapping live (controller vs. use case vs. filter)?
    (ADR-003)
+3. Are query records application DTOs or permitted cross-layer types? (ADR-007; the
+   clarified R-44 allows type-only access, but the abstraction question remains.)
+4. Which modules/integrations are unavailable, and which ports/contracts are required?
+   (ADR-018; inventory in P6-12)
 
 ---
 
@@ -233,6 +246,12 @@ Recommended next action:
   confirmation.
 - Do not weaken rules in `ARCHITECTURE-RULES.md`.
 - Do not silently reinterpret an ambiguity; record it in an ADR.
+- Types may cross layers where necessary; events may not. Do not import domain event
+  classes outside the domain; use explicit listener/publisher contracts and ports.
+- Do not implement/recreate unavailable modules/integrations; define ports/contracts
+  and depend on them.
+- Cache/idempotency decorators belong only at controller endpoints; use cases may use
+  only `@Transactional()`.
 - Do not combine unrelated tasks.
 - Do not mark a task `COMPLETED` without passing acceptance/validation.
 - Do not assume all business modules share the same structure; inspect every module.

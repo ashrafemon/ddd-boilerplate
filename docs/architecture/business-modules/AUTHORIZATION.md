@@ -86,7 +86,9 @@ Boundary violations to reject in review:
 - middleware performing RBAC or invoking use cases;
 - guard resolving tenancy/company config or invoking use cases;
 - use case re-parsing raw headers/JWT instead of reading the complete context;
-- controller checking roles/permissions.
+- controller checking roles/permissions;
+- cache/idempotency endpoint decorators running before guards or bypassing RBAC;
+- use cases using cache/idempotency decorators (only `@Transactional()` is allowed).
 
 ---
 
@@ -134,14 +136,15 @@ only where the repo-wide tenancy rules explicitly allow it.
    2.2 evaluate RBAC for the route/operation
    2.3 deny before controller on failure
 
-3. Controller
+3. Controller endpoint
    3.1 validate/bind input
-   3.2 invoke use case
+   3.2 apply endpoint-only cache/idempotency decorators (after the guard)
+   3.3 invoke use case
 
 4. Use case
    4.1 retrieve the complete request context
    4.2 configure the base ABAC context
-   4.3 perform orchestration sequentially
+   4.3 perform orchestration sequentially (only `@Transactional()` decorator)
 ```
 
 Any deviation is a rule violation (R-36…R-43) and must be recorded as an audit finding.
