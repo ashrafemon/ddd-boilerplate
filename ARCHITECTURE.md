@@ -1048,6 +1048,14 @@ stay as overrides for background executions that restored a different context).
 
 > Step-by-step file templates, binding style and the acceptance checklist:
 > **`docs/BUSINESS-MODULE-GUIDE.md`** (reference implementation: `procurement/product`).
+>
+> **Business-module standardization (current initiative).** The target standard for
+> controllers, use cases, facades, domain boundaries, request context/authorization,
+> event integrations, caching/idempotency, and the migration roadmap/progress lives in
+> **`docs/architecture/business-modules/README.md`**. Where that standard is stricter
+> than this section, it governs business modules; conflicts are recorded in its ADR
+> log. `docs/BUSINESS-MODULE-GUIDE.md` documents current patterns and remains migration
+> input.
 
 1. **Domain** — `domain/aggregates` (aggregate + `<name>.invariants.ts`),
    `domain/value-objects`, `domain/events` (domain events; persisted to the outbox),

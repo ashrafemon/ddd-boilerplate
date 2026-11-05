@@ -1,5 +1,14 @@
 # Business Module Guide — building a new aggregate under `src/business/<ctx>/<name>` strictly to spec
 
+> **Target-standard notice (2026-11-05).** This guide documents the **current**
+> implementation patterns and templates. The standardized target rules, layer and
+> dependency definitions, request lifecycle, event/caching conventions, phased
+> roadmap, persistent progress tracker, ADR log and AI handover live in
+> **`docs/architecture/business-modules/`**. Where they differ, the target standard
+> governs business modules and the migration is tracked in that package. Read
+> `docs/architecture/business-modules/README.md` before starting a new module or a
+> refactor.
+
 Companion to `ARCHITECTURE.md` §3 (anatomy), §5 (ports), §15 (checklist). The
 reference implementation for EVERY pattern below is the existing
 `procurement/product` (simplest full module), cross-module flows from
