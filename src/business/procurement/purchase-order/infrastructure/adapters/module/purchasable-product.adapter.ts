@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PurchasableProductPort } from '@business/procurement/purchase-order/application/outbound-ports/product-query.port';
-import { ProductForPurchasePort, ProductReference } from '@business/procurement/product/public';
+import { ProductForPurchasePort } from '@business/procurement/product/public/ports/product-for-purchase.port';
+import { ProductReference } from '@business/procurement/product/public/contracts/product-for-purchase.contract';
 
 /**
  * Infrastructure adapter that implements PurchaseOrder's PurchasableProductPort

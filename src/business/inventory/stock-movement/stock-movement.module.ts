@@ -10,7 +10,7 @@ import { StockQuery } from './application/queries/stock.query';
 import { StockMovementCommandRepository } from './domain/repositories/stock-movement-command.repository';
 import { PrismaStockMovementCommandRepository } from './infrastructure/persistence/prisma-stock-movement-command.repository';
 import { PrismaStockQueryRepository } from './infrastructure/persistence/prisma-stock-query.repository';
-import { StockQueryPort } from './public';
+import { StockQueryPort } from './public/ports/stock-query.port';
 
 /**
  * Inventory stock-movement module (Phase 5).

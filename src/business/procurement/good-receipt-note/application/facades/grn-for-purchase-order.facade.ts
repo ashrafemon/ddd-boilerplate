@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GetGrnUseCase } from '../usecases/get-grn.usecase';
-import {
-  GrnForPurchaseOrderPort,
-  GrnReference,
-} from '@business/procurement/good-receipt-note/public';
+import { GrnForPurchaseOrderPort } from '@business/procurement/good-receipt-note/public/ports/grn-for-purchase-order.port';
+import { GrnReference } from '@business/procurement/good-receipt-note/public/contracts/grn-for-purchase-order.contract';
 
 /**
  * GRN module's query facade exposed to PurchaseOrder. Lives in the GRN module

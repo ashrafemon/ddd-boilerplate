@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { StockQueryPort } from '../../public';
+import { StockQueryPort } from '../../public/ports/stock-query.port';
 import { GetStockLevelUseCase } from '../usecases/get-stock-level.usecase';
 
 /**

@@ -27,7 +27,7 @@ import { PurchaseOrderAdapter } from './infrastructure/adapters/module/purchase-
 import { PrismaGrnCommandRepository } from './infrastructure/persistence/prisma-grn-command.repository';
 import { PrismaGrnQueryRepository } from './infrastructure/persistence/prisma-grn-query.repository';
 import { GrnController } from './presentation/http/grn.controller';
-import { GrnForPurchaseOrderPort } from '@business/procurement/good-receipt-note/public';
+import { GrnForPurchaseOrderPort } from '@business/procurement/good-receipt-note/public/ports/grn-for-purchase-order.port';
 import { GrnBatchOperationAdapter } from './infrastructure/adapters/platform/grn-batch-operation.adapter';
 import { GrnNotificationAdapter } from './infrastructure/adapters/platform/grn-notification.adapter';
 

@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { GetOrderableVendorUseCase } from '../usecases/get-orderable-vendor.usecase';
 import { FindOrderableVendorsByCodesUseCase } from '../usecases/find-orderable-vendors-by-codes.usecase';
-import { VendorForPurchasePort, VendorReference } from '@business/party/vendor/public';
+import { VendorForPurchasePort } from '@business/party/vendor/public/ports/vendor-for-purchase.port';
+import { VendorReference } from '@business/party/vendor/public/contracts/vendor-for-purchase.contract';
 
 @Injectable()
 export class VendorForPurchaseFacade extends VendorForPurchasePort {

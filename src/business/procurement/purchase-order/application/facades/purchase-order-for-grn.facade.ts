@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { GetPurchaseOrderUseCase } from '../usecases/get-purchase-order.usecase';
 import { RegisterPurchaseOrderReceiptUseCase } from '../usecases/register-purchase-order-receipt.usecase';
 import { HasPurchaseOrderReceiptsUseCase } from '../usecases/has-purchase-order-receipts.usecase';
+import { PurchaseOrderForGrnPort } from '@business/procurement/purchase-order/public/ports/purchase-order-for-grn.port';
+import { PurchaseOrderReference } from '@business/procurement/purchase-order/public/contracts/purchase-order-for-grn.contract';
 import {
-  PurchaseOrderForGrnPort,
-  PurchaseOrderReference,
   PurchaseOrderReceiptRequest,
   PurchaseOrderReceiptResult,
-} from '@business/procurement/purchase-order/public';
+} from '@business/procurement/purchase-order/public/contracts/purchase-order-receipt.contract';
 
 /**
  * PurchaseOrder module's query facade exposed to GRN. Lives in the

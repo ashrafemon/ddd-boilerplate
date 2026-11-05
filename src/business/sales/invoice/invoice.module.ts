@@ -19,7 +19,7 @@ import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter
 import { PrismaInvoiceCommandRepository } from './infrastructure/persistence/prisma-invoice-command.repository';
 import { PrismaInvoiceQueryRepository } from './infrastructure/persistence/prisma-invoice-query.repository';
 import { InvoiceController } from './presentation/http/invoice.controller';
-import { InvoiceForReportsPort } from './public';
+import { InvoiceForReportsPort } from './public/ports/invoice-for-reports.port';
 
 /**
  * Sales Invoice aggregate.

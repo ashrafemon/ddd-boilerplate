@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GetInvoiceUseCase } from '../usecases/get-invoice.usecase';
-import { InvoiceForReportsPort, InvoiceReference } from '@business/sales/invoice/public';
+import { InvoiceForReportsPort } from '@business/sales/invoice/public/ports/invoice-for-reports.port';
+import { InvoiceReference } from '@business/sales/invoice/public/contracts/invoice-for-reports.contract';
 
 /**
  * Invoice module's public port implementation: delegates to the module's own

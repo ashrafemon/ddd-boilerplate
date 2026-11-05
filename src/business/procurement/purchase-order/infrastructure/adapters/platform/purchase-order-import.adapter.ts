@@ -7,8 +7,8 @@ import {
   RowResult,
   RowVerdict,
 } from '@platform/import/import.types';
-import { ProductReference } from '@business/procurement/product/public';
-import { VendorReference } from '@business/party/vendor/public';
+import { ProductReference } from '@business/procurement/product/public/contracts/product-for-purchase.contract';
+import { VendorReference } from '@business/party/vendor/public/contracts/vendor-for-purchase.contract';
 import { ImportPurchaseOrderUseCase } from '../../../application/usecases/import-purchase-order.usecase';
 import { OrderableVendorPort } from '../../../application/outbound-ports/vendor-query.port';
 import { PurchasableProductPort } from '../../../application/outbound-ports/product-query.port';

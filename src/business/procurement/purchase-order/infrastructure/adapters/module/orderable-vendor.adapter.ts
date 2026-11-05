@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { OrderableVendorPort } from '@business/procurement/purchase-order/application/outbound-ports/vendor-query.port';
-import { VendorForPurchasePort, VendorReference } from '@business/party/vendor/public';
+import { VendorForPurchasePort } from '@business/party/vendor/public/ports/vendor-for-purchase.port';
+import { VendorReference } from '@business/party/vendor/public/contracts/vendor-for-purchase.contract';
 
 /**
  * Infrastructure adapter that implements PurchaseOrder's OrderableVendorPort

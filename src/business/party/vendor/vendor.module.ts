@@ -18,7 +18,7 @@ import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter
 import { PrismaVendorCommandRepository } from './infrastructure/persistence/prisma-vendor-command.repository';
 import { PrismaVendorQueryRepository } from './infrastructure/persistence/prisma-vendor-query.repository';
 import { VendorController } from './presentation/http/vendor.controller';
-import { VendorForPurchasePort } from '@business/party/vendor/public';
+import { VendorForPurchasePort } from '@business/party/vendor/public/ports/vendor-for-purchase.port';
 
 /**
  * Vendor aggregate module. The import opt-in handler is registered by the

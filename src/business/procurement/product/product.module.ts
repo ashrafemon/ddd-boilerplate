@@ -19,7 +19,7 @@ import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter
 import { PrismaProductCommandRepository } from './infrastructure/persistence/prisma-product-command.repository';
 import { PrismaProductQueryRepository } from './infrastructure/persistence/prisma-product-query.repository';
 import { ProductController } from './presentation/http/product.controller';
-import { ProductForPurchasePort } from '@business/procurement/product/public';
+import { ProductForPurchasePort } from '@business/procurement/product/public/ports/product-for-purchase.port';
 
 /**
  * Product aggregate module. Controllers call use cases directly — no inbound

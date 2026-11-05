@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PurchaseOrderPort } from '@business/procurement/good-receipt-note/application/outbound-ports/purchase-order-query.port';
+import { PurchaseOrderForGrnPort } from '@business/procurement/purchase-order/public/ports/purchase-order-for-grn.port';
+import { PurchaseOrderReference } from '@business/procurement/purchase-order/public/contracts/purchase-order-for-grn.contract';
 import {
-  PurchaseOrderForGrnPort,
-  PurchaseOrderReference,
   PurchaseOrderReceiptRequest,
   PurchaseOrderReceiptResult,
-} from '@business/procurement/purchase-order/public';
+} from '@business/procurement/purchase-order/public/contracts/purchase-order-receipt.contract';
 
 /**
  * Infrastructure adapter that implements GRN's PurchaseOrderPort

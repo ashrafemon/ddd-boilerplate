@@ -34,7 +34,7 @@ import { OrderableVendorPort } from './application/outbound-ports/vendor-query.p
 import { CompanyConfigPort } from './application/outbound-ports/company-config.port';
 import { NumberingPort } from './application/outbound-ports/numbering.port';
 import { ReadCachePort } from './application/outbound-ports/read-cache.port';
-import { PurchaseOrderForGrnPort } from '@business/procurement/purchase-order/public';
+import { PurchaseOrderForGrnPort } from '@business/procurement/purchase-order/public/ports/purchase-order-for-grn.port';
 import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence/prisma-purchase-order-command.repository';
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence/prisma-purchase-order-query.repository';
 import { OutboxAdapter } from './infrastructure/adapters/platform/outbox.adapter';

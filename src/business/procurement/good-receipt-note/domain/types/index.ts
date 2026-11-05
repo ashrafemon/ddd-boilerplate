@@ -1,1 +1,0 @@
-export { GrnStatus } from './grn.enum';
