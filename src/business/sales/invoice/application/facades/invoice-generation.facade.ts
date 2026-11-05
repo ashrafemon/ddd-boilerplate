@@ -3,9 +3,10 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { LoggerPort } from '@platform/platform-common/observability/ports/logger.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { RecurringExecutionPort } from '@platform/platform-common/recurring/ports/recurring-execution.port';
-import { RecurringInvoiceLineMapper } from '../mappers/recurring-invoice.mapper';
 import { RecurringOccurrenceRequestedPayload } from '../types/recurring-occurrence.types';
 import { CreateInvoiceUseCase } from '../usecases/create-invoice.usecase';
+import { InvoiceLineInput } from '../../domain/types/invoice.types';
+import { JsonValue } from '@shared-kernel/types/json-value.type';
 import { GetInvoiceUseCase } from '../usecases/get-invoice.usecase';
 import { PostInvoiceUseCase } from '../usecases/post-invoice.usecase';
 
@@ -51,7 +52,7 @@ export class InvoiceGenerationFacade {
 
     const startedAt = Date.now();
     try {
-      const lines = RecurringInvoiceLineMapper.toLines(command.lines);
+      const lines = this.toLines(command.lines);
       const invoiceId = await this.createInvoice.execute({
         customerId: command.partyId,
         currency: command.currency,
@@ -84,5 +85,44 @@ export class InvoiceGenerationFacade {
         `Recurring invoice generation failed for execution ${command.executionId}: ${message}`,
       );
     }
+  }
+
+  private toLines(lines: JsonValue[]): InvoiceLineInput[] {
+    if (lines.length === 0) {
+      throw new ConflictException('Recurring Invoice template must have at least one line');
+    }
+    return lines.map((raw, index) => {
+      const line = this.asObject(raw, index);
+      return {
+        description: this.stringField(line, 'description', index),
+        quantity: this.numberField(line, 'quantity', index),
+        unitPrice: this.numberField(line, 'unitPrice', index),
+      };
+    });
+  }
+
+  private asObject(raw: JsonValue, index: number): Record<string, JsonValue> {
+    if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+      throw new ConflictException(`Recurring Invoice lines[${index}] must be an object`);
+    }
+    return raw as Record<string, JsonValue>;
+  }
+
+  private stringField(line: Record<string, JsonValue>, key: string, index: number): string {
+    const value = line[key];
+    if (typeof value !== 'string' || !value.trim()) {
+      throw new ConflictException(`Recurring Invoice lines[${index}].${key} is required`);
+    }
+    return value;
+  }
+
+  private numberField(line: Record<string, JsonValue>, key: string, index: number): number {
+    const value = line[key];
+    const numeric =
+      typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+    if (!Number.isFinite(numeric)) {
+      throw new ConflictException(`Recurring Invoice lines[${index}].${key} must be a number`);
+    }
+    return numeric;
   }
 }

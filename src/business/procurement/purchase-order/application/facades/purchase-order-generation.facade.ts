@@ -3,7 +3,6 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { LoggerPort } from '@platform/platform-common/observability/ports/logger.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { RecurringExecutionPort } from '@platform/platform-common/recurring/ports/recurring-execution.port';
-import { asPurchaseOrderLines } from '../mappers/recurring-purchase-order.mapper';
 import { RecurringOccurrenceRequestedPayload } from '../types/recurring-occurrence.types';
 import { AddPurchaseOrderLineUseCase } from '../usecases/add-purchase-order-line.usecase';
 import { CreatePurchaseOrderUseCase } from '../usecases/create-purchase-order.usecase';
@@ -53,7 +52,7 @@ export class PurchaseOrderGenerationFacade {
 
     const startedAt = Date.now();
     try {
-      const lines = asPurchaseOrderLines(command.lines);
+      const lines = this.asPurchaseOrderLines(command.lines);
       const purchaseOrderId = await this.createPurchaseOrder.execute({
         vendorId: command.partyId,
         currency: command.currency,
@@ -93,5 +92,34 @@ export class PurchaseOrderGenerationFacade {
         `Recurring purchase order generation failed for execution ${command.executionId}: ${message}`,
       );
     }
+  }
+
+  private asPurchaseOrderLines(lines: unknown[]): Omit<import('../../domain/types/purchase-order.types').AddLineInput, 'id'>[] {
+    if (!Array.isArray(lines) || lines.length === 0) {
+      throw new ConflictException('Recurring PurchaseOrder template must have at least one line');
+    }
+    return lines.map((raw, index) => {
+      const line = raw as Record<string, unknown>;
+      const productId = this.stringField(line, 'productId', `lines[${index}]`);
+      const quantity = this.numberField(line, 'quantity', `lines[${index}]`);
+      const unitPrice = this.numberField(line, 'unitPrice', `lines[${index}]`);
+      return { productId, quantity, unitPrice };
+    });
+  }
+
+  private stringField(source: Record<string, unknown>, key: string, prefix: string): string {
+    const value = source[key];
+    if (typeof value !== 'string' || !value.trim()) {
+      throw new ConflictException(`Recurring PurchaseOrder ${prefix}.${key} is required`);
+    }
+    return value;
+  }
+
+  private numberField(source: Record<string, unknown>, key: string, prefix: string): number {
+    const value = Number(source[key]);
+    if (!Number.isFinite(value)) {
+      throw new ConflictException(`Recurring PurchaseOrder ${prefix}.${key} must be a number`);
+    }
+    return value;
   }
 }
