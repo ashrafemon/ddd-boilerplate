@@ -2,7 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Transactional } from '@nestjs-cls/transactional';
 import { UpdatePurchaseOrderHeaderRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
-import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
+import { PurchaseOrderPublisherPort } from '../../integrations/publishes/publishers/purchase-order.publisher-port';
 
 /**
  * Update the draft header of a purchase order (plan Phase 2.2 / spec §3.1).

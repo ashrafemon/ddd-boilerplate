@@ -6,7 +6,7 @@ import { policyRegistry } from '@business/shared-business/domain/registries/poli
 import { PurchaseOrderTransitionRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from '../queries/purchase-order.query';
-import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
+import { PurchaseOrderPublisherPort } from '../../integrations/publishes/publishers/purchase-order.publisher-port';
 import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 
 // Single mutation path for submit/approve/reject/cancel/complete.

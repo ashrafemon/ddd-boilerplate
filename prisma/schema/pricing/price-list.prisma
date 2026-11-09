@@ -1,0 +1,55 @@
+// Pricing context — Price List aggregate.
+// Pricing separated from Product context.
+model PriceList {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  code          String
+  currency      String   @db.VarChar(3)
+  effectiveFrom DateTime @default(now())
+  effectiveTo   DateTime?
+  status        String   @default("DRAFT") @db.VarChar(20)
+  tenantId      String?
+  companyId     String   @default("00000000-0000-0000-0000-000000000000")
+  version       Int        @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([companyId])
+  @@unique([companyId, code])
+  @@map("price_lists")
+}
+
+model PriceListLine {
+  id          String   @id @default(uuid()) @db.Uuid
+  priceListId String   @map("price_list_id") @db.Uuid
+  productId   String   @map("product_id") @db.Uuid
+  price       Decimal  @db.Decimal(18, 2)
+  minQuantity Int        @default(1)
+  maxQuantity Int?
+  companyId   String   @map("company_id") @db.VarChar(100)
+  tenantId    String   @map("tenant_id") @db.VarChar(100)
+
+  @@index([priceListId])
+  @@index([productId])
+  @@index([companyId])
+  @@index([tenantId])
+  @@map("price_list_lines")
+}
+
+model CustomerPrice {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @map("company_id") @db.VarChar(100)
+  tenantId  String   @map("tenant_id") @db.VarChar(100)
+  productId String   @map("product_id") @db.Uuid
+  price     Decimal  @db.Decimal(18, 2)
+  currency  String   @db.VarChar(3)
+  effectiveFrom DateTime @default(now())
+  effectiveTo   DateTime?
+
+  @@index([productId])
+  @@index([companyId])
+  @@index([tenantId])
+  @@unique([productId, companyId, tenantId])
+  @@map("customer_prices")
+}

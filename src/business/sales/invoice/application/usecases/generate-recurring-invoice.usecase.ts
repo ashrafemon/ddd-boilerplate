@@ -3,7 +3,7 @@ import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { LoggerPort } from '@platform/platform-common/observability/ports/logger.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { RecurringExecutionPort } from '@platform/platform-common/recurring/ports/recurring-execution.port';
-import { RecurringOccurrenceRequestedPayload } from '../types/recurring-occurrence.types';
+import { RecurringOccurrenceRequestedPayload } from '../../domain/types/recurring-occurrence.types';
 import { CreateInvoiceUseCase } from './create-invoice.usecase';
 import { GetInvoiceUseCase } from './get-invoice.usecase';
 import { PostInvoiceUseCase } from './post-invoice.usecase';

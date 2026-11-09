@@ -1,0 +1,95 @@
+// Finance context — moved from platform.
+// Accounting entries are Finance business concepts, not Platform concepts.
+model JournalEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  entryNo     String   @map("entry_no")
+  reference   String   @map("reference") @db.VarChar(200)
+  postingDate DateTime @map("posting_date")
+  status      String   @map("status") @db.VarChar(50) @default("DRAFT")
+  companyId   String   @map("company_id") @db.VarChar(100)
+  tenantId    String   @map("tenant_id") @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([entryNo])
+  @@index([companyId])
+  @@index([tenantId])
+  @@unique([companyId, entryNo])
+  @@map("journal_entries")
+}
+
+model AccountingEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  journalEntryId String @map("journal_entry_id") @db.Uuid
+  account     String   @map("account") @db.VarChar(100)
+  debit       Decimal  @default(0) @db.Decimal(18, 4)
+  credit      Decimal  @default(0) @db.Decimal(18, 4)
+  currency    String   @db.VarChar(3)
+  postingDate DateTime @map("posting_date")
+  companyId   String   @map("company_id") @db.VarChar(100)
+  tenantId    String   @map("tenant_id") @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([journalEntryId])
+  @@index([companyId])
+  @@index([tenantId])
+  @@map("accounting_entries")
+}
+
+model VendorBill {
+  id          String   @id @default(uuid()) @db.Uuid
+  billNo      String   @map("bill_no")
+  vendorId    String   @map("vendor_id") @db.Uuid
+  amount      Decimal  @db.Decimal(18, 2)
+  currency    String   @db.VarChar(3)
+  status      String   @map("status") @db.VarChar(50) @default("DRAFT")
+  dueDate     DateTime @map("due_date")
+  companyId   String   @map("company_id") @db.VarChar(100)
+  tenantId    String   @map("tenant_id") @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([billNo])
+  @@index([vendorId])
+  @@index([companyId])
+  @@index([tenantId])
+  @@unique([companyId, billNo])
+  @@map("vendor_bills")
+}
+
+model Payment {
+  id        String   @id @default(uuid()) @db.Uuid
+  paymentNo String   @map("payment_no")
+  amount    Decimal  @db.Decimal(18, 2)
+  currency  String   @db.VarChar(3)
+  status    String   @map("status") @db.VarChar(50) @default("PENDING")
+  companyId String   @map("company_id") @db.VarChar(100)
+  tenantId  String   @map("tenant_id") @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([paymentNo])
+  @@index([companyId])
+  @@index([tenantId])
+  @@unique([companyId, paymentNo])
+  @@map("payments")
+}
+
+model PayableOpenItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  vendorId    String   @map("vendor_id") @db.Uuid
+  vendorBillId String   @map("vendor_bill_id") @db.Uuid
+  amount      Decimal  @db.Decimal(18, 2)
+  outstanding Decimal  @db.Decimal(18, 2)
+  currency    String   @db.VarChar(3)
+  dueDate     DateTime @map("due_date")
+  status      String   @map("status") @db.VarChar(50) @default("OPEN")
+  companyId   String   @map("company_id") @db.VarChar(100)
+  tenantId    String   @map("tenant_id") @db.VarChar(100)
+
+  @@index([vendorId])
+  @@index([vendorBillId])
+  @@index([companyId])
+  @@index([tenantId])
+  @@map("payable_open_items")
+}

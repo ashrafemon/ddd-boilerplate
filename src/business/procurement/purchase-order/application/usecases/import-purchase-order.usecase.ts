@@ -3,7 +3,7 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { PurchaseOrder } from '../../domain/aggregates/purchase-order.aggregate';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderPricingService } from '../../domain/services/purchase-order-pricing.service';
-import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
+import { PurchaseOrderPublisherPort } from '../../integrations/publishes/publishers/purchase-order.publisher-port';
 import { OrderableVendorPort } from '../outbound-ports/vendor-query.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';

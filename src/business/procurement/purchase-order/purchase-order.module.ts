@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
-import { ProductModule } from '@business/procurement/product/product.module';
+import { ProductModule } from '@business/product-management/product/product.module';
 import { VendorModule } from '@business/party/vendor/vendor.module';
 import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
 import { PurchaseOrderForGrnFacade } from './application/facades/purchase-order-for-grn.facade';
@@ -23,13 +23,13 @@ import { ListPurchaseOrdersUseCase } from './application/usecases/list-purchase-
 import { CreateRecurringPurchaseOrderUseCase } from './application/usecases/create-recurring-purchase-order.usecase';
 import { CreateRecurringFromPurchaseOrderUseCase } from './application/usecases/create-recurring-from-purchase-order.usecase';
 import { GenerateRecurringPurchaseOrderUseCase } from './application/usecases/generate-recurring-purchase-order.usecase';
-import { RecurringOccurrenceRequestedRabbitMQListener } from './application/integrations/listens/recurring-occurrence-requested.rabbitmq.listener-event';
-import { GoodsReceiptPostedListener } from './application/integrations/listens/goods-receipt-posted.listener';
-import { VendorBillPostedListener } from './application/integrations/listens/vendor-bill-posted.listener';
+import { RecurringOccurrenceRequestedRabbitMQListener } from './integrations/consumes/listeners/recurring-occurrence-requested.rabbitmq.listener-event';
+import { GoodsReceiptPostedListener } from './integrations/consumes/listeners/goods-receipt-posted.listener';
+import { VendorBillPostedListener } from './integrations/consumes/listeners/vendor-bill-posted.listener';
 import { HandleVendorBillPostedUseCase } from './application/usecases/handle-vendor-bill-posted.usecase';
 import { PurchaseOrderCommandRepository } from './domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from './application/queries/purchase-order.query';
-import { PurchaseOrderPublisherPort } from './application/integrations/publishes/purchase-order.publisher-port';
+import { PurchaseOrderPublisherPort } from './integrations/publishes/publishers/purchase-order.publisher-port';
 import { PurchasableProductPort } from './application/outbound-ports/product-query.port';
 import { OrderableVendorPort } from './application/outbound-ports/vendor-query.port';
 import { NumberingPort } from './application/outbound-ports/numbering.port';

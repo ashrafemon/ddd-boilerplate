@@ -4,7 +4,7 @@ import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
 import { LoggerPort } from '@platform/platform-common/observability/ports/logger.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { RecurringExecutionPort } from '@platform/platform-common/recurring/ports/recurring-execution.port';
-import { RecurringOccurrenceRequestedPayload } from '../types/recurring-occurrence.types';
+import { RecurringOccurrenceRequestedPayload } from '../../domain/types/recurring-occurrence.types';
 import { AddPurchaseOrderLineUseCase } from './add-purchase-order-line.usecase';
 import { CreatePurchaseOrderUseCase } from './create-purchase-order.usecase';
 import { GetPurchaseOrderUseCase } from './get-purchase-order.usecase';

@@ -4,7 +4,7 @@ import { RequestContextPort } from '@platform/platform-common/context/ports/requ
 import { AbacPort } from '@platform/platform-organization/authorization/ports/abac.port';
 import { RemoveLineRequest } from '../../domain/types/purchase-order.types';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
-import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
+import { PurchaseOrderPublisherPort } from '../../integrations/publishes/publishers/purchase-order.publisher-port';
 
 @Injectable()
 export class RemovePurchaseOrderLineUseCase {

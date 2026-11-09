@@ -11,7 +11,7 @@ import { UpdatePurchaseOrderLineRequest } from '../../domain/types/purchase-orde
 import { PurchasableProductPort } from '../outbound-ports/product-query.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderPricingService } from '../../domain/services/purchase-order-pricing.service';
-import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
+import { PurchaseOrderPublisherPort } from '../../integrations/publishes/publishers/purchase-order.publisher-port';
 
 /**
  * Rewrite one draft line by product id (plan Phase 2.2): `setLine` semantics —

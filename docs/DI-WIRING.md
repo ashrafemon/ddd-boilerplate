@@ -31,6 +31,10 @@ flowchart LR
     VendorModule -->|AbacPort| AuthorizationModule
     PlatformModule["PlatformModule"]
     VendorModule -->|OutboxWriterPort| PlatformModule
+    PricingModule["PricingModule"]
+    PricingModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
+    PricingModule -->|AbacPort| AuthorizationModule
+    PricingModule -->|OutboxWriterPort| PlatformModule
     GoodReceiptNoteModule["GoodReceiptNoteModule"]
     GoodReceiptNoteModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     GoodReceiptNoteModule -->|AbacPort| AuthorizationModule
@@ -43,10 +47,6 @@ flowchart LR
     GoodReceiptNoteModule -->|NumberingPort| NumberingModule
     CacheModule["CacheModule"]
     GoodReceiptNoteModule -->|CachePort| CacheModule
-    ProductModule["ProductModule"]
-    ProductModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
-    ProductModule -->|AbacPort| AuthorizationModule
-    ProductModule -->|OutboxWriterPort| PlatformModule
     PurchaseOrderModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     PurchaseOrderModule -->|AbacPort| AuthorizationModule
     PurchaseOrderModule -->|AuditPort| AuditModule
@@ -57,8 +57,12 @@ flowchart LR
     PurchaseOrderModule -->|InboxPort, OutboxWriterPort| PlatformModule
     PurchaseOrderModule -->|NumberingPort| NumberingModule
     PurchaseOrderModule -->|CachePort| CacheModule
+    ProductModule["ProductModule"]
     PurchaseOrderModule -->|ProductForPurchasePort| ProductModule
     PurchaseOrderModule -->|VendorForPurchasePort| VendorModule
+    ProductModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
+    ProductModule -->|AbacPort| AuthorizationModule
+    ProductModule -->|OutboxWriterPort| PlatformModule
     InvoiceModule["InvoiceModule"]
     InvoiceModule -->|RequestContextPort, PrismaReadPort| ContextModule__src_platform_platform_common_context__2
     InvoiceModule -->|AbacPort| AuthorizationModule
@@ -494,9 +498,9 @@ flowchart LR
     GoodsReceiptPostedListener -->|injects via ContextModule| RequestContextPort
     VendorBillPostedListener["VendorBillPostedListener"]
     VendorBillPostedListener -->|injects via PlatformModule| InboxPort
-    VendorBillPostedListener -->|injects via ContextModule| RequestContextPort
     HandleVendorBillPostedUseCase["HandleVendorBillPostedUseCase"]
     VendorBillPostedListener -->|injects| HandleVendorBillPostedUseCase
+    VendorBillPostedListener -->|injects via ContextModule| RequestContextPort
     PurchaseOrderForGrnFacade -->|injects| GetPurchaseOrderUseCase
     PurchaseOrderForGrnFacade -->|injects| RegisterPurchaseOrderReceiptUseCase
     PurchaseOrderForGrnFacade -->|injects| HasPurchaseOrderReceiptsUseCase
@@ -646,7 +650,7 @@ flowchart LR
 
 #### BusinessModule — `src/business/business.module.ts`
 
-imports: PartyModule, ProcurementModule, SalesModule · exports: —
+imports: PartyModule, ProductManagementModule, ProcurementModule, InventoryModule, PricingModule, FinanceModule, SalesModule · exports: —
 
 _Composition only._
 
@@ -658,7 +662,7 @@ _Composition only._
 
 #### ProcurementModule — `src/business/procurement/procurement.module.ts`
 
-imports: ProductModule, PurchaseOrderModule, GoodReceiptNoteModule · exports: —
+imports: PurchaseOrderModule, GoodReceiptNoteModule · exports: —
 
 _Composition only._
 

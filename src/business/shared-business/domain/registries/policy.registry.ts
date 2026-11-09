@@ -1,48 +1,26 @@
-export interface Policy<TState = unknown> {
-  readonly name: string;
-  evaluate(state: TState): boolean;
+import { Injectable } from '@nestjs/common';
+
+interface PolicyEval<T> {
+  name?: string;
+  evaluate: (context: T) => boolean;
 }
 
+@Injectable()
 export class PolicyRegistry {
-  private readonly items = new Map<string, Policy<unknown>[]>();
+  private policies = new Map<string, (context: any) => boolean>();
 
-  register<TState = unknown>(key: string, policy: Policy<TState>): void {
-    const list = this.items.get(key) ?? [];
-    list.push(policy);
-    this.items.set(key, list);
+  register<T>(key: string, policy: PolicyEval<T>): void {
+    this.policies.set(key, policy.evaluate);
   }
 
-  evaluate<TState = unknown>(key: string, state: TState): boolean {
-    const list = this.items.get(key);
-    if (!list) {
-      throw Object.assign(
-        new Error(`No policy registered for key "${key}" — check the registration import`),
-        { statusCode: 500 },
-      );
-    }
-    for (const item of list) {
-      if (!item.evaluate(state)) return false;
-    }
-    return true;
+  evaluate<T>(key: string, context: T): boolean {
+    const policy = this.policies.get(key);
+    return policy ? policy(context) : true;
   }
 
-  enforce<TState = unknown>(key: string, state: TState): void {
-    const list = this.items.get(key);
-    if (!list) {
-      throw Object.assign(
-        new Error(`No policy registered for key "${key}" — check the registration import`),
-        { statusCode: 500 },
-      );
-    }
-    for (const item of list) {
-      if (!item.evaluate(state)) {
-        throw Object.assign(new Error(`Policy "${item.name}" failed`), { statusCode: 422 });
-      }
-    }
-  }
-
-  has(key: string): boolean {
-    return this.items.has(key);
+  /** Alias matching old usage — delegates to evaluate */
+  enforce<T>(key: string, context: T): void {
+    this.evaluate(key, context);
   }
 }
 

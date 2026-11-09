@@ -5,7 +5,7 @@ import { RequestContextPort } from '@platform/platform-common/context/ports/requ
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderPricingService } from '../../domain/services/purchase-order-pricing.service';
 import { AmendPurchaseOrderRequest } from '../../domain/types/purchase-order.types';
-import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
+import { PurchaseOrderPublisherPort } from '../../integrations/publishes/publishers/purchase-order.publisher-port';
 
 // Controlled amendment of an issued PO (spec §4, PO-06).
 @Injectable()

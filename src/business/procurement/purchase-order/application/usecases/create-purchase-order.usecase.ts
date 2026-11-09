@@ -6,7 +6,7 @@ import { CreatePurchaseOrderRequest } from '../../domain/types/purchase-order.ty
 import { PurchaseOrderFactory } from '../../domain/factories/purchase-order.factory';
 import { OrderableVendorPort } from '../outbound-ports/vendor-query.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
-import { PurchaseOrderPublisherPort } from '../integrations/publishes/purchase-order.publisher-port';
+import { PurchaseOrderPublisherPort } from '../../integrations/publishes/publishers/purchase-order.publisher-port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 
 @Injectable()

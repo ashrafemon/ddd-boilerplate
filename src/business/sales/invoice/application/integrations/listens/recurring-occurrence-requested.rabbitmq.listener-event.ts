@@ -4,7 +4,7 @@ import type { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.typ
 import { InboxPort } from '@platform/platform-common/inbox/ports/inbox.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { GenerateRecurringInvoiceUseCase } from '../../usecases/generate-recurring-invoice.usecase';
-import { RecurringOccurrenceRequestedPayload } from '../../types/recurring-occurrence.types';
+import { RecurringOccurrenceRequestedPayload } from '../../../domain/types/recurring-occurrence.types';
 
 const EXCHANGE = 'erp.events';
 const RECURRING_QUEUE = 'recurring-occurrence.invoice.erp';
