@@ -3,7 +3,7 @@ import { PriceList } from '../aggregates/price-list.aggregate';
 import { PriceListId } from '../value-objects/price-list-id.vo';
 import { PriceListCode } from '../value-objects/price-list-code.vo';
 import { PriceListProps, CreatePriceListInput } from '../types/price-list.types';
-import { PriceListCreated } from '../events/index';
+import { PriceListCreated } from '../events/price-list-created.event';
 import { PriceListStatus } from '../types/price-list.enum';
 import '../aggregates/price-list.invariants';
 import '../entities/price-list-line.entity.invariants';

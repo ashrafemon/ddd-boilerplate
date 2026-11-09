@@ -1,5 +1,5 @@
 import { JournalEntry } from '@business/finance/domain/aggregates/journal-entry.aggregate';
-import { JournalEntryId } from '@business/finance/domain/value-objects';
+import { JournalEntryId } from '@business/finance/domain/value-objects/journal-entry-id.vo';
 import { JournalEntryStatus } from '@business/finance/domain/types/finance.enum';
 import { JournalEntryProps } from '@business/finance/domain/types/finance.types';
 import { JournalEntryQueryRecord } from '@business/finance/domain/types/finance.types';

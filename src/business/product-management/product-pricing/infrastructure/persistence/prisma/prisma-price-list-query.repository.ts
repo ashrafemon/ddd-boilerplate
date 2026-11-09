@@ -1,4 +1,4 @@
-import { PriceListQuery } from '@business/pricing/application/queries/price-list.query';
+import { PriceListQuery } from '@business/product-management/product-pricing/application/queries/price-list.query';
 import { PrismaReadPort } from '@platform/platform-common/context/ports/prisma-read.port';
 import { Injectable } from '@nestjs/common';
 import { PageQuery, PageResult } from '@common/application/types/pagination';

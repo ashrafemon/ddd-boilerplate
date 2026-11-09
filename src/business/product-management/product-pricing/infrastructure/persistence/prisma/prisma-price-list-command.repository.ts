@@ -1,8 +1,8 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { PriceList } from '@business/pricing/domain/aggregates/price-list.aggregate';
-import { PriceListCommandRepository } from '@business/pricing/domain/repositories/price-list-command.repository';
+import { PriceList } from '@business/product-management/product-pricing/domain/aggregates/price-list.aggregate';
+import { PriceListCommandRepository } from '@business/product-management/product-pricing/domain/repositories/price-list-command.repository';
 import { PrismaPriceListMapper } from './prisma-price-list.mapper';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { TenantScope } from '@common/application/utils/tenant-scope';

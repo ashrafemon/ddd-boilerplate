@@ -1,6 +1,6 @@
-import { PriceList } from '@business/pricing/domain/aggregates/price-list.aggregate';
-import { PriceListId } from '@business/pricing/domain/value-objects/price-list-id.vo';
-import { PriceListCode } from '@business/pricing/domain/value-objects/price-list-code.vo';
+import { PriceList } from '@business/product-management/product-pricing/domain/aggregates/price-list.aggregate';
+import { PriceListId } from '@business/product-management/product-pricing/domain/value-objects/price-list-id.vo';
+import { PriceListCode } from '@business/product-management/product-pricing/domain/value-objects/price-list-code.vo';
 import { PriceListQueryRecord } from '../../../domain/types/price-list.types';
 import { PriceListStatus } from '../../../domain/types/price-list.enum';
 import { PriceListProps } from '../../../domain/types/price-list.types';

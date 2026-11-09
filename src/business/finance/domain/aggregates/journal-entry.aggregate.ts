@@ -1,8 +1,8 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
-import { JournalEntryRecorded } from '../events/index';
+import { JournalEntryRecorded } from '../events/journal-entry-recorded.event';
 import { JournalEntryProps } from '../types/finance.types';
 import { JournalEntryStatus } from '../types/finance.enum';
-import { JournalEntryId } from '../value-objects';
+import { JournalEntryId } from '../value-objects/journal-entry-id.vo';
 import './finance.invariants';
 
 export class JournalEntry extends AggregateRoot<JournalEntryId> {

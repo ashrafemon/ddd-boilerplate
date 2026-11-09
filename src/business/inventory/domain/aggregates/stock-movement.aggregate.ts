@@ -1,6 +1,6 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { StockMovementRecorded } from '../events/index';
+import { StockMovementRecorded } from '../events/stock-movement-recorded.event';
 import { StockMovementProps } from '../types/stock-movement.types';
 import { StockMovementId } from '../value-objects/stock-movement-id.vo';
 import { StockMovementType } from '../types/stock-movement.enum';
@@ -175,6 +175,6 @@ export class StockBalance {
   }
 }
 
-export { StockBalanceUpdated } from '../events/index';
-export { StockMovementRecorded } from '../events/index';
+export { StockBalanceUpdated } from '../events/stock-balance-updated.event';
+export { StockMovementRecorded } from '../events/stock-movement-recorded.event';
 export type { StockBalanceProps } from '../types/stock-movement.types';
