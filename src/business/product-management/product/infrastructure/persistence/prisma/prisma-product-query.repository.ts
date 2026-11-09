@@ -1,11 +1,11 @@
 import { ProductQuery } from '@business/product-management/product/application/queries/product.query';
 import { PrismaReadPort } from '@platform/platform-common/context/ports/prisma-read.port';
 import { Injectable } from '@nestjs/common';
-import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
+import { PageQuery, PageResult } from '@common/application/types/pagination';
 import { ProductQueryRecord } from '../../../domain/types/product.types';
 import { PrismaProductMapper } from './prisma-product.mapper';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { TenantScope } from '@common/application/utils/tenant-scope';
 
 @Injectable()
 export class PrismaProductQueryRepository extends ProductQuery {

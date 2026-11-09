@@ -12,8 +12,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ApiResponse } from '@shared-kernel/types/api-response.type';
-import { normalizePageQuery, PageResult } from '@shared-kernel/types/pagination';
+import { ApiResponse } from '@common/application/types/api-response';
+import { normalizePageQuery, PageResult } from '@common/application/types/pagination';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { WebhookEventTypeRegistry } from '../webhook-event-type.registry';
 import { WebhookInboundSourceRegistry } from '../webhook-inbound-source.registry';

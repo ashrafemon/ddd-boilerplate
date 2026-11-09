@@ -1,6 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { jsonValueSchema } from '@shared-kernel/validation/json-value.schema';
+import { jsonValueSchema } from '@common/application/validation/json-value.schema';
 
 const TRIGGER_TYPES = ['TIME', 'EVENT'] as const;
 const FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const;

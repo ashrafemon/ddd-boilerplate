@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaReadPort } from '@platform/platform-common/context/ports/prisma-read.port';
-import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
+import { PageQuery, PageResult } from '@common/application/types/pagination';
 import { PurchaseOrderQuery } from '@business/procurement/purchase-order/application/queries/purchase-order.query';
 import {
   PurchaseOrderQueryRecord,
@@ -8,7 +8,7 @@ import {
 } from '@business/procurement/purchase-order/domain/types/purchase-order.types';
 import { PrismaPurchaseOrderMapper } from './prisma-purchase-order.mapper';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { TenantScope } from '@common/application/utils/tenant-scope';
 
 @Injectable()
 export class PrismaPurchaseOrderQueryRepository extends PurchaseOrderQuery {

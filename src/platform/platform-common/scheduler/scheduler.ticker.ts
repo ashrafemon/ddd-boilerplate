@@ -1,4 +1,4 @@
-import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
+import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { ConfigService } from '@config/config.service';

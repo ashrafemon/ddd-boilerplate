@@ -13,8 +13,8 @@ import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Idempotent } from '@platform/platform-common/idempotency/http/idempotent.decorator';
 import type { FastifyReply } from 'fastify';
-import { ApiResponse } from '@shared-kernel/types/api-response.type';
-import { normalizePageQuery } from '@shared-kernel/types/pagination';
+import { ApiResponse } from '@common/application/types/api-response';
+import { normalizePageQuery } from '@common/application/types/pagination';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
 import { CancelBatchOperationJobUseCase } from '../usecases/cancel-batch-operation-job.usecase';
 import { CreateBatchOperationJobUseCase } from '../usecases/create-batch-operation-job.usecase';
@@ -22,7 +22,7 @@ import { GetBatchOperationJobStatusUseCase } from '../usecases/get-batch-operati
 import { ListBatchOperationJobRowsUseCase } from '../usecases/list-batch-operation-job-rows.usecase';
 import { ListBatchOperationJobsUseCase } from '../usecases/list-batch-operation-jobs.usecase';
 import { ValidateBatchOperationUseCase } from '../usecases/validate-batch-operation.usecase';
-import { PageResult } from '@shared-kernel/types/pagination';
+import { PageResult } from '@common/application/types/pagination';
 import {
   BatchOperationJobRecord,
   BatchOperationPreview,

@@ -1,4 +1,4 @@
-import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
+import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger } from '@nestjs/common';
 import { createHash, randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';

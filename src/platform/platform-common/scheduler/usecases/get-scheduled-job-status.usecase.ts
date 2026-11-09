@@ -4,8 +4,8 @@ import {
   PageResult,
   buildPageResult,
   normalizePageQuery,
-} from '@shared-kernel/types/pagination';
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+} from '@common/application/types/pagination';
+import { TenantScope } from '@common/application/utils/tenant-scope';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 import { ScheduledJobRecord } from '../scheduler.types';

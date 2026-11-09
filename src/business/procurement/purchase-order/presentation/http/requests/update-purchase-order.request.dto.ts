@@ -1,6 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { requestDate } from '@shared-kernel/types/wire-date';
+import { requestDate } from '@common/application/types/wire-date';
 
 /**
  * Draft-header update (plan Phase 2.2). Every field optional; the use case

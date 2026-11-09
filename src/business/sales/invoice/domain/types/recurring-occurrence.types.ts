@@ -1,4 +1,4 @@
-import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
+import { JsonObject, JsonValue } from '@common/application/types/json-value';
 /**
  * Wire shape of the RecurringOccurrenceRequested integration event, owned by
  * THIS module (consumer-side contract — the invoice module never imports

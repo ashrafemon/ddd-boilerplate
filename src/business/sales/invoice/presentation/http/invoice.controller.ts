@@ -10,13 +10,13 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ApiResponse } from '@shared-kernel/types/api-response.type';
-import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
-import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
-import { CreateInvoiceUseCase } from '../../application/usecases/create-invoice.usecase';
-import { GetInvoiceUseCase } from '../../application/usecases/get-invoice.usecase';
-import { ListInvoicesUseCase } from '../../application/usecases/list-invoices.usecase';
-import { PostInvoiceUseCase } from '../../application/usecases/post-invoice.usecase';
+import { ApiResponse } from '@common/application/types/api-response';
+import { DeviceResponse } from '@common/http/decorators/device-response.decorator';
+import { PageQuery, normalizePageQuery } from '@common/application/types/pagination';
+import { CreateInvoiceUseCase } from '../../application/use-cases/create-invoice.usecase';
+import { GetInvoiceUseCase } from '../../application/use-cases/get-invoice.usecase';
+import { ListInvoicesUseCase } from '../../application/use-cases/list-invoices.usecase';
+import { PostInvoiceUseCase } from '../../application/use-cases/post-invoice.usecase';
 import { CreateInvoiceDto } from './requests/create-invoice.request.dto';
 import { InvoiceQueryDto } from './requests/query-invoices.request.dto';
 import {

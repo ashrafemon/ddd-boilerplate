@@ -1,0 +1,77 @@
+import { Injectable } from '@nestjs/common';
+import { BatchOperationHandler } from '@platform/platform-common/batch-operation/ports/batch-operation-handler.port';
+import {
+  ExecutionResult,
+  ValidationResult,
+} from '@platform/platform-common/batch-operation/batch-operation.types';
+import { GetGrnUseCase } from '../../../application/use-cases/get-grn.usecase';
+import { ReceiveGrnUseCase } from '../../../application/use-cases/receive-grn.usecase';
+import { PostGrnUseCase } from '../../../application/use-cases/post-grn.usecase';
+
+export type GrnBatchOperation = 'receive' | 'complete';
+
+const OPERATIONS: GrnBatchOperation[] = ['receive', 'complete'];
+
+const ALLOWED_FROM: Record<string, string[]> = {
+  receive: ['DRAFT'],
+  complete: ['RECEIVED'],
+};
+
+/**
+ * GoodReceiptNote's Batch Operation port — pure handler data + routing, no
+ * lifecycle: the composition root (src/bootstrap/configure-batch-operations.ts)
+ * registers it on the platform registry at boot, so generated adapters never
+ * import platform implementation classes. Thin router onto the module's own
+ * single-record use cases (receive / complete), each running inside its own
+ * @Transactional boundary.
+ */
+@Injectable()
+export class GrnBatchOperationAdapter implements BatchOperationHandler {
+  constructor(
+    private readonly getGrn: GetGrnUseCase,
+    private readonly receiveGrn: ReceiveGrnUseCase,
+    private readonly postGrn: PostGrnUseCase,
+  ) {}
+
+  aggregateType(): string {
+    return 'GoodReceiptNote';
+  }
+
+  supportedOperations(): string[] {
+    return [...OPERATIONS];
+  }
+
+  async validate(entityId: string, operationCode: string): Promise<ValidationResult> {
+    const grn = await this.getGrn.execute(entityId);
+    if (!grn) {
+      return { canProceed: false, reason: 'Goods receipt not found' };
+    }
+    const allowed = ALLOWED_FROM[operationCode] ?? [];
+    if (!allowed.includes(grn.status)) {
+      return {
+        canProceed: false,
+        reason: `ALREADY_IN_TARGET_STATE: cannot ${operationCode} a ${grn.status} goods receipt`,
+      };
+    }
+    return { canProceed: true };
+  }
+
+  async execute(entityId: string, operationCode: string): Promise<ExecutionResult> {
+    const before = await this.getGrn.execute(entityId);
+    if (operationCode === 'receive') {
+      await this.receiveGrn.execute({ id: entityId });
+    } else if (operationCode === 'complete') {
+      await this.postGrn.execute({ id: entityId });
+    } else {
+      throw new Error(`Unsupported GRN batch operation '${operationCode}'`);
+    }
+    const after = await this.getGrn.execute(entityId);
+    return {
+      resultSnapshot: {
+        transition: operationCode,
+        statusBefore: before?.status ?? null,
+        statusAfter: after?.status ?? null,
+      },
+    };
+  }
+}

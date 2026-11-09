@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { TenantScope } from '@common/application/utils/tenant-scope';
 import { WebhookSubscriptionRepositoryPort } from '../ports/webhook-subscription-repository.port';
 
 @Injectable()

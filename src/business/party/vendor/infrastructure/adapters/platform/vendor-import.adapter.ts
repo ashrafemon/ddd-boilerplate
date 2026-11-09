@@ -1,4 +1,4 @@
-import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
+import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable } from '@nestjs/common';
 import { ImportHandler } from '@platform/platform-common/import/ports/import-handler.port';
 import {
@@ -7,7 +7,7 @@ import {
   RowResult,
   RowVerdict,
 } from '@platform/platform-common/import/import.types';
-import { CreateVendorUseCase } from '../../../application/usecases/create-vendor.usecase';
+import { CreateVendorUseCase } from '../../../application/use-cases/create-vendor.usecase';
 
 export const VENDOR_IMPORT_DESCRIPTOR: ImportDescriptor = {
   entityKey: 'vendor',

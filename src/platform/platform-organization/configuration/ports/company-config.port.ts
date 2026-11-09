@@ -4,7 +4,7 @@
  */
 // Re-exported from shared-kernel so the business layer and the platform
 // resolve the effective company the same way.
-export { DEFAULT_COMPANY_ID } from '@shared-kernel/constants/company';
+export { DEFAULT_COMPANY_ID } from '@common/application/constants/company';
 
 export interface CompanyConfig {
   companyId: string;

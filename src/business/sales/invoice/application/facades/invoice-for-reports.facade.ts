@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GetInvoiceUseCase } from '../usecases/get-invoice.usecase';
+import { GetInvoiceUseCase } from '../use-cases/get-invoice.usecase';
 import { InvoiceForReportsPort } from '@business/sales/invoice/public/ports/invoice-for-reports.port';
 import { InvoiceReference } from '@business/sales/invoice/public/contracts/invoice-for-reports.contract';
 

@@ -5,8 +5,8 @@ import { Vendor } from '../../../domain/aggregates/vendor.aggregate';
 import { VendorCommandRepository } from '../../../domain/repositories/vendor-command.repository';
 import { PrismaVendorMapper } from './prisma-vendor.mapper';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
-import { resolveCompanyId } from '@shared-kernel/constants/company';
+import { TenantScope } from '@common/application/utils/tenant-scope';
+import { resolveCompanyId } from '@common/application/constants/company';
 
 @Injectable()
 export class PrismaVendorCommandRepository extends VendorCommandRepository {

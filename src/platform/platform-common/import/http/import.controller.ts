@@ -22,7 +22,7 @@ import { UpdateImportMappingUseCase } from '../usecases/update-import-mapping.us
 import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Idempotent } from '@platform/platform-common/idempotency/http/idempotent.decorator';
-import { normalizePageQuery } from '@shared-kernel/types/pagination';
+import { normalizePageQuery } from '@common/application/types/pagination';
 import { ImportHandlerRegistry } from '../import-handler.registry';
 import { CreateJobDto } from './requests/create-import-job.request.dto';
 import { CreateUploadDto } from './requests/create-import-upload.request.dto';

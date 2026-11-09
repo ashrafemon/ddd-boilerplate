@@ -14,7 +14,7 @@ import { configureSentry } from './configure-sentry';
 import { configureServer } from './configure-server';
 import { configureShutdown } from './configure-shutdown';
 import { configureSwagger } from './configure-swagger';
-import { CompanyConfigContextMiddleware } from '../shared-kernel/middleware/company-config-context.middleware';
+import { CompanyConfigContextMiddleware } from '@common/http/middleware/company-config-context.middleware';
 
 /**
  * Bootstraps the application by composing each independent configuration

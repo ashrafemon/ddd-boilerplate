@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { DiscoveryService } from '@nestjs/core';
 import { Consumer } from 'kafkajs';
-import { KAFKA_EVENT_LISTENER_METADATA } from '@shared-kernel/decorators/kafka-event.decorator';
+import { KAFKA_EVENT_LISTENER_METADATA } from '@common/http/decorators/kafka-event.decorator';
 import { KafkaService } from './kafka.service';
 
 interface HandlerEntry {

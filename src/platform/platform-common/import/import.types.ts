@@ -4,7 +4,7 @@
  */
 
 import { PresignedUpload } from '@platform/platform-common/storage/ports/file-storage.port';
-import { PageResult } from '@shared-kernel/types/pagination';
+import { PageResult } from '@common/application/types/pagination';
 
 export type ImportJobStatus =
   | 'PENDING_UPLOAD'

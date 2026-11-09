@@ -1,4 +1,4 @@
-import { PageResult } from '@shared-kernel/types/pagination';
+import { PageResult } from '@common/application/types/pagination';
 import { NewWebhookDelivery, WebhookDeliveryQuery, WebhookDeliveryRecord } from '../webhook.types';
 
 export abstract class WebhookDeliveryRepositoryPort {

@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
+import { FailureMessage } from '@common/application/utils/failure-message';
 import { ConfigService } from '@config/config.service';
 import { FileStoragePort } from '@platform/platform-common/storage/ports/file-storage.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';

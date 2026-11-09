@@ -1,4 +1,4 @@
-import { JsonObject } from '@shared-kernel/types/json-value.type';
+import { JsonObject } from '@common/application/types/json-value';
 export interface SchedulerJobDueEvent {
   jobId: string;
   jobType: string;

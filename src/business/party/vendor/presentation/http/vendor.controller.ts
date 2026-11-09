@@ -10,12 +10,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
-import { CreateVendorUseCase } from '../../application/usecases/create-vendor.usecase';
-import { GetVendorUseCase } from '../../application/usecases/get-vendor.usecase';
-import { ListVendorsUseCase } from '../../application/usecases/list-vendors.usecase';
-import { UpdateVendorUseCase } from '../../application/usecases/update-vendor.usecase';
-import { VendorStatusUseCase } from '../../application/usecases/vendor-status.usecase';
+import { PageQuery, normalizePageQuery } from '@common/application/types/pagination';
+import { CreateVendorUseCase } from '../../application/use-cases/create-vendor.usecase';
+import { GetVendorUseCase } from '../../application/use-cases/get-vendor.usecase';
+import { ListVendorsUseCase } from '../../application/use-cases/list-vendors.usecase';
+import { UpdateVendorUseCase } from '../../application/use-cases/update-vendor.usecase';
+import { VendorStatusUseCase } from '../../application/use-cases/vendor-status.usecase';
 import { CreateVendorDto } from './requests/create-vendor.request.dto';
 import { UpdateVendorDto } from './requests/update-vendor.request.dto';
 import { VendorQueryDto } from './requests/query-vendors.request.dto';
@@ -36,8 +36,8 @@ import {
   type ListVendorsWebResponse,
 } from './responses/list-vendors.web.response.dto';
 import { IdResponse } from './responses/id.response.dto';
-import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
-import { ApiResponse } from '@shared-kernel/types/api-response.type';
+import { DeviceResponse } from '@common/http/decorators/device-response.decorator';
+import { ApiResponse } from '@common/application/types/api-response';
 
 type VendorGetResponse = GetVendorMobileResponse | GetVendorWebResponse;
 type VendorListResponse = ListVendorsMobileResponse | ListVendorsWebResponse;

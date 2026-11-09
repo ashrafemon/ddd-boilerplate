@@ -4,10 +4,9 @@ import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-pr
 import { PurchaseOrder } from '@business/procurement/purchase-order/domain/aggregates/purchase-order.aggregate';
 import { PurchaseOrderCommandRepository } from '@business/procurement/purchase-order/domain/repositories/purchase-order-command.repository';
 import { PrismaPurchaseOrderMapper } from './prisma-purchase-order.mapper';
-import { PageQuery } from '@shared-kernel/types/pagination';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
-import { resolveCompanyId } from '@shared-kernel/constants/company';
+import { TenantScope } from '@common/application/utils/tenant-scope';
+import { resolveCompanyId } from '@common/application/constants/company';
 
 @Injectable()
 export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRepository {
@@ -99,23 +98,5 @@ export class PrismaPurchaseOrderCommandRepository extends PurchaseOrderCommandRe
       include: { lines: true },
     });
     return row ? PrismaPurchaseOrderMapper.toDomain(row) : null;
-  }
-
-  async findAll(query: PageQuery) {
-    const skip = (query.page - 1) * query.pageSize;
-    const [rows, total] = await Promise.all([
-      this.txHost.tx.purchaseOrder.findMany({
-        where: this.ownedScope(),
-        skip,
-        take: query.pageSize,
-        orderBy: { createdAt: 'desc' },
-        include: { lines: true },
-      }),
-      this.txHost.tx.purchaseOrder.count({ where: this.ownedScope() }),
-    ]);
-    return {
-      items: rows.map((row: never) => PrismaPurchaseOrderMapper.toDomain(row)),
-      total,
-    };
   }
 }

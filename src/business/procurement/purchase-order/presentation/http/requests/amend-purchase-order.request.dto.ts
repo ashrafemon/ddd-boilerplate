@@ -1,6 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { requestDate } from '@shared-kernel/types/wire-date';
+import { requestDate } from '@common/application/types/wire-date';
 
 /**
  * Controlled amendment of an issued purchase order (spec §4

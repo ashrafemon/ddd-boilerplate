@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './../src/app.module';
-import { CreateProductUseCase } from './../src/business/product-management/product/application/usecases/create-product.usecase';
-import { GetPurchasableProductUseCase } from './../src/business/product-management/product/application/usecases/get-purchasable-product.usecase';
-import { GetOrderableVendorUseCase } from './../src/business/party/vendor/application/usecases/get-orderable-vendor.usecase';
-import { CreatePurchaseOrderUseCase } from './../src/business/procurement/purchase-order/application/usecases/create-purchase-order.usecase';
-import { OutboxWriterPort } from '@infrastructure/outbox/ports/outbox-writer.port';
+import { CreateProductUseCase } from './../src/business/product-management/product/application/use-cases/create-product.usecase';
+import { GetPurchasableProductUseCase } from './../src/business/product-management/product/application/use-cases/get-purchasable-product.usecase';
+import { GetOrderableVendorUseCase } from './../src/business/party/vendor/application/use-cases/get-orderable-vendor.usecase';
+import { CreatePurchaseOrderUseCase } from './../src/business/procurement/purchase-order/application/use-cases/create-purchase-order.usecase';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
 import { SchedulerPort } from '../src/platform/platform-common/scheduler/ports/scheduler.port';
 import { ScheduledJobHandlerRegistry } from '../src/platform/platform-common/scheduler/scheduled-job-handler.registry';
 import { RecurringExecutionPort } from '../src/platform/platform-common/recurring/ports/recurring-execution.port';
@@ -14,7 +14,7 @@ import { BatchOperationHandlerRegistry } from '../src/platform/platform-common/b
 import { ImportHandlerRegistry } from '../src/platform/platform-common/import/import-handler.registry';
 import { configureBatchOperations } from '../src/bootstrap/configure-batch-operations';
 import { configureImports } from '../src/bootstrap/configure-imports';
-import { GenerateRecurringInvoiceUseCase } from './../src/business/sales/invoice/application/usecases/generate-recurring-invoice.usecase';
+import { GenerateRecurringInvoiceUseCase } from './../src/business/sales/invoice/application/use-cases/generate-recurring-invoice.usecase';
 
 describe('App (e2e)', () => {
   let app: NestFastifyApplication;

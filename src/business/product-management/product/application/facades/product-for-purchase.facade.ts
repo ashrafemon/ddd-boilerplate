@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { GetPurchasableProductUseCase } from '../usecases/get-purchasable-product.usecase';
-import { FindPurchasableProductsBySkusUseCase } from '../usecases/find-purchasable-products-by-skus.usecase';
+import { GetPurchasableProductUseCase } from '../use-cases/get-purchasable-product.usecase';
+import { FindPurchasableProductsBySkusUseCase } from '../use-cases/find-purchasable-products-by-skus.usecase';
 import { ProductForPurchasePort } from '@business/product-management/product/public/ports/product-for-purchase.port';
 import { ProductReference } from '@business/product-management/product/public/contracts/product-for-purchase.contract';
 

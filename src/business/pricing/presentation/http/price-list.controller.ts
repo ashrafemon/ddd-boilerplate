@@ -10,14 +10,14 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CreatePriceListUseCase } from '../../application/usecases/create-price-list.usecase';
-import { UpdatePriceListUseCase } from '../../application/usecases/update-price-list.usecase';
-import { AddPriceListLineUseCase } from '../../application/usecases/add-price-list-line.usecase';
-import { RemovePriceListLineUseCase } from '../../application/usecases/remove-price-list-line.usecase';
-import { ActivatePriceListUseCase } from '../../application/usecases/activate-price-list.usecase';
-import { DeactivatePriceListUseCase } from '../../application/usecases/deactivate-price-list.usecase';
-import { ArchivePriceListUseCase } from '../../application/usecases/archive-price-list.usecase';
-import { GetProductPriceUseCase } from '../../application/usecases/get-product-price.usecase';
+import { CreatePriceListUseCase } from '../../application/use-cases/create-price-list.usecase';
+import { UpdatePriceListUseCase } from '../../application/use-cases/update-price-list.usecase';
+import { AddPriceListLineUseCase } from '../../application/use-cases/add-price-list-line.usecase';
+import { RemovePriceListLineUseCase } from '../../application/use-cases/remove-price-list-line.usecase';
+import { ActivatePriceListUseCase } from '../../application/use-cases/activate-price-list.usecase';
+import { DeactivatePriceListUseCase } from '../../application/use-cases/deactivate-price-list.usecase';
+import { ArchivePriceListUseCase } from '../../application/use-cases/archive-price-list.usecase';
+import { GetProductPriceUseCase } from '../../application/use-cases/get-product-price.usecase';
 import { CreatePriceListDto } from './requests/create-price-list.request.dto';
 import { UpdatePriceListDto } from './requests/update-price-list.request.dto';
 import { AddPriceListLineDto } from './requests/add-price-list-line.request.dto';

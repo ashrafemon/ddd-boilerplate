@@ -1,4 +1,4 @@
-import { JsonObject } from '@shared-kernel/types/json-value.type';
+import { JsonObject } from '@common/application/types/json-value';
 
 /**
  * Structurally satisfies condition-engine's EvaluationContext without this

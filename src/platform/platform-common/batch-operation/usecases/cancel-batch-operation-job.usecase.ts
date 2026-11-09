@@ -1,4 +1,4 @@
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { TenantScope } from '@common/application/utils/tenant-scope';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';

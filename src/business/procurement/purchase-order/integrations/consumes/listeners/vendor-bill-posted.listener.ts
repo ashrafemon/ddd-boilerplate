@@ -2,11 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InboxPort } from '@platform/platform-common/inbox/ports/inbox.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { VendorBillPostedListenerEvent } from './vendor-bill-posted.listener.event';
+import { VendorBillPostedListenerEvent } from '../contracts/vendor-bill-posted.listener.event';
 import {
   HandleVendorBillPostedUseCase,
   VendorBillPostedPayload,
-} from '../../../application/usecases/handle-vendor-bill-posted.usecase';
+} from '../../../application/use-cases/handle-vendor-bill-posted.usecase';
 
 @Injectable()
 export class VendorBillPostedListener {

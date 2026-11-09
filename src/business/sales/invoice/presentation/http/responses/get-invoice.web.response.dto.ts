@@ -1,6 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
-import { wireDate } from '@shared-kernel/types/wire-date';
+import { wireDate } from '@common/application/types/wire-date';
 
 const getInvoiceWebSchema = z.object({
   id: z.string(),

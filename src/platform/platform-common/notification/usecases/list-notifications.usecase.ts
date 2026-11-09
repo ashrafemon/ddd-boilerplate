@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PageResult } from '@shared-kernel/types/pagination';
+import { PageResult } from '@common/application/types/pagination';
 import { NotificationRequestRepositoryPort } from '../ports/notification-request-repository.port';
 import { NotificationListQuery, NotificationRequestRecord } from '../notification.types';
 

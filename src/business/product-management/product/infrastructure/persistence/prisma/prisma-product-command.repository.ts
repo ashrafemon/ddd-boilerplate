@@ -5,8 +5,8 @@ import { Product } from '@business/product-management/product/domain/aggregates/
 import { ProductCommandRepository } from '@business/product-management/product/domain/repositories/product-command.repository';
 import { PrismaProductMapper } from './prisma-product.mapper';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
-import { resolveCompanyId } from '@shared-kernel/constants/company';
+import { TenantScope } from '@common/application/utils/tenant-scope';
+import { resolveCompanyId } from '@common/application/constants/company';
 
 @Injectable()
 export class PrismaProductCommandRepository extends ProductCommandRepository {

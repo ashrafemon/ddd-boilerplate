@@ -218,11 +218,11 @@ export default tseslint.config(
     },
   },
 
-  // ------------------------------------------------------------------
-  // Listeners are the ONE place in the business layer allowed to import a
-  // broker package — to obtain the subscribe decorators. They may not use the
-  // raw clients behind them, and they must delegate to use cases.
-  // ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// Listeners are the ONE place in the business layer allowed to import a
+// broker package — to obtain the subscribe decorators. They may not use the
+// raw clients behind them, and they must delegate to use cases.
+// ------------------------------------------------------------------
   {
     files: ['src/business/**/application/integrations/listens/**'],
     rules: {
@@ -234,6 +234,28 @@ export default tseslint.config(
             {
               group: ['@infrastructure/**'],
               message: 'Listeners must delegate to use cases, not import infrastructure clients',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // ------------------------------------------------------------------
+  // Consumes listeners (integrations/consumes/listeners/) follow the same
+  // rule: broker subscribe decorators are allowed here.
+  // ------------------------------------------------------------------
+  {
+    files: ['src/business/**/integrations/consumes/listeners/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: listenerRawClientPaths,
+          patterns: [
+            {
+              group: ['@infrastructure/**'],
+              message: 'Consume listeners must delegate to use cases, not import infrastructure clients',
             },
           ],
         },

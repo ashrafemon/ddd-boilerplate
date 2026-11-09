@@ -6,7 +6,10 @@ import {
   RabbitMqPublisher,
   SqsPublisher,
 } from '../message-publisher.tokens';
-import { DEFAULT_BROKER_TARGET, OutboxEnvelope } from '@infrastructure/outbox/outbox.types';
+import {
+  DEFAULT_BROKER_TARGET,
+  OutboxEnvelope,
+} from '@platform/platform-common/outbox/outbox.types';
 
 /**
  * Use case: publish an envelope to the broker named by `envelope.broker`

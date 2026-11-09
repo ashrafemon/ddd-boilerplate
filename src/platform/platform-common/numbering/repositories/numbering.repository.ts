@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { resolveCompanyId } from '@shared-kernel/constants/company';
+import { resolveCompanyId } from '@common/application/constants/company';
 import { NextNumberOptions, NumberingPort } from '../ports/numbering.port';
 
 /**

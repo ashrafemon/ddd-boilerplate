@@ -1,6 +1,6 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
-import { SkipTenancy } from '@shared-kernel/decorators/skip-tenancy.decorator';
+import { SkipTenancy } from '@common/http/decorators/skip-tenancy.decorator';
 import { MetricsPort } from '../ports/metrics.port';
 
 /**

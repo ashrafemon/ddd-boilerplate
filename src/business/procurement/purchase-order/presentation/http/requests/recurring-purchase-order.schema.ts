@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
+import { JsonObject, JsonValue } from '@common/application/types/json-value';
 
 /** Recursive JSON schema so stored conditions stay typed (no unknown). */
 const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>

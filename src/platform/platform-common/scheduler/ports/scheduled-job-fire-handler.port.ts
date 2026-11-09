@@ -1,4 +1,4 @@
-import { JsonObject } from '@shared-kernel/types/json-value.type';
+import { JsonObject } from '@common/application/types/json-value';
 export interface ScheduledJobPayload {
   /** null for EVENT-triggered dispatch — nothing to lock/release. */
   jobId: string | null;

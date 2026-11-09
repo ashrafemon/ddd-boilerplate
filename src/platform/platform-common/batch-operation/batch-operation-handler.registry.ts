@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { KeyedRegistryBase } from '@shared-kernel/utils/keyed-registry.base';
+import { KeyedRegistryBase } from '@common/application/utils/keyed-registry';
 import { BatchOperationHandler } from './ports/batch-operation-handler.port';
 
 interface RegisteredEntry {

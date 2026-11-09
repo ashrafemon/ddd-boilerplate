@@ -2,7 +2,7 @@ import { Prisma } from '../../../../generated/client';
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { PrismaJson } from '@common/application/utils/prisma-json';
 import { ImportJobRowRepositoryPort } from '../ports/import-job-row-repository.port';
 import {
   ImportJobRowRecord,

@@ -5,8 +5,8 @@ import { Invoice } from '../../../domain/aggregates/invoice.aggregate';
 import { InvoiceCommandRepository } from '../../../domain/repositories/invoice-command.repository';
 import { PrismaInvoiceMapper } from './prisma-invoice.mapper';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
-import { resolveCompanyId } from '@shared-kernel/constants/company';
+import { TenantScope } from '@common/application/utils/tenant-scope';
+import { resolveCompanyId } from '@common/application/constants/company';
 
 @Injectable()
 export class PrismaInvoiceCommandRepository extends InvoiceCommandRepository {

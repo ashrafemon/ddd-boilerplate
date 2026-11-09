@@ -1,4 +1,4 @@
-import { OutboxEventBase } from '@infrastructure/outbox/outbox.types';
+import { OutboxEventBase } from '@platform/platform-common/outbox/outbox.types';
 import { NotificationRequestStatus } from '../notification.types';
 
 /** Raised when a notification request reaches a terminal status. */

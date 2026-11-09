@@ -1,4 +1,4 @@
-import { DomainException } from '@shared-kernel/exceptions/domain.exception';
+import { DomainException } from '@common/application/exceptions/domain.exception';
 
 /** Thrown when a domain module registers a notificationType a second time. */
 export class DuplicateNotificationHandlerRegistrationError extends DomainException {

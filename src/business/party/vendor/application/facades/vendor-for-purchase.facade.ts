@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { GetOrderableVendorUseCase } from '../usecases/get-orderable-vendor.usecase';
-import { FindOrderableVendorsByCodesUseCase } from '../usecases/find-orderable-vendors-by-codes.usecase';
+import { GetOrderableVendorUseCase } from '../use-cases/get-orderable-vendor.usecase';
+import { FindOrderableVendorsByCodesUseCase } from '../use-cases/find-orderable-vendors-by-codes.usecase';
 import { VendorForPurchasePort } from '@business/party/vendor/public/ports/vendor-for-purchase.port';
 import { VendorReference } from '@business/party/vendor/public/contracts/vendor-for-purchase.contract';
 

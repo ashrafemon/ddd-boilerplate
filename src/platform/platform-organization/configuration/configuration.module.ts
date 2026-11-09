@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/platform-common/context/context.module';
-import { CompanyConfigContextMiddleware } from '@shared-kernel/middleware/company-config-context.middleware';
+import { CompanyConfigContextMiddleware } from '@common/http/middleware/company-config-context.middleware';
 import { PrismaCompanyConfigRepository } from './repositories/company-config.repository';
 import { CompanyConfigPort } from './ports/company-config.port';
 

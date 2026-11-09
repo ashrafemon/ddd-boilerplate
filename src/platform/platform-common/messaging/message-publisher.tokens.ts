@@ -1,4 +1,4 @@
-import type { OutboxEnvelope } from '@infrastructure/outbox/outbox.types';
+import type { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
 
 /**
  * Internal contract every broker adapter implements. Not public — the only

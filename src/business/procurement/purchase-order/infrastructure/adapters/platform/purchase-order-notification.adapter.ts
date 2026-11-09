@@ -4,7 +4,7 @@ import {
   Recipient,
   TemplateModel,
 } from '@platform/platform-common/notification/notification.types';
-import { GetPurchaseOrderUseCase } from '../../../application/usecases/get-purchase-order.usecase';
+import { GetPurchaseOrderUseCase } from '../../../application/use-cases/get-purchase-order.usecase';
 import { OrderableVendorPort } from '../../../application/outbound-ports/vendor-query.port';
 
 /**

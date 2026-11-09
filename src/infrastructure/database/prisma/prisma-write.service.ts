@@ -1,5 +1,5 @@
 import { ConfigService } from '@config/config.service';
-import { InfrastructureException } from '@shared-kernel/exceptions/infrastructure.exception';
+import { InfrastructureException } from '@common/application/exceptions/infrastructure.exception';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../../generated/client';

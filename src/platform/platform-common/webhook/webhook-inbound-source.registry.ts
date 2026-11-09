@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { KeyedRegistryBase } from '@shared-kernel/utils/keyed-registry.base';
+import { KeyedRegistryBase } from '@common/application/utils/keyed-registry';
 import { WebhookInboundHandlerPort } from './ports/webhook-inbound-handler.port';
 import { WebhookSignatureVerifier } from './webhook.types';
 import {

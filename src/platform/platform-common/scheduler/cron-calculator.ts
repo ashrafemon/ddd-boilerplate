@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { CronExpressionParser } from 'cron-parser';
-import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
+import { FailureMessage } from '@common/application/utils/failure-message';
 
 /** Pure next-run math — no I/O, so a static value object service, not a port. */
 export class CronCalculator {

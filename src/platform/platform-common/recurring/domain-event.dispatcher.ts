@@ -1,9 +1,9 @@
-import { JsonObject } from '@shared-kernel/types/json-value.type';
-import { FailureMessage } from '@shared-kernel/utils/failure-message.util';
+import { JsonObject } from '@common/application/types/json-value';
+import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
-import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { PrismaJson } from '@common/application/utils/prisma-json';
 import { MessageEnvelope } from '@platform/platform-common/events/ports/in-process-event-bus.port';
 import { ScheduledJobHandlerRegistry } from '@platform/platform-common/scheduler/scheduled-job-handler.registry';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';

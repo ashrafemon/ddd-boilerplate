@@ -1,4 +1,4 @@
-import { PageResult } from '@shared-kernel/types/pagination';
+import { PageResult } from '@common/application/types/pagination';
 import {
   NewNotificationMessage,
   NotificationListQuery,

@@ -1,4 +1,4 @@
-import { PageQuery } from '@shared-kernel/types/pagination';
+import { PageQuery } from '@common/application/types/pagination';
 import { PurchaseOrder } from '../../domain/aggregates/purchase-order.aggregate';
 
 export abstract class PurchaseOrderCommandRepository {

@@ -1,14 +1,14 @@
 import { PriceListQuery } from '@business/pricing/application/queries/price-list.query';
 import { PrismaReadPort } from '@platform/platform-common/context/ports/prisma-read.port';
 import { Injectable } from '@nestjs/common';
-import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
+import { PageQuery, PageResult } from '@common/application/types/pagination';
 import {
   PriceListQueryRecord,
   GetProductPriceResult,
 } from '../../../domain/types/price-list.types';
 import { PrismaPriceListMapper } from './prisma-price-list.mapper';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { TenantScope } from '@common/application/utils/tenant-scope';
 
 @Injectable()
 export class PrismaPriceListQueryRepository extends PriceListQuery {

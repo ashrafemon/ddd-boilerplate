@@ -1,4 +1,4 @@
-import { JsonObject, JsonValue } from '@shared-kernel/types/json-value.type';
+import { JsonObject, JsonValue } from '@common/application/types/json-value';
 export type RecurringTemplateStatus = 'ACTIVE' | 'PAUSED' | 'CANCELLED' | 'COMPLETED';
 export type RecurringTriggerType = 'TIME' | 'EVENT';
 export type RecurringFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';

@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { AuditModule } from '@platform/platform-common/audit/audit.module';
 import { NumberingModule } from '@platform/platform-common/numbering/numbering.module';
-import { OutboxModule } from '@infrastructure/outbox/outbox.module';
+import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
 import { StorageModule } from '@platform/platform-common/storage/storage.module';
 import { ImportReconciliationConsumer } from './import-reconciliation.consumer';
 import { ImportHandlerRegistry } from './import-handler.registry';

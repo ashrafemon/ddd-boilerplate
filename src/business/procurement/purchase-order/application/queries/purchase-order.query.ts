@@ -1,4 +1,4 @@
-import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
+import { PageQuery, PageResult } from '@common/application/types/pagination';
 import {
   PurchaseOrderQueryRecord,
   PurchaseOrderReceiptsQueryRecord,

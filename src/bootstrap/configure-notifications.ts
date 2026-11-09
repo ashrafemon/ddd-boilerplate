@@ -4,8 +4,8 @@ import { NotificationHandler } from '@platform/platform-common/notification/port
 import { NotificationPriority } from '@platform/platform-common/notification/notification.types';
 import { PurchaseOrderModule } from '@business/procurement/purchase-order/purchase-order.module';
 import { PurchaseOrderNotificationAdapter } from '@business/procurement/purchase-order/infrastructure/adapters/platform/purchase-order-notification.adapter';
-import { GoodReceiptNoteModule } from '@business/procurement/good-receipt-note/good-receipt-note.module';
-import { GrnNotificationAdapter } from '@business/procurement/good-receipt-note/infrastructure/adapters/platform/grn-notification.adapter';
+import { GoodReceiptNoteModule } from '@business/procurement/purchase-goods-receipt/purchase-goods-receipt.module';
+import { GrnNotificationAdapter } from '@business/procurement/purchase-goods-receipt/infrastructure/adapters/platform/grn-notification.adapter';
 
 /**
  * Composition-root bridge for the notification opt-in — same precedent as

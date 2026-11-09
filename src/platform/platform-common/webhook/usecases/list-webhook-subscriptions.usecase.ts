@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PageResult } from '@shared-kernel/types/pagination';
+import { PageResult } from '@common/application/types/pagination';
 import { WebhookSubscriptionRepositoryPort } from '../ports/webhook-subscription-repository.port';
 import { WebhookSubscriptionQuery, WebhookSubscriptionRecord } from '../webhook.types';
 

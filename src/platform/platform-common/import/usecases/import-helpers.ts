@@ -1,5 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { TenantScope } from '@common/application/utils/tenant-scope';
 import { randomUUID } from 'crypto';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';
 import { ImportJobRecord } from '../import.types';

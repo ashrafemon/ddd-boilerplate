@@ -1,4 +1,4 @@
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
+import { TenantScope } from '@common/application/utils/tenant-scope';
 import {
   BadRequestException,
   ConflictException,

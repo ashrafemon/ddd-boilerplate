@@ -1,4 +1,4 @@
-import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { PrismaJson } from '@common/application/utils/prisma-json';
 import {
   WebhookDeliveryRecord,
   WebhookDeliveryStatus,

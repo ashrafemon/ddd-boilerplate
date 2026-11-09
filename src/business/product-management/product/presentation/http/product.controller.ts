@@ -10,19 +10,19 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
-import { ChangePriceUseCase } from '../../application/usecases/change-price.usecase';
-import { CreateProductUseCase } from '../../application/usecases/create-product.usecase';
-import { GetProductUseCase } from '../../application/usecases/get-product.usecase';
-import { ListProductsUseCase } from '../../application/usecases/list-products.usecase';
-import { ProductStatusUseCase } from '../../application/usecases/product-status.usecase';
-import { UpdateProductUseCase } from '../../application/usecases/update-product.usecase';
+import { PageQuery, normalizePageQuery } from '@common/application/types/pagination';
+import { ChangePriceUseCase } from '../../application/use-cases/change-price.usecase';
+import { CreateProductUseCase } from '../../application/use-cases/create-product.usecase';
+import { GetProductUseCase } from '../../application/use-cases/get-product.usecase';
+import { ListProductsUseCase } from '../../application/use-cases/list-products.usecase';
+import { ProductStatusUseCase } from '../../application/use-cases/product-status.usecase';
+import { UpdateProductUseCase } from '../../application/use-cases/update-product.usecase';
 import { ChangePriceDto } from './requests/change-price.request.dto';
 import { CreateProductDto } from './requests/create-product.request.dto';
 import { ProductQueryDto } from './requests/query-products.request.dto';
 import { UpdateProductDto } from './requests/update-product.request.dto';
-import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
-import { ApiResponse } from '@shared-kernel/types/api-response.type';
+import { DeviceResponse } from '@common/http/decorators/device-response.decorator';
+import { ApiResponse } from '@common/application/types/api-response';
 import { GetProductMobileResponseDto } from './responses/get-product.mobile.response.dto';
 import { GetProductWebResponseDto } from './responses/get-product.web.response.dto';
 import { ListProductsMobileResponseDto } from './responses/list-products.mobile.response.dto';

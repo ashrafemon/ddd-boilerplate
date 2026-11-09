@@ -6,14 +6,14 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from './config/config.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { PlatformModule } from './platform/platform.module';
-import { HttpExceptionsFilter } from './shared-kernel/filters/http-exception.filter';
-import { DeviceResponseInterceptor } from './shared-kernel/interceptors/device-response.interceptor';
-import { LoggingInterceptor } from './shared-kernel/interceptors/logging.interceptor';
-import { RequestIdInterceptor } from './shared-kernel/interceptors/request-id.interceptor';
-import { ResponseInterceptor } from './shared-kernel/interceptors/response.interceptor';
-import { HttpThrottlerGuard } from './shared-kernel/guards/http-throttler.guard';
-import { RbacGuard } from './shared-kernel/guards/rbac.guard';
-import { AppValidationPipe } from './shared-kernel/pipes/validator.pipe';
+import { HttpExceptionsFilter } from '@common/http/filters/http-exception.filter';
+import { DeviceResponseInterceptor } from '@common/http/interceptors/device-response.interceptor';
+import { LoggingInterceptor } from '@common/http/interceptors/logging.interceptor';
+import { RequestIdInterceptor } from '@common/http/interceptors/request-id.interceptor';
+import { ResponseInterceptor } from '@common/http/interceptors/response.interceptor';
+import { HttpThrottlerGuard } from '@common/http/guards/http-throttler.guard';
+import { RbacGuard } from '@common/http/guards/rbac.guard';
+import { AppValidationPipe } from '@common/http/pipes/validator.pipe';
 import { TenancyAuthGuard } from '@platform/platform-common/context/guards/tenancy-auth.guard';
 
 @Module({

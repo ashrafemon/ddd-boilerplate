@@ -2,7 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { IdempotencyModule } from '@platform/platform-common/idempotency/idempotency.module';
-import { OutboxModule } from '@infrastructure/outbox/outbox.module';
+import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
 import { WebhookEventTypeRegistry } from './webhook-event-type.registry';
 import { WebhookInboundSourceRegistry } from './webhook-inbound-source.registry';
 import { WebhookDispatchDispatcher } from './webhook-dispatch.dispatcher';

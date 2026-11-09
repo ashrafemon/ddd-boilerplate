@@ -1,4 +1,4 @@
-import { PageQuery, PageResult } from '@shared-kernel/types/pagination';
+import { PageQuery, PageResult } from '@common/application/types/pagination';
 import { InvoiceQueryRecord } from '../../domain/types/invoice.types';
 
 /** QUERY repository port (abstract class = DI token) — read side only. */

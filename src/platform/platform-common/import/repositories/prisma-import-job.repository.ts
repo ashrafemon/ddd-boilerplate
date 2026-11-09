@@ -2,8 +2,8 @@ import { Prisma } from '../../../../generated/client';
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { PageResult, buildPageResult } from '@shared-kernel/types/pagination';
-import { PrismaJson } from '@shared-kernel/utils/prisma-json.util';
+import { PageResult, buildPageResult } from '@common/application/types/pagination';
+import { PrismaJson } from '@common/application/utils/prisma-json';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';
 import {
   ColumnMapping,

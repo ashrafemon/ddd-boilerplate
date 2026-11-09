@@ -10,8 +10,8 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ApiResponse } from '@shared-kernel/types/api-response.type';
-import { PageResult } from '@shared-kernel/types/pagination';
+import { ApiResponse } from '@common/application/types/api-response';
+import { PageResult } from '@common/application/types/pagination';
 import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
 import { GetScheduledJobStatusUseCase } from '../usecases/get-scheduled-job-status.usecase';
 import { GetSchedulerHealthMetricsUseCase } from '../usecases/get-scheduler-health-metrics.usecase';

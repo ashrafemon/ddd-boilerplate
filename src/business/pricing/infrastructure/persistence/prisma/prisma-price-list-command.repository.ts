@@ -5,8 +5,8 @@ import { PriceList } from '@business/pricing/domain/aggregates/price-list.aggreg
 import { PriceListCommandRepository } from '@business/pricing/domain/repositories/price-list-command.repository';
 import { PrismaPriceListMapper } from './prisma-price-list.mapper';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { TenantScope } from '@shared-kernel/utils/tenant-scope.util';
-import { resolveCompanyId } from '@shared-kernel/constants/company';
+import { TenantScope } from '@common/application/utils/tenant-scope';
+import { resolveCompanyId } from '@common/application/constants/company';
 
 @Injectable()
 export class PrismaPriceListCommandRepository extends PriceListCommandRepository {

@@ -1,5 +1,5 @@
 import { ConfigService } from '@config/config.service';
-import { InfrastructureException } from '@shared-kernel/exceptions/infrastructure.exception';
+import { InfrastructureException } from '@common/application/exceptions/infrastructure.exception';
 import { Injectable, Logger, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
 

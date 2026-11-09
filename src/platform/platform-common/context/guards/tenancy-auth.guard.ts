@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@config/config.service';
-import { SKIP_TENANCY_KEY } from '@shared-kernel/decorators/skip-tenancy.decorator';
+import { SKIP_TENANCY_KEY } from '@common/http/decorators/skip-tenancy.decorator';
 
 /** Key under which the guard stashes the verified identity on the raw request. */
 export const VERIFIED_IDENTITY_REQUEST_KEY = 'verifiedIdentity';

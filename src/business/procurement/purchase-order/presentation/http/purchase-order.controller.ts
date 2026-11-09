@@ -12,23 +12,27 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PageQuery, normalizePageQuery } from '@shared-kernel/types/pagination';
+import { PageQuery, normalizePageQuery } from '@common/application/types/pagination';
 import type { RecurringTemplateRecord } from '@platform/platform-common/recurring/recurring-template.types';
-import { AddPurchaseOrderLineUseCase } from '../../application/usecases/add-purchase-order-line.usecase';
-import { UpdatePurchaseOrderUseCase } from '../../application/usecases/update-purchase-order.usecase';
-import { UpdatePurchaseOrderLineUseCase } from '../../application/usecases/update-purchase-order-line.usecase';
-import { GetPurchaseOrderReceiptsUseCase } from '../../application/usecases/get-purchase-order-receipts.usecase';
-import { GetPurchaseOrderRemainingQuantitiesUseCase } from '../../application/usecases/get-purchase-order-remaining-quantities.usecase';
-import { CreatePurchaseOrderUseCase } from '../../application/usecases/create-purchase-order.usecase';
-import { CreateRecurringPurchaseOrderUseCase } from '../../application/usecases/create-recurring-purchase-order.usecase';
-import { CreateRecurringFromPurchaseOrderUseCase } from '../../application/usecases/create-recurring-from-purchase-order.usecase';
-import { GetPurchaseOrderUseCase } from '../../application/usecases/get-purchase-order.usecase';
-import { ListPurchaseOrdersUseCase } from '../../application/usecases/list-purchase-orders.usecase';
-import { PurchaseOrderTransitionUseCase } from '../../application/usecases/purchase-order-transition.usecase';
-import { AmendPurchaseOrderUseCase } from '../../application/usecases/amend-purchase-order.usecase';
-import { IssuePurchaseOrderUseCase } from '../../application/usecases/issue-purchase-order.usecase';
-import { ClosePurchaseOrderUseCase } from '../../application/usecases/close-purchase-order.usecase';
-import { RemovePurchaseOrderLineUseCase } from '../../application/usecases/remove-purchase-order-line.usecase';
+import { AddPurchaseOrderLineUseCase } from '../../application/use-cases/add-purchase-order-line.usecase';
+import { UpdatePurchaseOrderUseCase } from '../../application/use-cases/update-purchase-order.usecase';
+import { UpdatePurchaseOrderLineUseCase } from '../../application/use-cases/update-purchase-order-line.usecase';
+import { GetPurchaseOrderReceiptsUseCase } from '../../application/use-cases/get-purchase-order-receipts.usecase';
+import { GetPurchaseOrderRemainingQuantitiesUseCase } from '../../application/use-cases/get-purchase-order-remaining-quantities.usecase';
+import { CreatePurchaseOrderUseCase } from '../../application/use-cases/create-purchase-order.usecase';
+import { CreateRecurringPurchaseOrderUseCase } from '../../application/use-cases/create-recurring-purchase-order.usecase';
+import { CreateRecurringFromPurchaseOrderUseCase } from '../../application/use-cases/create-recurring-from-purchase-order.usecase';
+import { GetPurchaseOrderUseCase } from '../../application/use-cases/get-purchase-order.usecase';
+import { ListPurchaseOrdersUseCase } from '../../application/use-cases/list-purchase-orders.usecase';
+import { SubmitPurchaseOrderUseCase } from '../../application/use-cases/submit-purchase-order.usecase';
+import { ApprovePurchaseOrderUseCase } from '../../application/use-cases/approve-purchase-order.usecase';
+import { RejectPurchaseOrderUseCase } from '../../application/use-cases/reject-purchase-order.usecase';
+import { CancelPurchaseOrderUseCase } from '../../application/use-cases/cancel-purchase-order.usecase';
+import { CompletePurchaseOrderUseCase } from '../../application/use-cases/complete-purchase-order.usecase';
+import { AmendPurchaseOrderUseCase } from '../../application/use-cases/amend-purchase-order.usecase';
+import { IssuePurchaseOrderUseCase } from '../../application/use-cases/issue-purchase-order.usecase';
+import { ClosePurchaseOrderUseCase } from '../../application/use-cases/close-purchase-order.usecase';
+import { RemovePurchaseOrderLineUseCase } from '../../application/use-cases/remove-purchase-order-line.usecase';
 import { CreatePurchaseOrderDto } from './requests/create-purchase-order.request.dto';
 import { AddLineDto } from './requests/add-purchase-order-line.request.dto';
 import { UpdatePurchaseOrderDto } from './requests/update-purchase-order.request.dto';
@@ -43,27 +47,27 @@ import {
   type GetPurchaseOrderMobileResponse,
 } from './responses/get-purchase-order.mobile.response.dto';
 import {
-  GetPurchaseOrderWebResponseDto,
-  type GetPurchaseOrderWebResponse,
-} from './responses/get-purchase-order.web.response.dto';
+  GetPurchaseOrderResponseDto,
+  type GetPurchaseOrderResponse,
+} from './responses/get-purchase-order.response.dto';
 import {
   ListPurchaseOrdersMobileResponseDto,
   type ListPurchaseOrdersMobileResponse,
 } from './responses/list-purchase-orders.mobile.response.dto';
 import {
-  ListPurchaseOrdersWebResponseDto,
-  type ListPurchaseOrdersWebResponse,
-} from './responses/list-purchase-orders.web.response.dto';
+  ListPurchaseOrdersResponseDto,
+  type ListPurchaseOrdersResponse,
+} from './responses/list-purchase-orders.response.dto';
 import { IdResponse } from './responses/id.response.dto';
-import { DeviceResponse } from '@shared-kernel/decorators/device-response.decorator';
+import { DeviceResponse } from '@common/http/decorators/device-response.decorator';
 import { Idempotent } from '@platform/platform-common/idempotency/http/idempotent.decorator';
 import { CacheResponseInterceptor } from '@platform/platform-common/cache/interceptors/cache-response.interceptor';
 import { Cacheable } from '@platform/platform-common/cache/http/cacheable.decorator';
 import { CacheEvict } from '@platform/platform-common/cache/http/cache-evict.decorator';
-import { ApiResponse } from '@shared-kernel/types/api-response.type';
+import { ApiResponse } from '@common/application/types/api-response';
 
-type PurchaseOrderGetResponse = GetPurchaseOrderMobileResponse | GetPurchaseOrderWebResponse;
-type PurchaseOrderListResponse = ListPurchaseOrdersMobileResponse | ListPurchaseOrdersWebResponse;
+type PurchaseOrderGetResponse = GetPurchaseOrderMobileResponse | GetPurchaseOrderResponse;
+type PurchaseOrderListResponse = ListPurchaseOrdersMobileResponse | ListPurchaseOrdersResponse;
 type PurchaseOrderReceiptsResponse = Awaited<
   ReturnType<GetPurchaseOrderReceiptsUseCase['execute']>
 >;
@@ -83,7 +87,11 @@ export class PurchaseOrderController {
     private readonly removePurchaseOrderLineUseCase: RemovePurchaseOrderLineUseCase,
     private readonly getPurchaseOrderReceiptsUseCase: GetPurchaseOrderReceiptsUseCase,
     private readonly getPurchaseOrderRemainingQuantitiesUseCase: GetPurchaseOrderRemainingQuantitiesUseCase,
-    private readonly purchaseOrderTransitionUseCase: PurchaseOrderTransitionUseCase,
+    private readonly submitPurchaseOrderUseCase: SubmitPurchaseOrderUseCase,
+    private readonly approvePurchaseOrderUseCase: ApprovePurchaseOrderUseCase,
+    private readonly rejectPurchaseOrderUseCase: RejectPurchaseOrderUseCase,
+    private readonly cancelPurchaseOrderUseCase: CancelPurchaseOrderUseCase,
+    private readonly completePurchaseOrderUseCase: CompletePurchaseOrderUseCase,
     private readonly amendPurchaseOrderUseCase: AmendPurchaseOrderUseCase,
     private readonly issuePurchaseOrderUseCase: IssuePurchaseOrderUseCase,
     private readonly closePurchaseOrderUseCase: ClosePurchaseOrderUseCase,
@@ -145,7 +153,7 @@ export class PurchaseOrderController {
   @Get()
   @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'List purchase orders' })
-  @DeviceResponse(ListPurchaseOrdersMobileResponseDto, ListPurchaseOrdersWebResponseDto)
+  @DeviceResponse(ListPurchaseOrdersMobileResponseDto, ListPurchaseOrdersResponseDto)
   async list(
     @Query() query: PurchaseOrderQueryDto,
   ): Promise<ApiResponse<PurchaseOrderListResponse>> {
@@ -160,7 +168,7 @@ export class PurchaseOrderController {
   @Get(':id')
   @Cacheable({ resource: 'purchase-order' })
   @ApiOperation({ summary: 'Get a purchase order by id' })
-  @DeviceResponse(GetPurchaseOrderMobileResponseDto, GetPurchaseOrderWebResponseDto)
+  @DeviceResponse(GetPurchaseOrderMobileResponseDto, GetPurchaseOrderResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<PurchaseOrderGetResponse>> {
     const purchaseOrder = await this.getPurchaseOrderUseCase.execute(id);
     return { data: purchaseOrder, message: 'Purchase order fetched' };
@@ -226,7 +234,7 @@ export class PurchaseOrderController {
   @HttpCode(HttpStatus.OK)
   @CacheEvict({ resource: 'purchase-order' })
   async submit(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
-    const poId = await this.purchaseOrderTransitionUseCase.execute({ id, transition: 'submit' });
+    const poId = await this.submitPurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order submitted' };
   }
 
@@ -235,7 +243,7 @@ export class PurchaseOrderController {
   @HttpCode(HttpStatus.OK)
   @CacheEvict({ resource: 'purchase-order' })
   async approve(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
-    const poId = await this.purchaseOrderTransitionUseCase.execute({ id, transition: 'approve' });
+    const poId = await this.approvePurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order approved' };
   }
 
@@ -264,11 +272,7 @@ export class PurchaseOrderController {
     @Param('id') id: string,
     @Body() dto: RejectPurchaseOrderDto,
   ): Promise<ApiResponse<IdResponse>> {
-    const poId = await this.purchaseOrderTransitionUseCase.execute({
-      id,
-      transition: 'reject',
-      reason: dto.reason,
-    });
+    const poId = await this.rejectPurchaseOrderUseCase.execute(id, dto.reason);
     return { data: { id: poId.toString() }, message: 'Purchase order rejected' };
   }
 
@@ -277,7 +281,7 @@ export class PurchaseOrderController {
   @HttpCode(HttpStatus.OK)
   @CacheEvict({ resource: 'purchase-order' })
   async cancel(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
-    const poId = await this.purchaseOrderTransitionUseCase.execute({ id, transition: 'cancel' });
+    const poId = await this.cancelPurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order cancelled' };
   }
 
@@ -286,7 +290,7 @@ export class PurchaseOrderController {
   @HttpCode(HttpStatus.OK)
   @CacheEvict({ resource: 'purchase-order' })
   async complete(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
-    const poId = await this.purchaseOrderTransitionUseCase.execute({ id, transition: 'complete' });
+    const poId = await this.completePurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order completed' };
   }
 

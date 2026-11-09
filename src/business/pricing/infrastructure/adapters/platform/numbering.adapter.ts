@@ -9,6 +9,6 @@ export class NumberingAdapter implements NumberingPort {
     const num = Math.floor(Math.random() * 10 ** length)
       .toString()
       .padStart(length, '0');
-    return `${prefix}${num}`;
+    return Promise.resolve(`${prefix}${num}`);
   }
 }

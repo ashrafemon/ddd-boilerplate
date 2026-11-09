@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await -- in-memory test double: the port is async, the storage is a Map */
 import { randomUUID } from 'crypto';
-import { PageResult } from '@shared-kernel/types/pagination';
+import { PageResult } from '@common/application/types/pagination';
 import { WebhookSubscriptionRepositoryPort } from '@platform/platform-common/webhook/ports/webhook-subscription-repository.port';
 import {
   NewWebhookSubscription,

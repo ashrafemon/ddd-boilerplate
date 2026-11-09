@@ -13,9 +13,9 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
-import { ApiResponse } from '@shared-kernel/types/api-response.type';
-import { normalizePageQuery } from '@shared-kernel/types/pagination';
-import { PageResult } from '@shared-kernel/types/pagination';
+import { ApiResponse } from '@common/application/types/api-response';
+import { normalizePageQuery } from '@common/application/types/pagination';
+import { PageResult } from '@common/application/types/pagination';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ChannelProviderRegistry } from '../channel-provider.registry';
 import { NotificationHandlerRegistry } from '../notification-handler.registry';
