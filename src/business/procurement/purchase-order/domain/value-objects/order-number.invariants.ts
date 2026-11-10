@@ -1,10 +1,12 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-
-invariantRegistry.register<{ orderNumber: string }>('order-number.create', {
-  name: 'order-number-required',
-  check: ({ orderNumber }) => {
-    if (!orderNumber.trim()) {
-      throw Object.assign(new Error('Order number cannot be empty'), { statusCode: 422 });
+export class OrderNumberInvariants {
+  static enforceOrderNumberCreate(orderNumber: string): void {
+    if (!orderNumber?.trim()) {
+      throw Object.assign(new Error('Order number is required'), { statusCode: 422 });
     }
-  },
-});
+    if (!/^[A-Z0-9-]{2,32}$/.test(orderNumber.trim())) {
+      throw Object.assign(new Error('Order number must match PO-<identifier>'), {
+        statusCode: 422,
+      });
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
+import { StockMovementInvariants } from './stock-movement.invariants';
 import { StockMovementRecorded } from '../events/stock-movement-recorded.event';
 import { StockMovementProps } from '../types/stock-movement.types';
 import { StockMovementId } from '../value-objects/stock-movement-id.vo';
@@ -85,8 +85,8 @@ export class StockMovement extends AggregateRoot<StockMovementId> {
     effectiveDate: Date;
     reversalOfId: string | null;
   }): StockMovement {
-    invariantRegistry.enforce('stock-movement.quantity', { quantity: input.quantity });
-    invariantRegistry.enforce('stock-movement.type', { movementType: input.movementType });
+    StockMovementInvariants.enforceStockMovementQuantity(input.quantity);
+    StockMovementInvariants.enforceStockMovementType(input.movementType);
 
     const movement = StockMovement.instantiate(
       StockMovementId.generate(),

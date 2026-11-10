@@ -46,6 +46,10 @@ src/business/<context>/<module>/
 └── <module>.module.ts
 ```
 
+## Documentation reference
+
+See [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure.xlsx) for the complete project structure and detailed file organization reference.
+
 ## Naming conventions
 
 | Item | Convention | Example |

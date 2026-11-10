@@ -50,18 +50,20 @@ export class PrismaAuditRepository implements AuditPort {
 const SENSITIVE_KEYS = /(password|secret|token|authorization|pin|otp)/i;
 const MAX_FIELD_JSON = 4_000;
 
-function truncate(value: unknown): unknown {
-  if (value === null || typeof value === 'number' || typeof value === 'boolean') {
-    return value;
+export class AuditUtils {
+  static truncate(value: unknown): unknown {
+    if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+      return value;
+    }
+    const text = typeof value === 'string' ? value : AuditUtils.safeStringify(value);
+    return text.length > MAX_FIELD_JSON ? `${text.slice(0, MAX_FIELD_JSON)}…[truncated]` : value;
   }
-  const text = typeof value === 'string' ? value : safeStringify(value);
-  return text.length > MAX_FIELD_JSON ? `${text.slice(0, MAX_FIELD_JSON)}…[truncated]` : value;
-}
 
-function safeStringify(value: unknown): string {
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return String(value);
+  static safeStringify(value: unknown): string {
+    try {
+      return JSON.stringify(value) ?? String(value);
+    } catch {
+      return String(value);
+    }
   }
 }

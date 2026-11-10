@@ -1,108 +1,55 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-
-invariantRegistry.register<{ purchaseOrderId: string }>('grn.create', {
-  name: 'grn-create-valid',
-  check: ({ purchaseOrderId }) => {
-    if (!purchaseOrderId) {
-      throw Object.assign(new Error('Purchase order ID is required to create a GRN'), {
-        statusCode: 422,
-      });
+export class GrnInvariants {
+  static enforceGrnCreate(purchaseOrderId: string): void {
+    if (!purchaseOrderId?.trim()) {
+      throw Object.assign(new Error('Purchase order ID is required'), { statusCode: 422 });
     }
-  },
-});
+  }
 
-invariantRegistry.register<{ lineCount: number }>('grn.has-lines', {
-  name: 'grn-has-lines',
-  check: ({ lineCount }) => {
+  static enforceGrnHasLines(lineCount: number): void {
     if (lineCount < 1) {
-      throw Object.assign(new Error('GRN must have at least one line'), {
-        statusCode: 422,
-      });
+      throw Object.assign(new Error('GRN must have at least one line'), { statusCode: 422 });
     }
-  },
-});
+  }
 
-invariantRegistry.register<{ reversalOfId: string }>('grn.reversal', {
-  name: 'grn-reversal-links-original',
-  check: ({ reversalOfId }) => {
+  static enforceGrnReversal(reversalOfId: string): void {
     if (!reversalOfId) {
-      throw Object.assign(new Error('A reversal document must reference its original GRN'), {
-        statusCode: 422,
-      });
+      throw Object.assign(new Error('Reversal requires reversalOfId'), { statusCode: 422 });
     }
-  },
-});
+  }
 
-/** GRN-05: a compensation mirrors the original as NEGATIVE quantities. */
-invariantRegistry.register<{
-  receivedQuantity: number;
-  acceptedQuantity: number;
-  rejectedQuantity: number;
-}>('grn.reversal-balance', {
-  name: 'grn-reversal-mirrors-original',
-  check: ({ receivedQuantity, acceptedQuantity, rejectedQuantity }) => {
-    if (acceptedQuantity + rejectedQuantity !== receivedQuantity) {
-      throw Object.assign(new Error('Reversal accepted + rejected must equal received quantity'), {
-        statusCode: 422,
-      });
-    }
-    if (receivedQuantity >= 0) {
-      throw Object.assign(
-        new Error('Reversal quantities must be negative (compensating document)'),
-        { statusCode: 422 },
-      );
-    }
-    if (acceptedQuantity > 0 || rejectedQuantity > 0) {
-      throw Object.assign(new Error('Reversal accepted/rejected cannot be positive'), {
-        statusCode: 422,
-      });
-    }
-  },
-});
-
-invariantRegistry.register<{ status: string }>('grn.editable', {
-  name: 'grn-editable',
-  check: ({ status }) => {
+  static enforceGrnEditable(status: string): void {
     if (status !== 'DRAFT') {
-      throw Object.assign(new Error('GRN cannot be modified in its current status'), {
-        statusCode: 422,
-      });
+      throw Object.assign(new Error('Only draft GRNs can be edited'), { statusCode: 422 });
     }
-  },
-});
+  }
 
-invariantRegistry.register<{ status: string; to: string }>('grn.status-transition', {
-  name: 'grn-valid-transition',
-  check: ({ status, to }) => {
+  static enforceGrnStatusTransition(status: string, to: string): void {
     if (status === to) return;
-
-    const validTransitions: Record<string, string[]> = {
-      DRAFT: ['RECEIVED', 'POSTED', 'CANCELLED'],
-      RECEIVED: ['POSTED', 'INSPECTED', 'COMPLETED', 'CANCELLED'],
-      POSTED: ['INSPECTED', 'MATCHED', 'REVERSED'],
-      INSPECTED: ['POSTED', 'MATCHED', 'REVERSED'],
-      MATCHED: [],
-      COMPLETED: [],
+    const allowed: Record<string, string[]> = {
+      DRAFT: ['SUBMITTED'],
+      SUBMITTED: ['APPROVED'],
+      APPROVED: ['ISSUED', 'CANCELLED'],
+      ISSUED: ['CANCELLED'],
       CANCELLED: [],
-      REVERSED: [],
     };
-
-    if (!validTransitions[status]?.includes(to)) {
-      throw Object.assign(new Error('Invalid status transition for GRN'), {
+    if (!allowed[status].includes(to)) {
+      throw Object.assign(new Error(`Invalid GRN status transition: ${status} -> ${to}`), {
         statusCode: 422,
       });
     }
-  },
-});
+  }
 
-/** GRN-06: only a COMPLETED (posted) GRN can be reversed. */
-invariantRegistry.register<{ status: string }>('grn.reversible', {
-  name: 'grn-reversible',
-  check: ({ status }) => {
-    if (status !== 'COMPLETED') {
-      throw Object.assign(new Error(`Only a posted GRN can be reversed (status: ${status})`), {
+  static enforceGrnReversible(status: string): void {
+    if (status !== 'APPROVED') {
+      throw Object.assign(new Error('Only approved GRNs can be reversed'), { statusCode: 422 });
+    }
+  }
+
+  static enforceGrnInspectionBalance(expectedQuantity: number, receivedQuantity: number): void {
+    if (receivedQuantity > expectedQuantity) {
+      throw Object.assign(new Error(`Received quantity exceeds expected quantity`), {
         statusCode: 422,
       });
     }
-  },
-});
+  }
+}

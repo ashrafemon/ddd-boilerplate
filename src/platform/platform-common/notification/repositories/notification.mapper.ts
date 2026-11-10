@@ -174,6 +174,12 @@ export class NotificationMapper {
   }
 }
 
+class NotificationUtils {
+  static formatTime(date: Date): string {
+    return date.toISOString().slice(11, 19);
+  }
+}
+
 function formatTime(date: Date): string {
-  return date.toISOString().slice(11, 19);
+  return NotificationUtils.formatTime(date);
 }

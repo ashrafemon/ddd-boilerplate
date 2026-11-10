@@ -1,5 +1,6 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
+import { GrnInvariants } from './grn.invariants';
+import { enforceGrnLineQuantity } from '../entities/grn-line.entity.invariants';
 import { GrnId } from '../value-objects/grn-id.vo';
 import { GrnLine, GrnProps, GrnStatus, TrackingEntry } from '../types/grn.types';
 import { GrnTotalsService } from '../services/grn-totals.service';
@@ -8,8 +9,6 @@ import { GoodsReceiptPosted } from '../events/grn.posted.event';
 import { GrnLineAdded } from '../events/grn.line-added.event';
 import { GrnReceived } from '../events/grn.received.event';
 import { GrnCancelled } from '../events/grn.cancelled.event';
-import './grn.invariants';
-import '../entities/grn-line.entity.invariants';
 
 export class GoodReceiptNote extends AggregateRoot<GrnId> {
   private props: GrnProps;
@@ -82,7 +81,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
   }
 
   private assertEditable(): void {
-    invariantRegistry.enforce('grn.editable', { status: this.props.status });
+    GrnInvariants.enforceGrnEditable(this.props.status);
   }
 
   addLine(
@@ -92,7 +91,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
     unitPrice: number,
   ): void {
     this.assertEditable();
-    invariantRegistry.enforce('grn.line-quantity', { receivedQuantity });
+    GrnLineInvariants.enforceGrnLineQuantity(receivedQuantity);
 
     const existing = this.props.lines.find(line => line.productId === productId);
     if (existing) {
@@ -110,11 +109,8 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
   }
 
   receive(actorId?: string): void {
-    invariantRegistry.enforce('grn.has-lines', { lineCount: this.props.lines.length });
-    invariantRegistry.enforce('grn.status-transition', {
-      status: this.props.status,
-      to: GrnStatus.RECEIVED,
-    });
+    GrnInvariants.enforceGrnHasLines(this.props.lines.length);
+    GrnInvariants.enforceGrnStatusTransition(this.props.status, GrnStatus.RECEIVED);
     this.props.status = GrnStatus.RECEIVED;
     this.props.receivedAt = new Date();
     this.props.receivedBy = actorId ?? null;
@@ -127,10 +123,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
    * the legacy `PATCH /grn/:id/complete` path passes none and leaves it null.
    */
   complete(actorId?: string): void {
-    invariantRegistry.enforce('grn.status-transition', {
-      status: this.props.status,
-      to: GrnStatus.COMPLETED,
-    });
+    GrnInvariants.enforceGrnStatusTransition(this.props.status, GrnStatus.COMPLETED);
     this.props.status = GrnStatus.COMPLETED;
     this.props.postedBy = actorId ?? null;
     this.props.updatedAt = new Date();
@@ -150,10 +143,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
   }
 
   cancel(actorId?: string): void {
-    invariantRegistry.enforce('grn.status-transition', {
-      status: this.props.status,
-      to: GrnStatus.CANCELLED,
-    });
+    GrnInvariants.enforceGrnStatusTransition(this.props.status, GrnStatus.CANCELLED);
     this.props.status = GrnStatus.CANCELLED;
     this.props.cancelledBy = actorId ?? null;
     this.props.updatedAt = new Date();
@@ -185,11 +175,10 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
           statusCode: 422,
         });
       }
-      invariantRegistry.enforce('grn.inspection-balance', {
-        receivedQuantity: line.receivedQuantity,
-        acceptedQuantity: result.acceptedQuantity,
-        rejectedQuantity: result.rejectedQuantity,
-      });
+      GrnInvariants.enforceGrnInspectionBalance(
+        line.receivedQuantity,
+        result.acceptedQuantity + result.rejectedQuantity,
+      );
       this.props.lines = this.props.lines.map(l =>
         l.productId === result.productId
           ? l.withInspection(result.acceptedQuantity, result.rejectedQuantity)

@@ -1,10 +1,10 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-
-invariantRegistry.register<{ grnNumber: string }>('grn-number.create', {
-  name: 'grn-number-required',
-  check: ({ grnNumber }) => {
-    if (!grnNumber.trim()) {
-      throw Object.assign(new Error('GRN number cannot be empty'), { statusCode: 422 });
+export class GrnNumberInvariants {
+  static enforceGrnNumberFormat(grnNumber: string): void {
+    if (!grnNumber?.trim()) {
+      throw Object.assign(new Error('GRN number is required'), { statusCode: 422 });
     }
-  },
-});
+    if (!/^GRN-[A-Z0-9-]{1,32}$/.test(grnNumber.trim())) {
+      throw Object.assign(new Error('GRN number must match GRN-<identifier>'), { statusCode: 422 });
+    }
+  }
+}

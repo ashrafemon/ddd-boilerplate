@@ -1,8 +1,5 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-
-invariantRegistry.register<{ name: string }>('vendor-name.create', {
-  name: 'vendor-name-length',
-  check: ({ name }) => {
+export class VendorNameInvariants {
+  static enforceVendorName(name: string): void {
     const normalized = name.trim();
     if (!normalized) {
       throw Object.assign(new Error('Vendor name cannot be empty'), { statusCode: 422 });
@@ -12,5 +9,5 @@ invariantRegistry.register<{ name: string }>('vendor-name.create', {
         statusCode: 422,
       });
     }
-  },
-});
+  }
+}

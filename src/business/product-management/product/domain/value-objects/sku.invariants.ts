@@ -1,8 +1,5 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-
-invariantRegistry.register<{ sku: string }>('sku.create', {
-  name: 'sku-format',
-  check: ({ sku }) => {
+export class SkuInvariants {
+  static enforceSkuFormat(sku: string): void {
     const normalized = sku.trim().toUpperCase();
     if (!normalized) {
       throw Object.assign(new Error('SKU cannot be empty'), { statusCode: 422 });
@@ -12,5 +9,5 @@ invariantRegistry.register<{ sku: string }>('sku.create', {
         statusCode: 422,
       });
     }
-  },
-});
+  }
+}

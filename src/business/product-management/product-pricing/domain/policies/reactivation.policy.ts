@@ -1,10 +1,7 @@
-import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { PriceListStatus } from '../types/price-list.enum';
-import { PriceListState } from '../types/price-list.types';
 
-policyRegistry.register<PriceListState>('price-list.reactivation', {
-  name: 'archived-reactivation',
-  evaluate: ({ status }) => {
+export class PriceListReactivationPolicy {
+  static enforcePriceListReactivation(status: PriceListStatus): boolean {
     return status !== PriceListStatus.ARCHIVED;
-  },
-});
+  }
+}

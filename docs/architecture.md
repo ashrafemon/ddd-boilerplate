@@ -1,35 +1,117 @@
-# ERP Boilerplate — Architecture & Reference
+const VARIABLE_PATTERN = /\{\{\s*([\w.]+)\s*\}\}/g;
 
-NestJS 11 + TypeScript (strict) + Prisma 7 + PostgreSQL. DDD/hexagonal modular monolith with
-transactional outbox, RBAC/ABAC authorization, multi-tenancy, and strict business↔infrastructure
-boundaries enforced by ESLint.
+/**
+ * Pure (version, model) -> subject/body function. Deterministic,
+ * provider-agnostic, no side effects — knows nothing about a channel or
+ * provider. Interpolates `{{key}}`/`{{a.b}}` placeholders against the flat
+ * model; a missing key renders as an empty string rather than throwing, so a
+ * template author's typo fails a lint pass, not a recipient's send.
+ */
+@Injectable()
+export class TemplateRenderer {
+  render(version: NotificationTemplateVersion, model: TemplateModel): RenderedTemplate {
+    return {
+      subject: version.subject ? TemplateRenderer.interpolate(version.subject, model) : undefined,
+      body: TemplateRenderer.interpolate(version.body, model),
+    };
+  }
+}
 
-## Top-level folder map
+export class TemplateRendererUtils {
+  static interpolate(source: string, model: TemplateModel): string {
+    return source.replace(VARIABLE_PATTERN, (_match, path: string) => {
+      const value = TemplateRendererUtils.resolvePath(model, path);
+      return TemplateRendererUtils.formatValue(value);
+    });
+  }
 
-```
-src/
-├── app.module.ts            # root composition root + global interceptors/filter/pipe
-├── main.ts                  # entry point, calls bootstrap()
-├── config/                  # .env-driven typed configuration blocks + ConfigService facade
-├── shared-kernel/           # technical NestJS concerns (filters, interceptors, pipes,
-│                            # decorators, exceptions, types, middleware, guards)
-├── bootstrap/               # app bootstrap steps + composition-root bridges
-├── infrastructure/          # third-party client init ONLY (Prisma, Redis, RabbitMQ,
-│                            # Kafka, SQS, SES, S3, CLS)
-├── platform/                # services exposed as ports (outbox, events, messaging,
-│                            # context, cache, audit, numbering, configuration,
-│                            # notification, observability, storage, condition-engine,
-│                            # locking, idempotency, scheduler, recurring, batch-operation,
-│                            # import, saga, webhook, authentication, authorization, identity)
-├── generated/               # Prisma-generated client (DO NOT EDIT)
-└── business/
-    ├── shared-business/     # framework-independent domain primitives + registries
-    ├── party/vendor/                    # Vendor aggregate       (context: party)
-    ├── procurement/product/             # Product aggregate      (context: procurement)
-    ├── procurement/purchase-order/      # PurchaseOrder aggregate (context: procurement)
-    ├── procurement/good-receipt-note/   # GoodReceiptNote aggregate (context: procurement)
-    └── sales/invoice/                   # Invoice aggregate       (context: sales)
-```
+  static formatValue(value: unknown): string {
+    if (value === undefined || value === null) {
+      return '';
+    }
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    return JSON.stringify(value);
+  }
+
+  static resolvePath(model: TemplateModel, path: string): unknown {
+    return path.split('.').reduce<unknown>((acc, key) => {
+      if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
+        return (acc as Record<string, unknown>)[key];
+      }
+      return undefined;
+    }, model);
+  }
+}
+
+/**
+ * Prisma-backed audit trail. All DB access goes through the TransactionHost
+ * so audit rows commit atomically with the business change. Request/correlation
+ * ids and tenant/organization scope are filled from `RequestContextPort` when
+ * the caller does not provide them.
+ */
+@Injectable()
+export class PrismaAuditRepository implements AuditPort {
+  constructor(
+    private readonly txHost: TransactionHost<TransactionalAdapterPrisma>,
+    private readonly requestContext: RequestContextPort,
+  ) {}
+
+  public async record(entry: AuditEntry): Promise<void> {
+    const context = this.requestContext.get();
+    await this.txHost.tx.auditLog.create({
+      data: {
+        action: entry.action,
+        entityType: entry.entityType,
+        entityId: entry.entityId,
+        changes: (this.redact(entry.changes) as object) ?? undefined,
+        actorId: entry.actorId ?? context?.userId,
+        actorType: entry.actorType ?? (context?.userId ? 'user' : 'system'),
+        tenantId: entry.tenantId ?? this.requestContext.getTenantId(),
+        companyId: entry.companyId ?? this.requestContext.getCompanyId(),
+        requestId: this.requestContext.getRequestId(),
+        correlationId: this.requestContext.getCorrelationId(),
+      },
+    });
+  }
+
+  private redact(changes?: Record<string, unknown>): Record<string, unknown> | undefined {
+    if (!changes) {
+      return undefined;
+    }
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(changes)) {
+      out[key] = SENSITIVE_KEYS.test(key) ? '[redacted]' : AuditUtils.truncate(value);
+    }
+    return out;
+  }
+}
+
+const SENSITIVE_KEYS = /(password|secret|token|authorization|pin|otp)/i;
+const MAX_FIELD_JSON = 4_000;
+
+export class AuditUtils {
+  static truncate(value: unknown): unknown {
+    if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+      return value;
+    }
+    const text = typeof value === 'string' ? value : AuditUtils.safeStringify(value);
+    return text.length > MAX_FIELD_JSON ? `${text.slice(0, MAX_FIELD_JSON)}…[truncated]` : value;
+  }
+
+  static safeStringify(value: unknown): string {
+    try {
+      return JSON.stringify(value) ?? String(value);
+    } catch {
+      return String(value);
+    }
+  }
+}
+
 
 Module aliases: `@config/*`, `@shared-kernel/*`, `@bootstrap/*`, `@infrastructure/*`,
 `@platform/*`, `@business/*`, `@test/*`, `@prisma/client` → `src/generated/client.ts`

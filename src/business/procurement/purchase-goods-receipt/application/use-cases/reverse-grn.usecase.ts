@@ -2,12 +2,13 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
+
 import { GrnCommandRepository } from '../../domain/repositories/grn-command.repository';
 import { GrnPublisherPort } from '../publishes/publishers/grn.publisher-port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 import { NumberingPort } from '../outbound-ports/numbering.port';
 import { GrnFactory } from '../../domain/factories/grn.factory';
+import { GrnInvariants } from '../../domain/aggregates/grn.invariants';
 
 /** The quantity `post` registered on the PO — a reversal returns exactly this. */
 const postedQuantity = (line: { acceptedQuantity: number; receivedQuantity: number }): number =>
@@ -47,7 +48,7 @@ export class ReverseGrnUseCase {
       throw new NotFoundException('GRN not found');
     }
 
-    invariantRegistry.enforce('grn.reversible', { status: original.status });
+    GrnInvariants.enforceGrnReversible(original.status);
 
     const alreadyReversed = await this.grnRepository.findByReversalOfId(original.id.toString());
     if (alreadyReversed) {

@@ -1,19 +1,16 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { GoodReceiptNote } from '../aggregates/grn.aggregate';
 import { GrnLine, GrnProps, GrnStatus } from '../types/grn.types';
 import { CreateGrnInput, CreateGrnReversalInput } from '../types/grn.types';
 import { GrnId } from '../value-objects/grn-id.vo';
 import { GrnCreated } from '../events/grn.created.event';
 import { GoodsReceiptReversed } from '../events/grn.reversed.event';
-import './../aggregates/grn.invariants';
-import '../value-objects/grn-number.invariants';
-import '../value-objects/received-quantity.invariants';
+import { GrnInvariants } from '../aggregates/grn.invariants';
+import { GrnNumberInvariants } from '../value-objects/grn-number.invariants';
+import { ReceivedQuantityInvariants } from '../value-objects/received-quantity.invariants';
 
 export class GrnFactory {
   static create(input: CreateGrnInput): GoodReceiptNote {
-    invariantRegistry.enforce('grn.create', {
-      purchaseOrderId: input.purchaseOrderId,
-    });
+    GrnInvariants.enforceGrnCreate(input.purchaseOrderId);
 
     const now = new Date();
     const grn = GoodReceiptNote.instantiate(
@@ -57,7 +54,7 @@ export class GrnFactory {
    * Emits no `GrnCreated`: the use case raises `GoodsReceiptReversed` instead.
    */
   static createReversal(input: CreateGrnReversalInput): GoodReceiptNote {
-    invariantRegistry.enforce('grn.reversal', { reversalOfId: input.reversalOfId });
+    GrnInvariants.enforceGrnReversal(input.reversalOfId);
 
     const now = new Date();
     const grn = GoodReceiptNote.instantiate(
@@ -91,11 +88,7 @@ export class GrnFactory {
     );
 
     for (const line of grn.lines) {
-      invariantRegistry.enforce('grn.reversal-balance', {
-        receivedQuantity: line.receivedQuantity,
-        acceptedQuantity: line.acceptedQuantity,
-        rejectedQuantity: line.rejectedQuantity,
-      });
+      GrnInvariants.enforceGrnInspectionBalance(line.receivedQuantity, line.acceptedQuantity);
     }
 
     grn.addEvent(

@@ -1,15 +1,12 @@
-import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
+import { PurchaseOrderStatus } from '../types/purchase-order.types';
 
-export interface OverReceiptCheck {
-  orderedQuantity: number;
-  alreadyReceived: number;
-  proposedQuantity: number;
-  tolerance: number;
-}
-
-policyRegistry.register<OverReceiptCheck>('purchase-order.over-receipt', {
-  name: 'purchase-order-over-receipt',
-  evaluate: ({ orderedQuantity, alreadyReceived, proposedQuantity, tolerance }) => {
+export class OverReceiptPolicy {
+  static enforcePurchaseOrderOverReceipt(
+    orderedQuantity: number,
+    alreadyReceived: number,
+    proposedQuantity: number,
+    tolerance: number,
+  ): void {
     const limit = orderedQuantity * (1 + tolerance);
     if (alreadyReceived + proposedQuantity > limit) {
       throw Object.assign(
@@ -19,6 +16,5 @@ policyRegistry.register<OverReceiptCheck>('purchase-order.over-receipt', {
         { statusCode: 422 },
       );
     }
-    return true;
-  },
-});
+  }
+}

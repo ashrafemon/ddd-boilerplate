@@ -1,6 +1,6 @@
 import { ValueObject } from '@business/shared-business/domain/bases/value-object.base';
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import './order-number.invariants';
+
+import { OrderNumberInvariants } from './order-number.invariants';
 
 export class OrderNumber extends ValueObject<{ value: string }> {
   private constructor(value: string) {
@@ -8,7 +8,7 @@ export class OrderNumber extends ValueObject<{ value: string }> {
   }
 
   static create(input: string): OrderNumber {
-    invariantRegistry.enforce('order-number.create', { orderNumber: input });
+    OrderNumberInvariants.enforceOrderNumberCreate(input);
     return new OrderNumber(input.trim().toUpperCase());
   }
 

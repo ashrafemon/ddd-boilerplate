@@ -20,20 +20,30 @@ export interface PlanBuildInput {
   defaultMaxAttempts: number;
 }
 
+class PlanUtils {
+  static andConditions(left?: string, right?: string): string | undefined {
+    const present = [left, right].filter((c): c is string => Boolean(c && c.trim()));
+    if (present.length === 0) {
+      return undefined;
+    }
+    if (present.length === 1) {
+      return present[0];
+    }
+    return present.map(c => `(${c})`).join(' && ');
+  }
+
+  static hasAll(required: string[] | undefined, features: ReadonlySet<string>): boolean {
+    return !required || required.every(key => features.has(key));
+  }
+}
+
 /** AND-combine two optional conditions; absent conditions are neutral. */
 function andConditions(left?: string, right?: string): string | undefined {
-  const present = [left, right].filter((c): c is string => Boolean(c && c.trim()));
-  if (present.length === 0) {
-    return undefined;
-  }
-  if (present.length === 1) {
-    return present[0];
-  }
-  return present.map(c => `(${c})`).join(' && ');
+  return PlanUtils.andConditions(left, right);
 }
 
 function hasAll(required: string[] | undefined, features: ReadonlySet<string>): boolean {
-  return !required || required.every(key => features.has(key));
+  return PlanUtils.hasAll(required, features);
 }
 
 /**

@@ -1,5 +1,5 @@
 import { ValueObject } from '@business/shared-business/domain/bases/value-object.base';
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
+import { GrnNumberInvariants } from './grn-number.invariants';
 import './grn-number.invariants';
 
 export class GrnNumber extends ValueObject<{ value: string }> {
@@ -8,7 +8,7 @@ export class GrnNumber extends ValueObject<{ value: string }> {
   }
 
   static create(input: string): GrnNumber {
-    invariantRegistry.enforce('grn-number.create', { grnNumber: input });
+    GrnNumberInvariants.enforceGrnNumberFormat(input);
     return new GrnNumber(input.trim().toUpperCase());
   }
 

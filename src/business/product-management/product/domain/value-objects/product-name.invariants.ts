@@ -1,8 +1,5 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-
-invariantRegistry.register<{ name: string }>('product-name.create', {
-  name: 'product-name-length',
-  check: ({ name }) => {
+export class ProductNameInvariants {
+  static enforceProductName(name: string): void {
     const normalized = name.trim();
     if (!normalized) {
       throw Object.assign(new Error('Product name cannot be empty'), { statusCode: 422 });
@@ -12,5 +9,5 @@ invariantRegistry.register<{ name: string }>('product-name.create', {
         statusCode: 422,
       });
     }
-  },
-});
+  }
+}

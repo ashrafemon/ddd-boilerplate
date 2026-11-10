@@ -1,28 +1,22 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { Vendor } from '../aggregates/vendor.aggregate';
+import { VendorInvariants } from '../aggregates/vendor.invariants';
 import '../aggregates/vendor.invariants';
-import { VendorCreated } from '../events/vendor.created.event';
-import '../policies/orderability.policy';
-import { VendorStatus } from '../types/vendor.enum';
+import { VendorOrderabilityPolicy } from '../policies/orderability.policy';
+import { VendorStatus } from '../types/vendor.types';
 import { CreateVendorInput, VendorProps } from '../types/vendor.types';
 import { VendorId } from '@business/party/vendor/domain/value-objects/vendor-id.vo';
 import { VendorCode, VendorEmail, VendorName } from '../value-objects/vendor.vos';
-import '../value-objects/vendor-code.invariants';
-import '../value-objects/vendor-email.invariants';
-import '../value-objects/vendor-name.invariants';
+import { VendorCodeInvariants } from '../value-objects/vendor-code.invariants';
+import { VendorEmailInvariants } from '../value-objects/vendor-email.invariants';
+import { VendorNameInvariants } from '../value-objects/vendor-name.invariants';
 
 export class VendorFactory {
   static create(input: CreateVendorInput): Vendor {
-    invariantRegistry.enforce('vendor.create', {
-      code: input.code,
-      name: input.name,
-      email: input.email,
-    });
+    VendorInvariants.enforceVendorCreate(input.code, input.name, input.email);
 
-    invariantRegistry.enforce('vendor-code.create', { code: input.code });
-    invariantRegistry.enforce('vendor-name.create', { name: input.name });
+    VendorCodeInvariants.enforceVendorCode(input.code);
+    VendorNameInvariants.enforceVendorName(input.name);
     if (input.email) {
-      invariantRegistry.enforce('vendor-email.create', { email: input.email });
+      VendorEmailInvariants.enforceVendorEmail(input.email);
     }
 
     const now = new Date();

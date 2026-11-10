@@ -1,5 +1,5 @@
 import { ValueObject } from '@business/shared-business/domain/bases/value-object.base';
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
+import { InvoiceNumberInvariants } from './invoice-number.invariants';
 
 interface InvoiceNumberProps {
   value: string;
@@ -7,7 +7,7 @@ interface InvoiceNumberProps {
 
 /**
  * Invoice document number VO. Normalizes to uppercase and enforces the
- * `INV-<digits>` shape registered in `invoice-number.invariants.ts`.
+ * `INV-<digits>` shape enforced in `invoice-number.invariants.ts`.
  */
 export class InvoiceNumber extends ValueObject<InvoiceNumberProps> {
   private constructor(props: InvoiceNumberProps) {
@@ -16,9 +16,7 @@ export class InvoiceNumber extends ValueObject<InvoiceNumberProps> {
 
   static create(value: string): InvoiceNumber {
     const normalized = value.trim().toUpperCase();
-    invariantRegistry.enforce<{ invoiceNo: string }>('invoice-number.create', {
-      invoiceNo: normalized,
-    });
+    InvoiceNumberInvariants.enforceInvoiceNumberFormat(normalized);
     return new InvoiceNumber({ value: normalized });
   }
 

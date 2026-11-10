@@ -1,10 +1,7 @@
-import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { ProductStatus } from '../types/product.enum';
-import { ProductState } from '../types/product.types';
 
-policyRegistry.register<ProductState>('product.reactivation', {
-  name: 'discontinued-reactivation',
-  evaluate: ({ status }) => {
+export class ProductReactivationPolicy {
+  static enforceProductReactivation(status: ProductStatus): boolean {
     return status !== ProductStatus.DISCONTINUED;
-  },
-});
+  }
+}

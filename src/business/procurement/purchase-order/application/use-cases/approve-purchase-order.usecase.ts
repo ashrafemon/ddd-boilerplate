@@ -5,7 +5,7 @@ import { AbacPort } from '@platform/platform-organization/authorization/ports/ab
 import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderPublisherPort } from '../publishes/publishers/purchase-order.publisher-port';
-import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
+import { CanApprovePolicy } from '../../domain/policies/can-approve.policy';
 
 @Injectable()
 export class ApprovePurchaseOrderUseCase {
@@ -45,11 +45,11 @@ export class ApprovePurchaseOrderUseCase {
       throw new NotFoundException('Purchase order not found');
     }
 
-    policyRegistry.enforce('purchase-order.can-approve', {
-      status: purchaseOrder.status,
-      totalAmount: purchaseOrder.total.amount,
-      autoApproveThreshold: ctx.autoApproveThreshold ?? 0,
-    });
+    CanApprovePolicy.enforcePurchaseOrderCanApprove(
+      purchaseOrder.status,
+      purchaseOrder.total.amount,
+      ctx.autoApproveThreshold ?? 0,
+    );
 
     purchaseOrder.approve(actor);
 

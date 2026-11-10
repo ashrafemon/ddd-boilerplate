@@ -1,6 +1,5 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
+import { PriceListInvariants } from './price-list.invariants';
 import { PriceListActivated } from '../events/price-list-activated.event';
 import { PriceListDeactivated } from '../events/price-list-deactivated.event';
 import { PriceListArchived } from '../events/price-list-archived.event';
@@ -13,8 +12,7 @@ import { PriceListId } from '../value-objects/price-list-id.vo';
 import { PriceListCode } from '../value-objects/price-list-code.vo';
 import { PriceListStatus } from '../types/price-list.enum';
 import { PriceListLine } from '../entities/price-list-line.entity';
-import './price-list.invariants';
-import '../policies/reactivation.policy';
+import { PriceListReactivationPolicy } from '../policies/reactivation.policy';
 
 export class PriceList extends AggregateRoot<PriceListId> {
   private props: PriceListProps;
@@ -80,11 +78,11 @@ export class PriceList extends AggregateRoot<PriceListId> {
     minQuantity: number;
     maxQuantity?: number | null;
   }): void {
-    invariantRegistry.enforce('price-list-line.create', { price: input.price });
-    invariantRegistry.enforce('price-list-line.quantity-range', {
-      minQuantity: input.minQuantity,
-      maxQuantity: input.maxQuantity ?? null,
-    });
+    PriceListInvariants.PriceListInvariants.enforcePriceListLinePrice(input.price);
+    PriceListInvariants.PriceListInvariants.enforcePriceListLineQuantityRange(
+      input.minQuantity,
+      input.maxQuantity ?? null,
+    );
 
     const existing = this.lineMap.get(input.productId);
     if (existing) {
@@ -129,14 +127,14 @@ export class PriceList extends AggregateRoot<PriceListId> {
     }
 
     if (input.price !== undefined) {
-      invariantRegistry.enforce('price-list-line.price', { price: input.price });
+      PriceListInvariants.PriceListInvariants.enforcePriceListLinePrice(input.price);
       line.updatePrice(input.price);
     }
     if (input.minQuantity !== undefined || input.maxQuantity !== undefined) {
-      invariantRegistry.enforce('price-list-line.quantity-range', {
-        minQuantity: input.minQuantity ?? line.minQuantity,
-        maxQuantity: input.maxQuantity ?? line.maxQuantity,
-      });
+      PriceListInvariants.PriceListInvariants.enforcePriceListLineQuantityRange(
+        input.minQuantity ?? line.minQuantity,
+        input.maxQuantity ?? line.maxQuantity,
+      );
       line.updateQuantities(
         input.minQuantity ?? line.minQuantity,
         input.maxQuantity ?? line.maxQuantity,
@@ -183,11 +181,12 @@ export class PriceList extends AggregateRoot<PriceListId> {
   }
 
   activate(): void {
-    policyRegistry.enforce('price-list.reactivation', { status: this.props.status });
-    invariantRegistry.enforce('price-list.status-transition', {
-      status: this.props.status,
-      to: PriceListStatus.ACTIVE,
-    });
+    if (!PriceListReactivationPolicy.enforcePriceListReactivation(this.props.status)) {
+      throw Object.assign(new Error('Price list cannot be reactivated'), {
+        statusCode: 422,
+      });
+    }
+    PriceListInvariants.enforcePriceListStatusTransition(this.props.status, PriceListStatus.ACTIVE);
 
     this.props.status = PriceListStatus.ACTIVE;
     this.props.updatedAt = new Date();
@@ -195,10 +194,7 @@ export class PriceList extends AggregateRoot<PriceListId> {
   }
 
   deactivate(): void {
-    invariantRegistry.enforce('price-list.status-transition', {
-      status: this.props.status,
-      to: PriceListStatus.ACTIVE,
-    });
+    PriceListInvariants.enforcePriceListStatusTransition(this.props.status, PriceListStatus.ACTIVE);
 
     this.props.status = PriceListStatus.ACTIVE;
     this.props.updatedAt = new Date();
@@ -206,10 +202,10 @@ export class PriceList extends AggregateRoot<PriceListId> {
   }
 
   archive(): void {
-    invariantRegistry.enforce('price-list.status-transition', {
-      status: this.props.status,
-      to: PriceListStatus.ARCHIVED,
-    });
+    PriceListInvariants.enforcePriceListStatusTransition(
+      this.props.status,
+      PriceListStatus.ARCHIVED,
+    );
 
     this.props.status = PriceListStatus.ARCHIVED;
     this.props.updatedAt = new Date();

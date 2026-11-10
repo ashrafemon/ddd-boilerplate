@@ -19,37 +19,39 @@ const VARIABLE_PATTERN = /\{\{\s*([\w.]+)\s*\}\}/g;
 export class TemplateRenderer {
   render(version: NotificationTemplateVersion, model: TemplateModel): RenderedTemplate {
     return {
-      subject: version.subject ? interpolate(version.subject, model) : undefined,
-      body: interpolate(version.body, model),
+      subject: version.subject ? TemplateRenderer.interpolate(version.subject, model) : undefined,
+      body: TemplateRenderer.interpolate(version.body, model),
     };
   }
 }
 
-function interpolate(source: string, model: TemplateModel): string {
-  return source.replace(VARIABLE_PATTERN, (_match, path: string) => {
-    const value = resolvePath(model, path);
-    return formatValue(value);
-  });
-}
+export class TemplateRendererUtils {
+  static interpolate(source: string, model: TemplateModel): string {
+    return source.replace(VARIABLE_PATTERN, (_match, path: string) => {
+      const value = TemplateRendererUtils.resolvePath(model, path);
+      return TemplateRendererUtils.formatValue(value);
+    });
+  }
 
-function formatValue(value: unknown): string {
-  if (value === undefined || value === null) {
-    return '';
-  }
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return String(value);
-  }
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  return JSON.stringify(value);
-}
-
-function resolvePath(model: TemplateModel, path: string): unknown {
-  return path.split('.').reduce<unknown>((acc, key) => {
-    if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
-      return (acc as Record<string, unknown>)[key];
+  static formatValue(value: unknown): string {
+    if (value === undefined || value === null) {
+      return '';
     }
-    return undefined;
-  }, model);
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    return JSON.stringify(value);
+  }
+
+  static resolvePath(model: TemplateModel, path: string): unknown {
+    return path.split('.').reduce<unknown>((acc, key) => {
+      if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
+        return (acc as Record<string, unknown>)[key];
+      }
+      return undefined;
+    }, model);
+  }
 }

@@ -1,114 +1,103 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { PurchaseOrderStatus } from '../types/purchase-order.enum';
 
-export type { PurchaseOrderStatus };
+export class PurchaseOrderInvariants {
+  static enforcePurchaseOrderLineQuantity(quantity: number): void {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw Object.assign(new Error('Line quantity must be a positive integer'), {
+        statusCode: 422,
+      });
+    }
+  }
 
-invariantRegistry.register<{ status: string }>('purchase-order.amendable', {
-  name: 'purchase-order-amendable',
-  check: ({ status }) => {
-    if (status !== 'ISSUED') {
+  static enforcePurchaseOrderAmendable(status: PurchaseOrderStatus): void {
+    if (status !== PurchaseOrderStatus.ISSUED) {
       throw Object.assign(
         new Error('Only an issued purchase order can be amended — amend before issuing'),
         { statusCode: 422 },
       );
     }
-  },
-});
+  }
 
-invariantRegistry.register<{ orderNumber: string; vendorId: string }>('purchase-order.create', {
-  name: 'purchase-order-create-required-fields',
-  check: ({ orderNumber, vendorId }) => {
+  static enforcePurchaseOrderCreate(orderNumber: string, vendorId: string): void {
     if (!orderNumber?.trim()) {
       throw Object.assign(new Error('Purchase order number is required'), { statusCode: 422 });
     }
     if (!vendorId?.trim()) {
       throw Object.assign(new Error('Purchase order vendor is required'), { statusCode: 422 });
     }
-  },
-});
+  }
 
-invariantRegistry.register<{ lineCount: number }>('purchase-order.has-lines', {
-  name: 'purchase-order-has-lines',
-  check: ({ lineCount }) => {
+  static enforcePurchaseOrderHasLines(lineCount: number): void {
     if (lineCount < 1) {
       throw Object.assign(new Error('Purchase order must contain at least one line'), {
         statusCode: 422,
       });
     }
-  },
-});
+  }
 
-invariantRegistry.register<{ status: PurchaseOrderStatus; to: PurchaseOrderStatus }>(
-  'purchase-order.status-transition',
-  {
-    name: 'purchase-order-valid-transition',
-    check: ({ status, to }) => {
-      if (status === to) return;
+  static enforcePurchaseOrderStatusTransition(
+    status: PurchaseOrderStatus,
+    to: PurchaseOrderStatus,
+  ): void {
+    if (status === to) return;
 
-      const allowed: Record<string, string[]> = {
-        [PurchaseOrderStatus.DRAFT]: [
-          PurchaseOrderStatus.SUBMITTED,
-          PurchaseOrderStatus.PENDINGAPPROVAL,
-          PurchaseOrderStatus.CANCELLED,
-        ],
-        [PurchaseOrderStatus.SUBMITTED]: [
-          PurchaseOrderStatus.PENDINGAPPROVAL,
-          PurchaseOrderStatus.APPROVED,
-          PurchaseOrderStatus.REJECTED,
-          PurchaseOrderStatus.CANCELLED,
-        ],
-        [PurchaseOrderStatus.PENDINGAPPROVAL]: [
-          PurchaseOrderStatus.APPROVED,
-          PurchaseOrderStatus.REJECTED,
-          PurchaseOrderStatus.DRAFT,
-        ],
-        [PurchaseOrderStatus.APPROVED]: [
-          PurchaseOrderStatus.ISSUED,
-          PurchaseOrderStatus.HOLD,
-          PurchaseOrderStatus.REVISION,
-          PurchaseOrderStatus.CANCELLED,
-        ],
-        [PurchaseOrderStatus.HOLD]: [PurchaseOrderStatus.APPROVED],
-        [PurchaseOrderStatus.REVISION]: [PurchaseOrderStatus.APPROVED],
-        // E-1: cancel is allowed from DRAFT/SUBMITTED/APPROVED only; an ISSUED
-        // order is no longer freely cancelable — it closes (or is corrected
-        // through the receipt-reversal workflow once goods arrived).
-        [PurchaseOrderStatus.ISSUED]: [
-          PurchaseOrderStatus.PARTIALLYRECEIVED,
-          PurchaseOrderStatus.FULLYRECEIVED,
-          PurchaseOrderStatus.COMPLETED,
-          PurchaseOrderStatus.CLOSED,
-        ],
-        [PurchaseOrderStatus.PARTIALLYRECEIVED]: [
-          PurchaseOrderStatus.PARTIALLYRECEIVED,
-          PurchaseOrderStatus.FULLYRECEIVED,
-          PurchaseOrderStatus.COMPLETED,
-          PurchaseOrderStatus.CLOSED,
-          PurchaseOrderStatus.CANCELLED,
-        ],
-        [PurchaseOrderStatus.FULLYRECEIVED]: [
-          PurchaseOrderStatus.COMPLETED,
-          PurchaseOrderStatus.CLOSED,
-        ],
-        [PurchaseOrderStatus.REJECTED]: [],
-        [PurchaseOrderStatus.CANCELLED]: [],
-        [PurchaseOrderStatus.COMPLETED]: [],
-        [PurchaseOrderStatus.CLOSED]: [],
-        [PurchaseOrderStatus.ARCHIVED]: [],
-      };
+    const allowed: Record<PurchaseOrderStatus, PurchaseOrderStatus[]> = {
+      [PurchaseOrderStatus.DRAFT]: [
+        PurchaseOrderStatus.SUBMITTED,
+        PurchaseOrderStatus.PENDINGAPPROVAL,
+        PurchaseOrderStatus.CANCELLED,
+      ],
+      [PurchaseOrderStatus.SUBMITTED]: [
+        PurchaseOrderStatus.PENDINGAPPROVAL,
+        PurchaseOrderStatus.APPROVED,
+        PurchaseOrderStatus.REJECTED,
+        PurchaseOrderStatus.CANCELLED,
+      ],
+      [PurchaseOrderStatus.PENDINGAPPROVAL]: [
+        PurchaseOrderStatus.APPROVED,
+        PurchaseOrderStatus.REJECTED,
+        PurchaseOrderStatus.DRAFT,
+      ],
+      [PurchaseOrderStatus.APPROVED]: [
+        PurchaseOrderStatus.ISSUED,
+        PurchaseOrderStatus.HOLD,
+        PurchaseOrderStatus.REVISION,
+        PurchaseOrderStatus.CANCELLED,
+      ],
+      [PurchaseOrderStatus.HOLD]: [PurchaseOrderStatus.APPROVED],
+      [PurchaseOrderStatus.REVISION]: [PurchaseOrderStatus.APPROVED],
+      [PurchaseOrderStatus.ISSUED]: [
+        PurchaseOrderStatus.PARTIALLYRECEIVED,
+        PurchaseOrderStatus.FULLYRECEIVED,
+        PurchaseOrderStatus.COMPLETED,
+        PurchaseOrderStatus.CLOSED,
+      ],
+      [PurchaseOrderStatus.PARTIALLYRECEIVED]: [
+        PurchaseOrderStatus.PARTIALLYRECEIVED,
+        PurchaseOrderStatus.FULLYRECEIVED,
+        PurchaseOrderStatus.COMPLETED,
+        PurchaseOrderStatus.CLOSED,
+        PurchaseOrderStatus.CANCELLED,
+      ],
+      [PurchaseOrderStatus.FULLYRECEIVED]: [
+        PurchaseOrderStatus.COMPLETED,
+        PurchaseOrderStatus.CLOSED,
+      ],
+      [PurchaseOrderStatus.REJECTED]: [],
+      [PurchaseOrderStatus.CANCELLED]: [],
+      [PurchaseOrderStatus.COMPLETED]: [],
+      [PurchaseOrderStatus.CLOSED]: [],
+      [PurchaseOrderStatus.ARCHIVED]: [],
+    };
 
-      if (!(allowed[status] || []).includes(to)) {
-        throw Object.assign(new Error(`Invalid purchase order transition: ${status} -> ${to}`), {
-          statusCode: 422,
-        });
-      }
-    },
-  },
-);
+    if (!(allowed[status] || []).includes(to)) {
+      throw Object.assign(new Error(`Invalid purchase order transition: ${status} -> ${to}`), {
+        statusCode: 422,
+      });
+    }
+  }
 
-invariantRegistry.register<{ status: PurchaseOrderStatus }>('purchase-order.editable', {
-  name: 'purchase-order-editable',
-  check: ({ status }) => {
+  static enforcePurchaseOrderEditable(status: PurchaseOrderStatus): void {
     if (status !== PurchaseOrderStatus.DRAFT) {
       throw Object.assign(
         new Error(
@@ -117,24 +106,26 @@ invariantRegistry.register<{ status: PurchaseOrderStatus }>('purchase-order.edit
         { statusCode: 422 },
       );
     }
-  },
-});
+  }
 
-invariantRegistry.register<{ lines: unknown[] }>('recurring-po-lines.create', {
-  name: 'recurring-po-lines-required',
-  check: ({ lines }) => {
+  static enforcePurchaseOrderCancellation(status: PurchaseOrderStatus, hasReceipts: boolean): void {
+    if (hasReceipts) {
+      throw Object.assign(new Error('Cannot cancel a purchase order with posted receipts'), {
+        statusCode: 422,
+      });
+    }
+  }
+
+  static enforceRecurringPoLinesCreate(lines: unknown[]): void {
     if (!Array.isArray(lines) || lines.length < 1) {
       throw Object.assign(
         new Error('Recurring PurchaseOrder template must have at least one line'),
         { statusCode: 422 },
       );
     }
-  },
-});
+  }
 
-invariantRegistry.register<{ line: unknown; index: number }>('recurring-po-line.product-id', {
-  name: 'recurring-po-line-product-id-required',
-  check: ({ line, index }) => {
+  static enforceRecurringPoLineProductId(line: unknown, index: number): void {
     const record = line as Record<string, unknown>;
     const productId = record?.productId;
     if (typeof productId !== 'string' || !productId.trim()) {
@@ -143,12 +134,9 @@ invariantRegistry.register<{ line: unknown; index: number }>('recurring-po-line.
         { statusCode: 422 },
       );
     }
-  },
-});
+  }
 
-invariantRegistry.register<{ line: unknown; index: number }>('recurring-po-line.quantity', {
-  name: 'recurring-po-line-quantity-number',
-  check: ({ line, index }) => {
+  static enforceRecurringPoLineQuantity(line: unknown, index: number): void {
     const record = line as Record<string, unknown>;
     const quantity = record?.quantity;
     const numeric = typeof quantity === 'number' ? quantity : Number(quantity);
@@ -158,12 +146,9 @@ invariantRegistry.register<{ line: unknown; index: number }>('recurring-po-line.
         { statusCode: 422 },
       );
     }
-  },
-});
+  }
 
-invariantRegistry.register<{ line: unknown; index: number }>('recurring-po-line.unit-price', {
-  name: 'recurring-po-line-unit-price-number',
-  check: ({ line, index }) => {
+  static enforceRecurringPoLineUnitPrice(line: unknown, index: number): void {
     const record = line as Record<string, unknown>;
     const unitPrice = record?.unitPrice;
     const numeric = typeof unitPrice === 'number' ? unitPrice : Number(unitPrice);
@@ -173,5 +158,5 @@ invariantRegistry.register<{ line: unknown; index: number }>('recurring-po-line.
         { statusCode: 422 },
       );
     }
-  },
-});
+  }
+}

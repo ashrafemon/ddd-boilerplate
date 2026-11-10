@@ -1,5 +1,5 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
+import { VendorInvariants } from './vendor.invariants';
 import { VendorId } from '@business/party/vendor/domain/value-objects/vendor-id.vo';
 import { VendorProps, VendorStatus } from '../types/vendor.types';
 import { VendorEmail, VendorName } from '../value-objects/vendor.vos';
@@ -76,30 +76,21 @@ export class Vendor extends AggregateRoot<VendorId> {
   }
 
   activate(): void {
-    invariantRegistry.enforce('vendor.status-transition', {
-      status: this.props.status,
-      to: VendorStatus.ACTIVE,
-    });
+    VendorInvariants.enforceVendorStatusTransition(this.props.status, VendorStatus.ACTIVE);
     this.props.status = VendorStatus.ACTIVE;
     this.props.updatedAt = new Date();
     this.addEvent(new VendorActivated(this.id));
   }
 
   deactivate(): void {
-    invariantRegistry.enforce('vendor.status-transition', {
-      status: this.props.status,
-      to: VendorStatus.INACTIVE,
-    });
+    VendorInvariants.enforceVendorStatusTransition(this.props.status, VendorStatus.INACTIVE);
     this.props.status = VendorStatus.INACTIVE;
     this.props.updatedAt = new Date();
     this.addEvent(new VendorDeactivated(this.id));
   }
 
   block(): void {
-    invariantRegistry.enforce('vendor.status-transition', {
-      status: this.props.status,
-      to: VendorStatus.BLOCKED,
-    });
+    VendorInvariants.enforceVendorStatusTransition(this.props.status, VendorStatus.BLOCKED);
     this.props.status = VendorStatus.BLOCKED;
     this.props.updatedAt = new Date();
     this.addEvent(new VendorBlocked(this.id));

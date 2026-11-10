@@ -24,108 +24,126 @@ type Token =
 const PUNCT_2 = ['&&', '||', '==', '!=', '>=', '<='];
 const PUNCT_1 = ['(', ')', '[', ']', ',', '.', '!', '>', '<'];
 
-function tokenize(source: string): Token[] {
-  const tokens: Token[] = [];
-  let i = 0;
+class ExpressionUtils {
+  static tokenize(source: string): Token[] {
+    const tokens: Token[] = [];
+    let i = 0;
 
-  while (i < source.length) {
-    const ch = source[i];
+    while (i < source.length) {
+      const ch = source[i];
 
-    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
-      i += 1;
-      continue;
-    }
+      if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
+        i += 1;
+        continue;
+      }
 
-    if (ch === "'" || ch === '"') {
-      const quote = ch;
-      let value = '';
-      i += 1;
-      while (i < source.length && source[i] !== quote) {
-        if (source[i] === '\\' && i + 1 < source.length) {
-          value += source[i + 1];
-          i += 2;
-          continue;
+      if (ch === "'" || ch === '"') {
+        const quote = ch;
+        let value = '';
+        i += 1;
+        while (i < source.length && source[i] !== quote) {
+          if (source[i] === '\\' && i + 1 < source.length) {
+            value += source[i + 1];
+            i += 2;
+            continue;
+          }
+          value += source[i];
+          i += 1;
         }
-        value += source[i];
+        if (i >= source.length) {
+          throw new Error(`Unterminated string literal in "${source}"`);
+        }
         i += 1;
+        tokens.push({ kind: 'string', value });
+        continue;
       }
-      if (i >= source.length) {
-        throw new Error(`Unterminated string literal in "${source}"`);
-      }
-      i += 1;
-      tokens.push({ kind: 'string', value });
-      continue;
-    }
 
-    if (ch >= '0' && ch <= '9') {
-      let raw = '';
-      while (i < source.length && /[0-9.]/.test(source[i])) {
-        raw += source[i];
+      if (ch >= '0' && ch <= '9') {
+        let raw = '';
+        while (i < source.length && /[0-9.]/.test(source[i])) {
+          raw += source[i];
+          i += 1;
+        }
+        tokens.push({ kind: 'number', value: Number(raw) });
+        continue;
+      }
+
+      if (/[A-Za-z_$]/.test(ch)) {
+        let raw = '';
+        while (i < source.length && /[A-Za-z0-9_$]/.test(source[i])) {
+          raw += source[i];
+          i += 1;
+        }
+        tokens.push({ kind: 'ident', value: raw });
+        continue;
+      }
+
+      const two = source.slice(i, i + 2);
+      if (PUNCT_2.includes(two)) {
+        tokens.push({ kind: 'punct', value: two });
+        i += 2;
+        continue;
+      }
+      if (PUNCT_1.includes(ch)) {
+        tokens.push({ kind: 'punct', value: ch });
         i += 1;
+        continue;
       }
-      tokens.push({ kind: 'number', value: Number(raw) });
-      continue;
+
+      throw new Error(`Unexpected character "${ch}" in "${source}"`);
     }
 
-    if (/[A-Za-z_$]/.test(ch)) {
-      let raw = '';
-      while (i < source.length && /[A-Za-z0-9_$]/.test(source[i])) {
-        raw += source[i];
-        i += 1;
-      }
-      tokens.push({ kind: 'ident', value: raw });
-      continue;
-    }
-
-    const two = source.slice(i, i + 2);
-    if (PUNCT_2.includes(two)) {
-      tokens.push({ kind: 'punct', value: two });
-      i += 2;
-      continue;
-    }
-    if (PUNCT_1.includes(ch)) {
-      tokens.push({ kind: 'punct', value: ch });
-      i += 1;
-      continue;
-    }
-
-    throw new Error(`Unexpected character "${ch}" in "${source}"`);
+    return tokens;
   }
 
-  return tokens;
+  static isNullish(value: unknown): boolean {
+    return value === null || value === undefined;
+  }
+
+  static looseEq(a: unknown, b: unknown): boolean {
+    if (a === b) {
+      return true;
+    }
+    if (ExpressionUtils.isNullish(a) && ExpressionUtils.isNullish(b)) {
+      return true;
+    }
+    if (typeof a === 'number' && typeof b === 'number') {
+      return a === b;
+    }
+    if (typeof a === 'string' && typeof b === 'string') {
+      return a === b;
+    }
+    if (typeof a === 'boolean' && typeof b === 'boolean') {
+      return a === b;
+    }
+    return false;
+  }
+
+  static truthy(value: unknown): boolean {
+    if (ExpressionUtils.isNullish(value) || value === false) {
+      return false;
+    }
+    if (value === 0 || value === '') {
+      return false;
+    }
+    return true;
+  }
+}
+
+function tokenize(source: string): Token[] {
+  return ExpressionUtils.tokenize(source);
 }
 
 function isNullish(value: unknown): boolean {
-  return value === null || value === undefined;
+  return ExpressionUtils.isNullish(value);
 }
 
 function looseEq(a: unknown, b: unknown): boolean {
-  if (a === b) {
-    return true;
-  }
-  if (isNullish(a) && isNullish(b)) {
-    return true;
-  }
-  if (typeof a === 'number' && typeof b === 'number') {
-    return a === b;
-  }
-  if (typeof a === 'string' && typeof b === 'string') {
-    return a === b;
-  }
-  if (typeof a === 'boolean' && typeof b === 'boolean') {
-    return a === b;
-  }
-  return false;
+  return ExpressionUtils.looseEq(a, b);
 }
 
 function truthy(value: unknown): boolean {
-  if (isNullish(value) || value === false) {
-    return false;
-  }
-  if (value === 0 || value === '') {
-    return false;
-  }
-  return true;
+  return ExpressionUtils.truthy(value);
 }
 
 class Parser {

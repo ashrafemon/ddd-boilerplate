@@ -1,10 +1,14 @@
-import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
 import { PurchaseOrderPolicyState, PurchaseOrderStatus } from '../types/purchase-order.types';
 
-policyRegistry.register<PurchaseOrderPolicyState>('purchase-order.approval', {
-  name: 'purchase-order-approval-threshold',
-  evaluate: ({ status, totalAmount, autoApproveThreshold }) => {
-    if (status !== PurchaseOrderStatus.SUBMITTED) return false;
-    return totalAmount > autoApproveThreshold;
-  },
-});
+export class ApprovalPolicy {
+  static enforcePurchaseOrderApproval(
+    status: PurchaseOrderStatus,
+    totalAmount: number,
+    autoApproveThreshold: number,
+  ): void {
+    if (status !== PurchaseOrderStatus.SUBMITTED) return;
+    if (totalAmount > autoApproveThreshold) {
+      throw Object.assign(new Error('Purchase order requires approval'), { statusCode: 422 });
+    }
+  }
+}

@@ -38,11 +38,11 @@ export class RecurrenceEngine {
     // MONTHLY/YEARLY keep the anchor day-of-month (RFC 5545): Jan 31 →
     // Feb 28 → Mar 31 → … instead of permanently drifting to the 28th.
     if (anchor && (frequency === 'MONTHLY' || frequency === 'YEARLY')) {
-      const base = dayjs.tz(wallOf(anchor), timeZone);
+      const base = dayjs.tz(RecurrenceEngine.wallOf(anchor), timeZone);
       for (let step = 1; step <= MAX_ANCHOR_STEPS; step++) {
         const candidate = base.add(step * interval, unit);
-        if (isAfterWall(candidate, from)) {
-          return utcMidnight(candidate);
+        if (RecurrenceEngine.isAfterWall(candidate, from)) {
+          return RecurrenceEngine.utcMidnight(candidate);
         }
       }
       throw new Error(
@@ -52,23 +52,23 @@ export class RecurrenceEngine {
 
     // dayjs's .add(n, 'month' | 'year') clamps the day-of-month to the
     // target month's last valid day — that clamping IS month-end handling.
-    const next = dayjs.tz(wallOf(from), timeZone).add(interval, unit);
-    return utcMidnight(next);
+    const next = dayjs.tz(RecurrenceEngine.wallOf(from), timeZone).add(interval, unit);
+    return RecurrenceEngine.utcMidnight(next);
   }
-}
 
-function wallOf(date: Date): string {
-  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
-}
+  static wallOf(date: Date): string {
+    return `${date.getUTCFullYear()}-${RecurrenceEngine.pad(date.getUTCMonth() + 1)}-${RecurrenceEngine.pad(date.getUTCDate())}`;
+  }
 
-function utcMidnight(m: dayjs.Dayjs): Date {
-  return new Date(Date.UTC(m.year(), m.month(), m.date()));
-}
+  static utcMidnight(m: dayjs.Dayjs): Date {
+    return new Date(Date.UTC(m.year(), m.month(), m.date()));
+  }
 
-function isAfterWall(candidate: dayjs.Dayjs, from: Date): boolean {
-  return utcMidnight(candidate).getTime() > from.getTime();
-}
+  static isAfterWall(candidate: dayjs.Dayjs, from: Date): boolean {
+    return RecurrenceEngine.utcMidnight(candidate).getTime() > from.getTime();
+  }
 
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
+  static pad(n: number): string {
+    return String(n).padStart(2, '0');
+  }
 }

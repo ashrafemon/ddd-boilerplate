@@ -1,17 +1,12 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { InvoicePosted } from '../events/invoice.posted.event';
 import { InvoiceId } from '../value-objects/invoice-id.vo';
 import { InvoiceLine } from '../value-objects/invoice-line.vo';
 import { InvoiceStatus } from '../types/invoice.enum';
 import { InvoiceProps } from '../types/invoice.types';
-import './invoice.invariants';
+import { InvoiceInvariants } from './invoice.invariants';
 
-/**
- * Invoice aggregate root. DRAFT → POSTED is the only sanctioned state change
- * (via `post()`); the total is always derived from the lines, never set.
- */
 export class Invoice extends AggregateRoot<InvoiceId> {
   private props: InvoiceProps;
 
@@ -63,10 +58,7 @@ export class Invoice extends AggregateRoot<InvoiceId> {
   }
 
   post(): void {
-    invariantRegistry.enforce<{ status: InvoiceStatus; to: InvoiceStatus }>(
-      'invoice.status-transition',
-      { status: this.props.status, to: InvoiceStatus.POSTED },
-    );
+    InvoiceInvariants.enforceInvoiceStatusTransition(this.props.status, InvoiceStatus.POSTED);
     if (this.props.status === InvoiceStatus.POSTED) {
       return;
     }

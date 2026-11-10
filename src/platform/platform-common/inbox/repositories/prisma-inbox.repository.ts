@@ -5,11 +5,13 @@ import { Prisma } from '../../../../generated/client';
 import { PrismaJson } from '@common/application/utils/prisma-json';
 import { InboxIdentity, InboxMessage } from '../inbox.types';
 
-const UNIQUE_VIOLATION = 'P2002';
-
-function isUniqueViolation(err: unknown): boolean {
-  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === UNIQUE_VIOLATION;
+class InboxUtils {
+  static isUniqueViolation(err: unknown): boolean {
+    return err instanceof Prisma.PrismaClientKnownRequestError && err.code === UNIQUE_VIOLATION;
+  }
 }
+
+const UNIQUE_VIOLATION = 'P2002';
 
 interface InboxRawRow {
   id: string;
@@ -70,7 +72,7 @@ export class PrismaInboxRepository {
       });
       return { id: row.id };
     } catch (err) {
-      if (isUniqueViolation(err)) {
+      if (InboxUtils.isUniqueViolation(err)) {
         return null;
       }
       throw err;

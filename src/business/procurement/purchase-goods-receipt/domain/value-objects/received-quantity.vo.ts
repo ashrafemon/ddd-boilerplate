@@ -1,10 +1,10 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
+import { ReceivedQuantityInvariants } from './received-quantity.invariants';
 import './received-quantity.invariants';
 export class ReceivedQuantity {
   private constructor(public readonly value: number) {}
 
   static create(value: number): ReceivedQuantity {
-    invariantRegistry.enforce('received-quantity.create', { receivedQuantity: value });
+    ReceivedQuantityInvariants.enforceReceivedQuantityPositive(value);
     if (value <= 0) {
       throw new Error('Received quantity must be greater than zero');
     }

@@ -1,8 +1,5 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-
-invariantRegistry.register<{ code: string }>('vendor-code.create', {
-  name: 'vendor-code-format',
-  check: ({ code }) => {
+export class VendorCodeInvariants {
+  static enforceVendorCode(code: string): void {
     const normalized = code.trim().toUpperCase();
     if (!normalized) {
       throw Object.assign(new Error('Vendor code cannot be empty'), { statusCode: 422 });
@@ -13,5 +10,5 @@ invariantRegistry.register<{ code: string }>('vendor-code.create', {
         { statusCode: 422 },
       );
     }
-  },
-});
+  }
+}

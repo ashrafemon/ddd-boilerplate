@@ -9,6 +9,7 @@ and a strict **business ↔ infrastructure boundary** enforced by ESLint.
 
 - [`docs/architecture.md`](docs/architecture.md) — architecture, layers, dependency rules,
   module anatomy, tenancy, auth/RBAC/ABAC, outbox/events/messaging, data model, verification
+- [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure.xlsx) — complete project structure and file organization reference
 
 ## Quick start
 

@@ -26,28 +26,35 @@ const TERMINAL_STATUSES: ReadonlySet<SagaInstanceStatus> = new Set([
   SagaInstanceStatus.FAILED_MANUAL,
 ]);
 
-/** Expression scope: the frozen context plus the step execution log. */
-interface SagaScope {
-  [key: string]: unknown;
-  event: Record<string, unknown>;
-  saga: Record<string, unknown>;
-  company: { settings: Record<string, unknown> };
-  steps: Record<string, { status: string; output: Record<string, unknown> }>;
-}
-
-function buildScope(instance: SagaInstanceRecord, stepRows: SagaStepRecord[]): SagaScope {
-  const context = instance.context ?? {};
-  const steps: SagaScope['steps'] = {};
-  for (const row of stepRows) {
-    steps[row.stepId] = { status: row.status, output: row.output ?? {} };
+class SagaUtils {
+  static buildScope(instance: SagaInstanceRecord, stepRows: SagaStepRecord[]): SagaScope {
+    const context = instance.context ?? {};
+    const steps: SagaScope['steps'] = {};
+    for (const row of stepRows) {
+      steps[row.stepId] = { status: row.status, output: row.output ?? {} };
+    }
+    const sagaData = (context.start as Record<string, unknown> | undefined) ?? {};
+    return {
+      event: (context.event as Record<string, unknown> | undefined) ?? {},
+      saga: { ...sagaData, key: instance.correlationKey, correlationKey: instance.correlationKey },
+      company: { settings: (context.settings as Record<string, unknown> | undefined) ?? {} },
+      steps,
+    };
   }
-  const sagaData = (context.start as Record<string, unknown> | undefined) ?? {};
-  return {
-    event: (context.event as Record<string, unknown> | undefined) ?? {},
-    saga: { ...sagaData, key: instance.correlationKey, correlationKey: instance.correlationKey },
-    company: { settings: (context.settings as Record<string, unknown> | undefined) ?? {} },
-    steps,
-  };
+
+  static buildInput(
+    step: SagaPlanStep,
+    scope: Record<string, unknown>,
+  ): Record<string, unknown> | null {
+    if (!step.input) {
+      return null;
+    }
+    const resolved: Record<string, unknown> = {};
+    for (const [field, expression] of Object.entries(step.input)) {
+      resolved[field] = evaluateExpression(expression, scope);
+    }
+    return resolved;
+  }
 }
 
 /** Resolve a step's `input` expressions against the scope. */
@@ -55,14 +62,11 @@ function buildInput(
   step: SagaPlanStep,
   scope: Record<string, unknown>,
 ): Record<string, unknown> | null {
-  if (!step.input) {
-    return null;
-  }
-  const resolved: Record<string, unknown> = {};
-  for (const [field, expression] of Object.entries(step.input)) {
-    resolved[field] = evaluateExpression(expression, scope);
-  }
-  return resolved;
+  return SagaUtils.buildInput(step, scope);
+}
+
+function buildScope(instance: SagaInstanceRecord, stepRows: SagaStepRecord[]): SagaScope {
+  return SagaUtils.buildScope(instance, stepRows);
 }
 
 /**

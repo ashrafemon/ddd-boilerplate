@@ -6,7 +6,7 @@ import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from '../queries/purchase-order.query';
 import { PurchaseOrderPublisherPort } from '../publishes/publishers/purchase-order.publisher-port';
-import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
+import { CancellationPolicy } from '../../domain/policies/cancellation.policy';
 
 @Injectable()
 export class CancelPurchaseOrderUseCase {
@@ -51,10 +51,7 @@ export class CancelPurchaseOrderUseCase {
       purchaseOrder.id.toString(),
     );
 
-    policyRegistry.enforce('purchase-order.cancellation', {
-      status: purchaseOrder.status,
-      hasReceipts: hasPostedReceipts,
-    });
+    CancellationPolicy.enforcePurchaseOrderCancellation(purchaseOrder.status, hasPostedReceipts);
 
     purchaseOrder.cancel(actor, hasPostedReceipts);
 

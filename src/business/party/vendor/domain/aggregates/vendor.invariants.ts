@@ -1,9 +1,7 @@
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
 import { VendorStatus } from '../types/vendor.enum';
 
-invariantRegistry.register<{ code: string; name: string; email?: string | null }>('vendor.create', {
-  name: 'vendor-create-required-fields',
-  check: ({ code, name, email }) => {
+export class VendorInvariants {
+  static enforceVendorCreate(code: string, name: string, email?: string | null): void {
     if (!code?.trim()) {
       throw Object.assign(new Error('Vendor code is required'), { statusCode: 422 });
     }
@@ -13,12 +11,9 @@ invariantRegistry.register<{ code: string; name: string; email?: string | null }
     if (email !== undefined && email !== null && !email.trim()) {
       throw Object.assign(new Error('Vendor email cannot be blank'), { statusCode: 422 });
     }
-  },
-});
+  }
 
-invariantRegistry.register<{ status: VendorStatus; to: VendorStatus }>('vendor.status-transition', {
-  name: 'vendor-valid-status-transition',
-  check: ({ status, to }) => {
+  static enforceVendorStatusTransition(status: VendorStatus, to: VendorStatus): void {
     if (status === to) return;
 
     const allowed: Record<VendorStatus, VendorStatus[]> = {
@@ -32,5 +27,5 @@ invariantRegistry.register<{ status: VendorStatus; to: VendorStatus }>('vendor.s
         statusCode: 422,
       });
     }
-  },
-});
+  }
+}

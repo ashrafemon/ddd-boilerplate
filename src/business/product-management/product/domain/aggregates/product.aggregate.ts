@@ -1,17 +1,15 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { invariantRegistry } from '@business/shared-business/domain/registries/invariant.registry';
-import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
+import { ProductId } from '../value-objects/product-id.vo';
+import { ProductProps } from '../types/product.types';
+import { ProductName } from '../value-objects/product-name.vo';
+import { ProductStatus } from '../types/product.enum';
+import { ProductInvariants } from './product.invariants';
+import { ProductUpdated } from '../events/product.updated.event';
 import { ProductActivated } from '../events/product.activated.event';
 import { ProductDeactivated } from '../events/product.deactivated.event';
 import { ProductDiscontinued } from '../events/product.discontinued.event';
-import { ProductUpdated } from '../events/product.updated.event';
-import { ProductProps } from '../types/product.types';
-import { ProductId } from '../value-objects/product-id.vo';
-import { ProductName } from '../value-objects/product-name.vo';
-import { ProductStatus } from '../types/product.enum';
-import './product.invariants';
-import '../policies/reactivation.policy';
+import { ProductReactivationPolicy } from '../policies/reactivation.policy';
 
 export class Product extends AggregateRoot<ProductId> {
   private props: ProductProps;
@@ -78,18 +76,17 @@ export class Product extends AggregateRoot<ProductId> {
   }
 
   changePrice(newPrice: Money): void {
-    invariantRegistry.enforce('product.price-change', { unitPrice: newPrice.amount });
+    ProductInvariants.enforceProductPriceChange(newPrice.amount);
     this.props.unitPrice = newPrice;
     this.props.updatedAt = new Date();
     this.addEvent(new ProductUpdated(this.id));
   }
 
   activate(): void {
-    policyRegistry.enforce('product.reactivation', { status: this.props.status });
-    invariantRegistry.enforce('product.status-transition', {
-      status: this.props.status,
-      to: ProductStatus.ACTIVE,
-    });
+    if (!ProductReactivationPolicy.enforceProductReactivation(this.props.status)) {
+      throw Object.assign(new Error('Product cannot be reactivated'), { statusCode: 422 });
+    }
+    ProductInvariants.enforceProductStatusTransition(this.props.status, ProductStatus.ACTIVE);
 
     this.props.status = ProductStatus.ACTIVE;
     this.props.updatedAt = new Date();
@@ -97,20 +94,14 @@ export class Product extends AggregateRoot<ProductId> {
   }
 
   deactivate(): void {
-    invariantRegistry.enforce('product.status-transition', {
-      status: this.props.status,
-      to: ProductStatus.INACTIVE,
-    });
+    ProductInvariants.enforceProductStatusTransition(this.props.status, ProductStatus.INACTIVE);
     this.props.status = ProductStatus.INACTIVE;
     this.props.updatedAt = new Date();
     this.addEvent(new ProductDeactivated(this.id));
   }
 
   discontinue(): void {
-    invariantRegistry.enforce('product.status-transition', {
-      status: this.props.status,
-      to: ProductStatus.DISCONTINUED,
-    });
+    ProductInvariants.enforceProductStatusTransition(this.props.status, ProductStatus.DISCONTINUED);
     this.props.status = ProductStatus.DISCONTINUED;
     this.props.updatedAt = new Date();
     this.addEvent(new ProductDiscontinued(this.id));

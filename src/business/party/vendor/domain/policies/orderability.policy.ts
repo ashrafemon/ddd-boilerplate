@@ -1,11 +1,9 @@
-import { policyRegistry } from '@business/shared-business/domain/registries/policy.registry';
-import { VendorState, VendorStatus } from '../types/vendor.types';
+import { VendorStatus } from '../types/vendor.types';
 
-policyRegistry.register<VendorState>('vendor.orderability', {
-  name: 'vendor-orderable',
-  evaluate: ({ status }) => {
+export class VendorOrderabilityPolicy {
+  static enforceVendorOrderability(status: VendorStatus): boolean {
     if (status === VendorStatus.BLOCKED) return false;
     if (status === VendorStatus.INACTIVE) return false;
     return true;
-  },
-});
+  }
+}
