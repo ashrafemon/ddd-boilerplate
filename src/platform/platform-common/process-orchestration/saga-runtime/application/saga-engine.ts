@@ -55,6 +55,13 @@ class SagaUtils {
     }
     return resolved;
   }
+
+  static failedUndoError(rows: SagaStepRecord[]): string | null {
+    const failed = rows.find(
+      row => row.kind === SagaStepKind.UNDO && row.status === SagaStepStatus.FAILED,
+    );
+    return failed?.error ?? null;
+  }
 }
 
 /** Resolve a step's `input` expressions against the scope. */
@@ -109,7 +116,7 @@ export class SagaEngine {
     }
 
     const plan = instance.plan;
-    const scope = buildScope(instance, await this.steps.findByInstance(instance.id));
+    const scope = SagaUtils.buildScope(instance, await this.steps.findByInstance(instance.id));
     const now = new Date();
     let cursor = instance.cursor;
 
@@ -150,7 +157,7 @@ export class SagaEngine {
         });
       }
 
-      const input = buildInput(step, scope);
+      const input = SagaUtils.buildInput(step, scope);
       const created = await this.steps.createIfAbsent({
         tenantId: instance.tenantId,
         companyId: instance.companyId,
@@ -233,7 +240,7 @@ export class SagaEngine {
     }
     await this.instances.updateCas(instance.id, instance.version, {
       status: SagaInstanceStatus.COMPENSATED,
-      error: failedUndoError(rows) ?? instance.error,
+      error: SagaUtils.failedUndoError(rows) ?? instance.error,
     });
   }
 
@@ -428,7 +435,7 @@ export class SagaEngine {
     }
 
     const rows = await this.steps.findByInstance(instance.id);
-    const scope = buildScope(instance, rows);
+    const scope = SagaUtils.buildScope(instance, rows);
     const now = new Date();
 
     for (let index = failedIndex - 1; index >= 0; index -= 1) {
@@ -459,7 +466,7 @@ export class SagaEngine {
         status: SagaStepStatus.PENDING,
         maxAttempts: step.maxAttempts,
         runAt: now,
-        input: { ...(row.output ?? {}), ...(buildInput(step, scope) ?? {}) },
+        input: { ...(row.output ?? {}), ...(SagaUtils.buildInput(step, scope) ?? {}) },
       });
     }
 
@@ -470,11 +477,4 @@ export class SagaEngine {
       waitingEvent: null,
     });
   }
-}
-
-function failedUndoError(rows: SagaStepRecord[]): string | null {
-  const failed = rows.find(
-    row => row.kind === SagaStepKind.UNDO && row.status === SagaStepStatus.FAILED,
-  );
-  return failed?.error ?? null;
 }

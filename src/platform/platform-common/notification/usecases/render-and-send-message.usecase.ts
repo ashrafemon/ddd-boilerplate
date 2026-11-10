@@ -86,10 +86,16 @@ export class RenderAndSendMessageUseCase {
   }
 }
 
-function capSnapshot(snapshot: Record<string, unknown>, maxBytes: number): Record<string, unknown> {
-  const size = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
-  if (size <= maxBytes) {
-    return snapshot;
+class SnapshotUtils {
+  static capSnapshot(snapshot: Record<string, unknown>, maxBytes: number): Record<string, unknown> {
+    const size = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
+    if (size <= maxBytes) {
+      return snapshot;
+    }
+    return { _truncated: true, _originalBytes: size };
   }
-  return { _truncated: true, _originalBytes: size };
+}
+
+function capSnapshot(snapshot: Record<string, unknown>, maxBytes: number): Record<string, unknown> {
+  return SnapshotUtils.capSnapshot(snapshot, maxBytes);
 }

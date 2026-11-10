@@ -60,17 +60,27 @@ export class NotificationEventDispatcher implements OnModuleInit {
   }
 }
 
-function asEnvelope(message: unknown): MessageEnvelope | null {
-  if (!message || typeof message !== 'object') {
-    return null;
+class DispatcherUtils {
+  static asEnvelope(message: unknown): MessageEnvelope | null {
+    if (!message || typeof message !== 'object') {
+      return null;
+    }
+    const candidate = message as { eventType?: unknown };
+    return typeof candidate.eventType === 'string' ? (message as MessageEnvelope) : null;
   }
-  const candidate = message as { eventType?: unknown };
-  return typeof candidate.eventType === 'string' ? (message as MessageEnvelope) : null;
+
+  static asPayload(envelope: MessageEnvelope | null): Record<string, unknown> {
+    if (!envelope || typeof envelope.payload !== 'object' || envelope.payload === null) {
+      return {};
+    }
+    return JSON.parse(JSON.stringify(envelope.payload)) as Record<string, unknown>;
+  }
+}
+
+function asEnvelope(message: unknown): MessageEnvelope | null {
+  return DispatcherUtils.asEnvelope(message);
 }
 
 function asPayload(envelope: MessageEnvelope | null): Record<string, unknown> {
-  if (!envelope || typeof envelope.payload !== 'object' || envelope.payload === null) {
-    return {};
-  }
-  return JSON.parse(JSON.stringify(envelope.payload)) as Record<string, unknown>;
+  return DispatcherUtils.asPayload(envelope);
 }

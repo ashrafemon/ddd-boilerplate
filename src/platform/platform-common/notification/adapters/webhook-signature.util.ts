@@ -8,19 +8,24 @@ import { createHmac, timingSafeEqual } from 'crypto';
  * SNS signature verification later only touches this function; the
  * mandatory "verify before trusting" rule at the call site does not change.
  */
-export function verifyWebhookSignature(
-  secret: string,
-  payload: unknown,
-  signature: string | undefined,
-): boolean {
-  if (!signature) {
-    return false;
+export class WebhookSignatureUtils {
+  static verifyWebhookSignature(
+    secret: string,
+    payload: unknown,
+    signature: string | undefined,
+  ): boolean {
+    if (!signature) {
+      return false;
+    }
+    const expected = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
+    const expectedBuffer = Buffer.from(expected, 'utf8');
+    const providedBuffer = Buffer.from(signature, 'utf8');
+    return (
+      expectedBuffer.length === providedBuffer.length &&
+      timingSafeEqual(expectedBuffer, providedBuffer)
+    );
   }
-  const expected = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
-  const expectedBuffer = Buffer.from(expected, 'utf8');
-  const providedBuffer = Buffer.from(signature, 'utf8');
-  return (
-    expectedBuffer.length === providedBuffer.length &&
-    timingSafeEqual(expectedBuffer, providedBuffer)
-  );
 }
+
+/** Verify an inbound webhook HMAC signature. */
+export const verifyWebhookSignature = WebhookSignatureUtils.verifyWebhookSignature;

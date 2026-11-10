@@ -156,26 +156,42 @@ export class SendNotificationUseCase {
   }
 }
 
+class NotificationUtils {
+  static expandPairs(
+    recipients: Recipient[],
+    declaredChannels: string[],
+  ): Array<{ recipient: Recipient; channel: string }> {
+    return recipients.flatMap(recipient => {
+      const channels = recipient.channelHints?.length ? recipient.channelHints : declaredChannels;
+      return channels.map(channel => ({ recipient, channel }));
+    });
+  }
+
+  static capPayload(
+    payload: Record<string, unknown> | null,
+    maxBytes: number,
+  ): Record<string, unknown> | null {
+    if (!payload) {
+      return null;
+    }
+    const size = Buffer.byteLength(JSON.stringify(payload), 'utf8');
+    if (size <= maxBytes) {
+      return payload;
+    }
+    return { _truncated: true, _originalBytes: size };
+  }
+}
+
 function expandPairs(
   recipients: Recipient[],
   declaredChannels: string[],
 ): Array<{ recipient: Recipient; channel: string }> {
-  return recipients.flatMap(recipient => {
-    const channels = recipient.channelHints?.length ? recipient.channelHints : declaredChannels;
-    return channels.map(channel => ({ recipient, channel }));
-  });
+  return NotificationUtils.expandPairs(recipients, declaredChannels);
 }
 
 function capPayload(
   payload: Record<string, unknown> | null,
   maxBytes: number,
 ): Record<string, unknown> | null {
-  if (!payload) {
-    return null;
-  }
-  const size = Buffer.byteLength(JSON.stringify(payload), 'utf8');
-  if (size <= maxBytes) {
-    return payload;
-  }
-  return { _truncated: true, _originalBytes: size };
+  return NotificationUtils.capPayload(payload, maxBytes);
 }

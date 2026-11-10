@@ -1,3 +1,7 @@
+# ERP Architecture Reference
+
+See [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure.xlsx) for the complete project structure and detailed file organization reference, including the new **Use Case & Facade Architecture** sheet.
+
 const VARIABLE_PATTERN = /\{\{\s*([\w.]+)\s*\}\}/g;
 
 /**

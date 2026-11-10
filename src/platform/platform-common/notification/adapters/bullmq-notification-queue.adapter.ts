@@ -54,10 +54,16 @@ export class BullMqNotificationQueueAdapter implements NotificationQueuePublishe
   }
 }
 
-function partition<T>(items: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    out.push(items.slice(i, i + size));
+class QueueAdapterUtils {
+  static partition<T>(items: T[], size: number): T[][] {
+    const out: T[][] = [];
+    for (let i = 0; i < items.length; i += size) {
+      out.push(items.slice(i, i + size));
+    }
+    return out;
   }
-  return out;
+}
+
+function partition<T>(items: T[], size: number): T[][] {
+  return QueueAdapterUtils.partition(items, size);
 }

@@ -62,7 +62,7 @@ export class PlanBuilder {
     if (overlay?.enabled === false) {
       return null;
     }
-    if (!hasAll(definition.requires, features)) {
+    if (!PlanUtils.hasAll(definition.requires, features)) {
       return null;
     }
 
@@ -72,7 +72,7 @@ export class PlanBuilder {
       if (!this.isEnabled(spec, stepOverlay)) {
         continue;
       }
-      if (!hasAll(spec.requires, features)) {
+      if (!PlanUtils.hasAll(spec.requires, features)) {
         if (spec.policy === 'required') {
           // The company cannot produce what a required step needs → no saga.
           return null;
@@ -133,8 +133,8 @@ export class PlanBuilder {
       input: spec.input,
       waitFor: spec.waitFor,
       match: spec.match,
-      when: andConditions(spec.when, overlay?.when),
-      if: andConditions(spec.if, overlay?.if),
+      when: PlanUtils.andConditions(spec.when, overlay?.when),
+      if: PlanUtils.andConditions(spec.if, overlay?.if),
       timeout,
       onTimeout,
       maxAttempts,

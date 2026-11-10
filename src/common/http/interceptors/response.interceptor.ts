@@ -20,13 +20,23 @@ export interface SuccessResponse<T = unknown> {
 
 type WrappedResponse<T> = { data: T | T[]; message: string };
 
+class ResponseInterceptorUtils {
+  static isWrappedResponse<T>(value: unknown): value is WrappedResponse<T> {
+    return typeof value === 'object' && value !== null && 'data' in value && 'message' in value;
+  }
+
+  static isNestLensRequest(request: FastifyRequest): boolean {
+    const url = request.url ?? request.raw?.url ?? '';
+    return NESTLENS_PATHS.some(path => url === path || url.startsWith(`${path}/`));
+  }
+}
+
 function isWrappedResponse<T>(value: unknown): value is WrappedResponse<T> {
-  return typeof value === 'object' && value !== null && 'data' in value && 'message' in value;
+  return ResponseInterceptorUtils.isWrappedResponse(value);
 }
 
 function isNestLensRequest(request: FastifyRequest): boolean {
-  const url = request.url ?? request.raw?.url ?? '';
-  return NESTLENS_PATHS.some(path => url === path || url.startsWith(`${path}/`));
+  return ResponseInterceptorUtils.isNestLensRequest(request);
 }
 
 @Injectable()

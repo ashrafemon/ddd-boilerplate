@@ -183,6 +183,12 @@ export class RecurringGenerationHandler implements ScheduledJobFireHandler {
   }
 }
 
+class HandlerUtils {
+  static formatDate(date: Date): string {
+    return date.toISOString().slice(0, 10);
+  }
+}
+
 function formatDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return HandlerUtils.formatDate(date);
 }

@@ -24,6 +24,9 @@ type Token =
 const PUNCT_2 = ['&&', '||', '==', '!=', '>=', '<='];
 const PUNCT_1 = ['(', ')', '[', ']', ',', '.', '!', '>', '<'];
 
+const DURATION_PATTERN =
+  /^P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/;
+
 class ExpressionUtils {
   static tokenize(source: string): Token[] {
     const tokens: Token[] = [];
@@ -128,24 +131,88 @@ class ExpressionUtils {
     }
     return true;
   }
+
+  static evaluateExpression(source: string, scope: Record<string, unknown>): unknown {
+    const trimmed = source.trim();
+    if (trimmed === '') {
+      return undefined;
+    }
+    try {
+      return new Parser(ExpressionUtils.tokenize(trimmed), trimmed, scope).parse();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        message.startsWith('Invalid saga expression')
+          ? message
+          : `Invalid saga expression "${trimmed}": ${message}`,
+      );
+    }
+  }
+
+  static evaluateCondition(source: string | undefined, scope: Record<string, unknown>): boolean {
+    if (source === undefined || source.trim() === '') {
+      return true;
+    }
+    return ExpressionUtils.truthy(ExpressionUtils.evaluateExpression(source, scope));
+  }
+
+  static renderTemplate(template: string, scope: Record<string, unknown>): string {
+    return template.replace(/\{\{([^}]*)\}\}/g, (_match, expression: string) => {
+      const value = ExpressionUtils.evaluateExpression(expression, scope);
+      if (ExpressionUtils.isNullish(value)) {
+        return '';
+      }
+      if (typeof value === 'string') {
+        return value;
+      }
+      if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+        return value.toString();
+      }
+      return JSON.stringify(value);
+    });
+  }
+
+  static parseDuration(duration: string): number {
+    const match = DURATION_PATTERN.exec(duration.trim());
+    if (!match) {
+      throw new Error(`Invalid ISO-8601 duration "${duration}"`);
+    }
+    const [, weeks, days, hours, minutes, seconds] = match;
+    const ms =
+      Number(weeks ?? 0) * 7 * 24 * 60 * 60 * 1000 +
+      Number(days ?? 0) * 24 * 60 * 60 * 1000 +
+      Number(hours ?? 0) * 60 * 60 * 1000 +
+      Number(minutes ?? 0) * 60 * 1000 +
+      Number(seconds ?? 0) * 1000;
+    if (ms <= 0) {
+      throw new Error(`Duration "${duration}" must be positive`);
+    }
+    return ms;
+  }
 }
 
-function tokenize(source: string): Token[] {
-  return ExpressionUtils.tokenize(source);
+/** Evaluate an expression against a scope. Throws on malformed input. */
+export function evaluateExpression(source: string, scope: Record<string, unknown>): unknown {
+  return ExpressionUtils.evaluateExpression(source, scope);
 }
 
-function isNullish(value: unknown): boolean {
-  return ExpressionUtils.isNullish(value);
+/** Evaluate an expression as a boolean; an absent condition is `true`. */
+export function evaluateCondition(
+  source: string | undefined,
+  scope: Record<string, unknown>,
+): boolean {
+  return ExpressionUtils.evaluateCondition(source, scope);
 }
 
-function looseEq(a: unknown, b: unknown): boolean {
-  return ExpressionUtils.looseEq(a, b);
+/** Render `{{ expr }}` placeholders; missing values render as an empty string. */
+export function renderTemplate(template: string, scope: Record<string, unknown>): string {
+  return ExpressionUtils.renderTemplate(template, scope);
 }
 
-function truthy(value: unknown): boolean {
-  return ExpressionUtils.truthy(value);
+/** Parse an ISO-8601 duration (`P7D`, `PT30M`, `P1W`) into milliseconds. */
+export function parseDuration(duration: string): number {
+  return ExpressionUtils.parseDuration(duration);
 }
-
 class Parser {
   private pos = 0;
 
@@ -168,7 +235,7 @@ class Parser {
     while (this.isPunct('||')) {
       this.pos += 1;
       const right = this.parseAnd();
-      left = truthy(left) || truthy(right);
+      left = ExpressionUtils.truthy(left) || ExpressionUtils.truthy(right);
     }
     return left;
   }
@@ -178,7 +245,7 @@ class Parser {
     while (this.isPunct('&&')) {
       this.pos += 1;
       const right = this.parseComparison();
-      left = truthy(left) && truthy(right);
+      left = ExpressionUtils.truthy(left) && ExpressionUtils.truthy(right);
     }
     return left;
   }
@@ -193,9 +260,9 @@ class Parser {
     const right = this.parseUnary();
     switch (op) {
       case '==':
-        return looseEq(left, right);
+        return ExpressionUtils.looseEq(left, right);
       case '!=':
-        return !looseEq(left, right);
+        return !ExpressionUtils.looseEq(left, right);
       case '>':
         return Number(left) > Number(right);
       case '<':
@@ -205,7 +272,7 @@ class Parser {
       case '<=':
         return Number(left) <= Number(right);
       case 'in':
-        return Array.isArray(right) && right.some(item => looseEq(item, left));
+        return Array.isArray(right) && right.some(item => ExpressionUtils.looseEq(item, left));
       default:
         this.fail(`unsupported operator "${op}"`);
     }
@@ -214,7 +281,7 @@ class Parser {
   private parseUnary(): unknown {
     if (this.isPunct('!')) {
       this.pos += 1;
-      return !truthy(this.parseUnary());
+      return !ExpressionUtils.truthy(this.parseUnary());
     }
     return this.parsePostfix();
   }
@@ -228,7 +295,7 @@ class Parser {
         this.fail('expected a property name after "."');
       }
       this.pos += 1;
-      if (isNullish(value)) {
+      if (ExpressionUtils.isNullish(value)) {
         return undefined;
       }
       value = (value as Record<string, unknown>)[token.value];
@@ -319,72 +386,4 @@ class Parser {
   private fail(message: string): never {
     throw new Error(`Invalid saga expression "${this.source}": ${message}`);
   }
-}
-
-/** Evaluate an expression against a scope. Throws on malformed input. */
-export function evaluateExpression(source: string, scope: Record<string, unknown>): unknown {
-  const trimmed = source.trim();
-  if (trimmed === '') {
-    return undefined;
-  }
-  try {
-    return new Parser(tokenize(trimmed), trimmed, scope).parse();
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      message.startsWith('Invalid saga expression')
-        ? message
-        : `Invalid saga expression "${trimmed}": ${message}`,
-    );
-  }
-}
-
-/** Evaluate an expression as a boolean; an absent condition is `true`. */
-export function evaluateCondition(
-  source: string | undefined,
-  scope: Record<string, unknown>,
-): boolean {
-  if (source === undefined || source.trim() === '') {
-    return true;
-  }
-  return truthy(evaluateExpression(source, scope));
-}
-
-/** Render `{{ expr }}` placeholders; missing values render as an empty string. */
-export function renderTemplate(template: string, scope: Record<string, unknown>): string {
-  return template.replace(/\{\{([^}]*)\}\}/g, (_match, expression: string) => {
-    const value = evaluateExpression(expression, scope);
-    if (isNullish(value)) {
-      return '';
-    }
-    if (typeof value === 'string') {
-      return value;
-    }
-    if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
-      return value.toString();
-    }
-    return JSON.stringify(value);
-  });
-}
-
-const DURATION_PATTERN =
-  /^P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/;
-
-/** Parse an ISO-8601 duration (`P7D`, `PT30M`, `P1W`) into milliseconds. */
-export function parseDuration(duration: string): number {
-  const match = DURATION_PATTERN.exec(duration.trim());
-  if (!match) {
-    throw new Error(`Invalid ISO-8601 duration "${duration}"`);
-  }
-  const [, weeks, days, hours, minutes, seconds] = match;
-  const ms =
-    Number(weeks ?? 0) * 7 * 24 * 60 * 60 * 1000 +
-    Number(days ?? 0) * 24 * 60 * 60 * 1000 +
-    Number(hours ?? 0) * 60 * 60 * 1000 +
-    Number(minutes ?? 0) * 60 * 1000 +
-    Number(seconds ?? 0) * 1000;
-  if (ms <= 0) {
-    throw new Error(`Duration "${duration}" must be positive`);
-  }
-  return ms;
 }

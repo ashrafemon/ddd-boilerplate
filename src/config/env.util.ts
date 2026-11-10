@@ -7,7 +7,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-class EnvUtils {
+export class EnvUtils {
   private static envLoaded = false;
 
   static envFileCandidates(cwd: string = process.cwd()): string[] {
@@ -49,6 +49,43 @@ class EnvUtils {
 
     return parsed;
   }
+
+  static numericEnv(name: string, fallback: number): number {
+    const raw = process.env[name];
+    if (raw === undefined || raw === '') return fallback;
+
+    const value = Number(raw);
+    if (!Number.isFinite(value)) {
+      throw new Error(`Invalid numeric value for ${name}: "${raw}"`);
+    }
+    return value;
+  }
+
+  static booleanEnv(name: string, fallback: boolean): boolean {
+    const raw = process.env[name];
+    if (raw === undefined || raw === '') return fallback;
+    return raw === 'true' || raw === '1';
+  }
+
+  static stringEnv(name: string, fallback = ''): string {
+    const raw = process.env[name];
+    return raw === undefined || raw === '' ? fallback : raw;
+  }
+
+  static requiredInProduction(...names: string[]): void {
+    if (process.env.NODE_ENV !== 'production') return;
+
+    const missing = names.filter(name => {
+      const raw = process.env[name];
+      return raw === undefined || raw.trim() === '';
+    });
+
+    if (missing.length > 0) {
+      throw new Error(
+        `Missing required environment variable(s) in production: ${missing.join(', ')}`,
+      );
+    }
+  }
 }
 
 /**
@@ -62,39 +99,14 @@ export const ensureEnvLoaded = EnvUtils.ensureEnvLoaded;
 /** Env files in override order, shared by ConfigModule and ensureEnvLoaded. */
 export const envFileCandidates = EnvUtils.envFileCandidates;
 
-export function numericEnv(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (raw === undefined || raw === '') return fallback;
+/** Parse a numeric env var with fallback. */
+export const numericEnv = EnvUtils.numericEnv;
 
-  const value = Number(raw);
-  if (!Number.isFinite(value)) {
-    throw new Error(`Invalid numeric value for ${name}: "${raw}"`);
-  }
-  return value;
-}
+/** Parse a boolean env var with fallback. */
+export const booleanEnv = EnvUtils.booleanEnv;
 
-export function booleanEnv(name: string, fallback: boolean): boolean {
-  const raw = process.env[name];
-  if (raw === undefined || raw === '') return fallback;
-  return raw === 'true' || raw === '1';
-}
+/** Parse a string env var with fallback. */
+export const stringEnv = EnvUtils.stringEnv;
 
-export function stringEnv(name: string, fallback = ''): string {
-  const raw = process.env[name];
-  return raw === undefined || raw === '' ? fallback : raw;
-}
-
-export function requiredInProduction(...names: string[]): void {
-  if (process.env.NODE_ENV !== 'production') return;
-
-  const missing = names.filter(name => {
-    const raw = process.env[name];
-    return raw === undefined || raw.trim() === '';
-  });
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required environment variable(s) in production: ${missing.join(', ')}`,
-    );
-  }
-}
+/** Require env vars in production. */
+export const requiredInProduction = EnvUtils.requiredInProduction;

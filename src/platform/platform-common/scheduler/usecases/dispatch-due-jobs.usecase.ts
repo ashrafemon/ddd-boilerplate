@@ -17,8 +17,15 @@ const DEFAULT_TIME_BUDGET_MS = 25_000;
  * (crash before slot advance, manual re-fire, reconcile) maps to one key, so
  * BullMQ jobId dedupe and the dispatch-log upsert collapse duplicates.
  */
+class SchedulerUtils {
+  static deriveIdempotencyKey(jobId: string, nextRunAt: Date): string {
+    return createHash('sha256').update(`${jobId}:${nextRunAt.toISOString()}`).digest('hex');
+  }
+}
+
+/** Deterministic per-slot dispatch identity. */
 export function deriveIdempotencyKey(jobId: string, nextRunAt: Date): string {
-  return createHash('sha256').update(`${jobId}:${nextRunAt.toISOString()}`).digest('hex');
+  return SchedulerUtils.deriveIdempotencyKey(jobId, nextRunAt);
 }
 
 @Injectable()

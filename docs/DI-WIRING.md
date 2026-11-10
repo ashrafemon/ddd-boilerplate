@@ -1,5 +1,7 @@
 # DI Wiring — who injects whom, which token binds to which implementation
 
+See [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure.xlsx) for the complete project structure and detailed file organization reference, including the **Use Case & Facade Architecture** sheet.
+
 **Generated** by `scripts/generate-di-wiring.mjs` (`npm run docs:di`) from real source:
 `@Module` provider bindings + every constructor, with each dependency resolved through the
 consuming file's own imports — so module-local tokens (each module's own `CompanyConfigPort` /

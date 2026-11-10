@@ -125,25 +125,31 @@ export class SnsPushChannelAdapter extends BaseSnsChannelAdapter {
   }
 }
 
+class SnsAdapterUtils {
+  static parseNormalisedDeliveryEvent(payload: unknown): DeliveryEvent[] {
+    if (!payload || typeof payload !== 'object') {
+      return [];
+    }
+    const record = payload as Record<string, unknown>;
+    const providerMessageId = record.providerMessageId;
+    const status = record.status;
+    if (typeof providerMessageId !== 'string' || typeof status !== 'string') {
+      return [];
+    }
+    if (!['DELIVERED', 'BOUNCED', 'FAILED', 'COMPLAINT', 'UNSUBSCRIBED'].includes(status)) {
+      return [];
+    }
+    return [
+      {
+        providerMessageId,
+        status: status as DeliveryEvent['status'],
+        reason: typeof record.reason === 'string' ? record.reason : undefined,
+        at: new Date(),
+      },
+    ];
+  }
+}
+
 function parseNormalisedDeliveryEvent(payload: unknown): DeliveryEvent[] {
-  if (!payload || typeof payload !== 'object') {
-    return [];
-  }
-  const record = payload as Record<string, unknown>;
-  const providerMessageId = record.providerMessageId;
-  const status = record.status;
-  if (typeof providerMessageId !== 'string' || typeof status !== 'string') {
-    return [];
-  }
-  if (!['DELIVERED', 'BOUNCED', 'FAILED', 'COMPLAINT', 'UNSUBSCRIBED'].includes(status)) {
-    return [];
-  }
-  return [
-    {
-      providerMessageId,
-      status: status as DeliveryEvent['status'],
-      reason: typeof record.reason === 'string' ? record.reason : undefined,
-      at: new Date(),
-    },
-  ];
+  return SnsAdapterUtils.parseNormalisedDeliveryEvent(payload);
 }

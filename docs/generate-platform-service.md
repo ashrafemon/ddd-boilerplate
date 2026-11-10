@@ -1,5 +1,7 @@
 # Generating a New Platform Service — AI Agent Guide
 
+See [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure.xlsx) for the complete project structure and detailed file organization reference, including the **Use Case & Facade Architecture** and **Function Conversion Reference** sheets.
+
 Target: one cross-cutting capability under `src/platform/platform-common/<service>/` or
 `src/platform/platform-organization/<service>/`.
 Reference layout: `src/platform/platform-common/context/`, `src/platform/platform-common/outbox/`.

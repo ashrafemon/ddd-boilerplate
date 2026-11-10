@@ -68,8 +68,54 @@ See [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure
 | Response DTO | `<name>.<web|mobile>.response.dto.ts` | `create-product.web.response.dto.ts` |
 | Policy file | `<name>.policy.ts` | `can-approve.policy.ts` |
 | Invariant file | `<module>.invariants.ts` | `product.invariants.ts` |
+| Policy class | `<Module>Policy` | `ProductPolicy` |
+| Invariant class | `<Module>Invariants` | `ProductInvariants` |
 | Factory file | `<module>.factory.ts` | `product.factory.ts` |
 | Event file | `<module>.<Event>.event.ts` | `product-created.event.ts` |
+
+## Invariant and Policy Pattern (Class-Based Static Methods)
+
+There is **no global registry** for invariants and policies. Instead, each invariant/policy file exports a class with static methods. Use cases and aggregates call these methods statically.
+
+### Invariant class pattern
+
+```ts
+// domain/aggregates/<module>.invariants.ts
+export class <Module>Invariants {
+  static enforce<Module>Create(input: ...): void {
+    // validation logic, throws with statusCode: 422 on violation
+  }
+
+  static enforce<Module>StatusTransition(status: ..., to: ...): void {
+    // transition validation
+  }
+}
+```
+
+Usage:
+```ts
+import { <Module>Invariants } from './<module>.invariants';
+// inside aggregate or use case:
+<Module>Invariants.enforce<Module>Create(input);
+```
+
+### Policy class pattern
+
+```ts
+// domain/policies/<name>.policy.ts
+export class <Module><Name>Policy {
+  static enforce<Name>(params: ...): boolean | void {
+    // policy logic, throws with statusCode: 422 on violation
+  }
+}
+```
+
+Usage:
+```ts
+import { <Module><Name>Policy } from '../policies/<name>.policy';
+// inside use case:
+<Module><Name>Policy.enforce<Name>(params);
+```
 
 ## Import aliases
 

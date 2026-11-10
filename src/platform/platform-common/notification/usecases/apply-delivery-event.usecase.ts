@@ -59,6 +59,33 @@ export class ApplyDeliveryEventUseCase {
   }
 }
 
+class DeliveryEventUtils {
+  static mapDeliveryEvent(
+    status: DeliveryStatus,
+    channel: string,
+  ): {
+    messageStatus: 'DELIVERED' | 'BOUNCED' | 'FAILED';
+    suppressReason: NotificationSuppressReason | null;
+  } {
+    switch (status) {
+      case 'DELIVERED':
+        return { messageStatus: 'DELIVERED', suppressReason: null };
+      case 'BOUNCED':
+        return { messageStatus: 'BOUNCED', suppressReason: 'HARD_BOUNCE' };
+      case 'COMPLAINT':
+        return { messageStatus: 'BOUNCED', suppressReason: 'COMPLAINT' };
+      case 'UNSUBSCRIBED':
+        return {
+          messageStatus: 'BOUNCED',
+          suppressReason: channel === 'SMS' ? 'SMS_STOP' : 'UNSUBSCRIBE',
+        };
+      case 'FAILED':
+      default:
+        return { messageStatus: 'FAILED', suppressReason: null };
+    }
+  }
+}
+
 function mapDeliveryEvent(
   status: DeliveryStatus,
   channel: string,
@@ -66,20 +93,5 @@ function mapDeliveryEvent(
   messageStatus: 'DELIVERED' | 'BOUNCED' | 'FAILED';
   suppressReason: NotificationSuppressReason | null;
 } {
-  switch (status) {
-    case 'DELIVERED':
-      return { messageStatus: 'DELIVERED', suppressReason: null };
-    case 'BOUNCED':
-      return { messageStatus: 'BOUNCED', suppressReason: 'HARD_BOUNCE' };
-    case 'COMPLAINT':
-      return { messageStatus: 'BOUNCED', suppressReason: 'COMPLAINT' };
-    case 'UNSUBSCRIBED':
-      return {
-        messageStatus: 'BOUNCED',
-        suppressReason: channel === 'SMS' ? 'SMS_STOP' : 'UNSUBSCRIBE',
-      };
-    case 'FAILED':
-    default:
-      return { messageStatus: 'FAILED', suppressReason: null };
-  }
+  return DeliveryEventUtils.mapDeliveryEvent(status, channel);
 }

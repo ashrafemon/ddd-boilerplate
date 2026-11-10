@@ -73,46 +73,56 @@ export class SesEmailChannelAdapter implements ChannelProvider {
   }
 }
 
-function parseSesEvent(payload: unknown): DeliveryEvent[] {
-  const event = unwrapSnsEnvelope(payload);
-  if (!event || typeof event !== 'object') {
-    return [];
-  }
-  const record = event as Record<string, unknown>;
-  const mail = record.mail as Record<string, unknown> | undefined;
-  const providerMessageId = typeof mail?.messageId === 'string' ? mail.messageId : undefined;
-  if (!providerMessageId) {
-    return [];
+class SesAdapterUtils {
+  static parseSesEvent(payload: unknown): DeliveryEvent[] {
+    const event = unwrapSnsEnvelope(payload);
+    if (!event || typeof event !== 'object') {
+      return [];
+    }
+    const record = event as Record<string, unknown>;
+    const mail = record.mail as Record<string, unknown> | undefined;
+    const providerMessageId = typeof mail?.messageId === 'string' ? mail.messageId : undefined;
+    if (!providerMessageId) {
+      return [];
+    }
+
+    const at = new Date();
+    switch (record.notificationType) {
+      case 'Delivery':
+        return [{ providerMessageId, status: 'DELIVERED', at }];
+      case 'Bounce': {
+        const bounce = record.bounce as Record<string, unknown> | undefined;
+        const bounceType = typeof bounce?.bounceType === 'string' ? bounce.bounceType : 'Bounce';
+        return [{ providerMessageId, status: 'BOUNCED', reason: bounceType, at }];
+      }
+      case 'Complaint':
+        return [{ providerMessageId, status: 'COMPLAINT', reason: 'Complaint', at }];
+      default:
+        return [];
+    }
   }
 
-  const at = new Date();
-  switch (record.notificationType) {
-    case 'Delivery':
-      return [{ providerMessageId, status: 'DELIVERED', at }];
-    case 'Bounce': {
-      const bounce = record.bounce as Record<string, unknown> | undefined;
-      const bounceType = typeof bounce?.bounceType === 'string' ? bounce.bounceType : 'Bounce';
-      return [{ providerMessageId, status: 'BOUNCED', reason: bounceType, at }];
+  static unwrapSnsEnvelope(payload: unknown): unknown {
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      'Message' in payload &&
+      typeof (payload as Record<string, unknown>).Message === 'string'
+    ) {
+      try {
+        return JSON.parse((payload as Record<string, unknown>).Message as string);
+      } catch {
+        return null;
+      }
     }
-    case 'Complaint':
-      return [{ providerMessageId, status: 'COMPLAINT', reason: 'Complaint', at }];
-    default:
-      return [];
+    return payload;
   }
 }
 
+function parseSesEvent(payload: unknown): DeliveryEvent[] {
+  return SesAdapterUtils.parseSesEvent(payload);
+}
+
 function unwrapSnsEnvelope(payload: unknown): unknown {
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    'Message' in payload &&
-    typeof (payload as Record<string, unknown>).Message === 'string'
-  ) {
-    try {
-      return JSON.parse((payload as Record<string, unknown>).Message as string);
-    } catch {
-      return null;
-    }
-  }
-  return payload;
+  return SesAdapterUtils.unwrapSnsEnvelope(payload);
 }

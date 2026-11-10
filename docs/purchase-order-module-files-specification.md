@@ -1,5 +1,7 @@
 # Purchase Order Module — File Specification (Why / What / Who / Whom / Adapter)
 
+See [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure.xlsx) for the complete project structure and detailed file organization reference, including the **Use Case & Facade Architecture** sheet.
+
 This document specifies every file in `src/business/procurement/purchase-order/`, organized by layer.
 For each file: **Why** (purpose), **What** (contents), **Who** (consumers), **Whom** (interacts with),
 **Adapter** (implementing adapter if it is a port).
@@ -15,17 +17,17 @@ For each file: **Why** (purpose), **What** (contents), **Who** (consumers), **Wh
 | **Why** | Aggregate root — sole mutation path for PurchaseOrder; enforces invariants and raises domain events |
 | **What** | `PurchaseOrder` class extending `AggregateRoot<PurchaseOrderId>`; methods: `updateHeader`, `addLine`, `setLine`, `removeLine`, `submit`, `approve`, `reject`, `cancel`, `amend`, `issue`, `close`; computed `subtotal`/`total` |
 | **Who** | Command use cases (create, add/remove/update line, transition, amend, issue, close, receive) |
-| **Whom** | `PurchaseOrderFactory`, `invariantRegistry`, `policyRegistry`, domain events, `PurchaseOrderPricingService` |
+| **Whom** | `PurchaseOrderFactory`, `PurchaseOrderInvariants`, `PurchaseOrderPolicy`, domain events, `PurchaseOrderPricingService` |
 | **Adapter** | N/A (pure domain) |
 
 ### `domain/aggregates/purchase-order.invariants.ts`
 
 | Field | Detail |
 |-------|--------|
-| **Why** | Register purchase-order invariants in the shared `invariantRegistry` |
-| **What** | Side-effect file registering keys like `purchase-order.editable`, `purchase-order.has-lines`, `purchase-order.line-quantity`, `purchase-order.status-transition`, `purchase-order.amendable` |
-| **Who** | Imported by `purchase-order.aggregate.ts` (side-effect) |
-| **Whom** | `invariantRegistry.enforce()` callers in the aggregate |
+| **Why** | Enforce purchase-order invariants via class-based static methods |
+| **What** | `PurchaseOrderInvariants` class with static methods: `enforcePurchaseOrderLineQuantity`, `enforcePurchaseOrderAmendable`, `enforcePurchaseOrderCreate`, `enforcePurchaseOrderHasLines`, `enforcePurchaseOrderStatusTransition`, `enforcePurchaseOrderEditable`, `enforcePurchaseOrderCancellation`, `enforceRecurringPoLinesCreate`, `enforceRecurringPoLineProductId`, `enforceRecurringPoLineQuantity`, `enforceRecurringPoLineUnitPrice` |
+| **Who** | Command use cases and aggregate methods call `PurchaseOrderInvariants.enforce*()` statically |
+| **Whom** | `PurchaseOrder` aggregate, `PurchaseOrderFactory`, recurring line service |
 | **Adapter** | N/A |
 
 ### `domain/entities/purchase-order-line.entity.ts`
@@ -42,9 +44,9 @@ For each file: **Why** (purpose), **What** (contents), **Who** (consumers), **Wh
 
 | Field | Detail |
 |-------|--------|
-| **Why** | Register line-level invariants |
-| **What** | Side-effect file for line entity invariant keys |
-| **Who** | Imported by `purchase-order.aggregate.ts` |
+| **Why** | Enforce line-level invariants via class-based static methods |
+| **What** | `PurchaseOrderLineInvariants` class with static method: `enforcePurchaseOrderLineQuantity` |
+| **Who** | PurchaseOrder aggregate line operations |
 | **Whom** | Line entity validation |
 | **Adapter** | N/A |
 
@@ -53,9 +55,9 @@ For each file: **Why** (purpose), **What** (contents), **Who** (consumers), **Wh
 | Field | Detail |
 |-------|--------|
 | **Why** | Only sanctioned build path for PurchaseOrder aggregates |
-| **What** | `PurchaseOrderFactory.create(...)` and `openPoForReceipt(...)`; registers invariant/policy side-effect imports |
+| **What** | `PurchaseOrderFactory.create(...)` and `openPoForReceipt(...)`; calls invariant classes statically |
 | **Who** | `CreatePurchaseOrderUseCase`, `ImportPurchaseOrderUseCase`, `RegisterPurchaseOrderReceiptUseCase` |
-| **Whom** | `PurchaseOrder` aggregate, `invariantRegistry`, `policyRegistry` |
+| **Whom** | `PurchaseOrder` aggregate, `PurchaseOrderInvariants` |
 | **Adapter** | N/A |
 
 ### `domain/repositories/purchase-order-command.repository.ts`
@@ -132,10 +134,10 @@ For each file: **Why** (purpose), **What** (contents), **Who** (consumers), **Wh
 
 | Field | Detail |
 |-------|--------|
-| **Why** | Register approval policy in `policyRegistry` |
-| **What** | Side-effect registration for `purchase-order.approval` (manual approval threshold) |
-| **Who** | Imported by aggregate factory |
-| **Whom** | `policyRegistry.enforce()` |
+| **Why** | Enforce approval policy via class-based static methods |
+| **What** | `ApprovalPolicy` class with static method: `enforcePurchaseOrderApproval(status, totalAmount, autoApproveThreshold)` |
+| **Who** | `ApprovePurchaseOrderUseCase` calls `ApprovalPolicy.enforcePurchaseOrderApproval()` statically |
+| **Whom** | `PurchaseOrder` aggregate approve transition |
 | **Adapter** | N/A |
 
 ### `domain/policies/can-approve.policy.ts`
@@ -143,29 +145,29 @@ For each file: **Why** (purpose), **What** (contents), **Who** (consumers), **Wh
 | Field | Detail |
 |-------|--------|
 | **Why** | Replace inline `ConflictException` throw in transition use case with domain policy |
-| **What** | `purchase-order.can-approve` policy: auto-approve if `total <= autoApproveThreshold` |
-| **Who** | `PurchaseOrderTransitionUseCase` (approve branch) |
-| **Whom** | `policyRegistry.enforce()` |
+| **What** | `CanApprovePolicy` class with static method: `enforcePurchaseOrderCanApprove(status, totalAmount, autoApproveThreshold)` returns boolean |
+| **Who** | `ApprovePurchaseOrderUseCase` calls `CanApprovePolicy.enforcePurchaseOrderCanApprove()` statically |
+| **Whom** | `PurchaseOrder` aggregate approve transition |
 | **Adapter** | N/A |
 
 ### `domain/policies/cancellation.policy.ts`
 
 | Field | Detail |
 |-------|--------|
-| **Why** | Cancellation rules |
-| **What** | `purchase-order.cancellation` policy: blocks cancellation when posted receipts exist |
-| **Who** | `PurchaseOrder.aggregate.cancel()` |
-| **Whom** | `policyRegistry.enforce()` |
+| **Why** | Cancellation rules via class-based static methods |
+| **What** | `CancellationPolicy` class with static method: `enforcePurchaseOrderCancellation(status, hasReceipts)` |
+| **Who** | `CancelPurchaseOrderUseCase` calls `CancellationPolicy.enforcePurchaseOrderCancellation()` statically |
+| **Whom** | `PurchaseOrder.aggregate.cancel()` |
 | **Adapter** | N/A |
 
 ### `domain/policies/over-receipt.policy.ts`
 
 | Field | Detail |
 |-------|--------|
-| **Why** | Over-receipt tolerance enforcement |
-| **What** | `purchase-order.over-receipt` policy |
-| **Who** | Receipt registration flow |
-| **Whom** | `policyRegistry.enforce()` |
+| **Why** | Over-receipt tolerance enforcement via class-based static methods |
+| **What** | `OverReceiptPolicy` class with static method: `enforcePurchaseOrderOverReceipt(orderedQuantity, alreadyReceived, proposedQuantity, tolerance)` |
+| **Who** | Receipt registration flow calls `OverReceiptPolicy.enforcePurchaseOrderOverReceipt()` statically |
+| **Whom** | `PurchaseOrder` aggregate receipt flow |
 | **Adapter** | N/A |
 
 ### `domain/types/purchase-order.types.ts`
@@ -229,10 +231,10 @@ For each file: **Why** (purpose), **What** (contents), **Who** (consumers), **Wh
 
 | Field | Detail |
 |-------|--------|
-| **Why** | Order number format invariants |
-| **What** | Registration of `order-number` invariant keys |
+| **Why** | Order number format invariants via class-based static methods |
+| **What** | `OrderNumberInvariants` class with static method: `enforceOrderNumberCreate(orderNumber)` |
 | **Who** | Imported by factory |
-| **Whom** | `invariantRegistry` |
+| **Whom** | `OrderNumberInvariants.enforceOrderNumberCreate()` |
 | **Adapter** | N/A |
 
 ### `domain/value-objects/product-id-ref.vo.ts`

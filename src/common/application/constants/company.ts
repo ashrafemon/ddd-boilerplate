@@ -18,6 +18,12 @@ export interface CompanyScopedContext {
 }
 
 /** The effective company of the current request — never empty. */
+class CompanyUtils {
+  static resolveCompanyId(context?: CompanyScopedContext | null): string {
+    return context?.companyId ?? context?.tenantId ?? DEFAULT_COMPANY_ID;
+  }
+}
+
 export function resolveCompanyId(context?: CompanyScopedContext | null): string {
-  return context?.companyId ?? context?.tenantId ?? DEFAULT_COMPANY_ID;
+  return CompanyUtils.resolveCompanyId(context);
 }
