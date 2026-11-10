@@ -4,19 +4,19 @@ import { LoggerPort } from '@platform/platform-common/observability/ports/logger
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { RecurringExecutionPort } from '@platform/platform-common/recurring/ports/recurring-execution.port';
 import { RecurringOccurrenceRequestedPayload } from '../../domain/types/recurring-occurrence.types';
-import { CreateInvoiceUseCase } from './create-invoice.usecase';
-import { GetInvoiceUseCase } from './get-invoice.usecase';
-import { PostInvoiceUseCase } from './post-invoice.usecase';
-import { InvoiceRecurringLineService } from '../../domain/services/invoice-recurring-line.service';
+import { RecurringInvoiceGenerationPort } from '@business/sales/invoice/public/ports/recurring-invoice-generation.port';
 
+/**
+ * Recurring invoice execution trigger. Delegates all business orchestration
+ * (create → snapshot → post) to RecurringInvoiceGenerationFacade. This use
+ * case owns only the recurring-execution lifecycle (find/complete/fail).
+ */
 @Injectable()
 export class GenerateRecurringInvoiceUseCase {
   private readonly logger = new Logger(GenerateRecurringInvoiceUseCase.name);
 
   constructor(
-    private readonly createInvoice: CreateInvoiceUseCase,
-    private readonly getInvoice: GetInvoiceUseCase,
-    private readonly postInvoice: PostInvoiceUseCase,
+    private readonly recurringInvoiceGeneration: RecurringInvoiceGenerationPort,
     private readonly recurringExecution: RecurringExecutionPort,
     private readonly loggerPort: LoggerPort,
     private readonly requestContext: RequestContextPort,
@@ -53,32 +53,24 @@ export class GenerateRecurringInvoiceUseCase {
 
     const startedAt = Date.now();
     try {
-      const lines = InvoiceRecurringLineService.validateAndMap(command.lines);
-      const invoiceId = await this.createInvoice.execute({
-        customerId: command.partyId,
-        currency: command.currency,
-        lines,
-      });
-      const snapshot = await this.getInvoice.execute(invoiceId.toString());
-      if (!snapshot) {
-        throw new ConflictException(
-          `Generated invoice ${invoiceId.toString()} could not be read back`,
-        );
-      }
+      const normalizedLines = command.lines.map(
+        (l: { productId: string; quantity: number; unitPrice: number }) => ({
+          productId: l.productId,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+        }),
+      );
+      const result = await this.recurringInvoiceGeneration.generateRecurringInvoice(
+        command.partyId,
+        command.currency,
+        normalizedLines,
+        command.autoPost,
+      );
       await this.recurringExecution.complete(command.executionId, {
-        generatedDocumentId: invoiceId.toString(),
-        generatedSnapshot: snapshot as unknown as Record<string, unknown>,
+        generatedDocumentId: result!.invoiceId,
+        generatedSnapshot: result!.snapshot,
         executionTimeMs: Date.now() - startedAt,
       });
-      if (command.autoPost) {
-        try {
-          await this.postInvoice.execute(invoiceId.toString());
-        } catch (postErr) {
-          this.loggerPort.error(
-            `autoPost failed for Invoice ${invoiceId.toString()}: ${(postErr as Error).message}`,
-          );
-        }
-      }
     } catch (err) {
       const message = FailureMessage.of(err);
       await this.recurringExecution.fail(command.executionId, message);

@@ -1,3 +1,5 @@
+import { Vendor } from '../aggregates/vendor.aggregate';
+import { VendorCreated } from '../events/vendor.created.event';
 import { VendorInvariants } from '../aggregates/vendor.invariants';
 import '../aggregates/vendor.invariants';
 import { VendorOrderabilityPolicy } from '../policies/orderability.policy';

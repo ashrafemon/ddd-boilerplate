@@ -29,6 +29,7 @@ import { ListPurchaseOrdersUseCase } from './application/use-cases/list-purchase
 import { CreateRecurringPurchaseOrderUseCase } from './application/use-cases/create-recurring-purchase-order.usecase';
 import { CreateRecurringFromPurchaseOrderUseCase } from './application/use-cases/create-recurring-from-purchase-order.usecase';
 import { GenerateRecurringPurchaseOrderUseCase } from './application/use-cases/generate-recurring-purchase-order.usecase';
+import { RecurringPurchaseOrderGenerationFacade } from './application/facades/recurring-purchase-order-generation.facade';
 import { GoodsReceiptPostedListener } from './integrations/consumes/listeners/goods-receipt-posted.listener';
 import { VendorBillPostedListener } from './integrations/consumes/listeners/vendor-bill-posted.listener';
 import { HandleVendorBillPostedUseCase } from './application/use-cases/handle-vendor-bill-posted.usecase';
@@ -40,6 +41,7 @@ import { OrderableVendorPort } from './application/outbound-ports/vendor-query.p
 import { NumberingPort } from './application/outbound-ports/numbering.port';
 import { ReadCachePort } from './application/outbound-ports/read-cache.port';
 import { PurchaseOrderForGrnPort } from '@business/procurement/purchase-order/public/ports/purchase-order-for-grn.port';
+import { RecurringPurchaseOrderGenerationPort } from '@business/procurement/purchase-order/public/ports/recurring-purchase-order-generation.port';
 import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence/prisma/prisma-purchase-order-command.repository';
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence/prisma/prisma-purchase-order-query.repository';
 import { SharedOutboxAdapter } from '@platform/platform-common/outbox/adapters/shared-outbox.adapter';
@@ -85,6 +87,7 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     CreateRecurringPurchaseOrderUseCase,
     CreateRecurringFromPurchaseOrderUseCase,
     GenerateRecurringPurchaseOrderUseCase,
+    RecurringPurchaseOrderGenerationFacade,
     GoodsReceiptPostedListener,
     VendorBillPostedListener,
     HandleVendorBillPostedUseCase,
@@ -92,6 +95,10 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     PurchaseOrderForBillingFacade,
     { provide: PurchaseOrderForGrnPort, useExisting: PurchaseOrderForGrnFacade },
     { provide: PurchaseOrderForBillingPort, useExisting: PurchaseOrderForBillingFacade },
+    {
+      provide: RecurringPurchaseOrderGenerationPort,
+      useExisting: RecurringPurchaseOrderGenerationFacade,
+    },
     { provide: PurchaseOrderCommandRepository, useClass: PrismaPurchaseOrderCommandRepository },
     { provide: PurchaseOrderQuery, useClass: PrismaPurchaseOrderQueryRepository },
     {
@@ -105,6 +112,10 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     { provide: PurchasableProductPort, useClass: PurchasableProductAdapter },
     { provide: OrderableVendorPort, useClass: OrderableVendorAdapter },
   ],
-  exports: [PurchaseOrderForGrnPort, PurchaseOrderForBillingPort],
+  exports: [
+    PurchaseOrderForGrnPort,
+    PurchaseOrderForBillingPort,
+    RecurringPurchaseOrderGenerationPort,
+  ],
 })
 export class PurchaseOrderModule {}

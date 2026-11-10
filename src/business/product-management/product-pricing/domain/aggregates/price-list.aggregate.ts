@@ -78,8 +78,8 @@ export class PriceList extends AggregateRoot<PriceListId> {
     minQuantity: number;
     maxQuantity?: number | null;
   }): void {
-    PriceListInvariants.PriceListInvariants.enforcePriceListLinePrice(input.price);
-    PriceListInvariants.PriceListInvariants.enforcePriceListLineQuantityRange(
+    PriceListInvariants.enforcePriceListLinePrice(input.price);
+    PriceListInvariants.enforcePriceListLineQuantityRange(
       input.minQuantity,
       input.maxQuantity ?? null,
     );
@@ -127,11 +127,11 @@ export class PriceList extends AggregateRoot<PriceListId> {
     }
 
     if (input.price !== undefined) {
-      PriceListInvariants.PriceListInvariants.enforcePriceListLinePrice(input.price);
+      PriceListInvariants.enforcePriceListLinePrice(input.price);
       line.updatePrice(input.price);
     }
     if (input.minQuantity !== undefined || input.maxQuantity !== undefined) {
-      PriceListInvariants.PriceListInvariants.enforcePriceListLineQuantityRange(
+      PriceListInvariants.enforcePriceListLineQuantityRange(
         input.minQuantity ?? line.minQuantity,
         input.maxQuantity ?? line.maxQuantity,
       );

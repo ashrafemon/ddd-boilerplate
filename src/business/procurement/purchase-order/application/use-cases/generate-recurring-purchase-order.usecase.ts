@@ -1,31 +1,28 @@
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
-import { Transactional } from '@nestjs-cls/transactional';
 import { FailureMessage } from '@common/application/utils/failure-message';
 import { LoggerPort } from '@platform/platform-common/observability/ports/logger.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { RecurringExecutionPort } from '@platform/platform-common/recurring/ports/recurring-execution.port';
 import { RecurringOccurrenceRequestedPayload } from '../../domain/types/recurring-occurrence.types';
-import { AddPurchaseOrderLineUseCase } from './add-purchase-order-line.usecase';
-import { CreatePurchaseOrderUseCase } from './create-purchase-order.usecase';
-import { GetPurchaseOrderUseCase } from './get-purchase-order.usecase';
-import { SubmitPurchaseOrderUseCase } from './submit-purchase-order.usecase';
-import { PurchaseOrderRecurringLineService } from '../../domain/services/purchase-order-recurring-line.service';
+import { RecurringPurchaseOrderGenerationPort } from '@business/procurement/purchase-order/public/ports/recurring-purchase-order-generation.port';
 
+/**
+ * Recurring purchase order execution trigger. Delegates all business
+ * orchestration (create → add lines → snapshot → submit) to
+ * RecurringPurchaseOrderGenerationFacade. This use case owns only the
+ * recurring-execution lifecycle (find/complete/fail).
+ */
 @Injectable()
 export class GenerateRecurringPurchaseOrderUseCase {
   private readonly logger = new Logger(GenerateRecurringPurchaseOrderUseCase.name);
 
   constructor(
-    private readonly createPurchaseOrder: CreatePurchaseOrderUseCase,
-    private readonly addPurchaseOrderLine: AddPurchaseOrderLineUseCase,
-    private readonly getPurchaseOrder: GetPurchaseOrderUseCase,
-    private readonly submitPurchaseOrder: SubmitPurchaseOrderUseCase,
+    private readonly recurringPurchaseOrderGeneration: RecurringPurchaseOrderGenerationPort,
     private readonly recurringExecution: RecurringExecutionPort,
     private readonly loggerPort: LoggerPort,
     private readonly requestContext: RequestContextPort,
   ) {}
 
-  @Transactional()
   async execute(command: RecurringOccurrenceRequestedPayload): Promise<void> {
     await this.requestContext.run({ tenantId: command.tenantId }, () => this.run(command));
   }
@@ -57,36 +54,24 @@ export class GenerateRecurringPurchaseOrderUseCase {
 
     const startedAt = Date.now();
     try {
-      const lines = PurchaseOrderRecurringLineService.validateAndMap(command.lines);
-      const purchaseOrderId = await this.createPurchaseOrder.execute({
-        vendorId: command.partyId,
-        currency: command.currency,
-      });
-      for (const line of lines) {
-        await this.addPurchaseOrderLine.execute({ id: purchaseOrderId.toString(), ...line });
-      }
-
-      const snapshot = await this.getPurchaseOrder.execute(purchaseOrderId.toString());
-      if (!snapshot) {
-        throw new ConflictException(
-          `Generated purchase order ${purchaseOrderId.toString()} could not be read back`,
-        );
-      }
+      const normalizedLines = command.lines.map(
+        (l: { productId: string; quantity: number; unitPrice: number }) => ({
+          productId: l.productId,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+        }),
+      );
+      const result = await this.recurringPurchaseOrderGeneration.generateRecurringPurchaseOrder(
+        command.partyId,
+        command.currency,
+        normalizedLines,
+        command.autoPost,
+      );
       await this.recurringExecution.complete(command.executionId, {
-        generatedDocumentId: purchaseOrderId.toString(),
-        generatedSnapshot: snapshot as unknown as Record<string, unknown>,
+        generatedDocumentId: result!.purchaseOrderId,
+        generatedSnapshot: result!.snapshot,
         executionTimeMs: Date.now() - startedAt,
       });
-
-      if (command.autoPost) {
-        try {
-          await this.submitPurchaseOrder.execute(purchaseOrderId.toString());
-        } catch (submitErr) {
-          this.loggerPort.error(
-            `autoPost submit failed for PurchaseOrder ${purchaseOrderId.toString()}: ${(submitErr as Error).message}`,
-          );
-        }
-      }
     } catch (err) {
       const message = FailureMessage.of(err);
       await this.recurringExecution.fail(command.executionId, message);

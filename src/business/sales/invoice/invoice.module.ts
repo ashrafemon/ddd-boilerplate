@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PlatformModule } from '@platform/platform.module';
 import { InvoiceForReportsFacade } from './application/facades/invoice-for-reports.facade';
+import { RecurringInvoiceGenerationFacade } from './application/facades/recurring-invoice-generation.facade';
 import { RecurringOccurrenceRequestedRabbitMQListener } from './integrations/consumes/listeners/recurring-occurrence-requested.listener';
 import { InvoicePublisherPort } from './application/publishes/publishers/invoice.publisher-port';
 import { SharedOutboxAdapter } from '@platform/platform-common/outbox/adapters/shared-outbox.adapter';
@@ -18,6 +19,7 @@ import { PrismaInvoiceQueryRepository } from './infrastructure/persistence/prism
 import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
 import { InvoiceController } from './presentation/http/invoice.controller';
 import { InvoiceForReportsPort } from './public/ports/invoice-for-reports.port';
+import { RecurringInvoiceGenerationPort } from './public/ports/recurring-invoice-generation.port';
 
 /**
  * Sales Invoice aggregate.
@@ -40,9 +42,11 @@ import { InvoiceForReportsPort } from './public/ports/invoice-for-reports.port';
     GetInvoiceUseCase,
     ListInvoicesUseCase,
     GenerateRecurringInvoiceUseCase,
+    RecurringInvoiceGenerationFacade,
     RecurringOccurrenceRequestedRabbitMQListener,
     InvoiceForReportsFacade,
     { provide: InvoiceForReportsPort, useExisting: InvoiceForReportsFacade },
+    { provide: RecurringInvoiceGenerationPort, useExisting: RecurringInvoiceGenerationFacade },
     { provide: InvoiceCommandRepository, useClass: PrismaInvoiceCommandRepository },
     { provide: InvoiceQuery, useClass: PrismaInvoiceQueryRepository },
     {
@@ -53,6 +57,6 @@ import { InvoiceForReportsPort } from './public/ports/invoice-for-reports.port';
     },
     { provide: NumberingPort, useClass: NumberingAdapter },
   ],
-  exports: [InvoiceForReportsPort],
+  exports: [InvoiceForReportsPort, RecurringInvoiceGenerationPort],
 })
 export class InvoiceModule {}

@@ -88,10 +88,7 @@ export class JournalEntry extends AggregateRoot<JournalEntryId> {
       this.props.status,
       JournalEntryStatus.POSTED,
     );
-    JournalEntryPolicy.enforceJournalEntryPostAllowed(
-      this.props.status,
-      this.props.accountingEntries?.length > 0,
-    );
+    JournalEntryPolicy.enforceJournalEntryPostAllowed(this.props.status, true);
 
     this.props.status = JournalEntryStatus.POSTED;
     this.props.updatedAt = new Date();
