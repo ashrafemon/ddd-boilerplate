@@ -3,7 +3,8 @@ import { JournalEntryRecorded } from '../events/journal-entry-recorded.event';
 import { JournalEntryProps } from '../types/finance.types';
 import { JournalEntryStatus } from '../types/finance.enum';
 import { JournalEntryId } from '../value-objects/journal-entry-id.vo';
-import './finance.invariants';
+import { JournalEntryInvariants } from './journal-entry.invariants';
+import { JournalEntryPolicy } from '../policies/journal-entry.policy';
 
 export class JournalEntry extends AggregateRoot<JournalEntryId> {
   private props: JournalEntryProps;
@@ -83,11 +84,14 @@ export class JournalEntry extends AggregateRoot<JournalEntryId> {
   }
 
   post(): void {
-    if (this.props.status !== JournalEntryStatus.DRAFT) {
-      throw Object.assign(new Error('Only DRAFT journal entries can be posted'), {
-        statusCode: 422,
-      });
-    }
+    JournalEntryInvariants.enforceJournalEntryStatusTransition(
+      this.props.status,
+      JournalEntryStatus.POSTED,
+    );
+    JournalEntryPolicy.enforceJournalEntryPostAllowed(
+      this.props.status,
+      this.props.accountingEntries?.length > 0,
+    );
 
     this.props.status = JournalEntryStatus.POSTED;
     this.props.updatedAt = new Date();
@@ -95,11 +99,10 @@ export class JournalEntry extends AggregateRoot<JournalEntryId> {
   }
 
   reverse(): void {
-    if (this.props.status !== JournalEntryStatus.POSTED) {
-      throw Object.assign(new Error('Only POSTED journal entries can be reversed'), {
-        statusCode: 422,
-      });
-    }
+    JournalEntryInvariants.enforceJournalEntryStatusTransition(
+      this.props.status,
+      JournalEntryStatus.REVERSED,
+    );
 
     this.props.status = JournalEntryStatus.REVERSED;
     this.props.updatedAt = new Date();

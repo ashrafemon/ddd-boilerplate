@@ -1,6 +1,7 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { GrnInvariants } from './grn.invariants';
-import { enforceGrnLineQuantity } from '../entities/grn-line.entity.invariants';
+import { GrnLineInvariants } from '../entities/grn-line.entity.invariants';
+import { GrnPolicy } from '../policies/grn.policy';
 import { GrnId } from '../value-objects/grn-id.vo';
 import { GrnLine, GrnProps, GrnStatus, TrackingEntry } from '../types/grn.types';
 import { GrnTotalsService } from '../services/grn-totals.service';
@@ -109,7 +110,11 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
   }
 
   receive(actorId?: string): void {
+    if (this.props.status === GrnStatus.RECEIVED) {
+      return;
+    }
     GrnInvariants.enforceGrnHasLines(this.props.lines.length);
+    GrnPolicy.enforceGrnReceiveAllowed(this.props.status, this.props.lines.length);
     GrnInvariants.enforceGrnStatusTransition(this.props.status, GrnStatus.RECEIVED);
     this.props.status = GrnStatus.RECEIVED;
     this.props.receivedAt = new Date();
@@ -123,6 +128,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
    * the legacy `PATCH /grn/:id/complete` path passes none and leaves it null.
    */
   complete(actorId?: string): void {
+    GrnPolicy.enforceGrnCompleteAllowed(this.props.status);
     GrnInvariants.enforceGrnStatusTransition(this.props.status, GrnStatus.COMPLETED);
     this.props.status = GrnStatus.COMPLETED;
     this.props.postedBy = actorId ?? null;
@@ -143,6 +149,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
   }
 
   cancel(actorId?: string): void {
+    GrnPolicy.enforceGrnCancelAllowed(this.props.status);
     GrnInvariants.enforceGrnStatusTransition(this.props.status, GrnStatus.CANCELLED);
     this.props.status = GrnStatus.CANCELLED;
     this.props.cancelledBy = actorId ?? null;
@@ -159,6 +166,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
   recordInspectionResult(input: {
     lines: { productId: string; acceptedQuantity: number; rejectedQuantity: number }[];
   }): void {
+    GrnPolicy.enforceGrnInspectAllowed(this.props.status);
     if (this.props.status !== 'RECEIVED') {
       throw Object.assign(
         new Error(

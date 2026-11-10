@@ -1,10 +1,10 @@
 import { AggregateRoot } from '@business/shared-business/domain/bases/aggregate.base';
 import { StockMovementInvariants } from './stock-movement.invariants';
+import { StockMovementPolicy } from '../policies/stock-movement.policy';
 import { StockMovementRecorded } from '../events/stock-movement-recorded.event';
 import { StockMovementProps } from '../types/stock-movement.types';
 import { StockMovementId } from '../value-objects/stock-movement-id.vo';
 import { StockMovementType } from '../types/stock-movement.enum';
-import './stock-movement.invariants';
 import { StockBalanceProps } from '../types/stock-movement.types';
 
 export class StockMovement extends AggregateRoot<StockMovementId> {
@@ -87,6 +87,7 @@ export class StockMovement extends AggregateRoot<StockMovementId> {
   }): StockMovement {
     StockMovementInvariants.enforceStockMovementQuantity(input.quantity);
     StockMovementInvariants.enforceStockMovementType(input.movementType);
+    StockMovementPolicy.enforceStockMovementRecordAllowed(input.movementType, input.quantity);
 
     const movement = StockMovement.instantiate(
       StockMovementId.generate(),

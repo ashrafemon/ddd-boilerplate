@@ -1,3 +1,6 @@
+import { PaymentInvariants } from './payment.invariants';
+import { PaymentStatus } from '../types/finance.enum';
+
 export class Payment {
   private constructor(
     public readonly id: string,
@@ -19,6 +22,8 @@ export class Payment {
     companyId: string;
     tenantId: string | null;
   }): Payment {
+    PaymentInvariants.enforcePaymentCreate(input.paymentNo, input.amount, input.currency);
+
     const now = new Date();
     return new Payment(
       crypto.randomUUID(),
@@ -35,11 +40,19 @@ export class Payment {
   }
 
   complete(): void {
+    PaymentInvariants.enforcePaymentStatusTransition(
+      this.status as PaymentStatus,
+      PaymentStatus.COMPLETED,
+    );
     this.status = 'COMPLETED';
     this.updatedAt = new Date();
   }
 
   fail(): void {
+    PaymentInvariants.enforcePaymentStatusTransition(
+      this.status as PaymentStatus,
+      PaymentStatus.FAILED,
+    );
     this.status = 'FAILED';
     this.updatedAt = new Date();
   }

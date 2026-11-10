@@ -1,3 +1,6 @@
+import { VendorBillInvariants } from './vendor-bill.invariants';
+import { VendorBillStatus } from '../types/finance.enum';
+
 export class VendorBill {
   private constructor(
     public readonly id: string,
@@ -23,6 +26,13 @@ export class VendorBill {
     companyId: string;
     tenantId: string | null;
   }): VendorBill {
+    VendorBillInvariants.enforceVendorBillCreate(
+      input.billNo,
+      input.vendorId,
+      input.amount,
+      input.dueDate,
+    );
+
     const now = new Date();
     return new VendorBill(
       crypto.randomUUID(),
@@ -41,11 +51,19 @@ export class VendorBill {
   }
 
   post(): void {
+    VendorBillInvariants.enforceVendorBillStatusTransition(
+      this.status as VendorBillStatus,
+      VendorBillStatus.POSTED,
+    );
     this.status = 'POSTED';
     this.updatedAt = new Date();
   }
 
   cancel(): void {
+    VendorBillInvariants.enforceVendorBillStatusTransition(
+      this.status as VendorBillStatus,
+      VendorBillStatus.CANCELLED,
+    );
     this.status = 'CANCELLED';
     this.updatedAt = new Date();
   }

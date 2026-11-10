@@ -1,3 +1,5 @@
+import { PayableOpenItemInvariants } from './payable-open-item.invariants';
+
 export class PayableOpenItem {
   private constructor(
     public readonly id: string,
@@ -21,6 +23,13 @@ export class PayableOpenItem {
     companyId: string;
     tenantId: string | null;
   }): PayableOpenItem {
+    PayableOpenItemInvariants.enforcePayableOpenItemCreate(
+      input.vendorId,
+      input.vendorBillId,
+      input.amount,
+      input.dueDate,
+    );
+
     return new PayableOpenItem(
       crypto.randomUUID(),
       input.vendorId,

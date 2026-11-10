@@ -6,6 +6,7 @@ import { InvoiceLine } from '../value-objects/invoice-line.vo';
 import { InvoiceStatus } from '../types/invoice.enum';
 import { InvoiceProps } from '../types/invoice.types';
 import { InvoiceInvariants } from './invoice.invariants';
+import { InvoicePolicy } from '../policies/invoice.policy';
 
 export class Invoice extends AggregateRoot<InvoiceId> {
   private props: InvoiceProps;
@@ -58,10 +59,11 @@ export class Invoice extends AggregateRoot<InvoiceId> {
   }
 
   post(): void {
-    InvoiceInvariants.enforceInvoiceStatusTransition(this.props.status, InvoiceStatus.POSTED);
     if (this.props.status === InvoiceStatus.POSTED) {
       return;
     }
+    InvoiceInvariants.enforceInvoiceStatusTransition(this.props.status, InvoiceStatus.POSTED);
+    InvoicePolicy.enforceInvoicePostAllowed(this.props.status, this.props.lines.length);
     const now = new Date();
     this.props.status = InvoiceStatus.POSTED;
     this.props.postedAt = now;
