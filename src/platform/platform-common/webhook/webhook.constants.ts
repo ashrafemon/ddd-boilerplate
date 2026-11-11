@@ -1,4 +1,4 @@
-import { ensureEnvLoaded, numericEnv } from '@config/env.util';
+import { ensureEnvLoaded, numericEnv } from '@common/application/utils/env.util';
 
 export const WEBHOOK_QUEUE_NAME = 'webhook.deliveries';
 export const WEBHOOK_DELIVERY_JOB_NAME = 'deliver-webhook';

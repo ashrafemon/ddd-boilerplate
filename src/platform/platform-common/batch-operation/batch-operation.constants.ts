@@ -1,4 +1,4 @@
-import { ensureEnvLoaded, numericEnv } from '@config/env.util';
+import { ensureEnvLoaded, numericEnv } from '@common/application/utils/env.util';
 
 export const BATCH_OPERATION_QUEUE_NAME = 'batch-operation.chunks';
 export const BATCH_OPERATION_CHUNK_JOB_NAME = 'process-chunk';

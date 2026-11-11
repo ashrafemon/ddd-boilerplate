@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { numericEnv } from './env.util';
+import { numericEnv } from '../common/application/utils/env.util';
 import { IInboxConfig } from '@platform/platform-common/inbox/inbox.types';
 
 /**

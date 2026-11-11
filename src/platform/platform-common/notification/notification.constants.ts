@@ -1,4 +1,4 @@
-import { ensureEnvLoaded, numericEnv } from '@config/env.util';
+import { ensureEnvLoaded, numericEnv } from '@common/application/utils/env.util';
 
 export const NOTIFICATION_QUEUE_NAME = 'notification.chunks';
 export const NOTIFICATION_CHUNK_JOB_NAME = 'process-chunk';

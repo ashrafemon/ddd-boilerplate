@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { numericEnv } from './env.util';
+import { numericEnv } from '../common/application/utils/env.util';
 
 export type IThrottlerConfig = { ttlMs: number; limit: number };
 export type TenancyMode = 'single' | 'multi';

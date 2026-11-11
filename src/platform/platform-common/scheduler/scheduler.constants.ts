@@ -1,4 +1,4 @@
-import { ensureEnvLoaded, numericEnv } from '@config/env.util';
+import { ensureEnvLoaded, numericEnv } from '@common/application/utils/env.util';
 
 export const SCHEDULER_QUEUE_NAME = 'scheduler.jobs';
 export const SCHEDULER_JOB_NAME = 'execute';

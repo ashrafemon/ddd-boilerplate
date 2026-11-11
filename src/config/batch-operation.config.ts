@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { numericEnv } from './env.util';
+import { numericEnv } from '../common/application/utils/env.util';
 
 export type IBatchOperationConfig = {
   /** Soft cap on records per job — a submission above this is rejected 422. */

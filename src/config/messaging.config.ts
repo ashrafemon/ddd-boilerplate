@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { booleanEnv } from './env.util';
+import { booleanEnv } from '../common/application/utils/env.util';
 
 export type IRabbitMQConfig = {
   url: string;

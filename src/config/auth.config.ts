@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { requiredInProduction } from './env.util';
+import { requiredInProduction } from '../common/application/utils/env.util';
 
 /**
  * Auth config — JWT access/refresh secrets and TTLs. Secrets are mandatory

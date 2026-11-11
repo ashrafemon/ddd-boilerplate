@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { numericEnv } from './env.util';
+import { numericEnv } from '../common/application/utils/env.util';
 import { ISagaConfig } from '@platform/platform-common/process-orchestration/saga-runtime/saga.types';
 
 /**

@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { booleanEnv, numericEnv, stringEnv } from './env.util';
+import { booleanEnv, numericEnv, stringEnv } from '../common/application/utils/env.util';
 
 export type IRedisConfig = { url: string };
 

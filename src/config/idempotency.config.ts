@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { numericEnv, stringEnv } from './env.util';
+import { numericEnv, stringEnv } from '../common/application/utils/env.util';
 import { IIdempotencyConfig } from '@platform/platform-common/idempotency/idempotency.types';
 
 /**

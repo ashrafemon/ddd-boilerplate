@@ -1,4 +1,4 @@
-import { ensureEnvLoaded, numericEnv } from '@config/env.util';
+import { ensureEnvLoaded, numericEnv } from '@common/application/utils/env.util';
 
 export const IMPORT_QUEUE_NAME = 'import.jobs';
 export const IMPORT_PARSE_JOB_NAME = 'parse';

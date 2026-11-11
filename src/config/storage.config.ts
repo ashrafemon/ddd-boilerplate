@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { booleanEnv, numericEnv } from './env.util';
+import { booleanEnv, numericEnv } from '../common/application/utils/env.util';
 
 export type IStorageDriver = 's3';
 export type IS3Config = {
