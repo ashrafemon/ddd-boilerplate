@@ -10,6 +10,7 @@ and a strict **business ↔ infrastructure boundary** enforced by ESLint.
 - [`docs/architecture.md`](docs/architecture.md) — architecture, layers, dependency rules,
   module anatomy, tenancy, auth/RBAC/ABAC, outbox/events/messaging, data model, verification
 - [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure.xlsx) — complete project structure and file organization reference
+- [`docs/eslint-formatting-typescript-rules.md`](docs/eslint-formatting-typescript-rules.md) — complete ESLint, Prettier and TypeScript rule reference, including enforced architecture boundaries
 
 ## Quick start
 
