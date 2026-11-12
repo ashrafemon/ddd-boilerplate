@@ -74,6 +74,30 @@ services:
       timeout: 10s
       retries: 15
 
+  app:
+    build: .
+    container_name: erp-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - '4000:4000'
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/erp-boilerplate?schema=public"
+      DATABASE_SLAVE_URL: "postgresql://postgres:postgres@postgres:5432/erp-boilerplate?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
+      KAFKA_BROKERS: "kafka:9092"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
