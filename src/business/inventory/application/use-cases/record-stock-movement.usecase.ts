@@ -85,7 +85,10 @@ export class RecordStockMovementUseCase {
     const now = new Date();
 
     if (existing) {
-      existing.adjust(StockCalculationService.add(existing.quantity, delta), now);
+      // Validate the resulting balance (rejects negative stock), then apply the
+      // raw delta — `adjust()` adds it to the current quantity.
+      StockCalculationService.add(existing.quantity, delta);
+      existing.adjust(delta, now);
       await this.stockBalanceRepository.save(existing);
     } else {
       const newBalance = StockBalance.instantiate(

@@ -332,4 +332,23 @@ export default tseslint.config(
       'no-restricted-imports': ['error', { paths: prismaPaths }],
     },
   },
+
+  // ------------------------------------------------------------------
+  // Test code: in-memory fakes intentionally implement async port
+  // signatures without awaiting anything, so `require-await` does not apply.
+  // ------------------------------------------------------------------
+  {
+    files: [
+      'src/**/*.spec.ts',
+      'src/**/specifications/**/*.ts',
+      'test/**/*.ts',
+    ],
+    rules: {
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+    },
+  },
 );

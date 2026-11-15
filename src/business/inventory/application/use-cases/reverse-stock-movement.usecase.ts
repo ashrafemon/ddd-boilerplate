@@ -81,7 +81,10 @@ export class ReverseStockMovementUseCase {
     const now = new Date();
 
     if (existing) {
-      existing.adjust(StockCalculationService.add(existing.quantity, -original.quantity), now);
+      // Validate the resulting balance (rejects negative stock), then apply the
+      // raw negative delta — `adjust()` adds it to the current quantity.
+      StockCalculationService.add(existing.quantity, -original.quantity);
+      existing.adjust(-original.quantity, now);
       await this.stockBalanceRepository.save(existing);
     } else {
       const newBalance = StockBalance.instantiate(
@@ -97,6 +100,16 @@ export class ReverseStockMovementUseCase {
       );
       await this.stockBalanceRepository.save(newBalance);
     }
+
+    await this.audit.record({
+      action: 'stock-movement.reverse',
+      entityType: 'StockMovement',
+      entityId: original.id.toString(),
+      actorId: input.actorId ?? ctx.userId,
+      tenantId: ctx.tenantId,
+      companyId,
+      changes: { reversalId: reversal.id.toString(), quantity: original.quantity },
+    });
 
     for (const event of reversal.pullEvents()) {
       await this.integrationEvent.send(event, reversal.id.toString());

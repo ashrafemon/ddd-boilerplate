@@ -26,13 +26,13 @@ export class GrnInvariants {
   static enforceGrnStatusTransition(status: string, to: string): void {
     if (status === to) return;
     const allowed: Record<string, string[]> = {
-      DRAFT: ['SUBMITTED'],
-      SUBMITTED: ['APPROVED'],
-      APPROVED: ['ISSUED', 'CANCELLED'],
-      ISSUED: ['CANCELLED'],
+      DRAFT: ['RECEIVED', 'CANCELLED'],
+      RECEIVED: ['COMPLETED', 'CANCELLED'],
+      COMPLETED: ['REVERSED'],
       CANCELLED: [],
+      REVERSED: [],
     };
-    if (!allowed[status].includes(to)) {
+    if (!allowed[status]?.includes(to)) {
       throw Object.assign(new Error(`Invalid GRN status transition: ${status} -> ${to}`), {
         statusCode: 422,
       });
@@ -40,8 +40,10 @@ export class GrnInvariants {
   }
 
   static enforceGrnReversible(status: string): void {
-    if (status !== 'APPROVED') {
-      throw Object.assign(new Error('Only approved GRNs can be reversed'), { statusCode: 422 });
+    if (status !== 'COMPLETED') {
+      throw Object.assign(new Error('Only a posted (completed) GRN can be reversed'), {
+        statusCode: 422,
+      });
     }
   }
 

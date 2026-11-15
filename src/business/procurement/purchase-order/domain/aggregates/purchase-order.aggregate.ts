@@ -10,6 +10,10 @@ import { PurchaseOrderCancelled } from '../events/purchase-order.cancelled.event
 import { PurchaseOrderIssued } from '../events/purchase-order.issued.event';
 import { PurchaseOrderCompleted } from '../events/purchase-order.completed.event';
 import { PurchaseOrderAmended } from '../events/purchase-order.amended.event';
+import { PurchaseOrderLineAdded } from '../events/purchase-order.line-added.event';
+import { PurchaseOrderLineRemoved } from '../events/purchase-order.line-removed.event';
+import { PurchaseOrderSubmitted } from '../events/purchase-order.submitted.event';
+import { PurchaseOrderRejected } from '../events/purchase-order.rejected.event';
 import { PurchaseOrderInvariants } from './purchase-order.invariants';
 
 export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
@@ -188,7 +192,7 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     quantity: number,
     unitPrice: Money,
     descriptionSnapshot?: string,
-  ): void {
+  ): boolean {
     this.assertEditable();
     PurchaseOrderInvariants.enforcePurchaseOrderLineQuantity(quantity);
 
@@ -199,7 +203,9 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     const total = unitPrice.multiply(quantity);
     if (existing) {
       this.props.lines = this.props.lines.map(l =>
-        l.productId.toString() === productId ? l.withUpdatedQuantity(unitPrice, total) : l,
+        l.productId.toString() === productId
+          ? l.withUpdatedQuantity(quantity, unitPrice, total)
+          : l,
       );
     } else {
       this.props.lines.push(
@@ -317,7 +323,9 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
         const unitPrice = Money.fromMinorUnits(minorUnits, this.props.currency);
         const total = unitPrice.multiply(line.quantity);
         this.props.lines = this.props.lines.map(l =>
-          l.productId.toString() === productId ? l.withUpdatedQuantity(unitPrice, total) : l,
+          l.productId.toString() === productId
+            ? l.withUpdatedQuantity(line.quantity, unitPrice, total)
+            : l,
         );
         prices[productId] = unitPrice.toDecimal().toString();
       }

@@ -58,6 +58,8 @@ export class JournalEntry extends AggregateRoot<JournalEntryId> {
     companyId: string;
     tenantId: string | null;
   }): JournalEntry {
+    JournalEntryInvariants.enforceJournalEntryCreate(input.entryNo, input.postingDate);
+
     const now = new Date();
     const journalEntry = JournalEntry.instantiate(
       JournalEntryId.generate(),
