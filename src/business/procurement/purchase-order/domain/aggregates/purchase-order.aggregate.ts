@@ -34,7 +34,7 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
   }
 
   get orderNumber(): string {
-    return this.props.orderNumber;
+    return this.props.orderNumber.value;
   }
 
   get vendorId(): string {
@@ -239,7 +239,7 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     );
     this.props.status = PurchaseOrderStatus.SUBMITTED;
     this.props.updatedAt = new Date();
-    this.addEvent(new PurchaseOrderSubmitted(this.id, this.props.orderNumber, this.vendorId));
+    this.addEvent(new PurchaseOrderSubmitted(this.id, this.orderNumber, this.vendorId));
   }
 
   approve(actorId?: string): void {
