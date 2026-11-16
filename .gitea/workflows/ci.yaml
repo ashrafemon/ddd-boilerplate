@@ -7,23 +7,24 @@ on:
 
 jobs:
   verify:
+    # Only `linux` is advertised by the self-hosted runner (see
+    # infrastructure/compose/gitea.yml: GITEA_RUNNER_LABELS=linux).
     runs-on: linux
     timeout-minutes: 20
 
-    # JS actions (checkout, setup-node) need node in PATH. The node:24-bookworm
-    # image includes both node and git, so the runner image does not need them.
+    # node:24-bookworm already ships node, npm and git, so no JS actions
+    # (checkout/setup-node) are needed - they would only need a `node` binary
+    # in PATH and would try to download an extra Node toolchain.
     container:
       image: node:24-bookworm
 
     steps:
+      # `actions/checkout` runs as a JS action in this container and fetches
+      # from $GITHUB_SERVER_URL (http://gitea:3000). The runner must run the
+      # job container on the same docker network as the gitea service, which
+      # is configured via container.network in compose/act_runner.yaml.
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
 
       - name: Install dependencies
         run: npm ci
