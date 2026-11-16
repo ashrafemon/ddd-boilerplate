@@ -20,7 +20,6 @@ const businessModules = [
   'party/vendor',
   'procurement/purchase-order',
   'procurement/good-receipt-note',
-  'inventory/stock-movement',
   'sales/invoice',
 ];
 
@@ -218,11 +217,11 @@ export default tseslint.config(
     },
   },
 
-// ------------------------------------------------------------------
-// Listeners are the ONE place in the business layer allowed to import a
-// broker package — to obtain the subscribe decorators. They may not use the
-// raw clients behind them, and they must delegate to use cases.
-// ------------------------------------------------------------------
+  // ------------------------------------------------------------------
+  // Listeners are the ONE place in the business layer allowed to import a
+  // broker package — to obtain the subscribe decorators. They may not use the
+  // raw clients behind them, and they must delegate to use cases.
+  // ------------------------------------------------------------------
   {
     files: ['src/business/**/application/integrations/listens/**'],
     rules: {
@@ -255,7 +254,8 @@ export default tseslint.config(
           patterns: [
             {
               group: ['@infrastructure/**'],
-              message: 'Consume listeners must delegate to use cases, not import infrastructure clients',
+              message:
+                'Consume listeners must delegate to use cases, not import infrastructure clients',
             },
           ],
         },
@@ -302,7 +302,8 @@ export default tseslint.config(
           patterns: [
             {
               group: ['@platform/**', '@infrastructure/**', '@business/*/*/**'],
-              message: 'shared-business primitives cannot depend on platform, infrastructure or a concrete module',
+              message:
+                'shared-business primitives cannot depend on platform, infrastructure or a concrete module',
             },
           ],
         },
@@ -338,11 +339,7 @@ export default tseslint.config(
   // signatures without awaiting anything, so `require-await` does not apply.
   // ------------------------------------------------------------------
   {
-    files: [
-      'src/**/*.spec.ts',
-      'src/**/specifications/**/*.ts',
-      'test/**/*.ts',
-    ],
+    files: ['src/**/*.spec.ts', 'src/**/specifications/**/*.ts', 'test/**/*.ts'],
     rules: {
       '@typescript-eslint/require-await': 'off',
       '@typescript-eslint/no-unused-vars': [

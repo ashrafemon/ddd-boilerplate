@@ -990,16 +990,6 @@
             <p>Receive against a PO, track received quantities, post, reverse, and emit stock-movement events.</p>
           </div>
           <div class="card">
-            <span class="path">inventory/stock-movement</span>
-            <h4>Inventory ledger</h4>
-            <p>Append-only stock movements plus a balance projection updated in the same transaction.</p>
-          </div>
-          <div class="card">
-            <span class="path">finance</span>
-            <h4>Finance documents</h4>
-            <p>Journal entries, accounting entries, vendor bills, payments, and payable open items.</p>
-          </div>
-          <div class="card">
             <span class="path">sales/invoice</span>
             <h4>Sales invoices</h4>
             <p>Invoice creation, posting, recurring generation, and invoice-for-reports facade.</p>
@@ -1242,7 +1232,7 @@ export class CreateVendorUseCase {
         <p class="section-lead">
           This is what happens from the moment an HTTP request arrives to the moment a response is
           returned. The same flow applies to every business endpoint, whether it is a vendor,
-          product, purchase order, GRN, stock movement, finance document, or invoice.
+          product, purchase order, GRN, or invoice.
         </p>
 
         <div class="flow">

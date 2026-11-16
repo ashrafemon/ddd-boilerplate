@@ -4,8 +4,6 @@ import { ProductModule } from '@business/product-management/product/product.modu
 import { VendorModule } from '@business/party/vendor/vendor.module';
 import { PurchaseOrderController } from './presentation/http/purchase-order.controller';
 import { PurchaseOrderForGrnFacade } from './application/facades/purchase-order-for-grn.facade';
-import { PurchaseOrderForBillingPort } from '@business/procurement/purchase-order/public/ports/purchase-order-for-billing.port';
-import { PurchaseOrderForBillingFacade } from './application/facades/purchase-order-for-billing.facade';
 import { CreatePurchaseOrderUseCase } from './application/use-cases/create-purchase-order.usecase';
 import { AddPurchaseOrderLineUseCase } from './application/use-cases/add-purchase-order-line.usecase';
 import { UpdatePurchaseOrderUseCase } from './application/use-cases/update-purchase-order.usecase';
@@ -92,9 +90,7 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     VendorBillPostedListener,
     HandleVendorBillPostedUseCase,
     PurchaseOrderForGrnFacade,
-    PurchaseOrderForBillingFacade,
     { provide: PurchaseOrderForGrnPort, useExisting: PurchaseOrderForGrnFacade },
-    { provide: PurchaseOrderForBillingPort, useExisting: PurchaseOrderForBillingFacade },
     {
       provide: RecurringPurchaseOrderGenerationPort,
       useExisting: RecurringPurchaseOrderGenerationFacade,
@@ -112,10 +108,6 @@ import { PurchaseOrderImportHandler } from './infrastructure/adapters/platform/p
     { provide: PurchasableProductPort, useClass: PurchasableProductAdapter },
     { provide: OrderableVendorPort, useClass: OrderableVendorAdapter },
   ],
-  exports: [
-    PurchaseOrderForGrnPort,
-    PurchaseOrderForBillingPort,
-    RecurringPurchaseOrderGenerationPort,
-  ],
+  exports: [PurchaseOrderForGrnPort, RecurringPurchaseOrderGenerationPort],
 })
 export class PurchaseOrderModule {}
