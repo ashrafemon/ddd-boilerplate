@@ -3,7 +3,6 @@ import { PurchaseOrderProps } from '../types/purchase-order.types';
 import { PurchaseOrderStatus } from '../types/purchase-order.enum';
 import { CreatePurchaseOrderInput } from '../types/purchase-order.types';
 import { PurchaseOrderId } from '../value-objects/purchase-order-id.vo';
-import { PurchaseOrderLine } from '../entities/purchase-order-line.entity';
 import { OrderNumber } from '../value-objects/order-number.vo';
 import { VendorIdRef } from '../value-objects/vendor-id-ref.vo';
 import { PurchaseOrderCreated } from '../events/purchase-order.created.event';

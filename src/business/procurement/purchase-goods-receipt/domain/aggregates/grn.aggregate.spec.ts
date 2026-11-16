@@ -1,8 +1,11 @@
 import { GoodReceiptNote } from './grn.aggregate';
 import { GrnId } from '../value-objects/grn-id.vo';
-import { GrnProps } from '../types/grn.types';
+import { GrnProps, GrnStatus } from '../types/grn.types';
 
-function makeGrn(status = 'DRAFT', lines: GrnProps['lines'] = []): GoodReceiptNote {
+function makeGrn(
+  status: GrnStatus = GrnStatus.DRAFT,
+  lines: GrnProps['lines'] = [],
+): GoodReceiptNote {
   const now = new Date();
   return GoodReceiptNote.instantiate(
     GrnId.fromString('grn-1'),
@@ -44,7 +47,7 @@ describe('GoodReceiptNote aggregate', () => {
     });
 
     it('rejects line changes outside DRAFT', () => {
-      const grn = makeGrn('RECEIVED');
+      const grn = makeGrn(GrnStatus.RECEIVED);
       expect(() => grn.addLine('p-1', 10, 1, 2.5)).toThrow();
     });
   });
@@ -89,7 +92,7 @@ describe('GoodReceiptNote aggregate', () => {
     });
 
     it('rejects cancelling an already cancelled GRN', () => {
-      const grn = makeGrn('CANCELLED');
+      const grn = makeGrn(GrnStatus.CANCELLED);
       expect(() => grn.cancel()).toThrow('already cancelled');
     });
   });

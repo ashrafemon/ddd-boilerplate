@@ -1,4 +1,4 @@
-import { GrnStatus } from '../types/grn.enum';
+import { GrnStatus } from '../types/grn.types';
 
 export class GrnPolicy {
   static enforceGrnReceiveAllowed(status: GrnStatus, lineCount: number): void {

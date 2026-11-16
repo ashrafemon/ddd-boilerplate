@@ -37,7 +37,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
   }
 
   get status(): GrnStatus {
-    return this.props.status as GrnStatus;
+    return this.props.status;
   }
 
   get currency(): string {
@@ -167,7 +167,7 @@ export class GoodReceiptNote extends AggregateRoot<GrnId> {
     lines: { productId: string; acceptedQuantity: number; rejectedQuantity: number }[];
   }): void {
     GrnPolicy.enforceGrnInspectAllowed(this.props.status);
-    if (this.props.status !== 'RECEIVED') {
+    if (this.props.status !== GrnStatus.RECEIVED) {
       throw Object.assign(
         new Error(
           `Inspection can only be recorded on a RECEIVED GRN (status: ${this.props.status})`,

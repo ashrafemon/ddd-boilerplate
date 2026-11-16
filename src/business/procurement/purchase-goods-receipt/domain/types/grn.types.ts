@@ -3,7 +3,7 @@ export interface GrnProps {
   grnNumber: string;
   purchaseOrderId: string;
   vendorId: string;
-  status: string;
+  status: GrnStatus;
   currency: string;
   lines: GrnLine[];
   receivedAt: Date | null;
@@ -135,8 +135,12 @@ export interface ReceiveGrnRequest {
 export enum GrnStatus {
   DRAFT = 'DRAFT',
   RECEIVED = 'RECEIVED',
+  POSTED = 'POSTED',
+  INSPECTED = 'INSPECTED',
+  MATCHED = 'MATCHED',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
+  REVERSED = 'REVERSED',
 }
 
 export interface GrnState {

@@ -19,8 +19,10 @@ const VARIABLE_PATTERN = /\{\{\s*([\w.]+)\s*\}\}/g;
 export class TemplateRenderer {
   render(version: NotificationTemplateVersion, model: TemplateModel): RenderedTemplate {
     return {
-      subject: version.subject ? TemplateRenderer.interpolate(version.subject, model) : undefined,
-      body: TemplateRenderer.interpolate(version.body, model),
+      subject: version.subject
+        ? TemplateRendererUtils.interpolate(version.subject, model)
+        : undefined,
+      body: TemplateRendererUtils.interpolate(version.body, model),
     };
   }
 }

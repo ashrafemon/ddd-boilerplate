@@ -41,7 +41,7 @@ export class PrismaAuditRepository implements AuditPort {
     }
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(changes)) {
-      out[key] = SENSITIVE_KEYS.test(key) ? '[redacted]' : truncate(value);
+      out[key] = SENSITIVE_KEYS.test(key) ? '[redacted]' : AuditUtils.truncate(value);
     }
     return out;
   }

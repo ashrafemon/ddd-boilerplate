@@ -5,8 +5,6 @@ import { GrnId } from '../value-objects/grn-id.vo';
 import { GrnCreated } from '../events/grn.created.event';
 import { GoodsReceiptReversed } from '../events/grn.reversed.event';
 import { GrnInvariants } from '../aggregates/grn.invariants';
-import { GrnNumberInvariants } from '../value-objects/grn-number.invariants';
-import { ReceivedQuantityInvariants } from '../value-objects/received-quantity.invariants';
 
 export class GrnFactory {
   static create(input: CreateGrnInput): GoodReceiptNote {

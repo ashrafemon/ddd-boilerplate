@@ -1,4 +1,4 @@
-import { PurchaseOrderPolicyState, PurchaseOrderStatus } from '../types/purchase-order.types';
+import { PurchaseOrderStatus } from '../types/purchase-order.types';
 
 export class ApprovalPolicy {
   static enforcePurchaseOrderApproval(

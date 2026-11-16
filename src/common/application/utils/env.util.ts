@@ -34,7 +34,7 @@ export class EnvUtils {
     const parsed: Record<string, string> = {};
 
     for (const line of contents.split(/\r?\n/)) {
-      const match = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/;
+      const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
       if (!match) continue;
 
       let value = match[2];
@@ -94,19 +94,23 @@ export class EnvUtils {
  * driver flag before `ConfigModule` has been scanned (for example the cache
  * client selection), so the branch no longer depends on import order.
  */
-export const ensureEnvLoaded = EnvUtils.ensureEnvLoaded;
+export const ensureEnvLoaded = (): void => EnvUtils.ensureEnvLoaded();
 
 /** Env files in override order, shared by ConfigModule and ensureEnvLoaded. */
-export const envFileCandidates = EnvUtils.envFileCandidates;
+export const envFileCandidates = (cwd?: string): string[] => EnvUtils.envFileCandidates(cwd);
 
 /** Parse a numeric env var with fallback. */
-export const numericEnv = EnvUtils.numericEnv;
+export const numericEnv = (name: string, fallback: number): number =>
+  EnvUtils.numericEnv(name, fallback);
 
 /** Parse a boolean env var with fallback. */
-export const booleanEnv = EnvUtils.booleanEnv;
+export const booleanEnv = (name: string, fallback: boolean): boolean =>
+  EnvUtils.booleanEnv(name, fallback);
 
 /** Parse a string env var with fallback. */
-export const stringEnv = EnvUtils.stringEnv;
+export const stringEnv = (name: string, fallback = ''): string =>
+  EnvUtils.stringEnv(name, fallback);
 
 /** Require env vars in production. */
-export const requiredInProduction = EnvUtils.requiredInProduction;
+export const requiredInProduction = (...names: string[]): void =>
+  EnvUtils.requiredInProduction(...names);

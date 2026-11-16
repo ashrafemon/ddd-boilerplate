@@ -37,15 +37,6 @@ class PlanUtils {
   }
 }
 
-/** AND-combine two optional conditions; absent conditions are neutral. */
-function andConditions(left?: string, right?: string): string | undefined {
-  return PlanUtils.andConditions(left, right);
-}
-
-function hasAll(required: string[] | undefined, features: ReadonlySet<string>): boolean {
-  return PlanUtils.hasAll(required, features);
-}
-
 /**
  * PlanBuilder — merges the platform default with the company overlay.
  *

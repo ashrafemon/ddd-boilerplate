@@ -2,7 +2,6 @@ import { Vendor } from '../aggregates/vendor.aggregate';
 import { VendorCreated } from '../events/vendor.created.event';
 import { VendorInvariants } from '../aggregates/vendor.invariants';
 import '../aggregates/vendor.invariants';
-import { VendorOrderabilityPolicy } from '../policies/orderability.policy';
 import { VendorStatus } from '../types/vendor.types';
 import { CreateVendorInput, VendorProps } from '../types/vendor.types';
 import { VendorId } from '@business/party/vendor/domain/value-objects/vendor-id.vo';

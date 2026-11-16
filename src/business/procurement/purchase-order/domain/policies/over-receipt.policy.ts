@@ -1,5 +1,3 @@
-import { PurchaseOrderStatus } from '../types/purchase-order.types';
-
 export class OverReceiptPolicy {
   static enforcePurchaseOrderOverReceipt(
     orderedQuantity: number,

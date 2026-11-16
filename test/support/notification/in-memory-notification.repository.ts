@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await -- in-memory test double: the ports are async, the storage is a Map */
 import { randomUUID } from 'crypto';
 import { PageResult } from '@common/application/types/pagination';
 import { NotificationMessageRepositoryPort } from '@platform/platform-common/notification/ports/notification-message-repository.port';

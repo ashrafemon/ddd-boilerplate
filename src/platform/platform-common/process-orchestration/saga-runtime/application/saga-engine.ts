@@ -16,6 +16,7 @@ import {
   SagaStepKind,
   SagaStepRecord,
   SagaStepStatus,
+  SagaScope,
 } from '../saga.types';
 import { evaluateCondition, evaluateExpression, parseDuration, renderTemplate } from './expression';
 
@@ -65,17 +66,6 @@ class SagaUtils {
 }
 
 /** Resolve a step's `input` expressions against the scope. */
-function buildInput(
-  step: SagaPlanStep,
-  scope: Record<string, unknown>,
-): Record<string, unknown> | null {
-  return SagaUtils.buildInput(step, scope);
-}
-
-function buildScope(instance: SagaInstanceRecord, stepRows: SagaStepRecord[]): SagaScope {
-  return SagaUtils.buildScope(instance, stepRows);
-}
-
 /**
  * SagaEngine — the saga's state machine.
  *

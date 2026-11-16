@@ -297,3 +297,10 @@ export interface ISagaConfig {
   /** Purge inbox rows older than this many days. */
   inboxRetentionDays: number;
 }
+
+export interface SagaScope extends Record<string, unknown> {
+  event: Record<string, unknown>;
+  saga: Record<string, unknown> & { key: string; correlationKey: string };
+  company: { settings: Record<string, unknown> };
+  steps: Record<string, { status: SagaStepStatus; output: Record<string, unknown> }>;
+}

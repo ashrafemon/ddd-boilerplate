@@ -32,7 +32,12 @@ export class WebhookSignatureUtils {
 }
 
 /** Sign an outbound webhook payload. */
-export const signWebhookPayload = WebhookSignatureUtils.signWebhookPayload;
+export const signWebhookPayload = (secret: string, payload: unknown): string =>
+  WebhookSignatureUtils.signWebhookPayload(secret, payload);
 
 /** Verify an inbound webhook HMAC signature. */
-export const verifyWebhookSignature = WebhookSignatureUtils.verifyWebhookSignature;
+export const verifyWebhookSignature = (
+  secret: string,
+  rawBody: unknown,
+  signature: string | undefined,
+): boolean => WebhookSignatureUtils.verifyWebhookSignature(secret, rawBody, signature);

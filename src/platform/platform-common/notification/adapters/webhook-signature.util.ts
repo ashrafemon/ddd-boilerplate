@@ -28,4 +28,8 @@ export class WebhookSignatureUtils {
 }
 
 /** Verify an inbound webhook HMAC signature. */
-export const verifyWebhookSignature = WebhookSignatureUtils.verifyWebhookSignature;
+export const verifyWebhookSignature = (
+  secret: string,
+  payload: unknown,
+  signature: string | undefined,
+): boolean => WebhookSignatureUtils.verifyWebhookSignature(secret, payload, signature);

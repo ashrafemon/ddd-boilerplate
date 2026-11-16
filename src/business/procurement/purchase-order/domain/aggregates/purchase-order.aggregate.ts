@@ -77,6 +77,10 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
     return this.props.rejectionReason ?? null;
   }
 
+  get amendmentReason(): string | null | undefined {
+    return this.props.amendmentReason;
+  }
+
   get issuedBy(): string | null {
     return this.props.issuedBy ?? null;
   }
@@ -343,6 +347,12 @@ export class PurchaseOrder extends AggregateRoot<PurchaseOrderId> {
 
     this.addEvent(new PurchaseOrderAmended(this.id.toString(), applied, reason, changes.actorId));
     return applied;
+  }
+
+  /** Records a receipt registration against the order (balance already updated on lines). */
+  registerReceipt(actorId?: string): void {
+    void actorId;
+    this.props.updatedAt = new Date();
   }
 
   issue(actorId?: string): void {
