@@ -2,7 +2,12 @@
 module.exports = {
   rootDir: '.',
   moduleFileExtensions: ['js', 'json', 'ts'],
-  testMatch: ['<rootDir>/src/business/**/specifications/**/*.integration-spec.ts'],
+  testMatch: [
+    '<rootDir>/src/business/**/specifications/integrations/**/*.integration-spec.ts',
+    '<rootDir>/src/business/**/specifications/**/*.integration-spec.ts',
+    '<rootDir>/src/business/**/specifications/**/*.api-spec.ts',
+    '<rootDir>/src/business/**/specifications/**/*.security.spec.ts',
+  ],
   transform: {
     '^.+\\.(t|j)s$': [
       'ts-jest',

@@ -173,7 +173,6 @@ Declared workspace modules (`businessModules`):
   'party/vendor',
   'procurement/purchase-order',
   'procurement/good-receipt-note',
-  'inventory/stock-movement',
   'sales/invoice',
 ];
 ```
@@ -281,10 +280,11 @@ npx eslint --print-config src/business/procurement/purchase-order/domain/aggrega
 
 These are real gaps between the documented architecture and what ESLint currently rejects:
 
-1. **Stale `businessModules` list.** `procurement/product`, `procurement/good-receipt-note`, and
-   `inventory/stock-movement` no longer exist. The actual modules `product-management/product`,
-   `product-management/product-pricing`, `procurement/purchase-goods-receipt`, and the flat
-   `inventory`, `finance`, `pricing` contexts therefore get **no** module-isolation rule.
+1. **Stale `businessModules` list.** `procurement/product`, `procurement/good-receipt-note` no
+   longer exist, and the `finance` / `inventory` contexts have been removed. The actual modules
+   `product-management/product`, `product-management/product-pricing`,
+   `procurement/purchase-goods-receipt` and the flat `pricing` context therefore get **no**
+   module-isolation rule.
 2. **`usecases` vs `use-cases`.** The forbidden group is `application/usecases/**`, but the repo
    uses `application/use-cases/**`. Cross-module imports of use-case folders are not blocked.
 3. **Domain and listener blocks drop `patterns`.** Because later blocks replace rule options, a
@@ -504,7 +504,7 @@ NODE_ENV=test node -e "(async()=>{const{NestFactory}=require('@nestjs/core');con
 
 | Item                             | Current state                                                               | Recommended fix                                                                                                                                                                                              |
 | -------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `businessModules` paths          | Names modules that no longer exist; misses current ones                     | Replace with `party/vendor`, `product-management/product`, `product-management/product-pricing`, `procurement/purchase-order`, `procurement/purchase-goods-receipt`, `sales/invoice`, `inventory`, `finance` |
+| `businessModules` paths          | Names modules that no longer exist; misses current ones                     | Replace with `party/vendor`, `product-management/product`, `product-management/product-pricing`, `procurement/purchase-order`, `procurement/purchase-goods-receipt`, `sales/invoice` |
 | Cross-module folder name         | Rule blocks `application/usecases/**`; code uses `application/use-cases/**` | Update `internalGroups`                                                                                                                                                                                      |
 | Domain/listener `patterns`       | Lost when later blocks replace options                                      | Restate cross-module patterns in the domain and listener blocks                                                                                                                                              |
 | `@shared-kernel/*`               | Referenced by tests/seed/docs; alias does not exist                         | Replace with `@common/*`                                                                                                                                                                                     |

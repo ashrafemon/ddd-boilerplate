@@ -14,10 +14,10 @@ export interface EvaluationContext {
 }
 
 /**
- * Resolves a dotted field (e.g. `stock_balance.qtyOnHand`) to its current
- * value. Implemented per domain table (InvoiceFieldResolver,
- * StockBalanceFieldResolver, ...) and registered into FieldResolverRegistry
- * by the module that owns the data — never by ConditionEngineModule itself.
+ * Resolves a dotted field (e.g. `invoice.totalAmount`) to its current
+ * value. Implemented per domain table (InvoiceFieldResolver, ...) and
+ * registered into FieldResolverRegistry by the module that owns the data —
+ * never by ConditionEngineModule itself.
  */
 export interface FieldResolver {
   resolve(field: string, context: EvaluationContext): Promise<ConditionValue>;

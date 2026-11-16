@@ -57,11 +57,11 @@ function getModulePath(filePath: string): string | null {
   const rel = relative(BUSINESS_ROOT, filePath);
   const parts = rel.split('/');
   if (parts.length < 1) return null;
-  const ctx = parts[0]; // bounded context (e.g. 'procurement', 'inventory', 'finance')
+  const ctx = parts[0]; // bounded context (e.g. 'procurement', 'party', 'sales')
   if (parts.length >= 2 && !LAYER_DIRS.has(parts[1])) {
     return join(ctx, parts[1]); // e.g. 'procurement/purchase-order'
   }
-  return ctx; // e.g. 'inventory', 'finance', 'pricing'
+  return ctx; // e.g. 'procurement', 'product-management', 'pricing'
 }
 
 function getLayer(filePath: string): 'domain' | 'application' | 'infrastructure' | 'other' {

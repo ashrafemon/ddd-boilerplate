@@ -1,4 +1,0 @@
-export enum StockMovementType {
-  GOODS_RECEIPT = 'GOODS_RECEIPT',
-  GOODS_RECEIPT_REVERSAL = 'GOODS_RECEIPT_REVERSAL',
-}

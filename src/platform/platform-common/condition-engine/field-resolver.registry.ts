@@ -3,7 +3,7 @@ import { KeyedRegistryBase } from '@common/application/utils/keyed-registry';
 import { ConditionValue, EvaluationContext, FieldResolver } from './ports/field-resolver.port';
 
 /**
- * Keyed by field prefix (e.g. 'stock_balance' for 'stock_balance.qtyOnHand').
+ * Keyed by field prefix (e.g. 'invoice' for 'invoice.totalAmount').
  * Field-owning modules register into this at bootstrap — ConditionEngineModule
  * never imports them. A duplicate prefix fails at boot; an unresolved prefix
  * fails at evaluation time (see UnregisteredFieldError).
