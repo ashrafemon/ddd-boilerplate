@@ -10,20 +10,19 @@ jobs:
     runs-on: linux
     timeout-minutes: 20
 
-    # JS actions (checkout, setup-node) need node in PATH. The node:24-bookworm
-    # image includes both node and git, so the runner image does not need them.
+    # Plain node image: includes node, npm, git, and ca-certificates.
     container:
       image: node:24-bookworm
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
+        run: |
+          REPO_URL="${{ github.serverUrl }}/${{ github.repository }}.git"
+          if [ -n "${{ github.token }}" ]; then
+            git clone --depth 1 "https://${{ github.token }}@${REPO_URL#https://}" .
+          else
+            git clone --depth 1 "$REPO_URL" .
+          fi
 
       - name: Install dependencies
         run: npm ci
