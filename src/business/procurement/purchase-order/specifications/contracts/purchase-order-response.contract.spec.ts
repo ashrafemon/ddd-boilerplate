@@ -1,5 +1,5 @@
-import { GetPurchaseOrderResponseDto } from '../presentation/http/responses/get-purchase-order.response.dto';
-import { ListPurchaseOrdersResponseDto } from '../presentation/http/responses/list-purchase-orders.response.dto';
+import { GetPurchaseOrderResponseDto } from '../../presentation/http/responses/get-purchase-order.response.dto';
+import { ListPurchaseOrdersResponseDto } from '../../presentation/http/responses/list-purchase-orders.response.dto';
 
 describe('Purchase order response contract', () => {
   it('accepts a valid purchase order payload', () => {

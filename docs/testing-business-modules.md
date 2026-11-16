@@ -24,7 +24,8 @@ Applies to `src/business/**` modules.
 - HTTP/Nest bootstrap tests hitting endpoints; run with `npm run test:integration:business`.
 
 ## Contract tests (`<name>.contract.spec.ts`)
-- Location: `src/business/<context>/<module>/contracts/`.
+- Location: `src/business/<context>/<module>/specifications/contracts/`.
+- Covers response DTO schemas and public cross-module contracts; run with `npm run test:integration:business`.
 - Verify public REST/module contracts (Pact or OpenAPI snapshots).
 
 ## Security tests (`<name>.security.spec.ts`)

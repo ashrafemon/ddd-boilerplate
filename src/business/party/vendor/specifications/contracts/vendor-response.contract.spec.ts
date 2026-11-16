@@ -1,5 +1,5 @@
-import { GetVendorWebResponseDto } from '../presentation/http/responses/get-vendor.web.response.dto';
-import { ListVendorsWebResponseDto } from '../presentation/http/responses/list-vendors.web.response.dto';
+import { GetVendorWebResponseDto } from '../../presentation/http/responses/get-vendor.web.response.dto';
+import { ListVendorsWebResponseDto } from '../../presentation/http/responses/list-vendors.web.response.dto';
 
 describe('Vendor response contract', () => {
   it('accepts a valid vendor payload', () => {

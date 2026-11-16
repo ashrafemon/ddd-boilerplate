@@ -1,5 +1,5 @@
-import { GetInvoiceWebResponseDto } from '../presentation/http/responses/get-invoice.web.response.dto';
-import { ListInvoicesWebResponseDto } from '../presentation/http/responses/list-invoices.web.response.dto';
+import { GetInvoiceWebResponseDto } from '../../presentation/http/responses/get-invoice.web.response.dto';
+import { ListInvoicesWebResponseDto } from '../../presentation/http/responses/list-invoices.web.response.dto';
 
 describe('Invoice response contract', () => {
   it('accepts a valid invoice payload', () => {

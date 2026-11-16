@@ -1,5 +1,5 @@
-import { GetProductWebResponseDto } from '../presentation/http/responses/get-product.web.response.dto';
-import { ListProductsWebResponseDto } from '../presentation/http/responses/list-products.web.response.dto';
+import { GetProductWebResponseDto } from '../../presentation/http/responses/get-product.web.response.dto';
+import { ListProductsWebResponseDto } from '../../presentation/http/responses/list-products.web.response.dto';
 
 describe('Product response contract', () => {
   it('accepts a valid product payload', () => {

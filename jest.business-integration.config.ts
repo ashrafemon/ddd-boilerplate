@@ -7,6 +7,7 @@ module.exports = {
     '<rootDir>/src/business/**/specifications/**/*.integration-spec.ts',
     '<rootDir>/src/business/**/specifications/**/*.api-spec.ts',
     '<rootDir>/src/business/**/specifications/**/*.security.spec.ts',
+    '<rootDir>/src/business/**/specifications/**/*.contract.spec.ts',
   ],
   transform: {
     '^.+\\.(t|j)s$': [

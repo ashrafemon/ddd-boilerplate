@@ -1,5 +1,5 @@
-import { GetGrnWebResponseDto } from '../presentation/http/responses/get-grn.web.response.dto';
-import { ListGrnsWebResponseDto } from '../presentation/http/responses/list-grns.web.response.dto';
+import { GetGrnWebResponseDto } from '../../presentation/http/responses/get-grn.web.response.dto';
+import { ListGrnsWebResponseDto } from '../../presentation/http/responses/list-grns.web.response.dto';
 
 describe('GRN response contract', () => {
   it('accepts a valid GRN payload', () => {

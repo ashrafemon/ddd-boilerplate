@@ -9,11 +9,11 @@ Applies to all `src/business/**` modules (vendor, product, product-pricing, purc
 | 1 Unit — Domain | Aggregates, VOs, policies, services, events | Co-located `*.spec.ts` | Includes 27 event + 2 aggregate suites |
 | 2 Unit — Application | All 24 non-transactional use cases | `application/use-cases/*.spec.ts` | 24 suites / 52 tests |
 | 3 Component | Every action on all 6 controllers | `presentation/http/*.controller.spec.ts` | 6 suites / 33 tests |
-| 4 Integration | Transactional use cases + facades | `specifications/` | 50 suites / 253 tests |
+| 4 Integration | Transactional use cases + facades | `specifications/` | 44 suites / 229 tests |
 | 5 API | Added for all 6 modules | `specifications/api/*.api-spec.ts` | 6 suites / 33 tests |
-| 6 Contract | Added for all 6 modules (item + list) | `contracts/*.contract.spec.ts` | 6 suites / 22 tests |
+| 6 Contract | All 6 modules (item + list + 10 public contracts) | `specifications/contracts/*.contract.spec.ts` | 16 suites / 36 tests |
 | 7 Security | All 6 modules + RBAC/ABAC adapters + guard | `specifications/security/*.security.spec.ts` | 9 suites / 32 tests |
-| 8 CI/Hardening | Suites pass; `tsc`/`build` have pre-existing source errors | Verification battery | 270 unit suites / 889 tests; 56 integration suites / 286 tests |
+| 8 CI/Hardening | Suites pass; `tsc`/`build` have pre-existing source errors | Verification battery | 264 unit suites / 867 tests; 72 integration suites / 322 tests |
 
 ## File-level Coverage
 | File type | Count | Location |
@@ -26,6 +26,7 @@ Applies to all `src/business/**` modules (vendor, product, product-pricing, purc
 | Request DTOs | 33 | `presentation/http/requests/*.dto.spec.ts` |
 | Response DTOs | 34 | `presentation/http/responses/*.dto.spec.ts` |
 | Modules | 11 | `*.module.spec.ts` |
+| Contract specs | 16 | `specifications/contracts/*.contract.spec.ts` |
 | Facades | 8 | `specifications/application/facades/*.integration-spec.ts` |
 | Controllers | 6 | `presentation/http/*.controller.spec.ts` |
 | Non-transactional use cases | 24 | `application/use-cases/*.spec.ts` |
@@ -69,7 +70,7 @@ Applies to all `src/business/**` modules (vendor, product, product-pricing, purc
 
 ## Phase 6: Contract
 - **Goal**: Public REST/module contracts (Pact or OpenAPI snapshots).
-- **Where**: `src/business/<module>/contracts/`.
+- **Where**: `src/business/<module>/specifications/contracts/`.
 - **Target**: ~20 contract.spec tests (one per public boundary).
 - **Run**: `npm run test:integration:business`.
 

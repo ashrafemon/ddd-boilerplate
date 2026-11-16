@@ -1,4 +1,4 @@
-import { IdResponse } from '../presentation/http/responses/id.response.dto';
+import { IdResponse } from '../../presentation/http/responses/id.response.dto';
 
 describe('Price list response contract', () => {
   it('exposes the id response shape', () => {
