@@ -19,8 +19,9 @@ only. Read `README.md` first, then this file.
    Natural key unique within company, not globally.
 1. `src/platform/**` may not import `@business/**`.
 2. Business modules import ONLY: `@platform` exported tokens via `imports: [PlatformModule]`,
-   another module's `public/**` or `application/outbound-ports/**`, and `shared-business`
-   primitives. Domain folders import no `@nestjs/*`.
+   another module's `public/**` or `application/outbound-ports/**`, `@common` shared
+   primitives (types, `tenant-scope`, `env.util`, `InfrastructureException`), and
+   `shared-business` primitives. Domain folders import no `@nestjs/*`.
 3. Raw clients (Prisma, `amqplib`, `kafkajs`, `ioredis`/`redis`) →
    `infrastructure/config/bootstrap/platform` only.
 4. Hand-written `$queryRaw` must use **physical column names**.
@@ -30,6 +31,12 @@ only. Read `README.md` first, then this file.
    `AbacPort.evaluate()` before business steps. Never inject `AuthenticationPort` or
    `CompanyConfigPort` directly into a use case.
 7. RBAC enforced at route level by `RbacGuard` + `@Rbac()` decorator, reading `userId` from CLS.
+8. `src/common` holds ONLY primitives consumed by more than one layer (business + platform,
+   or config + bootstrap + platform): wire types, `tenant-scope`, `env.util`,
+   `InfrastructureException`, and the `http/` plumbing wired in `AppModule`. Platform-only
+   helpers (registries, persistence utils, capability schemas) live under
+   `platform/platform-common/`; env knobs live in `src/config` facades. Bootstrap holds only
+   NestJS application startup — no composition logic.
 
 ## Infrastructure conventions (any new client MUST follow)
 

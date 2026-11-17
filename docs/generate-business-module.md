@@ -123,7 +123,7 @@ import { <Module><Name>Policy } from '../policies/<name>.policy';
 |-------|------|
 | `@platform/*` | `src/platform/*` |
 | `@business/*` | `src/business/*` |
-| `@shared-kernel/*` | `src/shared-kernel/*` |
+| `@common/*` | `src/common/*` |
 | `@prisma/client` | `src/generated/client.ts` (relative path) |
 
 ## Module registration

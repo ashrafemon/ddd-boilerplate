@@ -117,18 +117,39 @@ export class AuditUtils {
 }
 
 
-Module aliases: `@config/*`, `@shared-kernel/*`, `@bootstrap/*`, `@infrastructure/*`,
+Module aliases: `@config/*`, `@common/*`, `@bootstrap/*`, `@infrastructure/*`,
 `@platform/*`, `@business/*`, `@test/*`, `@prisma/client` → `src/generated/client.ts`
 
 ## Layers
 
 ### `config/`
-Only place that reads `process.env`. Typed `registerAs` blocks loaded by `@Global` ConfigModule.
+Owns every environment variable. Typed `registerAs` blocks loaded by `@Global` ConfigModule;
 `ConfigService` is a typed facade — adapters use `getPostgres()`, `getRabbitMQ()`, etc.
+Raw `process.env` access is confined to the shared `env.util` helpers (`ensureEnvLoaded`,
+`numericEnv` in `@common`) — config blocks and bootstrap call those, never raw env reads.
+Opt-in client flags (`SECRETS_MANAGER_ENABLED`, `PUPPETEER_ENABLED`, `OTEL_TRACING_ENABLED`, …)
+live here too.
 
-### `shared-kernel/`
-Technical NestJS concerns: filters, interceptors, pipes, guards, exceptions, types, middleware,
-decorators. Domain folders import no `@nestjs/*`.
+### `common/`
+Only primitives with consumers in MORE THAN ONE layer (business + platform, or
+config + bootstrap + platform). Currently:
+
+- `application/types/` — `pagination`, `api-response`, `wire-date`, `json-value`,
+  `device-context` (wire-format types shared across HTTP boundaries);
+- `application/utils/` — `tenant-scope` (assert-visible rule), `env.util` (env loading +
+  fail-fast parsing used by config, bootstrap and platform constants);
+- `application/exceptions/` — `infrastructure.exception` (the shared failure marker thrown
+  by infrastructure clients; standalone, extends `Error` — common never imports platform);
+- `http/` — framework plumbing wired once in `AppModule`/bootstrap: exception filter,
+  `RbacGuard` + `@Rbac()`, throttler guard, interceptors (request-id, logging, response,
+  device), validator pipe, `CompanyConfigContextMiddleware`, decorators (`@KafkaEvent`,
+  device decorators, `@SkipTenancy`).
+
+NOT here (moved to their owners): company identity → `platform-common/context`;
+domain errors → `platform-common/errors`; registry base class → `platform-common/registry`;
+Prisma JSON helpers → `platform-common/persistence`; single-consumer helpers (chunker,
+json-value schema) → their consuming platform capability. Nothing platform-only or
+config-only may be added here.
 
 ### `bootstrap/`
 Only what the NestJS application needs to run: env loading, Sentry, tracing, NestFactory,
@@ -162,6 +183,8 @@ infrastructure/
 ├── sns/          sns.module + sns.service (client init only)
 ├── s3/           s3.module + s3.service (client init + boot probe only)
 ├── bullmq/       bullmq.module (forRootAsync, options inline)
+├── secrets/      secrets.module + secrets.service (opt-in, ListSecrets boot probe)
+├── puppeteer/    puppeteer.module + puppeteer.service (opt-in, lazy shared browser)
 ├── context/      context.module (CLS + transactional plugin setup)
 └── infrastructure.module.ts   imports/exports every client module
 ```
@@ -231,9 +254,9 @@ OutboxScheduler → InProcessEventBus.emit → in-process listeners
 
 | From | May import | May not import |
 |------|-----------|---------------|
-| `infrastructure` | clients + config + shared-kernel exceptions | — |
+| `infrastructure` | clients + `@config` + `@common` (`InfrastructureException`, env.util) | — |
 | `platform` | infrastructure clients ONLY | `@business/**` (ANY) |
-| `business module` | own internals, `@platform` ports, `shared-business`, `shared-kernel`, another module's `public/**` or `application/outbound-ports/**` | `@infrastructure/**`, another module's internals |
+| `business module` | own internals, `@platform` ports, `@common` primitives, `shared-business`, another module's `public/**` or `application/outbound-ports/**` | `@infrastructure/**`, another module's internals |
 | `shared-business` | framework-independent primitives only | `@platform/**`, `@infrastructure/**`, `@business/*/*/**` |
 
 ## Ports & adapters

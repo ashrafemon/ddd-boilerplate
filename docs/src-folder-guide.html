@@ -671,7 +671,7 @@
             </tr>
             <tr>
               <td><strong>Platform</strong></td>
-              <td>Infrastructure clients, config, shared-kernel/common primitives</td>
+              <td>Infrastructure clients, config, @common shared primitives</td>
               <td>Any <code>@business/**</code> import</td>
             </tr>
             <tr>
@@ -722,8 +722,8 @@
           <div class="step">
             <div class="num">4</div>
             <div class="body">
-              <strong>Composition-root bridges</strong>
-              <span><code>configureBatchOperations</code>, <code>configureImports</code>, <code>configureNotifications</code>, and <code>configureWebhooks</code> register business handlers with platform registries.</span>
+              <strong>Business opt-ins (automatic)</strong>
+              <span>Business adapters declare <code>@BatchOperationOptIn</code>, <code>@ImportOptIn</code>, <code>@NotificationOptIn</code>, and webhook opt-ins on the class; platform modules discover and register them via <code>DiscoveryService</code> during <code>init()</code> &mdash; no bootstrap calls needed.</span>
             </div>
           </div>
           <div class="step">
@@ -744,10 +744,10 @@
 
         <div class="callout amber">
           <p>
-            <strong>Why composition is separate from modules:</strong> some platform features need
-            business handlers that cannot be imported by the platform layer. The bootstrap layer is
-            the one place allowed to know both sides, so it bridges them without creating a
-            business-to-platform dependency cycle.
+            <strong>Bootstrap stays thin:</strong> it only wires what the NestJS application needs
+            to run. Platform/business composition happens through decorators + DiscoveryService
+            inside platform modules, and every environment value comes from the typed
+            <code>@config</code> facades &mdash; bootstrap never reads <code>process.env</code> directly.
           </p>
         </div>
       </section>
@@ -755,9 +755,10 @@
       <section id="config">
         <h2><span class="num">05</span><code>config/</code> &mdash; typed configuration</h2>
         <p class="section-lead">
-          Configuration is a first-class layer. It is the only place that touches
-          <code>process.env</code>, and it exposes a typed facade so the rest of the app never reads
-          raw environment strings.
+          Configuration is a first-class layer. It owns every environment variable as typed
+          <code>registerAs</code> blocks behind a typed facade, so the rest of the app never reads
+          raw environment strings &mdash; raw <code>process.env</code> access is confined to the
+          shared <code>env.util</code> helpers that config and bootstrap call.
         </p>
 
         <div class="grid">
@@ -1039,15 +1040,17 @@
             <h4>Cross-cutting helpers</h4>
             <p>
               <code>TenantScope</code> builds tenant predicates and throws 404 for foreign rows;
-              env helpers, failure messages, chunking, and Prisma JSON helpers.
+              <code>env.util</code> loads <code>.env</code> files and parses env values fail-fast
+              for config, bootstrap, and platform constants.
             </p>
           </div>
           <div class="card">
             <span class="path">common/application/exceptions</span>
-            <h4>Error taxonomy</h4>
+            <h4>Infrastructure failure marker</h4>
             <p>
-              Domain and infrastructure exception bases map cleanly to HTTP responses without
-              leaking stack traces or SQL details.
+              <code>InfrastructureException</code> marks backing-service failures thrown by
+              infrastructure clients &mdash; standalone, no framework imports. Platform domain
+              errors live in <code>platform-common/errors</code>.
             </p>
           </div>
           <div class="card">
