@@ -1,0 +1,223 @@
+# PR-Agent repository configuration
+# Docs: https://docs.pr-agent.ai/
+# Only overrides are listed; every other option keeps its built-in default.
+# This repository is hosted on Gitea (see .gitea/workflows/ci.yaml).
+# Model/provider credentials are host settings and belong in the PR-Agent
+# deployment config, not in this file.
+
+[config]
+git_provider = "gitea"
+response_language = "en-US"
+
+# AGENTS.md is the canonical repository contract for both humans and agents.
+repo_context_files = ["AGENTS.md"]
+repo_context_from_default_branch = true
+repo_context_max_lines = 500
+
+# Keep generated / lock / prose noise out of prompts.
+patch_extension_skip_types = [".md", ".txt", ".lock", ".map"]
+
+# Ignore automated dependency bumps and bot-authored PRs.
+ignore_pr_title = [
+  "^\\[Auto\\]",
+  "^(chore|build|ci)\\(deps",
+  "^Bump ",
+  "^chore\\(deps-dev\\)",
+]
+ignore_pr_source_branches = [
+  "^dependabot/",
+  "^renovate/",
+  "^release-please",
+  "^automation/",
+]
+ignore_pr_authors = ["dependabot", "renovate"]
+
+[pr_reviewer]
+# --- deterministic checks ---
+require_tests_review = true
+require_security_review = true
+require_estimate_effort_to_review = true
+require_can_be_split_review = false
+require_ticket_analysis_review = true
+require_estimate_contribution_time_cost = false
+require_todo_scan = false
+require_score_review = false
+require_risk_assessment = true
+require_merge_recommendation = true
+require_priority_files = true
+require_failure_modes = false
+enable_risk_checks = true
+
+# --- output ---
+num_max_findings = 8
+inline_key_issues = true
+persistent_comment = true
+publish_output_no_suggestions = true
+publish_review_failure_comment = true
+final_update_message = true
+enable_help_text = false
+enable_review_labels_security = true
+enable_review_labels_effort = true
+enable_review_coverage_footer = true
+
+# Deterministic risk signals. Replaces the built-in list, so keep CI,
+# dependency, schema and generated-code paths covered.
+sensitive_paths = [
+  ".gitea/workflows/**",
+  ".github/workflows/**",
+  ".gitlab-ci.yml",
+  "Jenkinsfile*",
+  "Dockerfile*",
+  "docker-compose*.yml",
+  "docker-compose*.yaml",
+  ".pr_agent.toml",
+  ".pr-agent.toml",
+  "package.json",
+  "package-lock.json",
+  "npm-shrinkwrap.json",
+  "tsconfig*.json",
+  "eslint.config.mjs",
+  "prisma/schema/**",
+  "prisma/migrations/**",
+  "src/generated/**",
+  ".env*",
+]
+
+extra_instructions = """
+Apply these repository rules (AGENTS.md / docs/architecture.md). Report only
+material violations of correctness, security, data integrity or architecture.
+Do not restate a rule when the diff complies with it.
+
+Architecture and dependency direction
+1. `src/platform/**` must not import `@business/**`; platform is a lower layer.
+2. Business modules may import only `@platform` tokens via
+   `imports: [PlatformModule]`, another module's `public/**` or
+   `application/outbound-ports/**`, and `shared-business` primitives. Domain
+   folders must not import `@nestjs/*`.
+3. Raw clients (Prisma, `amqplib`, `kafkajs`, `ioredis`/`redis`) belong only in
+   `infrastructure/config/bootstrap/platform`. Flag a raw client injected or
+   instantiated in a business module.
+4. Every owned platform table is tenant-scoped (`tenantId String?`) and reads
+   enforce `TenantScope.assertVisible`.
+
+Tenancy and authorization
+5. Business tables are tenant-scoped (`tenantId`/`companyId`). A row owned by
+   another company is 404, never 403. Natural keys are unique within a company,
+   not globally.
+6. Command use cases read context from `RequestContextPort` (CLS) and call
+   `AbacPort.evaluate()` before business steps. They must not inject
+   `AuthenticationPort` or `CompanyConfigPort` directly.
+7. RBAC is enforced at route level by `RbacGuard` + `@Rbac()`, with `userId`
+   read from CLS. Flag new or changed routes without a guard.
+
+Transactions, outbox and concurrency
+8. Side effects that leave the process go through `OutboxWriterPort` inside
+   `@Transactional()`. Flag direct publishes from a use case.
+9. Claims are idempotent by construction: `FOR UPDATE SKIP LOCKED` or
+   insert-as-claim on a unique key. State writes must be CAS/token-fenced.
+10. Optimistic concurrency applies to PurchaseOrder and GRN only.
+    Vendor/Product/Invoice are last-write-wins; flag token fencing added there
+    unless the PR explicitly changes that contract.
+
+Persistence and generated code
+11. There are no migrations. Schema changes are made in
+    `prisma/schema/<context>/*.prisma`, then `npm run db:push` and
+    `npx prisma generate`. Flag hand-written migrations.
+12. Hand-written `$queryRaw` must use physical column names; flag Prisma
+    model/field names in raw SQL.
+13. Never edit `src/generated/**`.
+
+File and DI conventions
+14. One use case per file named `<verb>-<noun>.usecase.ts`; one request DTO per
+    file under `http/requests/*.request.dto.ts`, created with `createZodDto`.
+15. Ports are abstract classes used as DI tokens; providers use `useExisting`;
+    module files contain bindings/exports only; `@Global()` is never used.
+16. Public contracts change only with explicit owner approval. Flag breaking
+    changes to exported `public/**` contracts.
+
+Verification
+17. CI runs `npm run lint:check`, `npm run format:check`,
+    `npx tsc --noEmit -p tsconfig.json`, `npm test`,
+    `npm run test:integration:business` and `npm run build`. New behavior needs
+    tests; flag changes that would fail this battery.
+
+Review priorities
+- Correctness and data integrity first: tenant leaks, lost updates,
+  non-idempotent claims, missing transaction boundaries.
+- Security: authorization gaps, secret leakage, unsafe input handling.
+- Architecture: dependency-direction violations, raw clients in the wrong
+  layer, bypassed ports.
+- Do not report style nits already enforced by ESLint/Prettier, and do not
+  suggest new comments or docs unless the change is genuinely unclear.
+"""
+
+[pr_description]
+# --- content generation ---
+publish_labels = false
+add_original_user_description = true
+generate_ai_title = false
+enable_pr_type = true
+enable_pr_description = true
+enable_pr_diagram = true
+pr_diagram_direction = "adaptive"
+pr_diagram_direction_threshold = 5
+
+# Publish to the PR body, not a separate comment.
+publish_description_as_comment = false
+publish_description_as_comment_persistent = true
+use_description_markers = false
+
+# --- file walkthrough ---
+enable_semantic_files_types = true
+collapsible_file_list = "adaptive"
+collapsible_file_list_threshold = 6
+file_table_collapsible_open_by_default = false
+
+final_update_message = true
+enable_help_text = false
+
+extra_instructions = """
+Generate the description from the diff and PR metadata using this structure:
+
+- **Summary**: 1-3 sentences, what changed and why.
+- **Change type**: Feature / Fix / Refactor / Chore / Docs / Test.
+- **Affected modules**: business contexts and platform services touched.
+- **Schema / data**: write "No database changes", or list each
+  `prisma/schema/**` file changed and note that `npm run db:push` plus
+  `npx prisma generate` are required (this repository has no migrations).
+- **Breaking changes**: "None", or describe the contract change and the
+  migration/rollback path.
+- **Verification**: only the commands relevant to the diff (lint, format,
+  typecheck, unit, integration, build), with their result when visible.
+- **Risk / rollback**: low, medium or high plus one sentence.
+
+Rules:
+- Do not invent behavior. If the diff contains no tests, say tests are not
+  included.
+- Summarize by module; do not list every changed file.
+- Be concise and factual; no marketing language or repeated bullets.
+- Explicitly call out tenant-scoping, authorization, outbox or concurrency
+  changes when present.
+"""
+
+[pr_code_suggestions]
+# /improve runs /review in current PR-Agent. Only these two keys are read
+# from this section; everything else comes from [pr_reviewer].
+committable_code_suggestions = false
+
+extra_instructions = """
+Suggest only fixes that preserve the repository rules in AGENTS.md:
+- Preserve tenant scoping and the foreign-tenant 404 (never 403) behavior.
+- Route external effects through `OutboxWriterPort` inside `@Transactional()`.
+- Do not move raw clients into business modules and do not import
+  `@business/**` from `src/platform/**`.
+- Do not edit `src/generated/**`.
+- Do not introduce comments, docs or speculative abstractions.
+- Prefer minimal edits. If a fix requires a public-contract change, explain it
+  and do not mark the suggestion as committable.
+"""
+
+[gitea]
+# Re-review on every push so the persistent review comment stays current.
+handle_push_trigger = true
+push_commands = ["/describe", "/review"]
