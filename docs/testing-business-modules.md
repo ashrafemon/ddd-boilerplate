@@ -15,7 +15,7 @@ Applies to `src/business/**` modules.
 
 ## Integration tests (`<name>.integration-spec.ts`)
 - For tests with side effects: Prisma/`TransactionHost`, outbox writes, messaging, Redis/cache, file storage, HTTP/Nest integration bootstrap, or multi-adapter flows.
-- Location: `src/business/<context>/<module>/specifications/integrations/` (preferred) or `specifications/` (legacy).
+- Location: `src/business/<context>/<module>/specifications/integrations/` (flat; no nested subfolders).
 - Naming: `<name>.integration-spec.ts`.
 - Discovered by `jest.business-integration.config.ts` (`npm run test:integration:business`), run with `--runInBand`.
 

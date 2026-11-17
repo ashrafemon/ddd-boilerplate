@@ -9,7 +9,7 @@ Applies to all `src/business/**` modules (vendor, product, product-pricing, purc
 | 1 Unit — Domain | Aggregates, VOs, policies, services, events | Co-located `*.spec.ts` | Includes 27 event + 2 aggregate suites |
 | 2 Unit — Application | All 24 non-transactional use cases | `application/use-cases/*.spec.ts` | 24 suites / 52 tests |
 | 3 Component | Every action on all 6 controllers | `presentation/http/*.controller.spec.ts` | 6 suites / 33 tests |
-| 4 Integration | Transactional use cases + facades | `specifications/` | 44 suites / 229 tests |
+| 4 Integration | Transactional use cases + facades | `specifications/integrations/` | 44 suites / 229 tests |
 | 5 API | Added for all 6 modules | `specifications/api/*.api-spec.ts` | 6 suites / 33 tests |
 | 6 Contract | All 6 modules (item + list + 10 public contracts) | `specifications/contracts/*.contract.spec.ts` | 16 suites / 36 tests |
 | 7 Security | All 6 modules + RBAC/ABAC adapters + guard | `specifications/security/*.security.spec.ts` | 9 suites / 32 tests |
@@ -27,10 +27,10 @@ Applies to all `src/business/**` modules (vendor, product, product-pricing, purc
 | Response DTOs | 34 | `presentation/http/responses/*.dto.spec.ts` |
 | Modules | 11 | `*.module.spec.ts` |
 | Contract specs | 16 | `specifications/contracts/*.contract.spec.ts` |
-| Facades | 8 | `specifications/application/facades/*.integration-spec.ts` |
+| Facades | 8 | `specifications/integrations/*.integration-spec.ts` |
 | Controllers | 6 | `presentation/http/*.controller.spec.ts` |
 | Non-transactional use cases | 24 | `application/use-cases/*.spec.ts` |
-| Transactional use cases | 39 | grouped under `specifications/application/use-cases/` |
+| Transactional use cases | 39 | `specifications/integrations/*.integration-spec.ts` |
 
 ## Phase 1: Unit — Domain
 - **Goal**: Domain logic isolation.
@@ -58,7 +58,7 @@ Applies to all `src/business/**` modules (vendor, product, product-pricing, purc
 
 ## Phase 4: Integration
 - **Goal**: Critical flows with Prisma/outbox/messaging.
-- **Where**: `src/business/<module>/specifications/integrations/` (preferred) or legacy `specifications/`.
+- **Where**: `src/business/<module>/specifications/integrations/` (flat).
 - **Target**: ~60 integration-spec tests (one per key use case).
 - **Run**: `npm run test:integration:business`.
 
