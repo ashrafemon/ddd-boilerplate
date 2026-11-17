@@ -1,3 +1,4 @@
+import { ImportOptIn } from '@platform/platform-common/import/import-opt-in';
 import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable } from '@nestjs/common';
 import { ImportHandler } from '@platform/platform-common/import/ports/import-handler.port';
@@ -74,6 +75,10 @@ type VendorImportRow = {
  * existing CreateVendorUseCase (one transaction per row, owned by the module).
  */
 @Injectable()
+@ImportOptIn({
+  entityKey: VENDOR_IMPORT_DESCRIPTOR.entityKey,
+  descriptor: VENDOR_IMPORT_DESCRIPTOR,
+})
 export class VendorImportHandler implements ImportHandler<VendorImportRow> {
   constructor(private readonly createVendor: CreateVendorUseCase) {}
 

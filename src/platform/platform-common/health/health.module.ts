@@ -4,6 +4,8 @@ import { PrismaModule as InfraPrismaModule } from '@infrastructure/prisma/prisma
 import { RabbitMqClientModule as InfraRabbitMqModule } from '@infrastructure/rabbitmq/rabbitmq.module';
 import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
 import { S3Module as InfraS3Module } from '@infrastructure/s3/s3.module';
+import { SecretsManagerModule as InfraSecretsModule } from '@infrastructure/secrets/secrets.module';
+import { PuppeteerModule as InfraPuppeteerModule } from '@infrastructure/puppeteer/puppeteer.module';
 import { SesModule as InfraSesModule } from '@infrastructure/ses/ses.module';
 import { SnsModule as InfraSnsModule } from '@infrastructure/sns/sns.module';
 import { HealthCheckAdapter } from './adapters/health-check.adapter';
@@ -22,6 +24,8 @@ import { HealthPort } from './ports/health.port';
     InfraRabbitMqModule,
     InfraKafkaModule,
     InfraS3Module,
+    InfraSecretsModule,
+    InfraPuppeteerModule,
     InfraSesModule,
     InfraSnsModule,
   ],

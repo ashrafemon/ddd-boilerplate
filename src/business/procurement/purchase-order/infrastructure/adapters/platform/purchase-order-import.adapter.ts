@@ -1,3 +1,4 @@
+import { ImportOptIn } from '@platform/platform-common/import/import-opt-in';
 import { Injectable } from '@nestjs/common';
 import { FailureMessage } from '@common/application/utils/failure-message';
 import { ImportHandler } from '@platform/platform-common/import/ports/import-handler.port';
@@ -171,6 +172,10 @@ function asResolved(refs: PreloadedReferences): ResolvedReferences {
  * Vendors/products are resolved by code/SKU through the module's outbound ports.
  */
 @Injectable()
+@ImportOptIn({
+  entityKey: PURCHASE_ORDER_IMPORT_DESCRIPTOR.entityKey,
+  descriptor: PURCHASE_ORDER_IMPORT_DESCRIPTOR,
+})
 export class PurchaseOrderImportHandler implements ImportHandler<PurchaseOrderImportRow> {
   constructor(
     private readonly vendors: OrderableVendorPort,

@@ -1,9 +1,11 @@
 import { BullModule } from '@nestjs/bullmq';
+import { DiscoveryModule } from '@nestjs/core';
 import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { IdempotencyModule } from '@platform/platform-common/idempotency/idempotency.module';
 import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
 import { WebhookEventTypeRegistry } from './webhook-event-type.registry';
+import { WebhookOptInScanner } from './webhook-opt-in.scanner';
 import { WebhookInboundSourceRegistry } from './webhook-inbound-source.registry';
 import { WebhookDispatchDispatcher } from './webhook-dispatch.dispatcher';
 import { WebhookReconciliation } from './webhook-reconciliation';
@@ -42,6 +44,7 @@ import { WebhookController } from './http/webhook.controller';
  */
 @Module({
   imports: [
+    DiscoveryModule,
     ContextModule,
     OutboxModule,
     IdempotencyModule,
@@ -49,6 +52,7 @@ import { WebhookController } from './http/webhook.controller';
   ],
   controllers: [WebhookController],
   providers: [
+    WebhookOptInScanner,
     WebhookEventTypeRegistry,
     WebhookInboundSourceRegistry,
     PrismaWebhookSubscriptionRepository,

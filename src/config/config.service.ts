@@ -16,6 +16,8 @@ import { IImportConfig } from './import.config';
 import { ISchedulerConfig } from './scheduler.config';
 import { ISecurityConfig, IThrottlerConfig } from './security.config';
 import { IS3Config, IStorageDriver } from './storage.config';
+import { ISecretsManagerConfig } from './secrets.config';
+import { IPuppeteerConfig } from './puppeteer.config';
 import { IWebhookConfig } from './webhook.config';
 
 /**
@@ -160,6 +162,26 @@ export class ConfigService {
       pathStyle: true,
       url: '',
       presignedUrlTtlSeconds: 900,
+    });
+  }
+
+  /** Puppeteer Environment Variables */
+  public getPuppeteer(): IPuppeteerConfig {
+    return this.config.get<IPuppeteerConfig>('puppeteer', {
+      enabled: false,
+      headless: true,
+      executablePath: '',
+      args: ['--no-sandbox', '--disable-dev-shm-usage'],
+      launchTimeoutMs: 30_000,
+    });
+  }
+
+  /** Secrets Manager Environment Variables */
+  public getSecretsManager(): ISecretsManagerConfig {
+    return this.config.get<ISecretsManagerConfig>('secretsManager', {
+      enabled: false,
+      region: 'us-east-1',
+      endpoint: '',
     });
   }
 

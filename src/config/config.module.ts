@@ -13,9 +13,11 @@ import messagingConfig from './messaging.config';
 import notificationConfig from './notification.config';
 import notificationPipelineConfig from './notification-pipeline.config';
 import observabilityConfig from './observability.config';
+import puppeteerConfig from './puppeteer.config';
 import outboxConfig from './outbox.config';
 import schedulerConfig from './scheduler.config';
 import securityConfig from './security.config';
+import secretsConfig from './secrets.config';
 import storageConfig from './storage.config';
 import webhookConfig from './webhook.config';
 
@@ -32,11 +34,13 @@ import webhookConfig from './webhook.config';
     NestConfigModule.forFeature(cacheConfig),
     NestConfigModule.forFeature(messagingConfig),
     NestConfigModule.forFeature(storageConfig),
+    NestConfigModule.forFeature(secretsConfig),
     NestConfigModule.forFeature(securityConfig),
     NestConfigModule.forFeature(outboxConfig),
     NestConfigModule.forFeature(notificationConfig),
     NestConfigModule.forFeature(notificationPipelineConfig),
     NestConfigModule.forFeature(observabilityConfig),
+    NestConfigModule.forFeature(puppeteerConfig),
     NestConfigModule.forFeature(schedulerConfig),
     NestConfigModule.forFeature(batchOperationConfig),
     NestConfigModule.forFeature(importConfig),

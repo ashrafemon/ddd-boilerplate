@@ -1,10 +1,12 @@
 import { BullModule } from '@nestjs/bullmq';
+import { DiscoveryModule } from '@nestjs/core';
 import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { AuditModule } from '@platform/platform-common/audit/audit.module';
 import { NumberingModule } from '@platform/platform-common/numbering/numbering.module';
 import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
 import { BatchOperationHandlerRegistry } from './batch-operation-handler.registry';
+import { BatchOperationOptInScanner } from './batch-operation-opt-in.scanner';
 import { BatchOperationWorker } from './batch-operation.worker';
 import { BatchOperationReconciliationConsumer } from './batch-operation-reconciliation.consumer';
 import { BatchOperationJobOutboxWriterPort } from './ports/batch-operation-job-outbox-writer.port';
@@ -53,6 +55,7 @@ import { BatchOperationController } from './http/batch-operation.controller';
  */
 @Module({
   imports: [
+    DiscoveryModule,
     ContextModule,
     AuditModule,
     NumberingModule,
@@ -61,6 +64,7 @@ import { BatchOperationController } from './http/batch-operation.controller';
   ],
   controllers: [BatchOperationController],
   providers: [
+    BatchOperationOptInScanner,
     BatchOperationHandlerRegistry,
     PrismaBatchOperationJobRepository,
     { provide: BatchOperationJobRepositoryPort, useExisting: PrismaBatchOperationJobRepository },

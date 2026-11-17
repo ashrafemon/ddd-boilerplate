@@ -1,13 +1,13 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { PinoLogger } from 'nestjs-pino';
 import 'reflect-metadata';
 import { AppModule } from '../app.module';
+import { ensureEnvLoaded } from '@common/application/utils/env.util';
+import appConfig from '@config/app.config';
+import { configureTracing } from './configure-tracing';
 import { configureCors } from './configure-cors';
-import { configureBatchOperations } from './configure-batch-operations';
-import { configureImports } from './configure-imports';
-import { configureNotifications } from './configure-notifications';
-import { configureWebhooks } from './configure-webhooks';
 import { configureHttp } from './configure-http';
 import { configureSecurity } from './configure-security';
 import { configureSentry } from './configure-sentry';
@@ -22,30 +22,37 @@ import { CompanyConfigContextMiddleware } from '@common/http/middleware/company-
  * finally the HTTP listener.
  */
 export async function bootstrap(): Promise<void> {
+  // .env files must be loaded before any config facade is read — tracing and
+  // Sentry initialize before the Nest application (and its ConfigModule) exist.
+  ensureEnvLoaded();
+
+  // Tracing first — instrumentations must patch modules before first use.
+  configureTracing();
+
   configureSentry();
 
   const logger = new Logger('Bootstrap');
+  const isProduction = appConfig().env === 'production';
 
   try {
     const app = await NestFactory.create<NestFastifyApplication>(
       AppModule,
       new FastifyAdapter({
-        logger: process.env.NODE_ENV === 'production' ? false : true,
+        logger: isProduction ? false : true,
         bodyLimit: 1024 * 1024 * 5,
         requestTimeout: 30_000,
         connectionTimeout: 30_000,
         keepAliveTimeout: 65_000,
       }),
       {
-        logger:
-          process.env.NODE_ENV === 'production'
-            ? ['error', 'warn', 'log']
-            : ['error', 'warn', 'log', 'debug', 'verbose'],
+        logger: isProduction
+          ? ['error', 'warn', 'log']
+          : ['error', 'warn', 'log', 'debug', 'verbose'],
         bufferLogs: true,
       },
     );
 
-    app.useLogger(new Logger());
+    app.useLogger(app.get(PinoLogger));
     app.flushLogs();
 
     // Company configuration is resolved and stamped into the global CLS
@@ -53,16 +60,10 @@ export async function bootstrap(): Promise<void> {
     const companyConfigContext = app.get(CompanyConfigContextMiddleware, { strict: true });
     app.use((req, res, next) => companyConfigContext.use(req, res, next));
 
-    // Composition-root opt-in bridge (ARCHITECTURE §9.1): must run before
-    // listen() — NestFactory.create only instantiates providers; the
-    // onModuleInit hooks that subscribe in-process BullMQ consumers fire
-    // inside init() from configureServer, and the HTTP listener starts with
-    // it, so handlers are registered before anything can resolve them.
-    configureBatchOperations(app);
-    configureImports(app);
-    configureNotifications(app);
-    configureWebhooks(app);
-
+    // Business opt-ins (batch/import/notification/webhook handlers) register
+    // themselves via decorators + DiscoveryService — see
+    // platform-common/<capability>/<capability>-opt-in.ts. Bootstrap holds
+    // only what the NestJS application needs to run.
     await configureSecurity(app);
     configureCors(app);
     configureHttp(app);

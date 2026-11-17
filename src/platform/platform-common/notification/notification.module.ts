@@ -1,4 +1,5 @@
 import { BullModule } from '@nestjs/bullmq';
+import { DiscoveryModule } from '@nestjs/core';
 import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { ObservabilityModule } from '@platform/platform-common/observability/observability.module';
@@ -7,6 +8,7 @@ import { SesModule as InfraSesModule } from '@infrastructure/ses/ses.module';
 import { SnsModule as InfraSnsModule } from '@infrastructure/sns/sns.module';
 import { ChannelProviderRegistry } from './channel-provider.registry';
 import { NotificationHandlerRegistry } from './notification-handler.registry';
+import { NotificationOptInScanner } from './notification-opt-in.scanner';
 import { NotificationEventDispatcher } from './notification-event.dispatcher';
 import { NotificationReconciliationConsumer } from './notification-reconciliation.consumer';
 import { NotificationWorker } from './notification.worker';
@@ -47,6 +49,7 @@ import { NotificationController } from './http/notification.controller';
  */
 @Module({
   imports: [
+    DiscoveryModule,
     ContextModule,
     OutboxModule,
     ObservabilityModule,
@@ -56,6 +59,7 @@ import { NotificationController } from './http/notification.controller';
   ],
   controllers: [NotificationController],
   providers: [
+    NotificationOptInScanner,
     ChannelProviderRegistry,
     NotificationHandlerRegistry,
     PrismaNotificationRepository,

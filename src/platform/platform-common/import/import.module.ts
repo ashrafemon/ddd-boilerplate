@@ -1,4 +1,5 @@
 import { BullModule } from '@nestjs/bullmq';
+import { DiscoveryModule } from '@nestjs/core';
 import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { AuditModule } from '@platform/platform-common/audit/audit.module';
@@ -7,6 +8,7 @@ import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
 import { StorageModule } from '@platform/platform-common/storage/storage.module';
 import { ImportReconciliationConsumer } from './import-reconciliation.consumer';
 import { ImportHandlerRegistry } from './import-handler.registry';
+import { ImportOptInScanner } from './import-opt-in.scanner';
 import { ImportJobOutboxWriterPort } from './ports/import-job-outbox-writer.port';
 import { ImportJobRepositoryPort } from './ports/import-job-repository.port';
 import { ImportJobRowRepositoryPort } from './ports/import-job-row-repository.port';
@@ -57,6 +59,7 @@ import { ImportFileParser } from './import-file.parser';
  */
 @Module({
   imports: [
+    DiscoveryModule,
     ContextModule,
     AuditModule,
     NumberingModule,
@@ -66,6 +69,7 @@ import { ImportFileParser } from './import-file.parser';
   ],
   controllers: [ImportController],
   providers: [
+    ImportOptInScanner,
     ImportHandlerRegistry,
     ImportFileParser,
     PrismaStorageObjectRepository,

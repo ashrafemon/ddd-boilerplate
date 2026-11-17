@@ -67,7 +67,10 @@ Full details + checklist: `docs/architecture.md` §`infrastructure/`.
   (`http/requests/*.request.dto.ts`, Zod via `createZodDto`), ports are abstract classes as DI
   tokens, providers use `useExisting`, module file contains bindings/exports only,
   `@Global()` never used.
-- Business opt-in registries bridged by composition root `src/bootstrap/configure-*.ts`.
+- Business opt-in registries are fed by decorators + DiscoveryService
+  (`@BatchOperationOptIn`, `@ImportOptIn`, `@NotificationOptIn`, webhook opt-ins): the
+  adapter declares its opt-in on the class, the owning platform module scans and registers
+  at bootstrap. No composition-root bridges; duplicates throw at boot.
 
 ## Verification battery (run after ANY change)
 

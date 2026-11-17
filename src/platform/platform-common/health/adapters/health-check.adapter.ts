@@ -1,5 +1,6 @@
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { HeadBucketCommand } from '@aws-sdk/client-s3';
+import { ListSecretsCommand } from '@aws-sdk/client-secrets-manager';
 import { Injectable } from '@nestjs/common';
 import { KafkaService } from '@infrastructure/kafka/kafka.service';
 import { PrismaReadService } from '@infrastructure/prisma/prisma-read.service';
@@ -8,6 +9,8 @@ import { S3Service } from '@infrastructure/s3/s3.service';
 import { SesService } from '@infrastructure/ses/ses.service';
 import { SnsService } from '@infrastructure/sns/sns.service';
 import { RedisService } from '@infrastructure/redis/redis.service';
+import { SecretsManagerService } from '@infrastructure/secrets/secrets.service';
+import { PuppeteerService } from '@infrastructure/puppeteer/puppeteer.service';
 import { HealthPort, HealthReport, HealthStatus } from '../ports/health.port';
 
 /**
@@ -24,6 +27,8 @@ export class HealthCheckAdapter implements HealthPort {
     private readonly rabbit: AmqpConnection,
     private readonly kafka: KafkaService,
     private readonly s3: S3Service,
+    private readonly secretsManager: SecretsManagerService,
+    private readonly puppeteer: PuppeteerService,
     private readonly ses: SesService,
     private readonly sns: SnsService,
   ) {}
@@ -50,6 +55,19 @@ export class HealthCheckAdapter implements HealthPort {
         await this.s3.client.send(new HeadBucketCommand({ Bucket: this.s3.bucketName }));
         return 'up';
       }),
+      secrets: this.secretsManager.isEnabled
+        ? await this.probe(async () => {
+            await this.secretsManager.client.send(new ListSecretsCommand({ MaxResults: 1 }));
+            return 'up';
+          })
+        : 'disabled',
+      puppeteer: this.puppeteer.isEnabled
+        ? await this.probe(async () => {
+            const browser = await this.puppeteer.getBrowser();
+            await browser.version();
+            return 'up';
+          })
+        : 'disabled',
       ses: this.ses.isEnabled ? 'up' : 'disabled',
       sns: this.sns.isEnabled ? 'up' : 'disabled',
     };

@@ -1,12 +1,15 @@
 import { BusinessModule } from '@business/business.module';
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { ConfigService } from './config/config.service';
+import { RedisService } from '@infrastructure/redis/redis.service';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from './config/config.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { PlatformModule } from './platform/platform.module';
 import { HttpExceptionsFilter } from '@common/http/filters/http-exception.filter';
+import { LoggerModule } from 'nestjs-pino';
 import { DeviceResponseInterceptor } from '@common/http/interceptors/device-response.interceptor';
 import { LoggingInterceptor } from '@common/http/interceptors/logging.interceptor';
 import { RequestIdInterceptor } from '@common/http/interceptors/request-id.interceptor';
@@ -19,11 +22,30 @@ import { TenancyAuthGuard } from '@platform/platform-common/context/guards/tenan
 @Module({
   imports: [
     ConfigModule,
-    ThrottlerModule.forRootAsync({
+    LoggerModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
+      useFactory: (config: ConfigService) => ({
+        pinoHttp: {
+          level: process.env.LOG_LEVEL ?? (config.isProduction ? 'info' : 'debug'),
+          redact: ['req.headers.authorization', 'req.headers.cookie'],
+          autoLogging: {
+            // Probes and scrapes would drown the request log.
+            ignore: req =>
+              req.url?.includes('/health') === true || req.url?.includes('/metrics') === true,
+          },
+        },
+      }),
+    }),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService, RedisService],
+      useFactory: (config: ConfigService, redis: RedisService) => {
         const { ttlMs, limit } = config.getThrottler();
-        return { throttlers: [{ ttl: ttlMs, limit }] };
+        return {
+          throttlers: [{ ttl: ttlMs, limit }],
+          // Redis-backed counters when Redis is configured; in-memory fallback
+          // otherwise (single instance dev).
+          ...(redis.isEnabled ? { storage: new ThrottlerStorageRedisService(redis.client) } : {}),
+        };
       },
     }),
     // All packages/clients modules

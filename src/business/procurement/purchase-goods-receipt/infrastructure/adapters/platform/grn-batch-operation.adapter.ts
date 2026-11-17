@@ -1,3 +1,4 @@
+import { BatchOperationOptIn } from '@platform/platform-common/batch-operation/batch-operation-opt-in';
 import { Injectable } from '@nestjs/common';
 import { BatchOperationHandler } from '@platform/platform-common/batch-operation/ports/batch-operation-handler.port';
 import {
@@ -26,6 +27,7 @@ const ALLOWED_FROM: Record<string, string[]> = {
  * @Transactional boundary.
  */
 @Injectable()
+@BatchOperationOptIn()
 export class GrnBatchOperationAdapter implements BatchOperationHandler {
   constructor(
     private readonly getGrn: GetGrnUseCase,

@@ -1,3 +1,4 @@
+import { NotificationOptIn } from '@platform/platform-common/notification/notification-opt-in';
 import { Injectable } from '@nestjs/common';
 import { NotificationHandler } from '@platform/platform-common/notification/ports/notification-handler.port';
 import {
@@ -17,6 +18,18 @@ import { OrderableVendorPort } from '../../../application/outbound-ports/vendor-
  * channel provider.
  */
 @Injectable()
+@NotificationOptIn({
+  notificationType: 'PurchaseOrderApproved',
+  channels: ['EMAIL'],
+  priority: 'NORMAL',
+  eventName: 'PurchaseOrderApproved',
+})
+@NotificationOptIn({
+  notificationType: 'PurchaseOrderIssued',
+  channels: ['EMAIL'],
+  priority: 'NORMAL',
+  eventName: 'PurchaseOrderIssued',
+})
 export class PurchaseOrderNotificationAdapter implements NotificationHandler {
   constructor(
     private readonly getPurchaseOrder: GetPurchaseOrderUseCase,

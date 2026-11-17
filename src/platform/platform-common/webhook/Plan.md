@@ -284,6 +284,7 @@ export type IWebhookConfig = {
 };
 export default registerAs('webhook', (): IWebhookConfig => ({ ...numericEnv(...) }));
 ```
+
 Same shape as `idempotency.config.ts`. Wire into `src/config/config.module.ts`
 (`NestConfigModule.forFeature(webhookConfig)`) and add a `getWebhook()`
 getter to `src/config/config.service.ts` matching `getIdempotency()`'s
@@ -315,7 +316,10 @@ export function configureWebhooks(app: INestApplicationContext): void {
 
   const inbound = app.get(WebhookInboundSourceRegistry);
   for (const { source, verify, ownerModule, inboundHandler } of WEBHOOK_INBOUND_SOURCES) {
-    inbound.register(source, { verify, handler: app.select(ownerModule).get(inboundHandler, { strict: true }) });
+    inbound.register(source, {
+      verify,
+      handler: app.select(ownerModule).get(inboundHandler, { strict: true }),
+    });
   }
 }
 ```

@@ -1,3 +1,4 @@
+import { NotificationOptIn } from '@platform/platform-common/notification/notification-opt-in';
 import { Injectable } from '@nestjs/common';
 import { NotificationHandler } from '@platform/platform-common/notification/ports/notification-handler.port';
 import {
@@ -22,6 +23,12 @@ import { PurchaseOrderPort } from '../../../application/outbound-ports/purchase-
  * green and recipients light up the moment the directory lands.
  */
 @Injectable()
+@NotificationOptIn({
+  notificationType: 'GoodsReceiptPosted',
+  channels: ['EMAIL'],
+  priority: 'NORMAL',
+  eventName: 'GoodsReceiptPosted',
+})
 export class GrnNotificationAdapter implements NotificationHandler {
   constructor(
     private readonly getGrn: GetGrnUseCase,

@@ -9,6 +9,8 @@ import { RedisModule } from './redis/redis.module';
 import { SesModule } from './ses/ses.module';
 import { SnsModule } from './sns/sns.module';
 import { SqsClientModule } from './sqs/sqs.module';
+import { SecretsManagerModule } from './secrets/secrets.module';
+import { PuppeteerModule } from './puppeteer/puppeteer.module';
 import { S3Module } from './s3/s3.module';
 
 /**
@@ -16,7 +18,7 @@ import { S3Module } from './s3/s3.module';
  *
  * Each client folder sits directly under `infrastructure/` — one row per
  * client, each with its own module: Prisma, Redis, RabbitMQ, Kafka, SQS,
- * BullMQ, SES, SNS, S3, CLS. No ports or adapters live here; the
+ * BullMQ, SES, SNS, S3, Secrets Manager, Puppeteer, CLS. No ports or adapters live here; the
  * platform layer wraps these clients into services for business modules.
  *
  * Outbox and Inbox live here as directories but are wired by PlatformModule
@@ -42,6 +44,8 @@ import { S3Module } from './s3/s3.module';
     SqsClientModule,
     BullMqModule,
     S3Module,
+    SecretsManagerModule,
+    PuppeteerModule,
   ],
   exports: [
     EventEmitterModule,
@@ -55,6 +59,8 @@ import { S3Module } from './s3/s3.module';
     SqsClientModule,
     BullMqModule,
     S3Module,
+    SecretsManagerModule,
+    PuppeteerModule,
   ],
 })
 export class InfrastructureModule {}

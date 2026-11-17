@@ -2,6 +2,7 @@ import { registerAs } from '@nestjs/config';
 
 export type ILokiConfig = { url: string };
 export type ISentryConfig = { dsn: string; tracesSampleRate: number };
+export type ITracingConfig = { enabled: boolean; serviceName: string; endpoint: string };
 export type IAwsConfig = {
   region: string;
   accessKeyId: string;
@@ -10,7 +11,8 @@ export type IAwsConfig = {
 
 /**
  * Observability config — logging level, Loki push endpoint, Sentry error
- * tracking and shared AWS credentials used by S3/SNS/SES adapters.
+ * tracking, OpenTelemetry tracing and shared AWS credentials used by
+ * S3/SNS/SES adapters.
  */
 export default registerAs('observability', () => ({
   loki: {
@@ -19,6 +21,11 @@ export default registerAs('observability', () => ({
   sentry: {
     dsn: process.env.SENTRY_DSN ?? '',
     tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? 0.1),
+  },
+  tracing: {
+    enabled: process.env.OTEL_TRACING_ENABLED === 'true',
+    serviceName: process.env.OTEL_SERVICE_NAME ?? 'erp-boilerplate',
+    endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? '',
   },
   aws: {
     region: process.env.AWS_REGION ?? 'us-east-1',

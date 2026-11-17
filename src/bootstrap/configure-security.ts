@@ -1,9 +1,10 @@
 import compress from '@fastify/compress';
 import helmet from '@fastify/helmet';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import appConfig from '@config/app.config';
 
 export async function configureSecurity(app: NestFastifyApplication): Promise<void> {
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction = appConfig().env === 'production';
 
   const helmetOptions: Record<string, unknown> = {
     crossOriginEmbedderPolicy: false,

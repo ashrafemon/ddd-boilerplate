@@ -131,9 +131,20 @@ Technical NestJS concerns: filters, interceptors, pipes, guards, exceptions, typ
 decorators. Domain folders import no `@nestjs/*`.
 
 ### `bootstrap/`
-Composes bootstrap steps from `main.ts`: Sentry, NestFactory, security, CORS, HTTP, shutdown,
-Swagger, server, plus composition-root bridges (`configureBatchOperations`, `configureImports`,
-`configureNotifications`, `configureWebhooks`) and `CompanyConfigContextMiddleware` registration.
+Only what the NestJS application needs to run: env loading, Sentry, tracing, NestFactory,
+security, CORS, HTTP prefix/versioning, shutdown hooks, Swagger, server, and
+`CompanyConfigContextMiddleware` registration. All env/conditional values come from the
+`@config` facades — bootstrap never reads `process.env` directly.
+
+### Opt-in registries (decorator + DiscoveryService)
+Business adapters plug into platform registries declaratively — no composition-root
+bridges. A business adapter class is decorated (`@BatchOperationOptIn()`,
+`@ImportOptIn({entityKey, descriptor})`, stackable `@NotificationOptIn({notificationType,
+channels, priority, eventName?})`, `@WebhookEventTypeOptIn(name)`,
+`@WebhookInboundSourceOptIn({source, verify})`); the owning platform capability module
+scans the DI graph at `onApplicationBootstrap` (DiscoveryService) and registers every
+decorated instance. Adapters stay pure (no registry imports, no lifecycle); duplicates
+still throw at boot. Adding an opt-in = decorate the adapter — nothing else.
 
 ### `infrastructure/`
 Third-party client initialization only. One folder per client, flat — no grouping
