@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { KeyedRegistryBase } from '@common/application/utils/keyed-registry';
+import { KeyedRegistryBase } from '@platform/platform-common/registry/keyed-registry';
 import { ChannelProviderRegistry } from './channel-provider.registry';
 import { NotificationHandler } from './ports/notification-handler.port';
 import { NotificationHandlerRegistration, NotificationPriority } from './notification.types';

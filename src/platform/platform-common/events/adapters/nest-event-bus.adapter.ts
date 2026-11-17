@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { MessageEnvelope } from '../ports/in-process-event-bus.port';
 
 /**
@@ -21,7 +20,7 @@ export class NestEventBusAdapter {
       this.emitter.emit(envelope.eventType, envelope);
     } catch (err) {
       this.logger.error(
-        `In-process listener for ${envelope.eventType} threw: ${FailureMessage.of(err)}`,
+        `In-process listener for ${envelope.eventType} threw: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }

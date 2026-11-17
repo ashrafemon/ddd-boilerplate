@@ -1,4 +1,4 @@
-import { DomainException } from '@common/application/exceptions/domain.exception';
+import { DomainException } from '@platform/platform-common/errors/domain.exception';
 
 /** Thrown when a subscription id does not resolve. */
 export class WebhookSubscriptionNotFoundError extends DomainException {

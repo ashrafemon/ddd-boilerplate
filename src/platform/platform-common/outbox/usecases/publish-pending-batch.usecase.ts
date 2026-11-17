@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { InProcessEventBus } from '@platform/platform-common/events/ports/in-process-event-bus.port';
 import { MessageQueuePort } from '@platform/platform-common/messaging/ports/message-queue.port';
@@ -63,7 +62,11 @@ export class PublishPendingBatchUseCase {
     try {
       await this.messageQueue.publish(envelope);
     } catch (err) {
-      await this.settleFailure(record, FailureMessage.of(err), maxAttempts);
+      await this.settleFailure(
+        record,
+        err instanceof Error ? err.message : String(err),
+        maxAttempts,
+      );
       return;
     }
 
@@ -91,7 +94,7 @@ export class PublishPendingBatchUseCase {
       );
     } catch (err) {
       this.logger.error(
-        `In-process dispatch of ${record.eventType} (${record.id}) failed: ${FailureMessage.of(err)}`,
+        `In-process dispatch of ${record.eventType} (${record.id}) failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }

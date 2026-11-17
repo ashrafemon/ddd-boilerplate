@@ -1,5 +1,5 @@
 import { Prisma } from '../../../generated/client';
-import { JsonObject } from '../types/json-value';
+import { JsonObject } from '@common/application/types/json-value';
 
 export class PrismaJson {
   static toInput(value: object | null | undefined): Prisma.InputJsonValue | undefined {

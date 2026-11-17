@@ -1,6 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
 import { CronExpressionParser } from 'cron-parser';
-import { FailureMessage } from '@common/application/utils/failure-message';
 
 /** Pure next-run math — no I/O, so a static value object service, not a port. */
 export class CronCalculator {
@@ -13,7 +12,7 @@ export class CronCalculator {
       return expression.next().toDate();
     } catch (err) {
       throw new BadRequestException(
-        `Invalid cron expression '${cronExpression}': ${FailureMessage.of(err)}`,
+        `Invalid cron expression '${cronExpression}': ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }

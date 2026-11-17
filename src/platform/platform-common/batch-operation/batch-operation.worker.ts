@@ -1,4 +1,3 @@
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger } from '@nestjs/common';
 import { BatchOperationJobRepositoryPort } from './ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from './ports/batch-operation-job-row-repository.port';
@@ -58,7 +57,9 @@ export class BatchOperationWorker {
       try {
         await this.outboxWriter.writeJobCompletedEvent(finalised);
       } catch (err) {
-        this.logger.warn(`Outbox write failed for batch job ${jobId}: ${FailureMessage.of(err)}`);
+        this.logger.warn(
+          `Outbox write failed for batch job ${jobId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
   }

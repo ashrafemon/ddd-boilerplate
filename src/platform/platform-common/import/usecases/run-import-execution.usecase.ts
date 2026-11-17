@@ -1,5 +1,4 @@
 import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ImportHandlerRegistry } from '../import-handler.registry';
@@ -149,7 +148,7 @@ export class RunImportExecutionUseCase {
             // opaque from here, so mark the whole claimed chunk FAILED for
             // operator review and keep the pipeline moving instead of
             // terminalising the job on one bad batch.
-            const message = FailureMessage.of(err);
+            const message = err instanceof Error ? err.message : String(err);
             this.logger.error(
               `Import execution chunk failed for job ${job.id}: ${message} — ${toExecute.length} rows marked FAILED`,
             );
@@ -184,7 +183,7 @@ export class RunImportExecutionUseCase {
         from: 'EXECUTING',
         to: 'FAILED',
         at: new Date(),
-        detail: FailureMessage.of(err),
+        detail: err instanceof Error ? err.message : String(err),
       });
       if (failed) {
         await this.outbox.writeFailedEvent(failed);

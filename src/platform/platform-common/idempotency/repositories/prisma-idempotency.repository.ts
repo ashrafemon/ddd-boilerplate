@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../generated/client';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
-import { PrismaJson } from '@common/application/utils/prisma-json';
+import { PrismaJson } from '@platform/platform-common/persistence/prisma-json';
 import { IdempotencyIdentity, IdempotencyReservation } from '../idempotency.types';
 
 /** Read model of an idempotency row. */

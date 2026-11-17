@@ -1,4 +1,3 @@
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@config/config.service';
@@ -54,7 +53,9 @@ export class BatchOperationReconciliationConsumer {
       await this.finaliseCompletedJobs();
       await this.redispatchOrphanedChunks();
     } catch (err) {
-      this.logger.error(`Batch reconciliation cycle failed: ${FailureMessage.of(err)}`);
+      this.logger.error(
+        `Batch reconciliation cycle failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     } finally {
       this.running = false;
     }
@@ -74,7 +75,7 @@ export class BatchOperationReconciliationConsumer {
         await this.outboxWriter.writeJobCompletedEvent(finalised);
       } catch (err) {
         this.logger.error(
-          `Reconciliation finalise failed for batch job ${candidate.id}: ${FailureMessage.of(err)}`,
+          `Reconciliation finalise failed for batch job ${candidate.id}: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }
@@ -104,7 +105,7 @@ export class BatchOperationReconciliationConsumer {
         });
       } catch (err) {
         this.logger.error(
-          `Re-dispatch failed for batch job ${job.id}, continuing cycle: ${FailureMessage.of(err)}`,
+          `Re-dispatch failed for batch job ${job.id}, continuing cycle: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }

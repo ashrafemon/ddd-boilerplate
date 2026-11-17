@@ -1,4 +1,3 @@
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger } from '@nestjs/common';
 import { createHash, randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
@@ -130,7 +129,7 @@ export class DispatchDueJobsUseCase {
       }
       return true;
     } catch (err) {
-      const message = FailureMessage.of(err);
+      const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Dispatch failed for job ${job.id}: ${message}`);
       try {
         const { maxRetries, retryBackoffBaseMs } = this.configService.getScheduler();

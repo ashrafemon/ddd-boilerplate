@@ -1,10 +1,9 @@
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ConfigService } from '@config/config.service';
 import { BatchOperationQueuePublisherPort } from '../ports/batch-operation-queue-publisher.port';
-import { Chunker } from '@common/application/utils/chunker';
+import { Chunker } from '@platform/platform-common/batch-operation/chunker';
 import { BatchOperationDispatch } from '../batch-operation.types';
 import {
   BATCH_OPERATION_CHUNK_JOB_NAME,
@@ -50,7 +49,7 @@ export class BullMqBatchOperationQueueAdapter implements BatchOperationQueuePubl
         );
       } catch (err) {
         this.logger.error(
-          `Failed to enqueue chunk ${i} for batch job ${dispatch.jobId}: ${FailureMessage.of(err)}`,
+          `Failed to enqueue chunk ${i} for batch job ${dispatch.jobId}: ${err instanceof Error ? err.message : String(err)}`,
         );
         throw err;
       }

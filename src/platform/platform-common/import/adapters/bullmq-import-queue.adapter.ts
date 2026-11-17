@@ -1,4 +1,3 @@
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -55,7 +54,7 @@ export class BullMqImportQueueAdapter implements ImportQueuePublisherPort {
       );
     } catch (err) {
       this.logger.error(
-        `Failed to enqueue ${name} for import job ${jobId}: ${FailureMessage.of(err)}`,
+        `Failed to enqueue ${name} for import job ${jobId}: ${err instanceof Error ? err.message : String(err)}`,
       );
       throw err;
     }

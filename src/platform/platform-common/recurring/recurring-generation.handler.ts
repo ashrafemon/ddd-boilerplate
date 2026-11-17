@@ -1,4 +1,3 @@
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { randomUUID } from 'crypto';
@@ -151,7 +150,7 @@ export class RecurringGenerationHandler implements ScheduledJobFireHandler {
         `Outbox RecurringOccurrenceRequested for ${template.targetEntityType} execution ${execution.id}`,
       );
     } catch (err) {
-      const message = FailureMessage.of(err);
+      const message = err instanceof Error ? err.message : String(err);
       await this.executionRepository.fail(execution.id, message);
     }
 

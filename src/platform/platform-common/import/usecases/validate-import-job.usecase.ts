@@ -1,5 +1,4 @@
 import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ImportHandlerRegistry } from '../import-handler.registry';
@@ -140,7 +139,7 @@ export class ValidateImportJobUseCase {
         from: 'VALIDATING',
         to: 'FAILED',
         at: new Date(),
-        detail: FailureMessage.of(err),
+        detail: err instanceof Error ? err.message : String(err),
       });
       if (failed) {
         await this.outbox.writeFailedEvent(failed);

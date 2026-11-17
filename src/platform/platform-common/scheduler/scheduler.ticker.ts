@@ -1,4 +1,3 @@
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { ConfigService } from '@config/config.service';
@@ -52,7 +51,9 @@ export class SchedulerTicker implements OnModuleInit, OnModuleDestroy {
     try {
       return await this.dispatch.execute();
     } catch (err) {
-      this.logger.error(`Scheduler tick failed: ${FailureMessage.of(err)}`);
+      this.logger.error(
+        `Scheduler tick failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return 0;
     } finally {
       this.ticking = false;
@@ -63,7 +64,9 @@ export class SchedulerTicker implements OnModuleInit, OnModuleDestroy {
     try {
       return await this.reconcile.execute();
     } catch (err) {
-      this.logger.error(`Scheduler reconcile failed: ${FailureMessage.of(err)}`);
+      this.logger.error(
+        `Scheduler reconcile failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return 0;
     }
   }

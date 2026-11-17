@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { PrismaJson } from '@common/application/utils/prisma-json';
+import { PrismaJson } from '@platform/platform-common/persistence/prisma-json';
 import {
   AppendOutboxEventRequest,
   ClaimOutboxOptions,

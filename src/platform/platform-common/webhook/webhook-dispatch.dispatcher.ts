@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JsonObject } from '@common/application/types/json-value';
-import { PrismaJson } from '@common/application/utils/prisma-json';
+import { PrismaJson } from '@platform/platform-common/persistence/prisma-json';
 import { MessageEnvelope } from '@platform/platform-common/events/ports/in-process-event-bus.port';
 import { DispatchWebhookEventUseCase } from './usecases/dispatch-webhook-event.usecase';
 import { WebhookEventTypeRegistry } from './webhook-event-type.registry';

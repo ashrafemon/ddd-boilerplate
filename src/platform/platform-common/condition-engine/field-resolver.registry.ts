@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { KeyedRegistryBase } from '@common/application/utils/keyed-registry';
+import { KeyedRegistryBase } from '@platform/platform-common/registry/keyed-registry';
 import { ConditionValue, EvaluationContext, FieldResolver } from './ports/field-resolver.port';
 
 /**

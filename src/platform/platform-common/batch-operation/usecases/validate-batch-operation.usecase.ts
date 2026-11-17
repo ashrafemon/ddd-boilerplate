@@ -1,4 +1,3 @@
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
@@ -46,7 +45,7 @@ export class ValidateBatchOperationUseCase {
         items.push({
           entityId,
           canProceed: false,
-          reason: FailureMessage.of(err),
+          reason: err instanceof Error ? err.message : String(err),
         });
       }
     }

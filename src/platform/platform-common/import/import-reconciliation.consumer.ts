@@ -1,4 +1,3 @@
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@config/config.service';
@@ -46,7 +45,9 @@ export class ImportReconciliationConsumer {
       await this.resumeOrphanedStages();
       await this.purgeExpiredStorage();
     } catch (err) {
-      this.logger.error(`Import reconciliation cycle failed: ${FailureMessage.of(err)}`);
+      this.logger.error(
+        `Import reconciliation cycle failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     } finally {
       this.running = false;
     }
@@ -102,7 +103,7 @@ export class ImportReconciliationConsumer {
         }
       } catch (err) {
         this.logger.error(
-          `Reconciliation failed for import job ${job.id}, continuing cycle: ${FailureMessage.of(err)}`,
+          `Reconciliation failed for import job ${job.id}, continuing cycle: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }
@@ -117,12 +118,14 @@ export class ImportReconciliationConsumer {
         } catch (err) {
           // Missing/unreachable object files must not block row cleanup.
           this.logger.warn(
-            `File delete failed for expired storage object ${obj.id}: ${FailureMessage.of(err)}`,
+            `File delete failed for expired storage object ${obj.id}: ${err instanceof Error ? err.message : String(err)}`,
           );
         }
         await this.storageObjects.deleteById(obj.id);
       } catch (err) {
-        this.logger.error(`Storage purge failed for object ${obj.id}: ${FailureMessage.of(err)}`);
+        this.logger.error(
+          `Storage purge failed for object ${obj.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
     if (expired.length > 0) {

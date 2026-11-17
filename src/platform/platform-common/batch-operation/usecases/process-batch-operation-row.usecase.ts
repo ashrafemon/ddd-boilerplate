@@ -1,4 +1,3 @@
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
@@ -75,7 +74,7 @@ export class ProcessBatchOperationRowUseCase {
         () => this.runHandler(handler, claimed, dispatch, context, startedAt),
       );
     } catch (err) {
-      const message = FailureMessage.of(err);
+      const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(
         `Batch row ${claimed.id} (${dispatch.aggregateType}/${dispatch.operationCode}) failed: ${message}`,
       );
@@ -130,7 +129,7 @@ export class ProcessBatchOperationRowUseCase {
       });
       return 'PROCESSED';
     } catch (err) {
-      const message = FailureMessage.of(err);
+      const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(
         `Batch row ${claimed.id} (${dispatch.aggregateType}/${dispatch.operationCode}) failed: ${message}`,
       );

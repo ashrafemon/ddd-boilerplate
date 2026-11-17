@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { numericEnv, requiredInProduction } from '../common/application/utils/env.util';
+import { numericEnv, requiredInProduction } from '@common/application/utils/env.util';
 
 export type IDatabaseDriver = 'postgres' | 'mysql';
 export type IDatabasePoolConfig = {

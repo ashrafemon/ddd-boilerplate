@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { booleanEnv } from '../common/application/utils/env.util';
+import { booleanEnv } from '@common/application/utils/env.util';
 
 export type IPuppeteerConfig = {
   enabled: boolean;

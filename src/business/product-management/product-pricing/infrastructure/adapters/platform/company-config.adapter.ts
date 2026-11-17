@@ -2,7 +2,7 @@ import { CompanyConfigPort } from '@platform/platform-organization/configuration
 import { Injectable } from '@nestjs/common';
 import { CompanyConfig } from '@platform/platform-organization/configuration/ports/company-config.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { DEFAULT_COMPANY_ID } from '@common/application/constants/company';
+import { DEFAULT_COMPANY_ID } from '@platform/platform-common/context/company';
 
 @Injectable()
 export class CompanyConfigAdapter implements CompanyConfigPort {

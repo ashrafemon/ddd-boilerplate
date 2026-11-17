@@ -1,6 +1,5 @@
 import { ImportOptIn } from '@platform/platform-common/import/import-opt-in';
 import { Injectable } from '@nestjs/common';
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { ImportHandler } from '@platform/platform-common/import/ports/import-handler.port';
 import {
   ImportDescriptor,
@@ -294,7 +293,7 @@ export class PurchaseOrderImportHandler implements ImportHandler<PurchaseOrderIm
           results.push({ rowNumber: row.rowNumber, status: 'APPLIED', entityId: id.toString() });
         }
       } catch (err) {
-        const errorMessage = FailureMessage.of(err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
         for (const row of group.rows) {
           results.push({ rowNumber: row.rowNumber, status: 'FAILED', errorMessage });
         }

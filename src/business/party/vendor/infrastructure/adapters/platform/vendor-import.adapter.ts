@@ -1,5 +1,4 @@
 import { ImportOptIn } from '@platform/platform-common/import/import-opt-in';
-import { FailureMessage } from '@common/application/utils/failure-message';
 import { Injectable } from '@nestjs/common';
 import { ImportHandler } from '@platform/platform-common/import/ports/import-handler.port';
 import {
@@ -122,7 +121,7 @@ export class VendorImportHandler implements ImportHandler<VendorImportRow> {
         results.push({
           rowNumber: row.rowNumber,
           status: 'FAILED',
-          errorMessage: FailureMessage.of(err),
+          errorMessage: err instanceof Error ? err.message : String(err),
         });
       }
     }

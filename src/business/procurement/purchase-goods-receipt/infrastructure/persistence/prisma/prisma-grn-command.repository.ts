@@ -6,7 +6,7 @@ import { GrnCommandRepository } from '../../../domain/repositories/grn-command.r
 import { PrismaGrnMapper } from './prisma-grn.mapper';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { TenantScope } from '@common/application/utils/tenant-scope';
-import { resolveCompanyId } from '@common/application/constants/company';
+import { resolveCompanyId } from '@platform/platform-common/context/company';
 
 @Injectable()
 export class PrismaGrnCommandRepository extends GrnCommandRepository {
