@@ -26,8 +26,11 @@ import { TenancyAuthGuard } from '@platform/platform-common/context/guards/tenan
         return { throttlers: [{ ttl: ttlMs, limit }] };
       },
     }),
+    // All packages/clients modules
     InfrastructureModule,
+    // Communicator modules
     PlatformModule,
+    // Business aggregate modules
     BusinessModule,
   ],
   controllers: [],
