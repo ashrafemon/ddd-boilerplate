@@ -1,5 +1,8 @@
 import 'reflect-metadata';
 import { bootstrap } from './bootstrap';
 
-// Start app from here
+/* 
+Start application from here
+We are splitting multiple files for bootstraping the application
+*/
 void bootstrap();
