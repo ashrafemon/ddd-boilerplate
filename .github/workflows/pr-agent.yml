@@ -1,0 +1,35 @@
+# .github/workflows/pr-agent.yml
+name: PR Agent
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  pr_agent_job:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: PR Agent action step
+        uses: the-pr-agent/pr-agent@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # Custom OpenAI-compatible API
+          OPENAI__KEY: ${{ secrets.AI_BASE_API_KEY }}
+          OPENAI__API_BASE: ${{ secrets.AI_BASE_API_URL }}
+
+          # Model configuration
+          config.model: "openai/auto"
+          config.fallback_models: '[]'
+          config.custom_model_max_tokens: "128000"
+
+          # Automatic PR review
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "true"
+
