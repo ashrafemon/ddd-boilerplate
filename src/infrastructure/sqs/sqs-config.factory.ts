@@ -28,13 +28,13 @@ export function buildSqsOptions(config: ConfigService): SqsOptions {
       : undefined;
 
   const consumer = {
-    name: 'consumer1',
+    name: 'sqs-consumer',
     queueUrl: sqs.url,
     region: sqs.region,
     ...(client ? { sqs: client } : {}),
   };
   const producer = {
-    name: 'producer1',
+    name: 'sqs-producer',
     queueUrl: sqs.url,
     region: sqs.region,
     ...(client ? { sqs: client } : {}),

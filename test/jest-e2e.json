@@ -13,7 +13,6 @@
   },
   "moduleNameMapper": {
     "^@prisma/client$": "<rootDir>/../src/generated/client.ts",
-    "^node-fetch$": "<rootDir>/../test/utils/node-fetch.stub.js",
     "^@config/(.*)$": "<rootDir>/../src/config/$1",
     "^@shared-kernel/(.*)$": "<rootDir>/../src/shared-kernel/$1",
     "^@bootstrap/(.*)$": "<rootDir>/../src/bootstrap/$1",
@@ -23,5 +22,4 @@
     "^prisma/generated/prisma/(.*)$": "<rootDir>/../prisma/generated/prisma/$1",
     "^(\\.{1,2}/.*)\\.js$": "$1"
   },
-  "transformIgnorePatterns": ["/node_modules/(?!@amirrivand/nestjs-file-storage)"]
 }

@@ -1,15 +1,18 @@
 import { SESClient } from '@aws-sdk/client-ses';
 import { ConfigService } from '@config/config.service';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { InfrastructureException } from '@common/application/exceptions/infrastructure.exception';
+import { Injectable, Logger } from '@nestjs/common';
 
 /**
- * AWS SES email client. Explicit keys are used when present; otherwise the AWS
- * default credential chain (profile, IAM role, task role) resolves them. The
- * client is only skipped when there is no sender address to send from, so
- * local development runs without AWS.
+ * SES email client — client initialization only.
+ *
+ * Explicit keys are used when present; otherwise the AWS default credential
+ * chain (profile, IAM role, task role) resolves them. The client is only
+ * skipped when there is no sender address to send from, so local development
+ * runs without AWS. No shutdown lifecycle: the SDK client is stateless HTTP.
  */
 @Injectable()
-export class SesService implements OnModuleInit, OnModuleDestroy {
+export class SesService {
   private readonly ses?: SESClient;
   private readonly fromAddress?: string;
   private readonly logger = new Logger(SesService.name);
@@ -18,6 +21,11 @@ export class SesService implements OnModuleInit, OnModuleDestroy {
     const config = configService.getSes();
 
     if (!config.address) {
+      if (configService.isProduction) {
+        throw new InfrastructureException('ses-not-configured', {
+          reason: 'SES sender address is required in production',
+        });
+      }
       this.logger.warn('ses-disabled-missing-sender');
       return;
     }
@@ -33,13 +41,6 @@ export class SesService implements OnModuleInit, OnModuleDestroy {
 
   get isEnabled(): boolean {
     return this.ses !== undefined && this.fromAddress !== undefined;
-  }
-
-  onModuleInit() {
-    this.logger.log(this.isEnabled ? 'ses-connected' : 'ses-disabled');
-  }
-  onModuleDestroy() {
-    this.logger.log('ses-disconnected');
   }
 
   public get client(): SESClient | undefined {

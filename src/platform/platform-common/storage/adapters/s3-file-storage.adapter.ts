@@ -1,5 +1,12 @@
-import { FileStorageService } from '@amirrivand/nestjs-file-storage';
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Injectable } from '@nestjs/common';
+import { S3Service } from '@infrastructure/s3/s3.service';
 import {
   FileDownloadResult,
   FileMetadata,
@@ -9,13 +16,13 @@ import {
 } from '@platform/platform-common/storage/ports/file-storage.port';
 
 /**
- * File storage adapter backed by @amirrivand/nestjs-file-storage (S3 / local
- * disks). Delegates every FileStoragePort operation to the configured default
- * disk.
+ * FileStoragePort adapter over the infrastructure AWS S3 client (S3/MinIO
+ * compatible). Owns every object operation — the infrastructure layer only
+ * initializes the client.
  */
 @Injectable()
 export class S3FileStorageAdapter implements FileStoragePort {
-  constructor(@Inject(FileStorageService) private readonly storage: FileStorageService) {}
+  constructor(private readonly s3: S3Service) {}
 
   public async upload(input: {
     key: string;
@@ -23,48 +30,66 @@ export class S3FileStorageAdapter implements FileStoragePort {
     contentType?: string;
     metadata?: Record<string, string>;
   }): Promise<FileUploadResult> {
-    const disk = this.storage.disk();
-    await disk.put(input.key, input.body, {
-      ContentType: input.contentType,
-      visibility: 'private',
-    });
+    await this.s3.client.send(
+      new PutObjectCommand({
+        Bucket: this.s3.bucketName,
+        Key: input.key,
+        Body: input.body,
+        ...(input.contentType ? { ContentType: input.contentType } : {}),
+        ...(input.metadata ? { Metadata: input.metadata } : {}),
+      }),
+    );
 
-    const url = disk.url ? await disk.url(input.key) : undefined;
     return {
       key: input.key,
-      url,
+      ...(this.s3.publicBaseUrl
+        ? { url: `${this.s3.publicBaseUrl.replace(/\/$/, '')}/${input.key}` }
+        : {}),
       size: input.body.length,
-      contentType: input.contentType,
+      ...(input.contentType ? { contentType: input.contentType } : {}),
     };
   }
 
   public async download(key: string): Promise<FileDownloadResult> {
-    const body = await this.storage.disk().get(key);
-    return { body };
+    const response = await this.s3.client.send(
+      new GetObjectCommand({ Bucket: this.s3.bucketName, Key: key }),
+    );
+    return { body: Buffer.from(await response.Body!.transformToByteArray()) };
   }
 
   public async delete(key: string): Promise<void> {
-    await this.storage.disk().delete(key);
+    await this.s3.client.send(new DeleteObjectCommand({ Bucket: this.s3.bucketName, Key: key }));
   }
 
   public async getMetadata(key: string): Promise<FileMetadata | null> {
-    const meta = await this.storage.disk().getMetadata?.(key);
-    if (!meta) return null;
-    return {
-      key,
-      size: meta.size,
-      contentType: meta.mimeType ?? meta.ContentType,
-    };
+    try {
+      const response = await this.s3.client.send(
+        new HeadObjectCommand({ Bucket: this.s3.bucketName, Key: key }),
+      );
+      return {
+        key,
+        size: response.ContentLength ?? 0,
+        ...(response.ContentType ? { contentType: response.ContentType } : {}),
+      };
+    } catch (error) {
+      const err = error as Error & { name?: string; $metadata?: { httpStatusCode?: number } };
+      if (
+        err.name === 'NotFound' ||
+        err.name === 'NoSuchKey' ||
+        err.$metadata?.httpStatusCode === 404
+      ) {
+        return null;
+      }
+      throw err;
+    }
   }
 
   public async getPresignedUrl(key: string, expiresInSeconds?: number): Promise<string> {
-    const disk = this.storage.disk();
-    if (disk.getTemporaryUrl) {
-      return disk.getTemporaryUrl(key, expiresInSeconds);
-    }
-    // NEVER fall back to disk.url(): on the S3 driver that is the indefinite
-    // public/CDN URL for a private object — an unauthenticated read primitive.
-    throw new Error('Presigned URLs are not supported by the configured storage disk');
+    return getSignedUrl(
+      this.s3.client,
+      new GetObjectCommand({ Bucket: this.s3.bucketName, Key: key }),
+      { expiresIn: expiresInSeconds ?? this.s3.presignTtlSeconds },
+    );
   }
 
   /**
@@ -80,7 +105,11 @@ export class S3FileStorageAdapter implements FileStoragePort {
     maxBytes?: number;
     contentTypes?: string[];
   }): Promise<PresignedUpload> {
-    const url = await this.getPresignedUrl(input.key, input.expiresInSeconds);
+    const url = await getSignedUrl(
+      this.s3.client,
+      new PutObjectCommand({ Bucket: this.s3.bucketName, Key: input.key }),
+      { expiresIn: input.expiresInSeconds },
+    );
     return {
       method: 'PUT',
       url,

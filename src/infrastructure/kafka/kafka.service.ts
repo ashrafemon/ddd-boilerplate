@@ -14,6 +14,11 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     const config = configService.getKafka();
 
     if (config.brokers.length === 0) {
+      if (configService.isProduction) {
+        throw new InfrastructureException('kafka-not-configured', {
+          reason: 'KAFKA_BROKERS is required in production',
+        });
+      }
       this.logger.warn('kafka-disabled-missing-brokers');
       this.consumerGroupId = config.groupId;
       return;
@@ -77,6 +82,73 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
 
     return this.kafka.consumer({ groupId: this.consumerGroupId });
+  }
+
+  /**
+   * Client-level consumer operation: connects a shared consumer, subscribes it
+   * to the given topics and hands each message's raw value to `onMessage`.
+   * All kafkajs wiring stays inside this client — the caller supplies only
+   * topics and a callback.
+   *
+   * Supervised: if the consumer run crashes, it is restarted with capped
+   * exponential backoff (1s → 30s) instead of staying dead until process
+   * restart. Returns a handle that stops the loop and disconnects.
+   */
+  public async startConsumer(input: {
+    topics: string[];
+    onMessage: (message: { topic: string; value: string | null }) => Promise<void> | void;
+  }): Promise<{ stop(): Promise<void> }> {
+    if (!this.kafka) {
+      throw new InfrastructureException('Kafka is not configured: set KAFKA_BROKERS');
+    }
+
+    const consumer = this.kafka.consumer({ groupId: this.consumerGroupId });
+    await consumer.connect();
+    for (const topic of input.topics) {
+      await consumer.subscribe({ topic, fromBeginning: false });
+    }
+
+    let stopped = false;
+    let attempt = 0;
+
+    const runLoop = async (): Promise<void> => {
+      while (!stopped) {
+        try {
+          // Resolves only when the consumer STOPS cleanly; a crash throws.
+          await consumer.run({
+            eachMessage: async ({ topic, message }) => {
+              await input.onMessage({ topic, value: message.value?.toString() ?? null });
+            },
+          });
+          return;
+        } catch (error) {
+          if (stopped) return;
+          attempt += 1;
+          const delayMs = Math.min(1_000 * 2 ** (attempt - 1), 30_000);
+          this.logger.error(
+            `kafka-consumer-crashed; restarting in ${delayMs}ms (attempt ${attempt}): ${(error as Error).message}`,
+          );
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          if (stopped) return;
+          // Rebuild the connection before re-running — a crash may have torn
+          // the underlying socket down.
+          await consumer.disconnect().catch(() => undefined);
+          await consumer.connect();
+          for (const topic of input.topics) {
+            await consumer.subscribe({ topic, fromBeginning: false });
+          }
+        }
+      }
+    };
+
+    void runLoop();
+
+    return {
+      stop: async () => {
+        stopped = true;
+        await consumer.disconnect().catch(() => undefined);
+      },
+    };
   }
 
   public async onModuleDestroy(): Promise<void> {

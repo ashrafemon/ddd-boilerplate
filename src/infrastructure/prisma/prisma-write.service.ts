@@ -2,8 +2,9 @@ import { ConfigService } from '@config/config.service';
 import { InfrastructureException } from '@common/application/exceptions/infrastructure.exception';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../../../generated/client';
+import { PrismaClient } from '../../generated/client';
 import { Pool } from 'pg';
+import { buildPgPoolOptions } from './pool-options';
 
 /**
  * Write database client. All writes go through this connection; reads through
@@ -23,7 +24,7 @@ export class PrismaWriteService extends PrismaClient implements OnModuleInit, On
   constructor(private readonly configService: ConfigService) {
     const dbConfig = configService.getPostgres();
     const connectionString = dbConfig.url;
-    const pool = new Pool({ connectionString });
+    const pool = new Pool(buildPgPoolOptions(dbConfig));
     const adapter = new PrismaPg(pool);
     super({ adapter });
     this.connectionString = connectionString;

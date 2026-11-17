@@ -3,7 +3,8 @@ import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { ObservabilityModule } from '@platform/platform-common/observability/observability.module';
 import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
-import { NotificationModule as InfraNotificationModule } from '@infrastructure/notification/notification.module';
+import { SesModule as InfraSesModule } from '@infrastructure/ses/ses.module';
+import { SnsModule as InfraSnsModule } from '@infrastructure/sns/sns.module';
 import { ChannelProviderRegistry } from './channel-provider.registry';
 import { NotificationHandlerRegistry } from './notification-handler.registry';
 import { NotificationEventDispatcher } from './notification-event.dispatcher';
@@ -49,7 +50,8 @@ import { NotificationController } from './http/notification.controller';
     ContextModule,
     OutboxModule,
     ObservabilityModule,
-    InfraNotificationModule,
+    InfraSesModule,
+    InfraSnsModule,
     BullModule.registerQueue({ name: NOTIFICATION_QUEUE_NAME }),
   ],
   controllers: [NotificationController],

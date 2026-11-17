@@ -35,11 +35,12 @@
     "npm": ">=10.0.0"
   },
   "dependencies": {
-    "@amirrivand/nestjs-file-storage": "^1.1.2",
     "@andreafspeziale/nestjs-memcached": "^3.8.0",
+    "@aws-sdk/client-s3": "^3.1170.0",
     "@aws-sdk/client-ses": "^3.1104.0",
     "@aws-sdk/client-sns": "^3.1104.0",
     "@aws-sdk/client-sqs": "^3.1104.0",
+    "@aws-sdk/s3-request-presigner": "^3.1170.0",
     "@fastify/compress": "^9.1.1",
     "@fastify/helmet": "^13.1.0",
     "@fastify/static": "^9.3.0",

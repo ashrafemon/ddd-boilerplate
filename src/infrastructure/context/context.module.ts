@@ -1,5 +1,5 @@
-import { PrismaWriteService } from '@infrastructure/database/prisma/prisma-write.service';
-import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
+import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
+import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { ClsPluginTransactional } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Module } from '@nestjs/common';

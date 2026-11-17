@@ -2,8 +2,9 @@ import { ConfigService } from '@config/config.service';
 import { InfrastructureException } from '@common/application/exceptions/infrastructure.exception';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../../../generated/client';
+import { PrismaClient } from '../../generated/client';
 import { Pool } from 'pg';
+import { buildPgPoolOptions } from './pool-options';
 import { PrismaWriteService } from './prisma-write.service';
 
 /**
@@ -26,7 +27,9 @@ export class PrismaReadService extends PrismaClient implements OnModuleInit, OnM
 
     // The adapter never ends an externally supplied pool (unless
     // `disposeExternalPool`), so only its creator may close it here.
-    const pool = shared ? writeService.pool : new Pool({ connectionString: readUrl });
+    const pool = shared
+      ? writeService.pool
+      : new Pool(buildPgPoolOptions({ ...dbConfig, url: readUrl }));
     const adapter = new PrismaPg(pool);
     super({ adapter });
     this.pool = pool;

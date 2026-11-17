@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { InfrastructureModule } from '@infrastructure/infrastructure.module';
-import { PrismaReadService } from '@infrastructure/database/prisma/prisma-read.service';
+import { PrismaReadService } from '@infrastructure/prisma/prisma-read.service';
 import { ClsRequestContextService } from './adapters/cls-request-context.service';
 import { RequestContextPort } from './ports/request-context.port';
 import { PrismaReadPort } from './ports/prisma-read.port';

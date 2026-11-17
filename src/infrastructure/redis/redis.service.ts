@@ -14,6 +14,11 @@ export class RedisService implements OnModuleDestroy, OnApplicationShutdown {
     const config = configService.getRedis();
 
     if (!config.url) {
+      if (configService.isProduction) {
+        throw new InfrastructureException('redis-not-configured', {
+          reason: 'REDIS_URL is required in production',
+        });
+      }
       this.logger.warn('redis-disabled-missing-url');
       return;
     }

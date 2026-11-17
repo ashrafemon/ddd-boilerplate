@@ -56,6 +56,15 @@ export class ConfigService {
     return this.config.get<IDatabaseConfig>('database.postgres', {
       url: '',
       readUrl: '',
+      pool: {
+        max: 10,
+        min: 0,
+        idleTimeoutMs: 10_000,
+        connectionTimeoutMs: 10_000,
+        statementTimeoutMs: 30_000,
+        idleInTransactionTimeoutMs: 60_000,
+        applicationName: 'erp-boilerplate',
+      },
     });
   }
 

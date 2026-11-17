@@ -3,7 +3,7 @@ import { PublishCommand } from '@aws-sdk/client-sns';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { LoggerPort } from '@platform/platform-common/observability/ports/logger.port';
-import { SnsService } from '@infrastructure/notification/sns/sns.service';
+import { SnsService } from '@infrastructure/sns/sns.service';
 import { ChannelProvider } from '../ports/channel-provider.port';
 import { InvalidWebhookSignatureError } from '../notification.errors';
 import {

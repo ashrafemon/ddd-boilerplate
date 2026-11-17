@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
-import { MessagingModule as InfraMessagingModule } from '@infrastructure/messaging/messaging.module';
+import { DiscoveryModule } from '@nestjs/core';
+import { KafkaModule as InfraKafkaModule } from '@infrastructure/kafka/kafka.module';
+import { RabbitMqClientModule as InfraRabbitMqModule } from '@infrastructure/rabbitmq/rabbitmq.module';
+import { SqsClientModule as InfraSqsModule } from '@infrastructure/sqs/sqs.module';
 import { KafkaPublisherAdapter } from './adapters/kafka-publisher.adapter';
+import { KafkaConsumerHost } from './adapters/kafka-consumer.host';
 import { RabbitMQPublisherAdapter } from './adapters/rabbitmq-publisher.adapter';
 import { SqsPublisherAdapter } from './adapters/sqs-publisher.adapter';
 import { MessageQueuePort } from './ports/message-queue.port';
@@ -10,13 +14,14 @@ import { RabbitMqPublisher, KafkaPublisher, SqsPublisher } from './message-publi
 
 /**
  * Platform messaging module — one publish-only port (`MessageQueuePort`) bound
- * to the broker clients initialised by the infrastructure layer. Driver
- * registration lives in `@infrastructure/messaging`; this module only owns the
+ * to the broker clients initialised by the infrastructure layer. Each driver
+ * client has its own module under `@infrastructure`; this module only owns the
  * port bindings and the broker routing. No consumers, no subscribe registry.
  */
 @Module({
-  imports: [InfraMessagingModule],
+  imports: [DiscoveryModule, InfraRabbitMqModule, InfraKafkaModule, InfraSqsModule],
   providers: [
+    KafkaConsumerHost,
     KafkaPublisherAdapter,
     RabbitMQPublisherAdapter,
     SqsPublisherAdapter,

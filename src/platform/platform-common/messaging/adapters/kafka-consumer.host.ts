@@ -1,8 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { DiscoveryService } from '@nestjs/core';
-import { Consumer } from 'kafkajs';
 import { KAFKA_EVENT_LISTENER_METADATA } from '@common/http/decorators/kafka-event.decorator';
-import { KafkaService } from './kafka.service';
+import { KafkaService } from '@infrastructure/kafka/kafka.service';
 
 interface HandlerEntry {
   instance: object;
@@ -11,14 +10,15 @@ interface HandlerEntry {
 
 /**
  * Binds every `@KafkaEvent(topic)` handler discovered in the application to a
- * shared consumer. The consumer subscribes to each unique topic and dispatches
- * the parsed payload to all matching handlers.
+ * shared consumer. Topic subscription and message delivery run through the
+ * infrastructure KafkaService client surface; this host owns only handler
+ * discovery and payload dispatch.
  */
 @Injectable()
 export class KafkaConsumerHost implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(KafkaConsumerHost.name);
   private readonly handlers = new Map<string, HandlerEntry[]>();
-  private consumer?: Consumer;
+  private consumer?: { stop(): Promise<void> };
 
   constructor(
     private readonly discovery: DiscoveryService,
@@ -36,35 +36,18 @@ export class KafkaConsumerHost implements OnApplicationBootstrap, OnModuleDestro
       return;
     }
 
-    const consumer = this.kafkaService.createConsumer();
-    this.consumer = consumer;
-
     try {
-      await consumer.connect();
-      for (const topic of this.handlers.keys()) {
-        await consumer.subscribe({ topic, fromBeginning: false });
-      }
-      // `consumer.run()` resolves only when the consumer STOPS, and kafkajs
-      // re-joins the group forever while the broker is unreachable. Awaiting
-      // it would block application bootstrap indefinitely when Kafka is down,
-      // so it runs in the background and failures are logged, not awaited.
-      void consumer
-        .run({
-          eachMessage: async ({ topic, message }) => {
-            const entries = this.handlers.get(topic);
-            if (!entries) return;
-            const payload = this.parse(message.value?.toString());
-            for (const entry of entries) {
-              await entry.handler.call(entry.instance, payload, message);
-            }
-          },
-        })
-        .catch((error: unknown) => {
-          this.consumer = undefined;
-          this.logger.error(
-            `Kafka consumer stopped; @KafkaEvent handlers are inactive: ${(error as Error).message}`,
-          );
-        });
+      this.consumer = await this.kafkaService.startConsumer({
+        topics: [...this.handlers.keys()],
+        onMessage: async ({ topic, value }) => {
+          const entries = this.handlers.get(topic);
+          if (!entries) return;
+          const payload = this.parse(value ?? undefined);
+          for (const entry of entries) {
+            await entry.handler.call(entry.instance, payload, value);
+          }
+        },
+      });
       this.logger.log(
         `Kafka consumer subscribed to topics: ${[...this.handlers.keys()].join(', ')}`,
       );
@@ -73,12 +56,11 @@ export class KafkaConsumerHost implements OnApplicationBootstrap, OnModuleDestro
       this.logger.error(
         `Kafka consumer wiring failed; @KafkaEvent handlers are inactive: ${(error as Error).message}`,
       );
-      await consumer.disconnect().catch(() => undefined);
     }
   }
 
   public async onModuleDestroy(): Promise<void> {
-    await this.consumer?.disconnect();
+    await this.consumer?.stop();
   }
 
   /**

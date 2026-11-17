@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
-import { KafkaService } from '@infrastructure/messaging/kafka/kafka.service';
+import { KafkaService } from '@infrastructure/kafka/kafka.service';
 import { BrokerPublisher } from '../message-publisher.tokens';
 
 /**

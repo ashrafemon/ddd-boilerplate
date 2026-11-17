@@ -17,6 +17,7 @@ import { MessagingModule } from './platform-common/messaging/messaging.module';
 import { NotificationModule } from './platform-common/notification/notification.module';
 import { NumberingModule } from './platform-common/numbering/numbering.module';
 import { ObservabilityModule } from './platform-common/observability/observability.module';
+import { HealthModule } from './platform-common/health/health.module';
 import { RecurringModule } from './platform-common/recurring/recurring.module';
 import { SagaModule } from './platform-common/process-orchestration/saga-runtime/saga.module';
 import { AuthorizationModule } from './platform-organization/authorization/authorization.module';
@@ -47,6 +48,7 @@ import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
     InboxModule,
     StorageModule,
     ObservabilityModule,
+    HealthModule,
     CacheModule,
     ContextModule,
     ConfigurationModule,

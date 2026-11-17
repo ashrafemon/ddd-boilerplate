@@ -1,18 +1,23 @@
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Module } from '@nestjs/common';
+import { BullMqModule } from './bullmq/bullmq.module';
 import { ContextModule } from './context/context.module';
-import { MessagingModule } from './messaging/messaging.module';
-import { NotificationModule } from './notification/notification.module';
-import { PrismaModule } from './database/prisma/prisma.module';
-import { QueueModule } from './queue/queue.module';
+import { KafkaModule } from './kafka/kafka.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { RabbitMqClientModule } from './rabbitmq/rabbitmq.module';
 import { RedisModule } from './redis/redis.module';
-import { StorageModule } from './storage/storage.module';
+import { SesModule } from './ses/ses.module';
+import { SnsModule } from './sns/sns.module';
+import { SqsClientModule } from './sqs/sqs.module';
+import { S3Module } from './s3/s3.module';
 
 /**
  * Infrastructure layer — client initialization/setup only.
  *
- * Each sub-module registers third-party clients (Prisma, Kafka, RabbitMQ,
- * SQS, Redis, Memcached, S3, SES, SNS, CLS). No ports or adapters live here;
- * the platform layer wraps these clients into services for business modules.
+ * Each client folder sits directly under `infrastructure/` — one row per
+ * client, each with its own module: Prisma, Redis, RabbitMQ, Kafka, SQS,
+ * BullMQ, SES, SNS, S3, CLS. No ports or adapters live here; the
+ * platform layer wraps these clients into services for business modules.
  *
  * Outbox and Inbox live here as directories but are wired by PlatformModule
  * (not InfrastructureModule) to avoid a circular dependency:
@@ -20,28 +25,36 @@ import { StorageModule } from './storage/storage.module';
  * If InfrastructureModule also imported OutboxModule, that would form a cycle.
  *
  * Deliberately NOT `@Global()`: raw clients must stay invisible to business
- * modules, so every consumer has to import this module (or a sub-module)
+ * modules, so every consumer has to import this module (or a client module)
  * explicitly. The only global registration is CLS, which the CLS library
  * requires to be global for request-scoped transactions to work.
  */
 @Module({
   imports: [
+    EventEmitterModule.forRoot({ wildcard: true, delimiter: '.', maxListeners: 50 }),
     RedisModule,
     PrismaModule,
     ContextModule,
-    NotificationModule,
-    MessagingModule,
-    QueueModule,
-    StorageModule,
+    SesModule,
+    SnsModule,
+    RabbitMqClientModule,
+    KafkaModule,
+    SqsClientModule,
+    BullMqModule,
+    S3Module,
   ],
   exports: [
+    EventEmitterModule,
     RedisModule,
     PrismaModule,
     ContextModule,
-    NotificationModule,
-    MessagingModule,
-    QueueModule,
-    StorageModule,
+    SesModule,
+    SnsModule,
+    RabbitMqClientModule,
+    KafkaModule,
+    SqsClientModule,
+    BullMqModule,
+    S3Module,
   ],
 })
 export class InfrastructureModule {}

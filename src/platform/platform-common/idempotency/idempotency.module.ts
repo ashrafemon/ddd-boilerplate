@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
-import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
+import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { IdempotencyInterceptor } from './http/idempotency.interceptor';

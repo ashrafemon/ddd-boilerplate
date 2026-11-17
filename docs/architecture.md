@@ -136,8 +136,61 @@ Swagger, server, plus composition-root bridges (`configureBatchOperations`, `con
 `configureNotifications`, `configureWebhooks`) and `CompanyConfigContextMiddleware` registration.
 
 ### `infrastructure/`
-Third-party client initialization only — no ports, no adapters, no business logic. Not `@Global`
-(except CLS).
+Third-party client initialization only. One folder per client, flat — no grouping
+subfolders (`database/`, `messaging/`, … are banned). Each client folder carries its own
+module; `infrastructure.module.ts` imports/exports every client module directly.
+
+```
+infrastructure/
+├── prisma/       prisma.module + write/read client services (pool init, health probe, teardown)
+├── redis/        redis.module + RedisService (client init, retry policy, shutdown)
+├── rabbitmq/     rabbitmq.module (forRootAsync) + config factory
+├── kafka/        kafka.module + kafka.service (client init, producer/consumer ops)
+├── sqs/          sqs.module (registerAsync) + config factory
+├── ses/          ses.module + ses.service (client init only)
+├── sns/          sns.module + sns.service (client init only)
+├── s3/           s3.module + s3.service (client init + boot probe only)
+├── bullmq/       bullmq.module (forRootAsync, options inline)
+├── context/      context.module (CLS + transactional plugin setup)
+└── infrastructure.module.ts   imports/exports every client module
+```
+
+**What belongs here — and nothing else:**
+
+- client construction from the typed config facade (`@config`), never raw `process.env`;
+- a boot-time reachability probe in `onModuleInit` (fail-closed in production:
+  unreachable/missing config throws `InfrastructureException`; lenient in dev: warn +
+  disabled state via an `isEnabled` getter);
+- teardown in `onModuleDestroy` **only for clients that own persistent connections**
+  (Prisma pools, Redis, Kafka). Stateless HTTP SDK clients (SES, SNS) have no lifecycle
+  hooks; RabbitMQ/BullMQ manage their own connections;
+- small getters exposing the client/config pieces platform adapters need
+  (e.g. `S3Service.client`, `bucketName`).
+
+**What must NOT live here:** object/message operations, ports, adapters, business logic.
+Operations belong in platform adapters, which import the raw SDK commands themselves
+(e.g. `S3FileStorageAdapter` issues `PutObjectCommand` against `S3Service.client`).
+Client-level operations that keep a raw-client type inside infrastructure (e.g.
+`KafkaService.startConsumer` hiding kafkajs types) are the exception — use them when
+ESLint bans the raw import in platform.
+
+Deliberately NOT `@Global()` (only CLS is global, the library requires it). Outbox/Inbox
+live as directories under platform, wired by `PlatformModule`, to avoid the cycle
+`OutboxModule → ContextModule → InfrastructureModule`.
+
+**Adding a new client — checklist:**
+1. `src/infrastructure/<client>/` — flat, one folder.
+2. `<client>.service.ts` — client construction + boot probe + teardown (only if it owns
+   connections) + getters. No operations.
+3. `<client>.module.ts` — provides/exports the service; long option builders may stay a
+   plain factory function only when they carry real logic (trivial ones go inline in the
+   module).
+4. Register in `infrastructure.module.ts` (imports + exports).
+5. Operations → a platform adapter behind a port (`platform/platform-common/<capability>/`),
+   which imports the client module and the SDK commands it needs.
+6. Add a probe to `HealthCheckAdapter` (`platform/platform-common/health/`) so the client
+   shows up in `GET /api/v1/health`.
+7. Config → typed facade in `src/config/` + `.env.example`; fail-closed in production.
 
 ### `platform/`
 Services built on infrastructure clients, exposed as **ports**. `PlatformModule` imports and
@@ -147,7 +200,7 @@ Key ports: `OutboxWriterPort`, `InProcessEventBus`, `MessageQueuePort`, `InboxPo
 `RequestContextPort`, `DistributedLockPort`, `IdempotencyPort` + `@Idempotent()`,
 `NumberingPort`, `AuditPort`, `CompanyConfigPort`, `CachePort`,
 `NotificationDispatchPort`, `LoggerPort`/`MetricsPort`/`ErrorTrackingPort`,
-`FileStoragePort`, `AuthenticationPort`, `RbacPort`, `AbacPort`.
+`FileStoragePort`, `HealthPort`, `AuthenticationPort`, `RbacPort`, `AbacPort`.
 
 ### `business/`
 `shared-business/` holds framework-independent primitives. Aggregates under `party/`,

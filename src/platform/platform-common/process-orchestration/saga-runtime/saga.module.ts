@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '@infrastructure/database/prisma/prisma.module';
+import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { ContextModule } from '../../context/context.module';
 import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
 import { EmptyCompanySettingsReader } from './adapters/empty-company-settings.reader';

@@ -10,6 +10,7 @@ only. Read `README.md` first, then this file.
 |--------|---------------|
 | Business module work | `docs/architecture.md` (module anatomy, dependency rules) |
 | New platform service | `docs/architecture.md` (§platform layer), inspect existing service |
+| New infrastructure client | `docs/architecture.md` (§infrastructure — checklist), inspect an existing client folder |
 | Anything DB | `prisma/schema/<context>/*.prisma` header comments. **No migrations** — edit schema, then `npm run db:push` and `npx prisma generate` |
 
 ## Hard rules (ESLint-enforced — `npm run lint:check` fails otherwise)
@@ -29,6 +30,30 @@ only. Read `README.md` first, then this file.
    `AbacPort.evaluate()` before business steps. Never inject `AuthenticationPort` or
    `CompanyConfigPort` directly into a use case.
 7. RBAC enforced at route level by `RbacGuard` + `@Rbac()` decorator, reading `userId` from CLS.
+
+## Infrastructure conventions (any new client MUST follow)
+
+Full details + checklist: `docs/architecture.md` §`infrastructure/`.
+
+1. **One folder per client, flat** under `src/infrastructure/` — no grouping subfolders
+   (`database/`, `messaging/`, `notification/`, `queue/` are banned). Name the folder after
+   the client (`s3`, `bullmq`), not the capability (`storage`, `queue`).
+2. **Each client folder has its own module**; `infrastructure.module.ts` imports/exports
+   every client module directly. No group/composition modules inside infrastructure.
+3. **Initialization only**: client construction from the typed `@config` facade (never raw
+   `process.env`), a boot reachability probe in `onModuleInit`, getters exposing the
+   client/config to platform adapters. NO operations, NO ports, NO adapters, NO business
+   logic — those live in platform adapters, which import the raw SDK commands themselves.
+4. **Lifecycle hooks only for clients that own persistent connections** (Prisma pools,
+   Redis, Kafka). Stateless HTTP SDK clients (SES/SNS/S3-style) get no shutdown hook
+   beyond a cheap `destroy()` if the SDK provides one.
+5. **Fail-closed in production**: missing config or unreachable endpoint throws
+   `InfrastructureException` when `configService.isProduction`; in dev, warn + disabled
+   state via an `isEnabled` getter so local runs need no brokers/AWS.
+6. Trivial option builders go inline in the module; a separate factory file only when it
+   carries real logic.
+7. Register the client in `HealthCheckAdapter` (`platform/platform-common/health/`) so it
+   appears in `GET /api/v1/health`.
 
 ## Platform invariants
 
