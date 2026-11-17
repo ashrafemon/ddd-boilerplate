@@ -6,7 +6,8 @@
 # deployment config, not in this file.
 
 [config]
-git_provider = "gitea"
+# git_provider = "gitea"
+git_provider = "github"
 response_language = "en-US"
 
 # AGENTS.md is the canonical repository contract for both humans and agents.
