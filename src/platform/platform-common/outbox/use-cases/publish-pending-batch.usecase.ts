@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { InProcessEventBus } from '@platform/platform-common/events/ports/in-process-event-bus.port';
+import { InProcessEventBus } from '@platform/platform-common/events/inbound/ports/in-process-event-bus.port';
 import { MessageQueuePort } from '@platform/platform-common/messaging/inbound/ports/message-queue.port';
 import { OutboxRepositoryPort } from '../outbound/ports/outbox.repository.port';
 import {

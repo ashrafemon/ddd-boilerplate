@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
-import { InProcessEventBus } from './ports/in-process-event-bus.port';
-import { EventBusService } from './services/event-bus.service';
-import { EmitEventUseCase } from './usecases/emit-event.usecase';
-import { NestEventBusAdapter } from './adapters/nest-event-bus.adapter';
+import { InProcessEventBus } from './inbound/ports/in-process-event-bus.port';
+import { EventBusAdapter } from './inbound/adapters/event-bus.adapter';
+import { EventEmitterPort } from './outbound/ports/event-emitter.port';
+import { NestEventBusAdapter } from './outbound/adapters/nest-event-bus.adapter';
+import { EmitEventUseCase } from './use-cases/emit-event.usecase';
 
 /**
  * Platform Event Bus module — best-effort in-process dispatch.
@@ -15,10 +16,16 @@ import { NestEventBusAdapter } from './adapters/nest-event-bus.adapter';
  */
 @Module({
   providers: [
+    // Outbound adapter → outbound port
     NestEventBusAdapter,
+    { provide: EventEmitterPort, useExisting: NestEventBusAdapter },
+
+    // Use case
     EmitEventUseCase,
-    EventBusService,
-    { provide: InProcessEventBus, useExisting: EventBusService },
+
+    // Inbound port implementation
+    EventBusAdapter,
+    { provide: InProcessEventBus, useExisting: EventBusAdapter },
   ],
   exports: [InProcessEventBus],
 })

@@ -34,16 +34,18 @@ const MIGRATED = [
   'platform-common/locking',
   'platform-common/outbox',
   'platform-common/messaging',
+  'platform-common/events',
 ];
 
 /**
  * A class that exists in order to implement a port is an adapter, never a
  * service (standard §3). `services/` is for orchestration of use cases only.
  *
- * Only the event bus is left (Phase 3). Every other port implementation now
- * sits in `inbound/adapters` or `outbound/adapters`. The list may only shrink.
+ * Empty since Phase 2: every port implementation sits in `inbound/adapters` or
+ * `outbound/adapters`. Keep the list so a regression has a place to be recorded
+ * and the shrink-only rule still has a home.
  */
-const PENDING_PORT_SERVICES: string[] = ['platform-common/events/services/event-bus.service.ts'];
+const PENDING_PORT_SERVICES: string[] = [];
 
 const ALLOWED_TOP_LEVEL = new Set([
   'inbound',

@@ -1,13 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InProcessEventBus, MessageEnvelope } from '../ports/in-process-event-bus.port';
-import { EmitEventUseCase } from '../usecases/emit-event.usecase';
+import { EmitEventUseCase } from '../../use-cases/emit-event.usecase';
 
 /**
- * Event Bus service facade — the single entry point for the public
- * `InProcessEventBus` port. Delegates to the use case; holds no rules.
+ * Inbound adapter implementing the public `InProcessEventBus`.
+ *
+ * Delegates to the emit use case; holds no rules. The outbox dispatcher is the
+ * only caller.
  */
 @Injectable()
-export class EventBusService implements InProcessEventBus {
+export class EventBusAdapter implements InProcessEventBus {
   constructor(private readonly emitEvent: EmitEventUseCase) {}
 
   emit(envelope: MessageEnvelope): void {

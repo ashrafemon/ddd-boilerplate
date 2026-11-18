@@ -3,7 +3,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
 import { PrismaJson } from '@platform/platform-common/persistence/prisma-json';
-import { MessageEnvelope } from '@platform/platform-common/events/ports/in-process-event-bus.port';
+import { MessageEnvelope } from '@platform/platform-common/events/inbound/ports/in-process-event-bus.port';
 import { ScheduledJobHandlerRegistry } from '@platform/platform-common/scheduler/scheduled-job-handler.registry';
 import { RecurringTemplateRepositoryPort } from './ports/recurring-template-repository.port';
 

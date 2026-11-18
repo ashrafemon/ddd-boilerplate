@@ -53,10 +53,10 @@ src/platform/<group>/<capability>/
 A port is an `abstract class` used as the DI token. Every port has an adapter that implements it,
 and only use cases/services consume it — nobody injects a concrete adapter.
 
-| Kind          | Examples                                                                                                                                                                                                                     | Implemented by                                                      |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `OutboxWriterPort`, `MessageQueuePort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                                               | exactly one `inbound/adapters/*` class that delegates to use cases  |
-| Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `LockLedgerPort`, `LockLeasePort`, `OutboxRepositoryPort`, `RabbitMqPublisherPort`, `KafkaPublisherPort`, `SqsPublisherPort`, `FileStoragePort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
+| Kind          | Examples                                                                                                                                                                                                                                         | Implemented by                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `OutboxWriterPort`, `MessageQueuePort`, `InProcessEventBus`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                                              | exactly one `inbound/adapters/*` class that delegates to use cases  |
+| Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `LockLedgerPort`, `LockLeasePort`, `OutboxRepositoryPort`, `RabbitMqPublisherPort`, `KafkaPublisherPort`, `SqsPublisherPort`, `EventEmitterPort`, `FileStoragePort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
 
 ```
 use case ──uses──> outbound port ◁──implements── outbound adapter ──wraps──> infrastructure client
