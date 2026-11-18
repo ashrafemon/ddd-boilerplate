@@ -4,6 +4,7 @@ import appConfig from './app.config';
 import authConfig from './auth.config';
 import batchOperationConfig from './batch-operation.config';
 import cacheConfig from './cache.config';
+import httpCacheConfig from './http-cache.config';
 import { envFileCandidates } from '@common/application/utils/env.util';
 import { ConfigService } from './config.service';
 import databaseConfig from './database.config';
@@ -32,6 +33,7 @@ import webhookConfig from './webhook.config';
     NestConfigModule.forFeature(authConfig),
     NestConfigModule.forFeature(databaseConfig),
     NestConfigModule.forFeature(cacheConfig),
+    NestConfigModule.forFeature(httpCacheConfig),
     NestConfigModule.forFeature(messagingConfig),
     NestConfigModule.forFeature(storageConfig),
     NestConfigModule.forFeature(secretsConfig),

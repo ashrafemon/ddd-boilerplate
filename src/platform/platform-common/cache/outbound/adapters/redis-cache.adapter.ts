@@ -1,19 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { RedisService } from '@infrastructure/redis/redis.service';
-import { CacheGetResult } from '../cache.types';
+import { CacheGetResult } from '../../types/cache.types';
+import { CacheStorePort } from '../ports/cache-store.port';
 
 /**
- * Redis cache adapter (design `common/01-cache`).
+ * Redis adapter for the cache store (design `common/01-cache`).
  *
- * Concrete class injected directly into the use cases — no internal storage
- * port. JSON serialize on write, `SET … PX ttlMs`.
+ * Implements `CacheStorePort`; the use cases inject the port, never this class.
+ * JSON serialize on write, `SET … PX ttlMs`.
  *
  * Fail-open: a Redis error on get is a MISS; a failed set/delete is logged and
  * never propagates (it must never roll back a DB transaction).
  */
 @Injectable()
-export class RedisCacheAdapter {
+export class RedisCacheAdapter implements CacheStorePort {
   private readonly logger = new Logger(RedisCacheAdapter.name);
 
   constructor(

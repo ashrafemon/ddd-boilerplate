@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import request from 'supertest';
-import { CachePort } from '@platform/platform-common/cache/ports/cache.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { GrnController } from '../../presentation/http/grn.controller';
 import { CreateGrnUseCase } from '../../application/use-cases/create-grn.usecase';
@@ -46,15 +45,6 @@ describe('GRN API', () => {
         { provide: CancelGrnUseCase, useValue: mocks.cancel },
         { provide: GetGrnUseCase, useValue: mocks.get },
         { provide: ListGrnsUseCase, useValue: mocks.list },
-        {
-          provide: CachePort,
-          useValue: {
-            get: jest.fn().mockResolvedValue({ status: 'MISS' }),
-            set: jest.fn().mockResolvedValue(undefined),
-            del: jest.fn(),
-            buildKey: jest.fn().mockReturnValue('cache-key'),
-          },
-        },
         {
           provide: RequestContextPort,
           useValue: {

@@ -1,19 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { CachePort } from '../ports/cache.port';
-import { CacheGetResult, CacheKey } from '../cache.types';
-import { GetCacheValueUseCase } from '../usecases/get-cache-value.usecase';
-import { SetCacheValueUseCase } from '../usecases/set-cache-value.usecase';
-import { DeleteCacheValueUseCase } from '../usecases/delete-cache-value.usecase';
+import { CacheGetResult, CacheKey } from '../../types/cache.types';
+import { GetCacheValueUseCase } from '../../use-cases/get-cache-value.usecase';
+import { SetCacheValueUseCase } from '../../use-cases/set-cache-value.usecase';
+import { DeleteCacheValueUseCase } from '../../use-cases/delete-cache-value.usecase';
 
 /**
- * Cache service (design `common/01-cache`).
+ * Inbound adapter implementing the public `CachePort` (design `common/01-cache`).
  *
- * `buildKey` lives here; get/set/delete delegate to one use case each.
- * This class implements the public CachePort.
+ * Key building lives here; get/set/delete delegate to one use case each. The
+ * module binds `{ provide: CachePort, useExisting: CacheAdapter }` so business
+ * modules never see this class.
  */
 @Injectable()
-export class CacheService implements CachePort {
+export class CacheAdapter implements CachePort {
   constructor(
     private readonly getValue: GetCacheValueUseCase,
     private readonly setValue: SetCacheValueUseCase,
@@ -31,7 +32,9 @@ export class CacheService implements CachePort {
       identity.namespace,
       identity.resource,
       identity.variant ?? 'default',
-    ].join(':');
+    ]
+      .map(encodeURIComponent)
+      .join(':');
   }
 
   get<T>(cacheKey: string): Promise<CacheGetResult<T>> {

@@ -1,6 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { KeyedRegistryBase } from '@platform/platform-common/registry/keyed-registry';
-import { DuplicateWebhookEventTypeRegistrationError } from './webhook.errors';
 
 /**
  * In-memory allowlist of eventTypes a webhook subscription may declare —
@@ -18,7 +17,10 @@ export class WebhookEventTypeRegistry extends KeyedRegistryBase<true> {
     this.registerEntry(
       eventType,
       true,
-      () => new DuplicateWebhookEventTypeRegistrationError(eventType),
+      () =>
+        new ConflictException(
+          `eventType '${eventType}' already registered in WebhookEventTypeRegistry`,
+        ),
     );
   }
 

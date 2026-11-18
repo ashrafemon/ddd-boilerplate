@@ -1,11 +1,11 @@
 import { randomUUID } from 'crypto';
 import { SendEmailCommand } from '@aws-sdk/client-ses';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { LoggerPort } from '@platform/platform-common/observability/ports/logger.port';
 import { SesService } from '@infrastructure/ses/ses.service';
 import { ChannelProvider } from '../ports/channel-provider.port';
-import { InvalidWebhookSignatureError } from '../notification.errors';
+
 import {
   ChannelCapabilities,
   DeliveryEvent,
@@ -57,7 +57,7 @@ export class SesEmailChannelAdapter implements ChannelProvider {
   parseDeliveryReceipt(payload: unknown, signature: string | undefined): Promise<DeliveryEvent[]> {
     const { webhookSecret } = this.configService.getSes();
     if (webhookSecret && !verifyWebhookSignature(webhookSecret, payload, signature)) {
-      throw new InvalidWebhookSignatureError('ses');
+      throw new UnauthorizedException(`Webhook signature verification failed for provider 'ses'`);
     }
     return Promise.resolve(parseSesEvent(payload));
   }

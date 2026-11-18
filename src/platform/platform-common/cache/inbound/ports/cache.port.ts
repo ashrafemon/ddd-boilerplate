@@ -1,4 +1,4 @@
-import { CacheGetResult, CacheKey } from '../cache.types';
+import { CacheGetResult, CacheKey } from '../../types/cache.types';
 
 /**
  * Cache abstraction (Redis). Business/application code depends only on this

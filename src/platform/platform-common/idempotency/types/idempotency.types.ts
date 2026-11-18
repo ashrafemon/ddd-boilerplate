@@ -60,6 +60,28 @@ export interface IdempotencyFailRequest {
   reservation: IdempotencyReservation;
 }
 
+/** Read model of an idempotency row (what the ledger exposes to a use case). */
+export interface IdempotencyRowView {
+  id: string;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'SUSPENDED';
+  claimToken: string;
+  version: number;
+  resultJson: unknown;
+  requestHash: string | null;
+  claimedAt: Date | null;
+  leaseUntil: Date | null;
+  lastError: string | null;
+  expiresAt: Date;
+}
+
+/** Result of a successful complete CAS — carries the row TTL for Redis. */
+export interface IdempotencyCompletedView {
+  expiresAt: Date;
+}
+
+/** Cache lookup result — distinguishes a cached `null` from a miss. */
+export type IdempotencyCacheLookup = { hit: true; value: unknown } | { hit: false };
+
 /** Idempotency configuration. */
 export interface IIdempotencyConfig {
   /** Completed results replay for this long, then are purged. */

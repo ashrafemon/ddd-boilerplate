@@ -1,12 +1,12 @@
 import { Prisma } from '../../../../generated/client';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { PageResult } from '@common/application/types/pagination';
 import { PrismaJson } from '@platform/platform-common/persistence/prisma-json';
 import { WebhookDeliveryRepositoryPort } from '../ports/webhook-delivery-repository.port';
 import { NewWebhookDelivery, WebhookDeliveryQuery, WebhookDeliveryRecord } from '../webhook.types';
-import { WebhookDeliveryNotFoundError } from '../webhook.errors';
+
 import { WebhookMapper } from './webhook.mapper';
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
@@ -161,7 +161,7 @@ export class PrismaWebhookDeliveryRepository implements WebhookDeliveryRepositor
       data: { status: 'PENDING', nextAttemptAt: new Date(), claimedAt: null },
     });
     if (result.count === 0) {
-      throw new WebhookDeliveryNotFoundError(id);
+      throw new NotFoundException(`WebhookDelivery '${id}' not found`);
     }
     const row = await this.txHost.tx.webhookDelivery.findUniqueOrThrow({ where: { id } });
     return WebhookMapper.toDeliveryRecord(row);

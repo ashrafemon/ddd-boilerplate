@@ -2,6 +2,7 @@ import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { HeadBucketCommand } from '@aws-sdk/client-s3';
 import { ListSecretsCommand } from '@aws-sdk/client-secrets-manager';
 import { Injectable } from '@nestjs/common';
+import { CacheManagerService } from '@infrastructure/cache-manager/cache-manager.service';
 import { KafkaService } from '@infrastructure/kafka/kafka.service';
 import { PrismaReadService } from '@infrastructure/prisma/prisma-read.service';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
@@ -31,6 +32,7 @@ export class HealthCheckAdapter implements HealthPort {
     private readonly puppeteer: PuppeteerService,
     private readonly ses: SesService,
     private readonly sns: SnsService,
+    private readonly httpCache: CacheManagerService,
   ) {}
 
   public async check(): Promise<HealthReport> {
@@ -67,6 +69,9 @@ export class HealthCheckAdapter implements HealthPort {
             await browser.version();
             return 'up';
           })
+        : 'disabled',
+      'http-cache': this.httpCache.isEnabled
+        ? await this.probe(async () => ((await this.httpCache.ping()) ? 'up' : 'down'))
         : 'disabled',
       ses: this.ses.isEnabled ? 'up' : 'disabled',
       sns: this.sns.isEnabled ? 'up' : 'disabled',

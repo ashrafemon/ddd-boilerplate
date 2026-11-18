@@ -1,21 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { IdempotencyPort } from '../ports/idempotency.port';
-import { ReserveIdempotencyUseCase } from '../usecases/reserve-idempotency.usecase';
-import { CompleteIdempotencyUseCase } from '../usecases/complete-idempotency.usecase';
-import { FailIdempotencyUseCase } from '../usecases/fail-idempotency.usecase';
+import { ReserveIdempotencyUseCase } from '../../use-cases/reserve-idempotency.usecase';
+import { CompleteIdempotencyUseCase } from '../../use-cases/complete-idempotency.usecase';
+import { FailIdempotencyUseCase } from '../../use-cases/fail-idempotency.usecase';
 import {
   IdempotencyCompleteRequest,
   IdempotencyFailRequest,
   IdempotencyReserveRequest,
   IdempotencyReserveResult,
-} from '../idempotency.types';
+} from '../../types/idempotency.types';
 
 /**
- * Idempotency service — the single public entry point (design
- * `common/02-idempotency`). Delegates to one use case per operation.
+ * Idempotency adapter — the single implementation of the inbound
+ * `IdempotencyPort` (design `common/02-idempotency`). Delegates to one use
+ * case per operation; it holds no rules of its own.
+ *
+ * Named *adapter*, not *service*: a class that exists to implement a port is an
+ * adapter (docs/platform-standard.md §3).
  */
 @Injectable()
-export class IdempotencyService implements IdempotencyPort {
+export class IdempotencyAdapter implements IdempotencyPort {
   constructor(
     private readonly reserveUseCase: ReserveIdempotencyUseCase,
     private readonly completeUseCase: CompleteIdempotencyUseCase,

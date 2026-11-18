@@ -1,9 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { WebhookSubscriptionRepositoryPort } from '../ports/webhook-subscription-repository.port';
 import { WebhookEventTypeRegistry } from '../webhook-event-type.registry';
 import { NewWebhookSubscription, WebhookSubscriptionRecord } from '../webhook.types';
-import { WebhookEventTypeNotAllowedError } from '../webhook.errors';
 
 export interface CreateWebhookSubscriptionInput {
   url: string;
@@ -24,7 +23,9 @@ export class CreateWebhookSubscriptionUseCase {
   async execute(input: CreateWebhookSubscriptionInput): Promise<WebhookSubscriptionRecord> {
     for (const eventType of input.eventTypes) {
       if (!this.eventTypes.has(eventType)) {
-        throw new WebhookEventTypeNotAllowedError(eventType);
+        throw new UnprocessableEntityException(
+          `eventType '${eventType}' is not registered in WEBHOOK_EVENT_TYPES`,
+        );
       }
     }
     const tenantId = input.tenantId ?? this.requestContext.getTenantId();

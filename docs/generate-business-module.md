@@ -52,26 +52,26 @@ See [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure
 
 ## Naming conventions
 
-| Item | Convention | Example |
-|------|-----------|---------|
-| Use case file | `<verb>-<noun>.usecase.ts` | `create-product.usecase.ts` |
-| Use case class | `<Verb><Noun>UseCase` | `CreateProductUseCase` |
-| Repository port | `<Module>CommandRepository` | `ProductCommandRepository` |
-| Query port | `<Module>Query` | `ProductQuery` |
-| Integration port | `<Module>PublisherPort` | `ProductPublisherPort` |
-| Outbound port | `<Name>Port` | `OrderableVendorPort` |
-| Public port | `<Module>For<Consumer>Port` | `ProductForPurchasePort` |
-| Facade | `<Module>For<Consumer>Facade` | `ProductForPurchaseFacade` |
-| Prisma repo | `Prisma<Module><Type>Repository` | `PrismaProductCommandRepository` |
-| Adapter | `<Name>Adapter` | `CompanyConfigAdapter` |
-| Request DTO | `<name>.request.dto.ts` | `create-product.request.dto.ts` |
-| Response DTO | `<name>.<web|mobile>.response.dto.ts` | `create-product.web.response.dto.ts` |
-| Policy file | `<name>.policy.ts` | `can-approve.policy.ts` |
-| Invariant file | `<module>.invariants.ts` | `product.invariants.ts` |
-| Policy class | `<Module>Policy` | `ProductPolicy` |
-| Invariant class | `<Module>Invariants` | `ProductInvariants` |
-| Factory file | `<module>.factory.ts` | `product.factory.ts` |
-| Event file | `<module>.<Event>.event.ts` | `product-created.event.ts` |
+| Item             | Convention                       | Example                          |
+| ---------------- | -------------------------------- | -------------------------------- |
+| Use case file    | `<verb>-<noun>.usecase.ts`       | `create-product.usecase.ts`      |
+| Use case class   | `<Verb><Noun>UseCase`            | `CreateProductUseCase`           |
+| Repository port  | `<Module>CommandRepository`      | `ProductCommandRepository`       |
+| Query port       | `<Module>Query`                  | `ProductQuery`                   |
+| Integration port | `<Module>PublisherPort`          | `ProductPublisherPort`           |
+| Outbound port    | `<Name>Port`                     | `OrderableVendorPort`            |
+| Public port      | `<Module>For<Consumer>Port`      | `ProductForPurchasePort`         |
+| Facade           | `<Module>For<Consumer>Facade`    | `ProductForPurchaseFacade`       |
+| Prisma repo      | `Prisma<Module><Type>Repository` | `PrismaProductCommandRepository` |
+| Adapter          | `<Name>Adapter`                  | `CompanyConfigAdapter`           |
+| Request DTO      | `<name>.request.dto.ts`          | `create-product.request.dto.ts`  |
+| Response DTO     | `<name>.<web                     | mobile>.response.dto.ts`         | `create-product.web.response.dto.ts` |
+| Policy file      | `<name>.policy.ts`               | `can-approve.policy.ts`          |
+| Invariant file   | `<module>.invariants.ts`         | `product.invariants.ts`          |
+| Policy class     | `<Module>Policy`                 | `ProductPolicy`                  |
+| Invariant class  | `<Module>Invariants`             | `ProductInvariants`              |
+| Factory file     | `<module>.factory.ts`            | `product.factory.ts`             |
+| Event file       | `<module>.<Event>.event.ts`      | `product-created.event.ts`       |
 
 ## Invariant and Policy Pattern (Class-Based Static Methods)
 
@@ -93,6 +93,7 @@ export class <Module>Invariants {
 ```
 
 Usage:
+
 ```ts
 import { <Module>Invariants } from './<module>.invariants';
 // inside aggregate or use case:
@@ -111,6 +112,7 @@ export class <Module><Name>Policy {
 ```
 
 Usage:
+
 ```ts
 import { <Module><Name>Policy } from '../policies/<name>.policy';
 // inside use case:
@@ -119,11 +121,11 @@ import { <Module><Name>Policy } from '../policies/<name>.policy';
 
 ## Import aliases
 
-| Alias | Path |
-|-------|------|
-| `@platform/*` | `src/platform/*` |
-| `@business/*` | `src/business/*` |
-| `@common/*` | `src/common/*` |
+| Alias            | Path                                      |
+| ---------------- | ----------------------------------------- |
+| `@platform/*`    | `src/platform/*`                          |
+| `@business/*`    | `src/business/*`                          |
+| `@common/*`      | `src/common/*`                            |
 | `@prisma/client` | `src/generated/client.ts` (relative path) |
 
 ## Module registration

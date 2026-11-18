@@ -66,15 +66,15 @@ export class PlatformModule {}
 
 ## Service README required sections
 
-| Section | Content |
-|---------|---------|
-| What it does | Purpose and scope |
-| Public API | Ports, methods, signatures |
-| Layout | File/folder structure |
+| Section            | Content                           |
+| ------------------ | --------------------------------- |
+| What it does       | Purpose and scope                 |
+| Public API         | Ports, methods, signatures        |
+| Layout             | File/folder structure             |
 | Who calls it / how | Consumers and invocation patterns |
-| Data & config | Tables, config keys, defaults |
-| Tenancy behaviour | Tenant scoping, fail-closed rules |
-| Rules & gotchas | Invariants, edge cases |
+| Data & config      | Tables, config keys, defaults     |
+| Tenancy behaviour  | Tenant scoping, fail-closed rules |
+| Rules & gotchas    | Invariants, edge cases            |
 
 ## Platform invariants
 

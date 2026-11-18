@@ -1,13 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { KeyedRegistryBase } from '@platform/platform-common/registry/keyed-registry';
 import { ChannelProviderRegistry } from './channel-provider.registry';
 import { NotificationHandler } from './ports/notification-handler.port';
 import { NotificationHandlerRegistration, NotificationPriority } from './notification.types';
-import {
-  DuplicateNotificationHandlerRegistrationError,
-  NotificationChannelNotRegisteredError,
-  UnregisteredNotificationHandlerError,
-} from './notification.errors';
 
 interface RegisteredEntry {
   notificationType: string;
@@ -41,7 +36,9 @@ export class NotificationHandlerRegistry extends KeyedRegistryBase<RegisteredEnt
   register(registration: NotificationHandlerRegistration, handler: NotificationHandler): void {
     for (const channel of registration.channels) {
       if (!this.channelProviders.has(channel)) {
-        throw new NotificationChannelNotRegisteredError(registration.notificationType, channel);
+        throw new UnprocessableEntityException(
+          `notificationType '${registration.notificationType}' declares channel '${channel}' but no ChannelProvider is registered for it`,
+        );
       }
     }
     this.registerEntry(
@@ -53,28 +50,40 @@ export class NotificationHandlerRegistry extends KeyedRegistryBase<RegisteredEnt
         eventName: registration.eventName,
         handler,
       },
-      () => new DuplicateNotificationHandlerRegistrationError(registration.notificationType),
+      () =>
+        new ConflictException(
+          `NotificationHandler for notificationType '${registration.notificationType}' already registered`,
+        ),
     );
   }
 
   resolveHandler(notificationType: string): NotificationHandler {
     return this.requireEntry(
       notificationType,
-      () => new UnregisteredNotificationHandlerError(notificationType),
+      () =>
+        new UnprocessableEntityException(
+          `No NotificationHandler registered for notificationType '${notificationType}'`,
+        ),
     ).handler;
   }
 
   declaredChannels(notificationType: string): string[] {
     return this.requireEntry(
       notificationType,
-      () => new UnregisteredNotificationHandlerError(notificationType),
+      () =>
+        new UnprocessableEntityException(
+          `No NotificationHandler registered for notificationType '${notificationType}'`,
+        ),
     ).channels;
   }
 
   defaultPriority(notificationType: string): NotificationPriority {
     return this.requireEntry(
       notificationType,
-      () => new UnregisteredNotificationHandlerError(notificationType),
+      () =>
+        new UnprocessableEntityException(
+          `No NotificationHandler registered for notificationType '${notificationType}'`,
+        ),
     ).priority;
   }
 

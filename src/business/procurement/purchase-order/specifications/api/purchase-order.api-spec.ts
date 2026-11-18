@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import request from 'supertest';
-import { CachePort } from '@platform/platform-common/cache/ports/cache.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { PurchaseOrderController } from '../../presentation/http/purchase-order.controller';
 import { CreatePurchaseOrderUseCase } from '../../application/use-cases/create-purchase-order.usecase';
@@ -73,15 +72,6 @@ describe('Purchase Order API', () => {
         { provide: ListPurchaseOrdersUseCase, useValue: mocks.list },
         { provide: CreateRecurringPurchaseOrderUseCase, useValue: mocks.createRecurring },
         { provide: CreateRecurringFromPurchaseOrderUseCase, useValue: mocks.createRecurringFrom },
-        {
-          provide: CachePort,
-          useValue: {
-            get: jest.fn().mockResolvedValue({ status: 'MISS' }),
-            set: jest.fn().mockResolvedValue(undefined),
-            del: jest.fn(),
-            buildKey: jest.fn().mockReturnValue('cache-key'),
-          },
-        },
         {
           provide: RequestContextPort,
           useValue: {

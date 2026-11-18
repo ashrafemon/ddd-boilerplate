@@ -1,9 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { TenantScope } from '@common/application/utils/tenant-scope';
 import { WebhookSubscriptionRepositoryPort } from '../ports/webhook-subscription-repository.port';
 import { WebhookEventTypeRegistry } from '../webhook-event-type.registry';
 import { UpdateWebhookSubscriptionInput, WebhookSubscriptionRecord } from '../webhook.types';
-import { WebhookEventTypeNotAllowedError } from '../webhook.errors';
 
 @Injectable()
 export class UpdateWebhookSubscriptionUseCase {
@@ -24,7 +23,9 @@ export class UpdateWebhookSubscriptionUseCase {
     TenantScope.assertVisible(existing.tenantId, tenantId);
     for (const eventType of input.eventTypes ?? []) {
       if (!this.eventTypes.has(eventType)) {
-        throw new WebhookEventTypeNotAllowedError(eventType);
+        throw new UnprocessableEntityException(
+          `eventType '${eventType}' is not registered in WEBHOOK_EVENT_TYPES`,
+        );
       }
     }
     return this.subscriptions.update(id, input);

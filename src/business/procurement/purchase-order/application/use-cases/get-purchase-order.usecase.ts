@@ -5,9 +5,9 @@ import { PurchaseOrderQueryRecord } from '../../domain/types/purchase-order.type
 /**
  * Read a single purchase order.
  *
- * Read-side caching is owned by the `@Cacheable()` controller decorator
- * (tenant-scoped, fail-open); this use case only reads the authoritative
- * repository inside the request's CLS transaction.
+ * This use case reads the authoritative repository inside the request's CLS
+ * transaction. It caches nothing itself: caching is a decision an application
+ * layer makes through an outbound port, never an HTTP concern.
  */
 @Injectable()
 export class GetPurchaseOrderUseCase {

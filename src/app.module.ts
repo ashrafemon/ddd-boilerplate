@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { ConfigService } from './config/config.service';
 import { RedisService } from '@infrastructure/redis/redis.service';
+import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from './config/config.module';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
@@ -11,6 +12,7 @@ import { PlatformModule } from './platform/platform.module';
 import { HttpExceptionsFilter } from '@common/http/filters/http-exception.filter';
 import { LoggerModule } from 'nestjs-pino';
 import { DeviceResponseInterceptor } from '@common/http/interceptors/device-response.interceptor';
+import { HttpCacheInterceptor } from '@common/http/interceptors/http-cache.interceptor';
 import { LoggingInterceptor } from '@common/http/interceptors/logging.interceptor';
 import { RequestIdInterceptor } from '@common/http/interceptors/request-id.interceptor';
 import { ResponseInterceptor } from '@common/http/interceptors/response.interceptor';
@@ -37,6 +39,9 @@ import { TenancyAuthGuard } from '@platform/platform-common/context/guards/tenan
       }),
     }),
     ThrottlerModule.forRootAsync({
+      // RedisService lives in RedisModule, which is not global — the dynamic
+      // throttler module must import it explicitly to resolve the factory.
+      imports: [InfraRedisModule],
       inject: [ConfigService, RedisService],
       useFactory: (config: ConfigService, redis: RedisService) => {
         const { ttlMs, limit } = config.getThrottler();
@@ -66,6 +71,9 @@ import { TenancyAuthGuard } from '@platform/platform-common/context/guards/tenan
     { provide: APP_INTERCEPTOR, useClass: RequestIdInterceptor },
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
     { provide: APP_INTERCEPTOR, useClass: DeviceResponseInterceptor },
+    // HTTP request/response cache (cache-manager), opt-in per route.
+    // Data caching is the platform CachePort, never this.
+    { provide: APP_INTERCEPTOR, useClass: HttpCacheInterceptor },
   ],
 })
 export class AppModule {}

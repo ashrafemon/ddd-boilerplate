@@ -1,11 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { KeyedRegistryBase } from '@platform/platform-common/registry/keyed-registry';
 import { WebhookInboundHandlerPort } from './ports/webhook-inbound-handler.port';
 import { WebhookSignatureVerifier } from './webhook.types';
-import {
-  DuplicateWebhookInboundSourceRegistrationError,
-  UnregisteredWebhookInboundSourceError,
-} from './webhook.errors';
 
 export interface WebhookInboundSourceEntry {
   verify: WebhookSignatureVerifier;
@@ -24,12 +20,16 @@ export class WebhookInboundSourceRegistry extends KeyedRegistryBase<WebhookInbou
     this.registerEntry(
       source,
       entry,
-      () => new DuplicateWebhookInboundSourceRegistrationError(source),
+      () =>
+        new ConflictException(`WebhookInboundHandler for source '${source}' already registered`),
     );
   }
 
   resolve(source: string): WebhookInboundSourceEntry {
-    return this.requireEntry(source, () => new UnregisteredWebhookInboundSourceError(source));
+    return this.requireEntry(
+      source,
+      () => new NotFoundException(`No WebhookInboundHandler registered for source '${source}'`),
+    );
   }
 
   health(): string[] {

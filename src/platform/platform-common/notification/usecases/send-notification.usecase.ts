@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { NotificationHandlerRegistry } from '../notification-handler.registry';
 import { NotificationWorker } from '../notification.worker';
@@ -6,7 +6,7 @@ import { NotificationPreferenceRepositoryPort } from '../ports/notification-pref
 import { NotificationQueuePublisherPort } from '../ports/notification-queue-publisher.port';
 import { NotificationRequestRepositoryPort } from '../ports/notification-request-repository.port';
 import { NotificationSuppressionRepositoryPort } from '../ports/notification-suppression-repository.port';
-import { NotificationSelectionTooLargeError } from '../notification.errors';
+
 import {
   NewNotificationMessage,
   NotificationContext,
@@ -73,7 +73,9 @@ export class SendNotificationUseCase {
 
     const pairs = expandPairs(recipients, declaredChannels);
     if (pairs.length > maxRecipientsPerRequest) {
-      throw new NotificationSelectionTooLargeError(pairs.length, maxRecipientsPerRequest);
+      throw new UnprocessableEntityException(
+        `Fan-out of ${pairs.length} messages exceeds the maximum of ${maxRecipientsPerRequest} per notification request`,
+      );
     }
 
     const newMessages: NewNotificationMessage[] = [];

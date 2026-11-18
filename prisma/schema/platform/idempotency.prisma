@@ -10,11 +10,19 @@
 //
 // Multi-tenancy: (tenantId, companyId, scope, key) is the natural
 // identity. The same key in another tenant/company is a different record.
+//
+// Claim contract: `leaseUntil` is the authoritative liveness boundary for an
+// IN_PROGRESS row (a second reserve may take over only after it passes), and
+// `lastError` records why a claim was taken over. FAILED / SUSPENDED are
+// reserved by the platform-standard status set; today fail() CAS-deletes the
+// row, so they appear only after an operator suspends a key.
 // ============================================================================
 
 enum IdempotencyStatus {
   IN_PROGRESS
   COMPLETED
+  FAILED
+  SUSPENDED
 
   @@map("idempotency_status")
 }
@@ -37,7 +45,9 @@ model IdempotencyKey {
   resultJson     Json?    @map("result_json")
 
   claimedAt      DateTime? @map("claimed_at")
+  leaseUntil     DateTime? @map("lease_until")
   completedAt    DateTime? @map("completed_at")
+  lastError      String?   @map("last_error") @db.Text
 
   expiresAt      DateTime @map("expires_at")
 
@@ -46,7 +56,7 @@ model IdempotencyKey {
 
   @@unique([tenantId, companyId, scope, key])
   @@index([expiresAt])
-  @@index([status, claimedAt])
+  @@index([status, leaseUntil])
   @@index([tenantId, companyId])
   @@map("idempotency_keys")
 }

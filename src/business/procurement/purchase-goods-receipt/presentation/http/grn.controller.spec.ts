@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CachePort } from '@platform/platform-common/cache/ports/cache.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { GrnController } from './grn.controller';
 import { CreateGrnUseCase } from '../../application/use-cases/create-grn.usecase';
@@ -45,10 +44,6 @@ describe('GrnController (component)', () => {
         { provide: CancelGrnUseCase, useValue: mocks.cancel },
         { provide: GetGrnUseCase, useValue: mocks.get },
         { provide: ListGrnsUseCase, useValue: mocks.list },
-        {
-          provide: CachePort,
-          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn(), buildKey: jest.fn() },
-        },
         { provide: RequestContextPort, useValue: { require: jest.fn(), get: jest.fn() } },
       ],
     }).compile();

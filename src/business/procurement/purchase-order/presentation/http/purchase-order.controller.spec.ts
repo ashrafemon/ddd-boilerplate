@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CachePort } from '@platform/platform-common/cache/ports/cache.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { PurchaseOrderController } from './purchase-order.controller';
 import { CreatePurchaseOrderUseCase } from '../../application/use-cases/create-purchase-order.usecase';
@@ -72,10 +71,6 @@ describe('PurchaseOrderController (component)', () => {
         { provide: ListPurchaseOrdersUseCase, useValue: mocks.list },
         { provide: CreateRecurringPurchaseOrderUseCase, useValue: mocks.createRecurring },
         { provide: CreateRecurringFromPurchaseOrderUseCase, useValue: mocks.createRecurringFrom },
-        {
-          provide: CachePort,
-          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn(), buildKey: jest.fn() },
-        },
         { provide: RequestContextPort, useValue: { require: jest.fn(), get: jest.fn() } },
       ],
     }).compile();

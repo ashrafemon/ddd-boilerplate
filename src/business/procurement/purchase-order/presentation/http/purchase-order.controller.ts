@@ -9,7 +9,6 @@ import {
   Patch,
   Post,
   Query,
-  UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PageQuery, normalizePageQuery } from '@common/application/types/pagination';
@@ -61,9 +60,6 @@ import {
 import { IdResponse } from './responses/id.response.dto';
 import { DeviceResponse } from '@common/http/decorators/device-response.decorator';
 import { Idempotent } from '@platform/platform-common/idempotency/http/idempotent.decorator';
-import { CacheResponseInterceptor } from '@platform/platform-common/cache/interceptors/cache-response.interceptor';
-import { Cacheable } from '@platform/platform-common/cache/http/cacheable.decorator';
-import { CacheEvict } from '@platform/platform-common/cache/http/cache-evict.decorator';
 import { ApiResponse } from '@common/application/types/api-response';
 
 type PurchaseOrderGetResponse = GetPurchaseOrderMobileResponse | GetPurchaseOrderResponse;
@@ -113,7 +109,6 @@ export class PurchaseOrderController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update a draft purchase order header' })
   @HttpCode(HttpStatus.OK)
-  @CacheEvict({ resource: 'purchase-order' })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdatePurchaseOrderDto,
@@ -123,7 +118,6 @@ export class PurchaseOrderController {
   }
 
   @Get(':id/receipts')
-  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'Get receipt status and per-line received/remaining for a PO' })
   async receipts(@Param('id') id: string): Promise<ApiResponse<PurchaseOrderReceiptsResponse>> {
     const receipts = await this.getPurchaseOrderReceiptsUseCase.execute(id);
@@ -131,7 +125,6 @@ export class PurchaseOrderController {
   }
 
   @Get(':id/remaining-quantities')
-  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'Get remaining receivable quantities per PO line' })
   async remainingQuantities(
     @Param('id') id: string,
@@ -151,7 +144,6 @@ export class PurchaseOrderController {
   }
 
   @Get()
-  @UseInterceptors(CacheResponseInterceptor)
   @ApiOperation({ summary: 'List purchase orders' })
   @DeviceResponse(ListPurchaseOrdersMobileResponseDto, ListPurchaseOrdersResponseDto)
   async list(
@@ -166,7 +158,6 @@ export class PurchaseOrderController {
   }
 
   @Get(':id')
-  @Cacheable({ resource: 'purchase-order' })
   @ApiOperation({ summary: 'Get a purchase order by id' })
   @DeviceResponse(GetPurchaseOrderMobileResponseDto, GetPurchaseOrderResponseDto)
   async get(@Param('id') id: string): Promise<ApiResponse<PurchaseOrderGetResponse>> {
@@ -191,7 +182,6 @@ export class PurchaseOrderController {
   @Patch(':id/lines')
   @ApiOperation({ summary: 'Add a line to a purchase order' })
   @HttpCode(HttpStatus.CREATED)
-  @CacheEvict({ resource: 'purchase-order' })
   async addLine(
     @Param('id') id: string,
     @Body() dto: AddLineDto,
@@ -203,7 +193,6 @@ export class PurchaseOrderController {
   @Patch(':id/lines/:productId')
   @ApiOperation({ summary: 'Rewrite a draft purchase order line' })
   @HttpCode(HttpStatus.OK)
-  @CacheEvict({ resource: 'purchase-order' })
   async updateLine(
     @Param('id') id: string,
     @Param('productId') productId: string,
@@ -220,7 +209,6 @@ export class PurchaseOrderController {
   @Delete(':id/lines/:productId')
   @ApiOperation({ summary: 'Remove a line from a purchase order' })
   @HttpCode(HttpStatus.OK)
-  @CacheEvict({ resource: 'purchase-order' })
   async removeLine(
     @Param('id') id: string,
     @Param('productId') productId: string,
@@ -232,7 +220,6 @@ export class PurchaseOrderController {
   @Patch(':id/submit')
   @ApiOperation({ summary: 'Submit a purchase order' })
   @HttpCode(HttpStatus.OK)
-  @CacheEvict({ resource: 'purchase-order' })
   async submit(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.submitPurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order submitted' };
@@ -241,7 +228,6 @@ export class PurchaseOrderController {
   @Patch(':id/approve')
   @ApiOperation({ summary: 'Approve a purchase order' })
   @HttpCode(HttpStatus.OK)
-  @CacheEvict({ resource: 'purchase-order' })
   async approve(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.approvePurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order approved' };
@@ -250,7 +236,6 @@ export class PurchaseOrderController {
   @Patch(':id/amend')
   @ApiOperation({ summary: 'Amend an issued purchase order (controlled change)' })
   @HttpCode(HttpStatus.OK)
-  @CacheEvict({ resource: 'purchase-order' })
   async amend(
     @Param('id') id: string,
     @Body() dto: AmendPurchaseOrderDto,
@@ -267,7 +252,6 @@ export class PurchaseOrderController {
   @Patch(':id/reject')
   @ApiOperation({ summary: 'Reject a purchase order' })
   @HttpCode(HttpStatus.OK)
-  @CacheEvict({ resource: 'purchase-order' })
   async reject(
     @Param('id') id: string,
     @Body() dto: RejectPurchaseOrderDto,
@@ -279,7 +263,6 @@ export class PurchaseOrderController {
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancel a purchase order' })
   @HttpCode(HttpStatus.OK)
-  @CacheEvict({ resource: 'purchase-order' })
   async cancel(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.cancelPurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order cancelled' };
@@ -288,7 +271,6 @@ export class PurchaseOrderController {
   @Patch(':id/complete')
   @ApiOperation({ summary: 'Complete a purchase order' })
   @HttpCode(HttpStatus.OK)
-  @CacheEvict({ resource: 'purchase-order' })
   async complete(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.completePurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order completed' };
@@ -297,7 +279,6 @@ export class PurchaseOrderController {
   @Patch(':id/issue')
   @ApiOperation({ summary: 'Issue a purchase order' })
   @HttpCode(HttpStatus.OK)
-  @CacheEvict({ resource: 'purchase-order' })
   async issue(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.issuePurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order issued' };
@@ -306,7 +287,6 @@ export class PurchaseOrderController {
   @Patch(':id/close')
   @ApiOperation({ summary: 'Close a purchase order' })
   @HttpCode(HttpStatus.OK)
-  @CacheEvict({ resource: 'purchase-order' })
   async close(@Param('id') id: string): Promise<ApiResponse<IdResponse>> {
     const poId = await this.closePurchaseOrderUseCase.execute(id);
     return { data: { id: poId.toString() }, message: 'Purchase order closed' };

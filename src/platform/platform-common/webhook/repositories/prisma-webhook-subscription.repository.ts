@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { PageResult } from '@common/application/types/pagination';
@@ -9,7 +9,7 @@ import {
   WebhookSubscriptionQuery,
   WebhookSubscriptionRecord,
 } from '../webhook.types';
-import { WebhookSubscriptionNotFoundError } from '../webhook.errors';
+
 import { WebhookMapper } from './webhook.mapper';
 
 @Injectable()
@@ -80,7 +80,7 @@ export class PrismaWebhookSubscriptionRepository implements WebhookSubscriptionR
       },
     });
     if (result.count === 0) {
-      throw new WebhookSubscriptionNotFoundError(id);
+      throw new NotFoundException(`WebhookSubscription '${id}' not found`);
     }
     const row = await this.txHost.tx.webhookSubscription.findUniqueOrThrow({ where: { id } });
     return WebhookMapper.toSubscriptionRecord(row);

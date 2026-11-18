@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaIdempotencyRepository } from '../repositories/prisma-idempotency.repository';
-import { RedisIdempotencyCacheAdapter } from '../adapters/redis-idempotency-cache.adapter';
-import { IdempotencyFailRequest } from '../idempotency.types';
+import { IdempotencyRepositoryPort } from '../outbound/ports/idempotency.repository.port';
+import { IdempotencyReplayCachePort } from '../outbound/ports/idempotency-replay-cache.port';
+import { IdempotencyFailRequest } from '../types/idempotency.types';
 
 /**
  * Use case: release an idempotency claim (design `common/02-idempotency`).
@@ -15,8 +15,8 @@ export class FailIdempotencyUseCase {
   private readonly logger = new Logger(FailIdempotencyUseCase.name);
 
   constructor(
-    private readonly repository: PrismaIdempotencyRepository,
-    private readonly cache: RedisIdempotencyCacheAdapter,
+    private readonly repository: IdempotencyRepositoryPort,
+    private readonly cache: IdempotencyReplayCachePort,
   ) {}
 
   async execute(request: IdempotencyFailRequest): Promise<void> {

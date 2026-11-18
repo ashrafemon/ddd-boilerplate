@@ -1,51 +1,42 @@
 import { Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
 import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
 import { ContextModule } from '@platform/platform-common/context/context.module';
-import { RedisCacheAdapter } from './adapters/redis-cache.adapter';
-import { CacheService } from './services/cache.service';
-import { CachePort } from './ports/cache.port';
-import { CacheResponseInterceptor } from './interceptors/cache-response.interceptor';
-import { CacheableInterceptor } from './interceptors/cacheable.interceptor';
-import { CacheEvictInterceptor } from './interceptors/cache-evict.interceptor';
-import { GetCacheValueUseCase } from './usecases/get-cache-value.usecase';
-import { SetCacheValueUseCase } from './usecases/set-cache-value.usecase';
-import { DeleteCacheValueUseCase } from './usecases/delete-cache-value.usecase';
+import { CacheAdapter } from './inbound/adapters/cache.adapter';
+import { CachePort } from './inbound/ports/cache.port';
+import { RedisCacheAdapter } from './outbound/adapters/redis-cache.adapter';
+import { CacheStorePort } from './outbound/ports/cache-store.port';
+import { DeleteCacheValueUseCase } from './use-cases/delete-cache-value.usecase';
+import { GetCacheValueUseCase } from './use-cases/get-cache-value.usecase';
+import { SetCacheValueUseCase } from './use-cases/set-cache-value.usecase';
 
 /**
- * Platform cache module — provides CachePort backed by Redis
+ * Platform cache module — a data cache for application code, backed by Redis
  * (design `common/01-cache`, Redis-only, no storage port, no registry).
  *
- * Business modules inject CachePort only — never the adapter directly.
+ * It caches **values a use case or a query needs**, not HTTP request/response
+ * pairs: there is no route interceptor and no controller decorator here.
+ * Caching belongs to the layer that owns the data — a business module wraps
+ * this port in its own outbound port (e.g. `ReadCachePort`) and decides what to
+ * cache, for how long, and when to invalidate.
  *
- * `CacheableInterceptor` / `CacheEvictInterceptor` are installed as global
- * APP_INTERCEPTORs and are no-ops unless a route carries `@Cacheable()` /
- * `@CacheEvict()`.
+ * Business modules inject `CachePort` only — never a use case or the adapter.
  */
 @Module({
   imports: [InfraRedisModule, ContextModule],
   providers: [
-    // Concrete Redis adapter (injected directly into the use cases)
+    // Outbound adapter → outbound port (use cases depend on the port)
     RedisCacheAdapter,
+    { provide: CacheStorePort, useExisting: RedisCacheAdapter },
 
     // Use cases — one per file
     GetCacheValueUseCase,
     SetCacheValueUseCase,
     DeleteCacheValueUseCase,
 
-    // Facade → public port
-    CacheService,
-    { provide: CachePort, useExisting: CacheService },
-
-    // HTTP read cache — scoped per route with @Cacheable()
-    CacheResponseInterceptor,
-    CacheableInterceptor,
-    { provide: APP_INTERCEPTOR, useExisting: CacheableInterceptor },
-
-    // HTTP cache eviction — scoped per route with @CacheEvict()
-    CacheEvictInterceptor,
-    { provide: APP_INTERCEPTOR, useExisting: CacheEvictInterceptor },
+    // Inbound port implementation → public port
+    CacheAdapter,
+    { provide: CachePort, useExisting: CacheAdapter },
   ],
-  exports: [CachePort, CacheResponseInterceptor, CacheableInterceptor, CacheEvictInterceptor],
+  exports: [CachePort],
 })
 export class CacheModule {}

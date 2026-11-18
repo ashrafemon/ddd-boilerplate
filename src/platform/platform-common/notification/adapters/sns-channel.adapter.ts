@@ -1,11 +1,11 @@
 import { randomUUID } from 'crypto';
 import { PublishCommand } from '@aws-sdk/client-sns';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { LoggerPort } from '@platform/platform-common/observability/ports/logger.port';
 import { SnsService } from '@infrastructure/sns/sns.service';
 import { ChannelProvider } from '../ports/channel-provider.port';
-import { InvalidWebhookSignatureError } from '../notification.errors';
+
 import {
   ChannelCapabilities,
   DeliveryEvent,
@@ -75,7 +75,7 @@ abstract class BaseSnsChannelAdapter implements ChannelProvider {
   parseDeliveryReceipt(payload: unknown, signature: string | undefined): Promise<DeliveryEvent[]> {
     const { webhookSecret } = this.configService.getSns();
     if (webhookSecret && !verifyWebhookSignature(webhookSecret, payload, signature)) {
-      throw new InvalidWebhookSignatureError('sns');
+      throw new UnauthorizedException(`Webhook signature verification failed for provider 'sns'`);
     }
     return Promise.resolve(parseNormalisedDeliveryEvent(payload));
   }

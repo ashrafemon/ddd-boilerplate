@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
-import { PrismaIdempotencyRepository } from '../repositories/prisma-idempotency.repository';
-import { RedisIdempotencyCacheAdapter } from '../adapters/redis-idempotency-cache.adapter';
+import { IdempotencyRepositoryPort } from '../outbound/ports/idempotency.repository.port';
+import { IdempotencyReplayCachePort } from '../outbound/ports/idempotency-replay-cache.port';
 import {
   IdempotencyIdentity,
   IdempotencyReservation,
   IdempotencyReserveRequest,
   IdempotencyReserveResult,
-} from '../idempotency.types';
+} from '../types/idempotency.types';
 
 /**
  * Use case: reserve an idempotency key (design `common/02-idempotency`).
@@ -23,8 +23,8 @@ import {
 @Injectable()
 export class ReserveIdempotencyUseCase {
   constructor(
-    private readonly repository: PrismaIdempotencyRepository,
-    private readonly cache: RedisIdempotencyCacheAdapter,
+    private readonly repository: IdempotencyRepositoryPort,
+    private readonly cache: IdempotencyReplayCachePort,
     private readonly configService: ConfigService,
   ) {}
 
@@ -32,6 +32,9 @@ export class ReserveIdempotencyUseCase {
     const { ttlMs: defaultTtlMs, claimLeaseMs } = this.configService.getIdempotency();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + (request.ttlMs ?? defaultTtlMs));
+    const leaseUntil = new Date(now.getTime() + claimLeaseMs);
+    // Rows written before `lease_until` existed fall back to claim age.
+    const legacyClaimCutoff = new Date(now.getTime() - claimLeaseMs);
 
     const identity: IdempotencyIdentity = {
       tenantId: request.tenantId,
@@ -54,6 +57,7 @@ export class ReserveIdempotencyUseCase {
         identity,
         claimToken,
         expiresAt,
+        leaseUntil,
         request.requestHash,
       );
       return this.acquired(identity, inserted.id, claimToken, inserted.version);
@@ -68,6 +72,7 @@ export class ReserveIdempotencyUseCase {
         identity,
         claimToken,
         expiresAt,
+        leaseUntil,
         request.requestHash,
       );
       return this.acquired(identity, inserted.id, claimToken, inserted.version);
@@ -91,12 +96,12 @@ export class ReserveIdempotencyUseCase {
     }
 
     // 5/6. IN_PROGRESS: BUSY while the lease is live, otherwise take over.
-    const cutoff = new Date(now.getTime() - claimLeaseMs);
     const taken = await this.repository.takeoverExpiredClaim(
       identity,
       claimToken,
-      cutoff,
       expiresAt,
+      leaseUntil,
+      legacyClaimCutoff,
     );
     if (taken) {
       return this.acquired(identity, taken.id, claimToken, taken.version);

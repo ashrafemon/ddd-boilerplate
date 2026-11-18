@@ -3,7 +3,7 @@ import {
   IdempotencyFailRequest,
   IdempotencyReserveRequest,
   IdempotencyReserveResult,
-} from '../idempotency.types';
+} from '../../types/idempotency.types';
 
 export type {
   IdempotencyCompleteRequest,

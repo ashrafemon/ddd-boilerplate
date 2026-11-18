@@ -1,10 +1,8 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { RedisService } from '@infrastructure/redis/redis.service';
 import { ConfigService } from '@config/config.service';
-import { IdempotencyIdentity } from '../idempotency.types';
-
-/** Cache lookup result — distinguishes a cached `null` from a miss. */
-export type IdempotencyCacheLookup = { hit: true; value: unknown } | { hit: false };
+import { IdempotencyCacheLookup, IdempotencyIdentity } from '../../types/idempotency.types';
+import { IdempotencyReplayCachePort } from '../ports/idempotency-replay-cache.port';
 
 /**
  * Redis adapter for COMPLETED idempotency results (design
@@ -17,7 +15,7 @@ export type IdempotencyCacheLookup = { hit: true; value: unknown } | { hit: fals
  * - Fail-open: Redis down simply means a Postgres replay (still correct).
  */
 @Injectable()
-export class RedisIdempotencyCacheAdapter {
+export class RedisIdempotencyCacheAdapter implements IdempotencyReplayCachePort {
   private readonly logger = new Logger(RedisIdempotencyCacheAdapter.name);
 
   constructor(
@@ -25,11 +23,20 @@ export class RedisIdempotencyCacheAdapter {
     @Optional() private readonly redisService?: RedisService,
   ) {}
 
+  /**
+   * `{prefix}:{tenant}:{company}:{scope}:{key}` with every part percent-encoded.
+   *
+   * Escaping is not cosmetic: without it a ':' inside a field shifts the
+   * separator across boundaries, so (tenant 'a:a', company 'a') and
+   * (tenant 'a', company 'a:a') would map to the same replay key and one
+   * tenant could replay another tenant's stored result. The injectivity
+   * property in specifications/properties/ proves it stays that way.
+   */
   buildKey(identity: IdempotencyIdentity): string {
     const { redisPrefix } = this.configService.getIdempotency();
-    return [redisPrefix, identity.tenantId, identity.companyId, identity.scope, identity.key].join(
-      ':',
-    );
+    return [redisPrefix, identity.tenantId, identity.companyId, identity.scope, identity.key]
+      .map(part => encodeURIComponent(part))
+      .join(':');
   }
 
   async get(key: string): Promise<IdempotencyCacheLookup> {

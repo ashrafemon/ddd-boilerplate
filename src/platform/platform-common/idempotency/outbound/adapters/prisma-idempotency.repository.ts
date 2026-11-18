@@ -1,38 +1,27 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../generated/client';
+import { Prisma } from '../../../../../generated/client';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
 import { PrismaJson } from '@platform/platform-common/persistence/prisma-json';
-import { IdempotencyIdentity, IdempotencyReservation } from '../idempotency.types';
-
-/** Read model of an idempotency row. */
-export interface IdempotencyRowView {
-  id: string;
-  status: 'IN_PROGRESS' | 'COMPLETED';
-  claimToken: string;
-  version: number;
-  resultJson: unknown;
-  requestHash: string | null;
-  claimedAt: Date | null;
-  expiresAt: Date;
-}
-
-/** Result of a successful complete CAS — carries the row TTL for Redis. */
-export interface IdempotencyCompletedView {
-  expiresAt: Date;
-}
+import {
+  IdempotencyCompletedView,
+  IdempotencyIdentity,
+  IdempotencyReservation,
+  IdempotencyRowView,
+} from '../../types/idempotency.types';
+import { IdempotencyRepositoryPort } from '../ports/idempotency.repository.port';
 
 /**
- * PostgreSQL-backed idempotency repository (design `common/02-idempotency`).
+ * PostgreSQL adapter for the idempotency ledger (design `common/02-idempotency`).
  *
- * Concrete class injected directly into the use cases — no internal
- * repository port. All state transitions are CAS:
+ * Implements `IdempotencyRepositoryPort`; use cases inject the port, never this
+ * class. All state transitions are CAS:
  *   insert-as-claim on the unique identity
- *   takeover only when the live claim lease has expired
+ *   takeover only after the claim's `lease_until` has passed
  *   complete on id + claimToken + version + IN_PROGRESS
  *   fail deletes the same guarded row
  */
 @Injectable()
-export class PrismaIdempotencyRepository {
+export class PrismaIdempotencyRepository implements IdempotencyRepositoryPort {
   constructor(private readonly prisma: PrismaWriteService) {}
 
   async findByIdentity(identity: IdempotencyIdentity): Promise<IdempotencyRowView | null> {
@@ -53,6 +42,8 @@ export class PrismaIdempotencyRepository {
         resultJson: true,
         requestHash: true,
         claimedAt: true,
+        leaseUntil: true,
+        lastError: true,
         expiresAt: true,
       },
     });
@@ -65,6 +56,8 @@ export class PrismaIdempotencyRepository {
       resultJson: row.resultJson,
       requestHash: row.requestHash,
       claimedAt: row.claimedAt,
+      leaseUntil: row.leaseUntil,
+      lastError: row.lastError,
       expiresAt: row.expiresAt,
     };
   }
@@ -73,6 +66,7 @@ export class PrismaIdempotencyRepository {
     identity: IdempotencyIdentity,
     claimToken: string,
     expiresAt: Date,
+    leaseUntil: Date,
     requestHash?: string,
   ): Promise<{ id: string; version: number }> {
     const row = await this.prisma.idempotencyKey.create({
@@ -85,6 +79,7 @@ export class PrismaIdempotencyRepository {
         requestHash: requestHash ?? null,
         expiresAt,
         claimedAt: new Date(),
+        leaseUntil,
       },
       select: { id: true, version: true },
     });
@@ -93,15 +88,18 @@ export class PrismaIdempotencyRepository {
 
   /**
    * CAS-takeover of an IN_PROGRESS row whose claim lease expired. The
-   * `claimedAt < cutoff` guard is what makes concurrent takeovers safe: only
-   * one update can observe the stale lease.
+   * `lease_until < now` guard makes concurrent takeovers safe: only one update
+   * can observe the stale lease. Rows written before `lease_until` existed
+   * fall back to the caller-supplied claim-age cutoff.
    */
   async takeoverExpiredClaim(
     identity: IdempotencyIdentity,
     claimToken: string,
-    cutoff: Date,
     expiresAt: Date,
+    leaseUntil: Date,
+    legacyClaimCutoff: Date,
   ): Promise<{ id: string; version: number } | null> {
+    const now = new Date();
     const updated = await this.prisma.idempotencyKey.updateMany({
       where: {
         tenantId: identity.tenantId,
@@ -109,13 +107,18 @@ export class PrismaIdempotencyRepository {
         scope: identity.scope,
         key: identity.key,
         status: 'IN_PROGRESS',
-        claimedAt: { lt: cutoff },
+        OR: [
+          { leaseUntil: { lt: now } },
+          { leaseUntil: null, claimedAt: { lt: legacyClaimCutoff } },
+        ],
       },
       data: {
         claimToken,
         resultJson: Prisma.DbNull,
         expiresAt,
-        claimedAt: new Date(),
+        claimedAt: now,
+        leaseUntil,
+        lastError: 'claim lease expired — taken over by a later reserve',
         version: { increment: 1 },
       },
     });
@@ -152,6 +155,8 @@ export class PrismaIdempotencyRepository {
         status: 'COMPLETED',
         resultJson: PrismaJson.toInput(result as object) ?? Prisma.JsonNull,
         completedAt: new Date(),
+        leaseUntil: null,
+        lastError: null,
         version: { increment: 1 },
       },
     });

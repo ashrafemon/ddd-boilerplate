@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaIdempotencyRepository } from '../repositories/prisma-idempotency.repository';
-import { RedisIdempotencyCacheAdapter } from '../adapters/redis-idempotency-cache.adapter';
-import { IdempotencyCompleteRequest } from '../idempotency.types';
+import { IdempotencyRepositoryPort } from '../outbound/ports/idempotency.repository.port';
+import { IdempotencyReplayCachePort } from '../outbound/ports/idempotency-replay-cache.port';
+import { IdempotencyCompleteRequest } from '../types/idempotency.types';
 
 /**
  * Use case: mark an idempotency claim COMPLETED and mirror the result to Redis.
@@ -14,8 +14,8 @@ export class CompleteIdempotencyUseCase {
   private readonly logger = new Logger(CompleteIdempotencyUseCase.name);
 
   constructor(
-    private readonly repository: PrismaIdempotencyRepository,
-    private readonly cache: RedisIdempotencyCacheAdapter,
+    private readonly repository: IdempotencyRepositoryPort,
+    private readonly cache: IdempotencyReplayCachePort,
   ) {}
 
   async execute(request: IdempotencyCompleteRequest): Promise<void> {

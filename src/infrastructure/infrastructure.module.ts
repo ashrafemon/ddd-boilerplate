@@ -1,6 +1,7 @@
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Module } from '@nestjs/common';
 import { BullMqModule } from './bullmq/bullmq.module';
+import { CacheManagerModule } from './cache-manager/cache-manager.module';
 import { ContextModule } from './context/context.module';
 import { KafkaModule } from './kafka/kafka.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -18,7 +19,8 @@ import { S3Module } from './s3/s3.module';
  *
  * Each client folder sits directly under `infrastructure/` — one row per
  * client, each with its own module: Prisma, Redis, RabbitMQ, Kafka, SQS,
- * BullMQ, SES, SNS, S3, Secrets Manager, Puppeteer, CLS. No ports or adapters live here; the
+ * BullMQ, SES, SNS, S3, Secrets Manager, Puppeteer, HTTP cache, CLS. No ports or adapters live
+ * here; the
  * platform layer wraps these clients into services for business modules.
  *
  * Outbox and Inbox live here as directories but are wired by PlatformModule
@@ -46,6 +48,7 @@ import { S3Module } from './s3/s3.module';
     S3Module,
     SecretsManagerModule,
     PuppeteerModule,
+    CacheManagerModule,
   ],
   exports: [
     EventEmitterModule,
@@ -61,6 +64,7 @@ import { S3Module } from './s3/s3.module';
     S3Module,
     SecretsManagerModule,
     PuppeteerModule,
+    CacheManagerModule,
   ],
 })
 export class InfrastructureModule {}

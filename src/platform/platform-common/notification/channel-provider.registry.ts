@@ -1,10 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { KeyedRegistryBase } from '@platform/platform-common/registry/keyed-registry';
 import { ChannelProvider } from './ports/channel-provider.port';
-import {
-  DuplicateChannelProviderRegistrationError,
-  UnregisteredChannelProviderError,
-} from './notification.errors';
 
 /**
  * Map<channel, provider>, resolved by string key. Populated by infrastructure
@@ -18,12 +14,16 @@ export class ChannelProviderRegistry extends KeyedRegistryBase<ChannelProvider> 
     this.registerEntry(
       channel,
       provider,
-      () => new DuplicateChannelProviderRegistrationError(channel),
+      () => new ConflictException(`ChannelProvider for channel '${channel}' already registered`),
     );
   }
 
   resolve(channel: string): ChannelProvider {
-    return this.requireEntry(channel, () => new UnregisteredChannelProviderError(channel));
+    return this.requireEntry(
+      channel,
+      () =>
+        new UnprocessableEntityException(`No ChannelProvider registered for channel '${channel}'`),
+    );
   }
 
   /** Health indicator listing every registered channel and its capabilities. */

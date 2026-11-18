@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { ChannelProviderRegistry } from '../channel-provider.registry';
 import { TemplateRenderer } from '../template-renderer';
 import { NotificationMessageRepositoryPort } from '../ports/notification-message-repository.port';
 import { NotificationRequestRepositoryPort } from '../ports/notification-request-repository.port';
 import { NotificationTemplateRepositoryPort } from '../ports/notification-template-repository.port';
-import { NotificationTemplateNotFoundError } from '../notification.errors';
+
 import { NotificationDispatch, TemplateModel } from '../notification.types';
 
 /**
@@ -51,10 +51,8 @@ export class RenderAndSendMessageUseCase {
         locale,
       );
       if (!template) {
-        throw new NotificationTemplateNotFoundError(
-          dispatch.notificationType,
-          claimed.channel,
-          locale,
+        throw new NotFoundException(
+          `No active NotificationTemplate for (${dispatch.notificationType}, ${claimed.channel}, ${locale})`,
         );
       }
 

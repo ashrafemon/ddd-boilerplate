@@ -9,9 +9,11 @@ only. Read `README.md` first, then this file.
 | Doing… | You MUST read |
 |--------|---------------|
 | Business module work | `docs/architecture.md` (module anatomy, dependency rules) |
+| Platform module work | `docs/platform-standard.md` (inbound/outbound anatomy, port + table rules) |
 | New platform service | `docs/architecture.md` (§platform layer), inspect existing service |
 | New infrastructure client | `docs/architecture.md` (§infrastructure — checklist), inspect an existing client folder |
 | Anything DB | `prisma/schema/<context>/*.prisma` header comments. **No migrations** — edit schema, then `npm run db:push` and `npx prisma generate` |
+| Writing tests | `docs/testing-business-modules.md` (unit beside the file; api/integrations/contracts/components/security under `specifications/`) |
 
 ## Hard rules (ESLint-enforced — `npm run lint:check` fails otherwise)
 
@@ -85,6 +87,7 @@ Full details + checklist: `docs/architecture.md` §`infrastructure/`.
 npx tsc --noEmit -p tsconfig.json
 npm run lint:check
 npm run format:check
+npm run test:architecture
 npm run docs:di
 npm run build
 NODE_ENV=test node -e "(async()=>{const{NestFactory}=require('@nestjs/core');const{AppModule}=require('./dist/app.module.js');const a=await NestFactory.create(AppModule,{preview:true});await a.init();await a.close();})()"

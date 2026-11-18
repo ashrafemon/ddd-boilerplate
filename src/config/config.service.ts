@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { ICacheConfig, IRedisConfig } from './cache.config';
+import { IHttpCacheConfig } from './http-cache.config';
 import { ILockingConfig } from './locking.config';
-import { IIdempotencyConfig } from '../platform/platform-common/idempotency/idempotency.types';
+import { IIdempotencyConfig } from '../platform/platform-common/idempotency/types/idempotency.types';
 import { IInboxConfig } from '@platform/platform-common/inbox/inbox.types';
 import { ISagaConfig } from '../platform/platform-common/process-orchestration/saga-runtime/saga.types';
 import { IDatabaseConfig, IDatabaseDriver } from './database.config';
@@ -80,6 +81,14 @@ export class ConfigService {
       keyVersion: this.config.get<string>('cache.keyVersion', 'v1'),
     };
   }
+  /** HTTP response cache (`@nestjs/cache-manager`) — not the platform data cache. */
+  public getHttpCache(): IHttpCacheConfig {
+    return {
+      enabled: this.config.get<boolean>('httpCache.enabled', false),
+      ttlMs: this.config.get<number>('httpCache.ttlMs', 30_000),
+    };
+  }
+
   public getRedis(): IRedisConfig {
     return this.config.get('cache.redis', {
       url: '',

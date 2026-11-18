@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { RedisCacheAdapter } from '../adapters/redis-cache.adapter';
+import { CacheStorePort } from '../outbound/ports/cache-store.port';
 
 /**
  * Use case: remove a cached key.
@@ -8,7 +8,7 @@ import { RedisCacheAdapter } from '../adapters/redis-cache.adapter';
  */
 @Injectable()
 export class DeleteCacheValueUseCase {
-  constructor(private readonly cache: RedisCacheAdapter) {}
+  constructor(private readonly cache: CacheStorePort) {}
 
   execute(key: string): Promise<void> {
     return this.cache.delete(key);

@@ -4,19 +4,24 @@ import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { IdempotencyInterceptor } from './http/idempotency.interceptor';
-import { IdempotencyReconciliation } from './idempotency.reconciliation';
-import { IdempotencyPort } from './ports/idempotency.port';
-import { PrismaIdempotencyRepository } from './repositories/prisma-idempotency.repository';
-import { RedisIdempotencyCacheAdapter } from './adapters/redis-idempotency-cache.adapter';
-import { ReserveIdempotencyUseCase } from './usecases/reserve-idempotency.usecase';
-import { CompleteIdempotencyUseCase } from './usecases/complete-idempotency.usecase';
-import { FailIdempotencyUseCase } from './usecases/fail-idempotency.usecase';
-import { IdempotencyService } from './services/idempotency.service';
+import { IdempotencyPort } from './inbound/ports/idempotency.port';
+import { PrismaIdempotencyRepository } from './outbound/adapters/prisma-idempotency.repository';
+import { RedisIdempotencyCacheAdapter } from './outbound/adapters/redis-idempotency-cache.adapter';
+import { IdempotencyReplayCachePort } from './outbound/ports/idempotency-replay-cache.port';
+import { IdempotencyRepositoryPort } from './outbound/ports/idempotency.repository.port';
+import { IdempotencyReconciliationService } from './services/idempotency-reconciliation.service';
+import { ReserveIdempotencyUseCase } from './use-cases/reserve-idempotency.usecase';
+import { CompleteIdempotencyUseCase } from './use-cases/complete-idempotency.usecase';
+import { FailIdempotencyUseCase } from './use-cases/fail-idempotency.usecase';
+import { IdempotencyAdapter } from './inbound/adapters/idempotency.adapter';
 
 /**
  * Platform idempotency module — the duplicate-suppression primitive
  * (design `common/02-idempotency`). Postgres owns the claims; Redis caches
  * COMPLETED results for fast replay.
+ *
+ * Layering: use cases depend on `IdempotencyRepositoryPort` and
+ * `IdempotencyReplayCachePort`; the Prisma and Redis adapters implement them.
  *
  * Two consumption shapes:
  *  1. HTTP: `@Idempotent()` decorator (globally installed interceptor, gated
@@ -27,23 +32,23 @@ import { IdempotencyService } from './services/idempotency.service';
 @Module({
   imports: [ContextModule, PrismaModule, InfraRedisModule],
   providers: [
-    // Concrete repository — injected directly into the use cases (no port).
+    // Outbound adapters → outbound ports (use cases depend on the ports)
     PrismaIdempotencyRepository,
-
-    // Redis result cache adapter
+    { provide: IdempotencyRepositoryPort, useExisting: PrismaIdempotencyRepository },
     RedisIdempotencyCacheAdapter,
+    { provide: IdempotencyReplayCachePort, useExisting: RedisIdempotencyCacheAdapter },
 
     // Use cases — one per file
     ReserveIdempotencyUseCase,
     CompleteIdempotencyUseCase,
     FailIdempotencyUseCase,
 
-    // Facade → public port
-    IdempotencyService,
-    { provide: IdempotencyPort, useExisting: IdempotencyService },
+    // Inbound port implementation → public port
+    IdempotencyAdapter,
+    { provide: IdempotencyPort, useExisting: IdempotencyAdapter },
 
-    // Reconciliation (hourly purge)
-    IdempotencyReconciliation,
+    // Reconciliation service (hourly purge) — orchestration, implements no port
+    IdempotencyReconciliationService,
 
     // HTTP interceptor
     IdempotencyInterceptor,

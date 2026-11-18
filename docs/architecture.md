@@ -5,117 +5,118 @@ See [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure
 const VARIABLE_PATTERN = /\{\{\s*([\w.]+)\s*\}\}/g;
 
 /**
- * Pure (version, model) -> subject/body function. Deterministic,
- * provider-agnostic, no side effects — knows nothing about a channel or
- * provider. Interpolates `{{key}}`/`{{a.b}}` placeholders against the flat
- * model; a missing key renders as an empty string rather than throwing, so a
- * template author's typo fails a lint pass, not a recipient's send.
- */
-@Injectable()
-export class TemplateRenderer {
+
+- Pure (version, model) -> subject/body function. Deterministic,
+- provider-agnostic, no side effects — knows nothing about a channel or
+- provider. Interpolates `{{key}}`/`{{a.b}}` placeholders against the flat
+- model; a missing key renders as an empty string rather than throwing, so a
+- template author's typo fails a lint pass, not a recipient's send.
+  */
+  @Injectable()
+  export class TemplateRenderer {
   render(version: NotificationTemplateVersion, model: TemplateModel): RenderedTemplate {
-    return {
-      subject: version.subject ? TemplateRenderer.interpolate(version.subject, model) : undefined,
-      body: TemplateRenderer.interpolate(version.body, model),
-    };
+  return {
+  subject: version.subject ? TemplateRenderer.interpolate(version.subject, model) : undefined,
+  body: TemplateRenderer.interpolate(version.body, model),
+  };
   }
-}
+  }
 
 export class TemplateRendererUtils {
-  static interpolate(source: string, model: TemplateModel): string {
-    return source.replace(VARIABLE_PATTERN, (_match, path: string) => {
-      const value = TemplateRendererUtils.resolvePath(model, path);
-      return TemplateRendererUtils.formatValue(value);
-    });
-  }
+static interpolate(source: string, model: TemplateModel): string {
+return source.replace(VARIABLE_PATTERN, (_match, path: string) => {
+const value = TemplateRendererUtils.resolvePath(model, path);
+return TemplateRendererUtils.formatValue(value);
+});
+}
 
-  static formatValue(value: unknown): string {
-    if (value === undefined || value === null) {
-      return '';
-    }
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-      return String(value);
-    }
-    if (value instanceof Date) {
-      return value.toISOString();
-    }
-    return JSON.stringify(value);
-  }
+static formatValue(value: unknown): string {
+if (value === undefined || value === null) {
+return '';
+}
+if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+return String(value);
+}
+if (value instanceof Date) {
+return value.toISOString();
+}
+return JSON.stringify(value);
+}
 
-  static resolvePath(model: TemplateModel, path: string): unknown {
-    return path.split('.').reduce<unknown>((acc, key) => {
-      if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
-        return (acc as Record<string, unknown>)[key];
-      }
-      return undefined;
-    }, model);
-  }
+static resolvePath(model: TemplateModel, path: string): unknown {
+return path.split('.').reduce<unknown>((acc, key) => {
+if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
+return (acc as Record<string, unknown>)[key];
+}
+return undefined;
+}, model);
+}
 }
 
 /**
- * Prisma-backed audit trail. All DB access goes through the TransactionHost
- * so audit rows commit atomically with the business change. Request/correlation
- * ids and tenant/organization scope are filled from `RequestContextPort` when
- * the caller does not provide them.
- */
-@Injectable()
-export class PrismaAuditRepository implements AuditPort {
+
+- Prisma-backed audit trail. All DB access goes through the TransactionHost
+- so audit rows commit atomically with the business change. Request/correlation
+- ids and tenant/organization scope are filled from `RequestContextPort` when
+- the caller does not provide them.
+  */
+  @Injectable()
+  export class PrismaAuditRepository implements AuditPort {
   constructor(
-    private readonly txHost: TransactionHost<TransactionalAdapterPrisma>,
-    private readonly requestContext: RequestContextPort,
+  private readonly txHost: TransactionHost<TransactionalAdapterPrisma>,
+  private readonly requestContext: RequestContextPort,
   ) {}
 
-  public async record(entry: AuditEntry): Promise<void> {
-    const context = this.requestContext.get();
-    await this.txHost.tx.auditLog.create({
-      data: {
-        action: entry.action,
-        entityType: entry.entityType,
-        entityId: entry.entityId,
-        changes: (this.redact(entry.changes) as object) ?? undefined,
-        actorId: entry.actorId ?? context?.userId,
-        actorType: entry.actorType ?? (context?.userId ? 'user' : 'system'),
-        tenantId: entry.tenantId ?? this.requestContext.getTenantId(),
-        companyId: entry.companyId ?? this.requestContext.getCompanyId(),
-        requestId: this.requestContext.getRequestId(),
-        correlationId: this.requestContext.getCorrelationId(),
-      },
-    });
-  }
+public async record(entry: AuditEntry): Promise<void> {
+const context = this.requestContext.get();
+await this.txHost.tx.auditLog.create({
+data: {
+action: entry.action,
+entityType: entry.entityType,
+entityId: entry.entityId,
+changes: (this.redact(entry.changes) as object) ?? undefined,
+actorId: entry.actorId ?? context?.userId,
+actorType: entry.actorType ?? (context?.userId ? 'user' : 'system'),
+tenantId: entry.tenantId ?? this.requestContext.getTenantId(),
+companyId: entry.companyId ?? this.requestContext.getCompanyId(),
+requestId: this.requestContext.getRequestId(),
+correlationId: this.requestContext.getCorrelationId(),
+},
+});
+}
 
-  private redact(changes?: Record<string, unknown>): Record<string, unknown> | undefined {
-    if (!changes) {
-      return undefined;
-    }
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(changes)) {
-      out[key] = SENSITIVE_KEYS.test(key) ? '[redacted]' : AuditUtils.truncate(value);
-    }
-    return out;
-  }
+private redact(changes?: Record<string, unknown>): Record<string, unknown> | undefined {
+if (!changes) {
+return undefined;
+}
+const out: Record<string, unknown> = {};
+for (const [key, value] of Object.entries(changes)) {
+out[key] = SENSITIVE_KEYS.test(key) ? '[redacted]' : AuditUtils.truncate(value);
+}
+return out;
+}
 }
 
 const SENSITIVE_KEYS = /(password|secret|token|authorization|pin|otp)/i;
 const MAX_FIELD_JSON = 4_000;
 
 export class AuditUtils {
-  static truncate(value: unknown): unknown {
-    if (value === null || typeof value === 'number' || typeof value === 'boolean') {
-      return value;
-    }
-    const text = typeof value === 'string' ? value : AuditUtils.safeStringify(value);
-    return text.length > MAX_FIELD_JSON ? `${text.slice(0, MAX_FIELD_JSON)}…[truncated]` : value;
-  }
-
-  static safeStringify(value: unknown): string {
-    try {
-      return JSON.stringify(value) ?? String(value);
-    } catch {
-      return String(value);
-    }
-  }
+static truncate(value: unknown): unknown {
+if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+return value;
+}
+const text = typeof value === 'string' ? value : AuditUtils.safeStringify(value);
+return text.length > MAX_FIELD_JSON ? `${text.slice(0, MAX_FIELD_JSON)}…[truncated]` : value;
 }
 
+static safeStringify(value: unknown): string {
+try {
+return JSON.stringify(value) ?? String(value);
+} catch {
+return String(value);
+}
+}
+}
 
 Module aliases: `@config/*`, `@common/*`, `@bootstrap/*`, `@infrastructure/*`,
 `@platform/*`, `@business/*`, `@test/*`, `@prisma/client` → `src/generated/client.ts`
@@ -123,6 +124,7 @@ Module aliases: `@config/*`, `@common/*`, `@bootstrap/*`, `@infrastructure/*`,
 ## Layers
 
 ### `config/`
+
 Owns every environment variable. Typed `registerAs` blocks loaded by `@Global` ConfigModule;
 `ConfigService` is a typed facade — adapters use `getPostgres()`, `getRabbitMQ()`, etc.
 Raw `process.env` access is confined to the shared `env.util` helpers (`ensureEnvLoaded`,
@@ -131,6 +133,7 @@ Opt-in client flags (`SECRETS_MANAGER_ENABLED`, `PUPPETEER_ENABLED`, `OTEL_TRACI
 live here too.
 
 ### `common/`
+
 Only primitives with consumers in MORE THAN ONE layer (business + platform, or
 config + bootstrap + platform). Currently:
 
@@ -152,12 +155,14 @@ json-value schema) → their consuming platform capability. Nothing platform-onl
 config-only may be added here.
 
 ### `bootstrap/`
+
 Only what the NestJS application needs to run: env loading, Sentry, tracing, NestFactory,
 security, CORS, HTTP prefix/versioning, shutdown hooks, Swagger, server, and
 `CompanyConfigContextMiddleware` registration. All env/conditional values come from the
 `@config` facades — bootstrap never reads `process.env` directly.
 
 ### Opt-in registries (decorator + DiscoveryService)
+
 Business adapters plug into platform registries declaratively — no composition-root
 bridges. A business adapter class is decorated (`@BatchOperationOptIn()`,
 `@ImportOptIn({entityKey, descriptor})`, stackable `@NotificationOptIn({notificationType,
@@ -168,6 +173,7 @@ decorated instance. Adapters stay pure (no registry imports, no lifecycle); dupl
 still throw at boot. Adding an opt-in = decorate the adapter — nothing else.
 
 ### `infrastructure/`
+
 Third-party client initialization only. One folder per client, flat — no grouping
 subfolders (`database/`, `messaging/`, … are banned). Each client folder carries its own
 module; `infrastructure.module.ts` imports/exports every client module directly.
@@ -185,6 +191,7 @@ infrastructure/
 ├── bullmq/       bullmq.module (forRootAsync, options inline)
 ├── secrets/      secrets.module + secrets.service (opt-in, ListSecrets boot probe)
 ├── puppeteer/    puppeteer.module + puppeteer.service (opt-in, lazy shared browser)
+├── cache-manager/ cache-manager.module + service (HTTP response cache, boot probe)
 ├── context/      context.module (CLS + transactional plugin setup)
 └── infrastructure.module.ts   imports/exports every client module
 ```
@@ -213,6 +220,7 @@ live as directories under platform, wired by `PlatformModule`, to avoid the cycl
 `OutboxModule → ContextModule → InfrastructureModule`.
 
 **Adding a new client — checklist:**
+
 1. `src/infrastructure/<client>/` — flat, one folder.
 2. `<client>.service.ts` — client construction + boot probe + teardown (only if it owns
    connections) + getters. No operations.
@@ -227,6 +235,7 @@ live as directories under platform, wired by `PlatformModule`, to avoid the cycl
 7. Config → typed facade in `src/config/` + `.env.example`; fail-closed in production.
 
 ### `platform/`
+
 Services built on infrastructure clients, exposed as **ports**. `PlatformModule` imports and
 re-exports all sub-modules (not `@Global`). Each business module lists `imports: [PlatformModule]`.
 
@@ -237,6 +246,7 @@ Key ports: `OutboxWriterPort`, `InProcessEventBus`, `MessageQueuePort`, `InboxPo
 `FileStoragePort`, `HealthPort`, `AuthenticationPort`, `RbacPort`, `AbacPort`.
 
 ### `business/`
+
 `shared-business/` holds framework-independent primitives. Aggregates under `party/`,
 `procurement/`, `sales/`, aggregated by `BusinessModule`. May never import `@infrastructure`.
 
@@ -252,12 +262,12 @@ OutboxScheduler → InProcessEventBus.emit → in-process listeners
 
 ### Import rules
 
-| From | May import | May not import |
-|------|-----------|---------------|
-| `infrastructure` | clients + `@config` + `@common` (`InfrastructureException`, env.util) | — |
-| `platform` | infrastructure clients ONLY | `@business/**` (ANY) |
-| `business module` | own internals, `@platform` ports, `@common` primitives, `shared-business`, another module's `public/**` or `application/outbound-ports/**` | `@infrastructure/**`, another module's internals |
-| `shared-business` | framework-independent primitives only | `@platform/**`, `@infrastructure/**`, `@business/*/*/**` |
+| From              | May import                                                                                                                                 | May not import                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| `infrastructure`  | clients + `@config` + `@common` (`InfrastructureException`, env.util)                                                                      | —                                                        |
+| `platform`        | infrastructure clients ONLY                                                                                                                | `@business/**` (ANY)                                     |
+| `business module` | own internals, `@platform` ports, `@common` primitives, `shared-business`, another module's `public/**` or `application/outbound-ports/**` | `@infrastructure/**`, another module's internals         |
+| `shared-business` | framework-independent primitives only                                                                                                      | `@platform/**`, `@infrastructure/**`, `@business/*/*/**` |
 
 ## Ports & adapters
 
@@ -298,13 +308,13 @@ business/<context>/<module>/
 
 ### Aggregate list
 
-| Context | Module | Aggregate | Natural key (unique per company) |
-|---------|--------|-----------|----------------------------------|
-| party | vendor | Vendor | code |
-| procurement | product | Product | sku |
-| procurement | purchase-order | PurchaseOrder | orderNumber |
-| procurement | good-receipt-note | GoodReceiptNote | grnNumber |
-| sales | invoice | Invoice | invoiceNo |
+| Context     | Module            | Aggregate       | Natural key (unique per company) |
+| ----------- | ----------------- | --------------- | -------------------------------- |
+| party       | vendor            | Vendor          | code                             |
+| procurement | product           | Product         | sku                              |
+| procurement | purchase-order    | PurchaseOrder   | orderNumber                      |
+| procurement | good-receipt-note | GoodReceiptNote | grnNumber                        |
+| sales       | invoice           | Invoice         | invoiceNo                        |
 
 ## Tenancy
 
@@ -315,35 +325,43 @@ not globally. Two companies each have `PO-00000001`.
 ## Authentication / Authorization / Tenancy
 
 ### Tenancy modes
+
 - `single` (default): `x-tenant-id`/`x-company-id` headers trusted (dev/internal/verified gateway).
 - `multi`: JWT required with `tenantId` claim; raw headers ignored; anonymous rejected
   (except `@SkipTenancy()` routes).
 
 ### CLS RequestContext
+
 Fields: `requestId`, `correlationId`, `tenantId`, `companyId`, `userId`, `roles`, `locale`,
 `ip`, `userAgent`, `defaultCurrency`, `autoApproveThreshold`, `overReceiptTolerance`.
 
 ### Middleware
+
 `CompanyConfigContextMiddleware` reads `x-company-id`, resolves `CompanyConfigPort`, stamps
 company config fields into CLS `RequestContext`. Runs before route handlers.
 
 ### Interceptor
+
 `RequestIdInterceptor` generates `requestId`/`correlationId`, seeds CLS via
 `RequestContextPort.set()` (merge, preserves company config fields).
 
 ### Guards
+
 - `TenancyAuthGuard` (global `APP_GUARD`): enforces tenancy boundary.
 - `RbacGuard` (global `APP_GUARD`): reads `@Rbac()` metadata, resolves `userId` from CLS,
   calls `RbacPort.can()`.
 
 ### Decorator
+
 `@Rbac(resource, action)` on route handlers.
 
 ### ABAC (usecase level)
+
 Every command use case calls `AbacPort.evaluate()` with CLS-derived context before business
 steps. `AbacResult` = `{ decision: 'ALLOW' | 'DENY', scopeFilter?, reason? }`.
 
 ### No-op adapters (IAM deferred)
+
 `AuthenticationPort` → returns `null`; `RbacPort` → returns `true`; `AbacPort` → returns
 `{ decision: 'ALLOW', scopeFilter: {} }`. Bound via `useExisting` in `AuthenticationModule`/
 `AuthorizationModule`. Replace with real implementations when IAM is built.
@@ -393,20 +411,20 @@ NODE_ENV=test node -e "(async()=>{const{NestFactory}=require('@nestjs/core');con
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `npm run start:dev` | watch mode dev server |
-| `npm run build` | compile to `dist/` |
-| `npm run lint` | ESLint + architecture rules (`--fix`) |
-| `npm run lint:check` | ESLint + architecture checks |
-| `npm run format:check` | prettier |
-| `npm test` | unit tests (`--passWithNoTests`) |
-| `npm run test:e2e` | e2e smoke (requires `docker compose up -d`) |
-| `npm run db:push` | create/sync database from schema |
-| `npm run db:generate` | regenerate Prisma client |
-| `npm run db:seed` | seed products/vendors |
-| `npm run docs:di` | regenerate DI wiring docs |
-| `npm run prisma:studio` | Prisma Studio UI |
+| Command                 | Purpose                                     |
+| ----------------------- | ------------------------------------------- |
+| `npm run start:dev`     | watch mode dev server                       |
+| `npm run build`         | compile to `dist/`                          |
+| `npm run lint`          | ESLint + architecture rules (`--fix`)       |
+| `npm run lint:check`    | ESLint + architecture checks                |
+| `npm run format:check`  | prettier                                    |
+| `npm test`              | unit tests (`--passWithNoTests`)            |
+| `npm run test:e2e`      | e2e smoke (requires `docker compose up -d`) |
+| `npm run db:push`       | create/sync database from schema            |
+| `npm run db:generate`   | regenerate Prisma client                    |
+| `npm run db:seed`       | seed products/vendors                       |
+| `npm run docs:di`       | regenerate DI wiring docs                   |
+| `npm run prisma:studio` | Prisma Studio UI                            |
 
 ## Open work
 
