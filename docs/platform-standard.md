@@ -53,10 +53,10 @@ src/platform/<group>/<capability>/
 A port is an `abstract class` used as the DI token. Every port has an adapter that implements it,
 and only use cases/services consume it — nobody injects a concrete adapter.
 
-| Kind          | Examples                                                                                                                                                                                                                                         | Implemented by                                                      |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `OutboxWriterPort`, `MessageQueuePort`, `InProcessEventBus`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                                              | exactly one `inbound/adapters/*` class that delegates to use cases  |
-| Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `LockLedgerPort`, `LockLeasePort`, `OutboxRepositoryPort`, `RabbitMqPublisherPort`, `KafkaPublisherPort`, `SqsPublisherPort`, `EventEmitterPort`, `FileStoragePort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
+| Kind          | Examples                                                                                                                                                                                                                                                                | Implemented by                                                      |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `OutboxWriterPort`, `MessageQueuePort`, `InProcessEventBus`, `InboxPort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                                                        | exactly one `inbound/adapters/*` class that delegates to use cases  |
+| Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `LockLedgerPort`, `LockLeasePort`, `OutboxRepositoryPort`, `InboxRepositoryPort`, `RabbitMqPublisherPort`, `KafkaPublisherPort`, `SqsPublisherPort`, `EventEmitterPort`, `FileStoragePort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
 
 ```
 use case ──uses──> outbound port ◁──implements── outbound adapter ──wraps──> infrastructure client
@@ -223,6 +223,31 @@ with exponential backoff, an exhausted row parks `DEAD_LETTER`, and a missing
 broker configuration (`UnsupportedBrokerTargetError`) parks `FAILED` — retrying
 cannot make `KAFKA_BROKERS` appear, and calling that a poison message would
 mislead whoever debugs it.
+
+## 8c. Inbox statuses and columns (workbook-aligned)
+
+`inbox_messages` is the consumer-side mirror. The identity is
+`(tenant_id, company_id, consumer_key, message_id)` with NULLs normalised to `''`
+so the unique index still bites; the claim is one `INSERT`, and a duplicate is a
+`null` return — never a read-then-write race.
+
+| Status        | Meaning                                                                   |
+| ------------- | ------------------------------------------------------------------------- |
+| `IN_PROGRESS` | claimed now, or holding a backoff until `next_attempt_at`                 |
+| `PROCESSED`   | executed once — every later delivery is a duplicate                       |
+| `FAILED`      | permanent failure (`permanent: true`, payload mismatch) — an operator job |
+| `SUSPENDED`   | poison past `max_attempts` — never purged by retention                    |
+
+`payload_hash` makes the identity content-aware: a redelivery that reuses a
+message id with different content is a contract violation, so the row is parked
+`FAILED` instead of executing the wrong payload twice. `hashInboxPayload`
+canonicalises with sorted keys, which is what keeps the same logical payload
+hashing identically regardless of serialization order.
+
+Complete/fail are CAS-fenced on `claim_token`; losing ownership logs a warning
+and never throws, so the broker ACK/NACK path stays safe. The sweep in
+`services/inbox-reconciliation.service.ts` composes the reconcile (park poison,
+back off the rest) and purge (processed past retention) use cases.
 
 ## 9. Saga persistence (decided)
 

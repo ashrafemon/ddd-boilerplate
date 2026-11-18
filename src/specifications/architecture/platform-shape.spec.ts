@@ -35,6 +35,7 @@ const MIGRATED = [
   'platform-common/outbox',
   'platform-common/messaging',
   'platform-common/events',
+  'platform-common/inbox',
 ];
 
 /**

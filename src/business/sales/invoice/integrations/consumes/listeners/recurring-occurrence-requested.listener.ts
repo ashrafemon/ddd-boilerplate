@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
 import type { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
-import { InboxPort } from '@platform/platform-common/inbox/ports/inbox.port';
+import { InboxPort } from '@platform/platform-common/inbox/inbound/ports/inbox.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { GenerateRecurringInvoiceUseCase } from '../../../application/use-cases/generate-recurring-invoice.usecase';
 import { RecurringOccurrenceRequestedPayload } from '../../../domain/types/recurring-occurrence.types';

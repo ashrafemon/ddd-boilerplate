@@ -1,7 +1,8 @@
 /**
  * Inbox types — identity, requests, reservation, result and the config shape.
- * Design 07: the consumer-side counterpart of Outbox.
+ * Design `common/07-inbox`: the consumer-side counterpart of Outbox.
  */
+import { createHash } from 'crypto';
 
 /** Logical identity for an inbox message. NULLs normalise to '' at the repo edge. */
 export interface InboxIdentity {
@@ -19,8 +20,12 @@ export interface InboxReceiveRequest {
   consumer: string;
   messageId: string;
 
+  /** Contract event name (`inventory.grn.created`). Defaults to `messageType`. */
   messageType: string;
+  eventVersion?: number;
+
   payload: unknown;
+  headers?: Record<string, string>;
 
   correlationId?: string;
   causationId?: string;
@@ -53,6 +58,11 @@ export interface InboxCompleteRequest {
 export interface InboxFailRequest {
   reservation: InboxReservation;
   lastError?: string;
+  /**
+   * `true` parks the row as FAILED immediately instead of scheduling a retry —
+   * for errors no redelivery can fix (contract mismatch, unparseable payload).
+   */
+  permanent?: boolean;
 }
 
 /** Inbox message record. */
@@ -63,7 +73,9 @@ export interface InboxMessage {
   consumer: string;
   messageId: string;
   messageType: string;
+  eventVersion: number;
   payload: unknown;
+  payloadHash: string | null;
   status: string;
   attempts: number;
   claimToken: string;
@@ -86,4 +98,24 @@ export interface IInboxConfig {
   reconciliationIntervalMs: number;
   /** PROCESSED rows older than this are deleted; SUSPENDED never purge. */
   processedRetentionMs: number;
+}
+
+/**
+ * Stable content hash of a delivered payload (the `payload_hash` column).
+ *
+ * Sorted keys make the hash independent of JSON serialization order, so the same
+ * logical payload always hashes the same; a redelivery that reuses a message id
+ * with different content produces a different hash and is parked FAILED.
+ */
+export function hashInboxPayload(payload: unknown): string {
+  return createHash('sha256').update(canonicalJson(payload)).digest('hex');
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, entry]) => entry !== undefined)
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+  return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(',')}}`;
 }

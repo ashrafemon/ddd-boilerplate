@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@config/config.service';
-import { PrismaInboxRepository } from './repositories/prisma-inbox.repository';
+import { InboxRepositoryPort } from '../outbound/ports/inbox.repository.port';
 
 /**
  * Inbox reconciler — the consumer-side sweep.
@@ -12,11 +12,11 @@ import { PrismaInboxRepository } from './repositories/prisma-inbox.repository';
  * SUSPENDED rows never purge.
  */
 @Injectable()
-export class InboxReconciler {
-  private readonly logger = new Logger(InboxReconciler.name);
+export class InboxReconciliationService {
+  private readonly logger = new Logger(InboxReconciliationService.name);
 
   constructor(
-    private readonly repository: PrismaInboxRepository,
+    private readonly repository: InboxRepositoryPort,
     private readonly configService: ConfigService,
   ) {}
 
@@ -25,13 +25,13 @@ export class InboxReconciler {
     const { claimLeaseMs, maxAttempts, retryBaseDelayMs, retryMaxDelayMs, processedRetentionMs } =
       this.configService.getInbox();
 
-    const reconciled = await this.repository.reconcileExpiredClaims(
-      new Date(),
+    const reconciled = await this.repository.reconcileExpiredClaims({
+      now: new Date(),
       claimLeaseMs,
       maxAttempts,
       retryBaseDelayMs,
       retryMaxDelayMs,
-    );
+    });
     if (reconciled > 0) {
       this.logger.log(`Reconciled ${reconciled} expired inbox claims`);
     }

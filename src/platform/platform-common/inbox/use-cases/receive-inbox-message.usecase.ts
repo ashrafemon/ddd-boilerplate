@@ -1,8 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
-import { PrismaInboxRepository } from '../repositories/prisma-inbox.repository';
-import { InboxIdentity, InboxReceiveRequest, InboxReceiveResult } from '../inbox.types';
+import { InboxRepositoryPort } from '../outbound/ports/inbox.repository.port';
+import {
+  hashInboxPayload,
+  InboxIdentity,
+  InboxReceiveRequest,
+  InboxReceiveResult,
+} from '../types/inbox.types';
 
 /**
  * Use case: receive/claim an inbound message.
@@ -17,7 +22,7 @@ import { InboxIdentity, InboxReceiveRequest, InboxReceiveResult } from '../inbox
 @Injectable()
 export class ReceiveInboxMessageUseCase {
   constructor(
-    private readonly repository: PrismaInboxRepository,
+    private readonly repository: InboxRepositoryPort,
     private readonly configService: ConfigService,
   ) {}
 
@@ -31,10 +36,15 @@ export class ReceiveInboxMessageUseCase {
     const claimToken = randomUUID();
     const now = new Date();
 
+    const payloadHash = hashInboxPayload(request.payload);
+
     const inserted = await this.repository.insertIfAbsent({
       identity,
       messageType: request.messageType,
+      eventVersion: request.eventVersion ?? 1,
       payload: request.payload,
+      payloadHash,
+      headers: request.headers ?? null,
       claimToken,
       claimedAt: now,
       correlationId: request.correlationId ?? null,
@@ -50,6 +60,17 @@ export class ReceiveInboxMessageUseCase {
     }
     if (existing.status === 'PROCESSED') {
       return { status: 'DUPLICATE' };
+    }
+
+    // Same identity, different content: the publisher reused a message id. That
+    // is a contract violation, not a duplicate — park it for an operator.
+    if (existing.payloadHash !== null && existing.payloadHash !== payloadHash) {
+      await this.repository.markPermanentlyFailed(
+        existing.id,
+        existing.claimToken,
+        'payload-mismatch: same message id delivered with different content',
+      );
+      return { status: 'BUSY' };
     }
 
     const { claimLeaseMs } = this.configService.getInbox();

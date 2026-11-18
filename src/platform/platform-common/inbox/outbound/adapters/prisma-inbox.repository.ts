@@ -1,9 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { Prisma } from '../../../../generated/client';
+import { Prisma } from '../../../../../generated/client';
 import { PrismaJson } from '@platform/platform-common/persistence/prisma-json';
-import { InboxIdentity, InboxMessage } from '../inbox.types';
+import { InboxIdentity, InboxMessage } from '../../types/inbox.types';
+import {
+  InsertInboxMessageInput,
+  InboxRepositoryPort,
+  ReconcileInboxOptions,
+} from '../ports/inbox.repository.port';
 
 class InboxUtils {
   static isUniqueViolation(err: unknown): boolean {
@@ -20,7 +25,9 @@ interface InboxRawRow {
   consumer: string;
   messageId: string;
   messageType: string;
+  eventVersion: number;
   payload: unknown;
+  payloadHash: string | null;
   status: string;
   attempts: number;
   claimToken: string;
@@ -32,23 +39,15 @@ interface InboxRawRow {
   causationId: string | null;
 }
 
-export interface InsertInboxMessageInput {
-  identity: InboxIdentity;
-  messageType: string;
-  payload: unknown;
-  claimToken: string;
-  claimedAt: Date;
-  correlationId: string | null;
-  causationId: string | null;
-}
-
 /**
- * Concrete inbox repository (design 07: no internal port). INSERT-as-claim on
- * the unique identity, CAS writes fenced on `claimToken`, and one reconcile
- * sweep that parks poison and backoffs the rest.
+ * PostgreSQL adapter for the inbox ledger.
+ *
+ * Implements `InboxRepositoryPort`: INSERT-as-claim on the unique identity, CAS
+ * writes fenced on `claimToken`, and one reconcile sweep that parks poison and
+ * backs the rest off. Raw SQL uses the physical snake_case columns.
  */
 @Injectable()
-export class PrismaInboxRepository {
+export class PrismaInboxRepository implements InboxRepositoryPort {
   constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
 
   /** Insert-as-claim; a duplicate returns `null` (never a read-then-write). */
@@ -60,8 +59,12 @@ export class PrismaInboxRepository {
           companyId: input.identity.companyId,
           consumer: input.identity.consumer,
           messageId: input.identity.messageId,
+          eventName: input.messageType,
+          eventVersion: input.eventVersion,
           messageType: input.messageType,
           payload: PrismaJson.toInput(input.payload as object) as Prisma.InputJsonValue,
+          payloadHash: input.payloadHash,
+          headers: input.headers ? (input.headers as object) : undefined,
           status: 'IN_PROGRESS',
           attempts: 1,
           claimToken: input.claimToken,
@@ -161,13 +164,8 @@ export class PrismaInboxRepository {
    * Reconcile sweep: park expired poison as SUSPENDED (`attempts > maxAttempts`)
    * and give the rest a fresh exponential backoff. Returns rows touched.
    */
-  async reconcileExpiredClaims(
-    now: Date,
-    leaseMs: number,
-    maxAttempts: number,
-    retryBaseDelayMs: number,
-    retryMaxDelayMs: number,
-  ): Promise<number> {
+  async reconcileExpiredClaims(options: ReconcileInboxOptions): Promise<number> {
+    const { now, claimLeaseMs: leaseMs, maxAttempts, retryBaseDelayMs, retryMaxDelayMs } = options;
     const cutoff = new Date(now.getTime() - leaseMs);
 
     const suspended = await this.txHost.tx.inboxMessage.updateMany({
@@ -198,7 +196,26 @@ export class PrismaInboxRepository {
     return suspended.count + Number(backoffed);
   }
 
-  /** Delete PROCESSED rows past retention; SUSPENDED rows never purge. */
+  /** CAS: park FAILED for a permanent error (no retry scheduled). */
+  markPermanentlyFailed(
+    id: string,
+    claimToken: string,
+    lastError: string | null,
+  ): Promise<boolean> {
+    return this.txHost.tx.inboxMessage
+      .updateMany({
+        where: { id, claimToken, status: 'IN_PROGRESS' },
+        data: {
+          status: 'FAILED',
+          lastError,
+          claimedAt: null,
+          nextAttemptAt: null,
+        },
+      })
+      .then(r => r.count > 0);
+  }
+
+  /** Delete PROCESSED rows past retention; SUSPENDED and FAILED never purge. */
   async deleteProcessedOlderThan(retentionMs: number): Promise<number> {
     const cutoff = new Date(Date.now() - retentionMs);
     const result = await this.txHost.tx.inboxMessage.deleteMany({
@@ -215,7 +232,9 @@ export class PrismaInboxRepository {
       consumer: row.consumer,
       messageId: row.messageId,
       messageType: row.messageType,
+      eventVersion: row.eventVersion,
       payload: row.payload,
+      payloadHash: row.payloadHash,
       status: row.status,
       attempts: row.attempts,
       claimToken: row.claimToken,

@@ -3,7 +3,7 @@ import {
   InboxReceiveResult,
   InboxCompleteRequest,
   InboxFailRequest,
-} from '../inbox.types';
+} from '../../types/inbox.types';
 
 /**
  * Inbox — the only port. Inject it at the top of every broker or event

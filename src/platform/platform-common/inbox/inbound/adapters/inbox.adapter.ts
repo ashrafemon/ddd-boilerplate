@@ -1,23 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { InboxPort } from './ports/inbox.port';
+import { InboxPort } from '../ports/inbox.port';
 import {
   InboxReceiveRequest,
   InboxReceiveResult,
   InboxCompleteRequest,
   InboxFailRequest,
-} from './inbox.types';
-import { ReceiveInboxMessageUseCase } from './usecases/receive-inbox-message.usecase';
-import { CompleteInboxMessageUseCase } from './usecases/complete-inbox-message.usecase';
-import { FailInboxMessageUseCase } from './usecases/fail-inbox-message.usecase';
+} from '../../types/inbox.types';
+import { ReceiveInboxMessageUseCase } from '../../use-cases/receive-inbox-message.usecase';
+import { CompleteInboxMessageUseCase } from '../../use-cases/complete-inbox-message.usecase';
+import { FailInboxMessageUseCase } from '../../use-cases/fail-inbox-message.usecase';
 
 /**
- * Inbox service facade — the single entry point for all inbox operations.
+ * Inbound adapter implementing the public `InboxPort` — the single entry
+ * point for inbox operations.
  *
- * Delegates to individual use cases (one per file) without containing
- * business rules itself. This class implements the public InboxPort.
+ * Delegates to one use case per operation and holds no rules of its own. Every
+ * broker/event consumer injects the port, never this class.
  */
 @Injectable()
-export class InboxService implements InboxPort {
+export class InboxAdapter implements InboxPort {
   constructor(
     private readonly receiveMessage: ReceiveInboxMessageUseCase,
     private readonly completeMessage: CompleteInboxMessageUseCase,

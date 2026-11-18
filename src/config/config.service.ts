@@ -4,7 +4,7 @@ import { ICacheConfig, IRedisConfig } from './cache.config';
 import { IHttpCacheConfig } from './http-cache.config';
 import { ILockingConfig } from './locking.config';
 import { IIdempotencyConfig } from '../platform/platform-common/idempotency/types/idempotency.types';
-import { IInboxConfig } from '@platform/platform-common/inbox/inbox.types';
+import { IInboxConfig } from '@platform/platform-common/inbox/types/inbox.types';
 import { ISagaConfig } from '../platform/platform-common/process-orchestration/saga-runtime/saga.types';
 import { IDatabaseConfig, IDatabaseDriver } from './database.config';
 import { IKafkaConfig, IRabbitMQConfig, ISqsConfig } from './messaging.config';

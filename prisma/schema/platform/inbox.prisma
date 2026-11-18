@@ -1,21 +1,32 @@
 // ============================================================================
 // Platform — Inbox (inbox.prisma)
 // ============================================================================
-// Consumer-side counterpart of Outbox (design 07): guarantees that the same
-// logical message + the same consumer gives exactly one business execution
-// under at-least-once redelivery. No business rules, no broker knowledge.
+// Consumer-side counterpart of Outbox (design `common/07-inbox`): the same
+// physical message delivered to the same consumer yields exactly one business
+// execution under at-least-once redelivery. Column names follow the workbook's
+// `inbox_messages` table, so hand-written SQL MUST use the snake_case names.
 //
-// Identity is (tenantId, companyId, consumer, messageId); NULLs are
+// Identity is (tenant_id, company_id, consumer_key, message_id); NULLs are
 // normalized to '' at the repository edge so the unique constraint still bites.
 //
-// Statuses: IN_PROGRESS | PROCESSED | SUSPENDED. `fail` keeps a row IN_PROGRESS
-// with a backoff `nextAttemptAt` (the broker redelivers); the reconciler parks
-// poison past `maxAttempts` as SUSPENDED and deletes PROCESSED past retention.
+// `payload_hash` guards the identity: a redelivery that reuses a message id with
+// different content is a contract violation, not a duplicate — the row is parked
+// FAILED instead of silently executing the wrong payload again.
+//
+// Status set (workbook): IN_PROGRESS | PROCESSED | FAILED | SUSPENDED
+//  - IN_PROGRESS  claimed right now, or holding a backoff for the next retry
+//  - PROCESSED    executed once; every later delivery is a duplicate
+//  - FAILED       permanent failure (payload mismatch, non-retryable error)
+//  - SUSPENDED    poison past `max_attempts`; needs an operator, never purges
+//
+// `message_type`, `causation_id`, `created_at`, `updated_at` are platform
+// extensions; the rest is the workbook's column set.
 // ============================================================================
 
 enum InboxMessageStatus {
   IN_PROGRESS
   PROCESSED
+  FAILED
   SUSPENDED
 
   @@map("inbox_message_status")
@@ -25,12 +36,18 @@ model InboxMessage {
   id             String            @id @default(uuid()) @db.Uuid
 
   tenantId       String            @default("") @map("tenant_id") @db.VarChar(100)
-  companyId String            @default("") @map("company_id") @db.VarChar(100)
-  consumer       String            @db.VarChar(250)
+  companyId      String            @default("") @map("company_id") @db.VarChar(100)
+  consumer       String            @map("consumer_key") @db.VarChar(250)
   messageId      String            @map("message_id") @db.VarChar(500)
 
+  /** Contract name of the event (`inventory.grn.created`). */
+  eventName      String            @map("event_name") @db.VarChar(250)
+  eventVersion   Int               @default(1) @map("event_version")
   messageType    String            @map("message_type") @db.VarChar(250)
+
   payload        Json
+  payloadHash    String?           @map("payload_hash") @db.VarChar(128)
+  headers        Json?
 
   status         InboxMessageStatus @default(IN_PROGRESS)
   attempts       Int               @default(1)
