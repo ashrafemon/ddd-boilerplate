@@ -21,6 +21,9 @@ export abstract class SagaDefinitionRepositoryPort {
   /** All ACTIVE definitions — a bounded set the router filters in memory. */
   abstract listActive(): Promise<SagaDefinitionRecord[]>;
 
+  /** Exact `(sagaKey, version)` lookup — the idempotency check for publishing. */
+  abstract findByKeyVersion(sagaKey: string, version: number): Promise<SagaDefinitionRecord | null>;
+
   abstract create(input: {
     sagaKey: string;
     ownerModule?: string | null;

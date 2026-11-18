@@ -6,7 +6,7 @@ import {
   SagaStepKind,
   SagaStepRecord,
   SagaStepStatus,
-} from '@platform/platform-common/process-orchestration/saga/types/saga.types';
+} from '@platform/platform-common/saga/types/saga.types';
 
 /**
  * Shared saga fixtures.

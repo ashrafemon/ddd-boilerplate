@@ -10,12 +10,15 @@ import { ConfigService } from './config.service';
 import databaseConfig from './database.config';
 import idempotencyConfig from './idempotency.config';
 import importConfig from './import.config';
+import inboxConfig from './inbox.config';
+import lockingConfig from './locking.config';
 import messagingConfig from './messaging.config';
 import notificationConfig from './notification.config';
 import notificationPipelineConfig from './notification-pipeline.config';
 import observabilityConfig from './observability.config';
 import puppeteerConfig from './puppeteer.config';
 import outboxConfig from './outbox.config';
+import sagaConfig from './saga.config';
 import schedulerConfig from './scheduler.config';
 import securityConfig from './security.config';
 import secretsConfig from './secrets.config';
@@ -48,6 +51,9 @@ import webhookConfig from './webhook.config';
     NestConfigModule.forFeature(importConfig),
     NestConfigModule.forFeature(idempotencyConfig),
     NestConfigModule.forFeature(webhookConfig),
+    NestConfigModule.forFeature(lockingConfig),
+    NestConfigModule.forFeature(inboxConfig),
+    NestConfigModule.forFeature(sagaConfig),
   ],
   providers: [ConfigService],
   exports: [ConfigService],

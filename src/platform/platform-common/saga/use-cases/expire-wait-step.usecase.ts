@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SagaInstanceReason, SagaInstanceStatus, SagaStepRecord } from '../types/saga.types';
+import { SagaInboxPort } from '@platform/platform-common/saga-inbox/inbound/ports/saga-inbox.port';
 import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
 import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
@@ -10,7 +11,9 @@ import { StartCompensationUseCase, isTerminal } from './start-compensation.useca
  *
  * `onTimeout` decides the default: `skip` (continue the plan) or `compensate`
  * (reverse what happened). Either way the WAIT row is marked FAILED so the sweep
- * never sees it again.
+ * never sees it again. A skipped wait can no longer consume its buffered
+ * deliveries, so they are parked IGNORED with the reason — the ledger stays
+ * truthful instead of holding rows nobody will ever read.
  */
 @Injectable()
 export class ExpireWaitStepUseCase {
@@ -19,6 +22,7 @@ export class ExpireWaitStepUseCase {
     private readonly steps: SagaStepRepositoryPort,
     private readonly advanceSaga: AdvanceSagaUseCase,
     private readonly compensate: StartCompensationUseCase,
+    private readonly inbox: SagaInboxPort,
   ) {}
 
   async execute(stepRow: SagaStepRecord): Promise<void> {
@@ -42,6 +46,14 @@ export class ExpireWaitStepUseCase {
     }
 
     // Default: skip the wait and keep going (bypass means continue, never wait).
+    if (stepRow.eventName && stepRow.eventVersion !== null) {
+      await this.inbox.ignoreBuffered(
+        instance.id,
+        stepRow.eventName,
+        stepRow.eventVersion,
+        `WAIT step "${stepRow.stepId}" timed out and was skipped`,
+      );
+    }
     await this.instances.updateCas(instance.id, instance.version, {
       cursor: index === -1 ? instance.cursor : index + 1,
       waitingEvent: null,

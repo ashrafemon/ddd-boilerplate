@@ -1,7 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@config/config.service';
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
 import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
 import { ExecuteSagaStepUseCase } from '../use-cases/execute-saga-step.usecase';
 import { ExpireWaitStepUseCase } from '../use-cases/expire-wait-step.usecase';
@@ -27,7 +25,6 @@ export class SagaSweepService implements OnModuleInit, OnModuleDestroy {
     private readonly executeStep: ExecuteSagaStepUseCase,
     private readonly expireWait: ExpireWaitStepUseCase,
     private readonly steps: SagaStepRepositoryPort,
-    private readonly inbox: SagaInboxRepositoryPort,
     private readonly configService: ConfigService,
   ) {}
 
@@ -74,15 +71,6 @@ export class SagaSweepService implements OnModuleInit, OnModuleDestroy {
     for (const step of stale) {
       this.logger.warn(`Re-queueing saga step ${step.id} (${STALE_LEASE_ERROR})`);
       await this.steps.reschedule(step.id, step.attempts, new Date(), STALE_LEASE_ERROR);
-    }
-  }
-
-  @Cron(CronExpression.EVERY_HOUR, { name: 'cleanup-saga-inbox' })
-  async cleanupInbox(): Promise<void> {
-    const { inboxRetentionDays } = this.configService.getSaga();
-    const deleted = await this.inbox.purgeOlderThan(inboxRetentionDays);
-    if (deleted > 0) {
-      this.logger.log(`Purged ${deleted} saga inbox rows past retention`);
     }
   }
 }

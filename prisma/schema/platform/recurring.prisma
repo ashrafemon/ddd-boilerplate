@@ -28,13 +28,13 @@ model RecurringTemplate {
 
   // TIME-only fields, nullable — required iff triggerType = TIME (enforced
   // by chk_recurring_templates_trigger_fields in the migration + app layer).
-  frequency    RecurringFrequency?
-  interval     Int?
-  startDate    DateTime?           @db.Date
-  endDate      DateTime?           @db.Date
-  nextRunDate  DateTime?           @db.Date
-  lastRunDate  DateTime?           @db.Date
-  timeZone     String              @default("UTC")
+  frequency   RecurringFrequency?
+  interval    Int?
+  startDate   DateTime?           @db.Date
+  endDate     DateTime?           @db.Date
+  nextRunDate DateTime?           @db.Date
+  lastRunDate DateTime?           @db.Date
+  timeZone    String              @default("UTC")
 
   autoPost    Boolean @default(false)
   autoEmail   Boolean @default(false)
@@ -98,10 +98,10 @@ model RecurringExecution {
   generatedSnapshot     Json?
   conditionEvaluation   Json?
 
-  status           RecurringExecutionStatus @default(IN_PROGRESS)
-  skipReason       String?
-  executionTimeMs  Int?
-  errorMessage     String?
+  status          RecurringExecutionStatus @default(IN_PROGRESS)
+  skipReason      String?
+  executionTimeMs Int?
+  errorMessage    String?
 
   createdAt DateTime @default(now())
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SagaInstanceRecord } from '../types/saga.types';
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
+import { SagaInboxPort } from '@platform/platform-common/saga-inbox/inbound/ports/saga-inbox.port';
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
 
 /** Payload of one event routed to a live instance. */
@@ -24,13 +24,13 @@ export interface BufferSagaEventInput {
 @Injectable()
 export class BufferSagaEventUseCase {
   constructor(
-    private readonly inbox: SagaInboxRepositoryPort,
+    private readonly inbox: SagaInboxPort,
     private readonly advanceSaga: AdvanceSagaUseCase,
   ) {}
 
   async execute(input: BufferSagaEventInput): Promise<boolean> {
     const { instance } = input;
-    const inserted = await this.inbox.tryInsert({
+    const recorded = await this.inbox.buffer({
       tenantId: instance.tenantId,
       companyId: instance.companyId,
       consumer: `${instance.sagaKey}:${instance.id}`,
@@ -43,10 +43,9 @@ export class BufferSagaEventUseCase {
       payloadHash: input.payloadHash ?? null,
       headers: input.headers ?? null,
     });
-    if (!inserted) {
+    if (!recorded) {
       return false;
     }
-    await this.inbox.markBuffered(inserted.id, instance.correlationKey, instance.id);
     await this.advanceSaga.execute(instance.id);
     return true;
   }

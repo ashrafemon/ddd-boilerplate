@@ -10,7 +10,7 @@ import {
 import { evaluateCondition, parseDuration, renderTemplate } from '../types/saga-expression';
 import { buildInput, buildScope } from '../types/saga-scope';
 import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
+import { SagaInboxPort } from '@platform/platform-common/saga-inbox/inbound/ports/saga-inbox.port';
 import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
 import { CompleteSagaUseCase } from './complete-saga.usecase';
 
@@ -34,7 +34,7 @@ export class AdvanceSagaUseCase {
   constructor(
     private readonly instances: SagaInstanceRepositoryPort,
     private readonly steps: SagaStepRepositoryPort,
-    private readonly inbox: SagaInboxRepositoryPort,
+    private readonly inbox: SagaInboxPort,
     private readonly configService: ConfigService,
     private readonly completeSaga: CompleteSagaUseCase,
   ) {}

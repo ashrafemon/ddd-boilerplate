@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { Prisma } from '../../../../../../generated/client';
+import { Prisma } from '../../../../../generated/client';
 import { PrismaJson } from '@platform/platform-common/persistence/prisma-json';
-import { SagaInboxRecord, SagaInboxStatus } from '../../types/saga.types';
+import { SagaInboxRecord, SagaInboxStatus } from '../../types/saga-inbox.types';
 import { InsertInboxInput, SagaInboxRepositoryPort } from '../ports/saga-inbox.repository.port';
 
 const UNIQUE_VIOLATION = 'P2002';
@@ -82,11 +82,22 @@ export class PrismaSagaInboxRepository implements SagaInboxRepositoryPort {
     });
   }
 
-  async markIgnored(id: string, reason: string): Promise<void> {
-    await this.txHost.tx.sagaInbox.updateMany({
-      where: { id },
+  async ignoreBuffered(
+    instanceId: string,
+    eventName: string,
+    eventVersion: number,
+    reason: string,
+  ): Promise<number> {
+    const result = await this.txHost.tx.sagaInbox.updateMany({
+      where: {
+        instanceId,
+        eventName,
+        eventVersion,
+        status: SagaInboxStatus.BUFFERED,
+      },
       data: { status: SagaInboxStatus.IGNORED, reason, processedAt: new Date() },
     });
+    return result.count;
   }
 
   async listBuffered(

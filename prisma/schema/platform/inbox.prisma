@@ -33,36 +33,38 @@ enum InboxMessageStatus {
 }
 
 model InboxMessage {
-  id             String            @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
 
-  tenantId       String            @default("") @map("tenant_id") @db.VarChar(100)
-  companyId      String            @default("") @map("company_id") @db.VarChar(100)
-  consumer       String            @map("consumer_key") @db.VarChar(250)
-  messageId      String            @map("message_id") @db.VarChar(500)
+  tenantId  String @default("") @map("tenant_id") @db.VarChar(100)
+  companyId String @default("") @map("company_id") @db.VarChar(100)
+  consumer  String @map("consumer_key") @db.VarChar(250)
+  messageId String @map("message_id") @db.VarChar(500)
 
-  /** Contract name of the event (`inventory.grn.created`). */
-  eventName      String            @map("event_name") @db.VarChar(250)
-  eventVersion   Int               @default(1) @map("event_version")
-  messageType    String            @map("message_type") @db.VarChar(250)
+  /**
+   * Contract name of the event (`inventory.grn.created`).
+   */
+  eventName    String @map("event_name") @db.VarChar(250)
+  eventVersion Int    @default(1) @map("event_version")
+  messageType  String @map("message_type") @db.VarChar(250)
 
-  payload        Json
-  payloadHash    String?           @map("payload_hash") @db.VarChar(128)
-  headers        Json?
+  payload     Json
+  payloadHash String? @map("payload_hash") @db.VarChar(128)
+  headers     Json?
 
-  status         InboxMessageStatus @default(IN_PROGRESS)
-  attempts       Int               @default(1)
+  status   InboxMessageStatus @default(IN_PROGRESS)
+  attempts Int                @default(1)
 
-  claimToken     String            @map("claim_token") @db.Uuid
-  claimedAt      DateTime?         @map("claimed_at")
-  processedAt    DateTime?         @map("processed_at")
-  nextAttemptAt  DateTime?         @map("next_attempt_at")
-  lastError      String?           @map("last_error") @db.Text
+  claimToken    String    @map("claim_token") @db.Uuid
+  claimedAt     DateTime? @map("claimed_at")
+  processedAt   DateTime? @map("processed_at")
+  nextAttemptAt DateTime? @map("next_attempt_at")
+  lastError     String?   @map("last_error") @db.Text
 
-  correlationId  String?           @map("correlation_id") @db.VarChar(200)
-  causationId    String?           @map("causation_id") @db.VarChar(200)
+  correlationId String? @map("correlation_id") @db.VarChar(200)
+  causationId   String? @map("causation_id") @db.VarChar(200)
 
-  createdAt      DateTime          @default(now()) @map("created_at")
-  updatedAt      DateTime          @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([tenantId, companyId, consumer, messageId])
   @@index([status, nextAttemptAt])

@@ -52,6 +52,13 @@ export class PrismaSagaDefinitionRepository implements SagaDefinitionRepositoryP
     return rows.map(row => this.toRecord(row));
   }
 
+  async findByKeyVersion(sagaKey: string, version: number): Promise<SagaDefinitionRecord | null> {
+    const row = await this.txHost.tx.sagaDefinition.findUnique({
+      where: { sagaKey_version: { sagaKey, version } },
+    });
+    return row ? this.toRecord(row) : null;
+  }
+
   async create(input: {
     sagaKey: string;
     ownerModule?: string | null;

@@ -7,7 +7,6 @@ import { BuildSagaPlanUseCase } from './build-saga-plan.usecase';
 import { BufferSagaEventUseCase } from './buffer-saga-event.usecase';
 import { CancelSagaUseCase } from './cancel-saga.usecase';
 import { StartSagaUseCase } from './start-saga.usecase';
-import { SagaCompanyConfigRepositoryPort } from '../outbound/ports/saga-company-config.repository.port';
 import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
 import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
 import {
@@ -69,7 +68,6 @@ describe('AcceptSagaEventUseCase', () => {
       findActiveByEvent: jest.fn(async (): Promise<SagaDefinitionRecord | null> => null),
       listActive: jest.fn(async (): Promise<SagaDefinitionRecord[]> => []),
     };
-    const configs = { findActive: jest.fn(async () => null) };
     const instances = {
       findLiveByKey: jest.fn(async (): Promise<SagaInstanceRecord[]> => []),
       findWaitingByEvent: jest.fn(async (): Promise<SagaInstanceRecord[]> => []),
@@ -93,7 +91,6 @@ describe('AcceptSagaEventUseCase', () => {
 
     const useCase = new AcceptSagaEventUseCase(
       definitions as unknown as SagaDefinitionRepositoryPort,
-      configs as unknown as SagaCompanyConfigRepositoryPort,
       instances as unknown as SagaInstanceRepositoryPort,
       planBuilder as unknown as BuildSagaPlanUseCase,
       startSaga as unknown as StartSagaUseCase,
@@ -107,7 +104,6 @@ describe('AcceptSagaEventUseCase', () => {
     return {
       useCase,
       definitions,
-      configs,
       instances,
       planBuilder,
       startSaga,

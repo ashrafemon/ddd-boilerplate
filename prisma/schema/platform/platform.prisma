@@ -1,29 +1,29 @@
 // Platform persistence models — company configuration, numbering sequences and audit trail.
 
 model CompanyConfig {
-  id                    String   @id @default(uuid()) @db.Uuid
-  companyId             String   @unique @db.Uuid
-  companyCode           String   @unique
-  companyName           String
-  defaultCurrency       String   @default("USD") @db.VarChar(3)
-  autoApproveThreshold  Decimal  @default(10000) @db.Decimal(18, 2)
-  overReceiptTolerance  Decimal  @default(0.1) @db.Decimal(5, 4)
-  isActive              Boolean  @default(true)
-  createdBy             String?
-  updatedBy             String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                   String   @id @default(uuid()) @db.Uuid
+  companyId            String   @unique @db.Uuid
+  companyCode          String   @unique
+  companyName          String
+  defaultCurrency      String   @default("USD") @db.VarChar(3)
+  autoApproveThreshold Decimal  @default(10000) @db.Decimal(18, 2)
+  overReceiptTolerance Decimal  @default(0.1) @db.Decimal(5, 4)
+  isActive             Boolean  @default(true)
+  createdBy            String?
+  updatedBy            String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@map("company_configs")
 }
 
 model NumberSequence {
-  id           String  @id @default(uuid()) @db.Uuid
-  key          String  @unique
-  prefix       String  @default("")
-  currentValue BigInt  @default(0)
-  padding      Int     @default(0)
-  step         Int     @default(1)
+  id           String   @id @default(uuid()) @db.Uuid
+  key          String   @unique
+  prefix       String   @default("")
+  currentValue BigInt   @default(0)
+  padding      Int      @default(0)
+  step         Int      @default(1)
   updatedAt    DateTime @updatedAt
 
   @@map("number_sequences")
@@ -32,7 +32,7 @@ model NumberSequence {
 model AuditLog {
   id            String   @id @default(uuid()) @db.Uuid
   tenantId      String?
-  companyId String?
+  companyId     String?
   actorType     String?
   actorId       String?
   action        String

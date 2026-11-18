@@ -8,7 +8,7 @@
 // mirrored to Redis for fast replay; Postgres stays authoritative for claims.
 // Expired rows are purged hourly by IdempotencyReconciliation.
 //
-// Multi-tenancy: (tenantId, companyId, scope, key) is the natural
+// Multi-tenancy: (tenantId, companyId, scope, idempotency_key) is the natural
 // identity. The same key in another tenant/company is a different record.
 //
 // Claim contract: `leaseUntil` is the authoritative liveness boundary for an
@@ -28,33 +28,36 @@ enum IdempotencyStatus {
 }
 
 model IdempotencyKey {
-  id             String   @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
 
-  tenantId       String   @map("tenant_id") @db.VarChar(100)
-  companyId String   @map("company_id") @db.VarChar(100)
-  scope          String   @db.VarChar(200)
-  key            String   @db.VarChar(500)
+  tenantId       String @map("tenant_id") @db.VarChar(100)
+  companyId      String @map("company_id") @db.VarChar(100)
+  scope          String @db.VarChar(200)
+  /**
+   * Natural key of the reservation; the physical column is the workbook's `idempotency_key`.
+   */
+  idempotencyKey String @map("idempotency_key") @db.VarChar(500)
 
-  requestHash    String?  @map("request_hash") @db.VarChar(128)
+  requestHash String? @map("request_hash") @db.VarChar(128)
 
-  status         IdempotencyStatus @default(IN_PROGRESS)
+  status IdempotencyStatus @default(IN_PROGRESS)
 
-  claimToken     String   @map("claim_token") @db.Uuid
-  version        Int      @default(1)
+  claimToken String @map("claim_token") @db.Uuid
+  version    Int    @default(1)
 
-  resultJson     Json?    @map("result_json")
+  resultJson Json? @map("result_json")
 
-  claimedAt      DateTime? @map("claimed_at")
-  leaseUntil     DateTime? @map("lease_until")
-  completedAt    DateTime? @map("completed_at")
-  lastError      String?   @map("last_error") @db.Text
+  claimedAt   DateTime? @map("claimed_at")
+  leaseUntil  DateTime? @map("lease_until")
+  completedAt DateTime? @map("completed_at")
+  lastError   String?   @map("last_error") @db.Text
 
-  expiresAt      DateTime @map("expires_at")
+  expiresAt DateTime @map("expires_at")
 
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([tenantId, companyId, scope, key])
+  @@unique([tenantId, companyId, scope, idempotencyKey])
   @@index([expiresAt])
   @@index([status, leaseUntil])
   @@index([tenantId, companyId])

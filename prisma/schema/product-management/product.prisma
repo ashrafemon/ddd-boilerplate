@@ -14,9 +14,9 @@ model Product {
   tenantId    String?
   companyId   String        @default("00000000-0000-0000-0000-000000000000")
 
+  @@unique([companyId, sku])
   @@index([tenantId])
   @@index([companyId])
-  @@unique([companyId, sku])
   @@index([status])
   @@index([createdAt])
   @@map("products")

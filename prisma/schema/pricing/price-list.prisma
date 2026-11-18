@@ -1,34 +1,34 @@
 // Pricing context — Price List aggregate.
 // Pricing separated from Product context.
 model PriceList {
-  id            String   @id @default(uuid()) @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
   name          String
   code          String
-  currency      String   @db.VarChar(3)
-  effectiveFrom DateTime @default(now())
+  currency      String    @db.VarChar(3)
+  effectiveFrom DateTime  @default(now())
   effectiveTo   DateTime?
-  status        String   @default("DRAFT") @db.VarChar(20)
+  status        String    @default("DRAFT") @db.VarChar(20)
   tenantId      String?
-  companyId     String   @default("00000000-0000-0000-0000-000000000000")
-  version       Int        @default(1)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  companyId     String    @default("00000000-0000-0000-0000-000000000000")
+  version       Int       @default(1)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
+  @@unique([companyId, code])
   @@index([tenantId])
   @@index([companyId])
-  @@unique([companyId, code])
   @@map("price_lists")
 }
 
 model PriceListLine {
-  id          String   @id @default(uuid()) @db.Uuid
-  priceListId String   @map("price_list_id") @db.Uuid
-  productId   String   @map("product_id") @db.Uuid
-  price       Decimal  @db.Decimal(18, 2)
-  minQuantity Int        @default(1)
+  id          String  @id @default(uuid()) @db.Uuid
+  priceListId String  @map("price_list_id") @db.Uuid
+  productId   String  @map("product_id") @db.Uuid
+  price       Decimal @db.Decimal(18, 2)
+  minQuantity Int     @default(1)
   maxQuantity Int?
-  companyId   String   @map("company_id") @db.VarChar(100)
-  tenantId    String   @map("tenant_id") @db.VarChar(100)
+  companyId   String  @map("company_id") @db.VarChar(100)
+  tenantId    String  @map("tenant_id") @db.VarChar(100)
 
   @@index([priceListId])
   @@index([productId])
@@ -38,18 +38,18 @@ model PriceListLine {
 }
 
 model CustomerPrice {
-  id        String   @id @default(uuid()) @db.Uuid
-  companyId String   @map("company_id") @db.VarChar(100)
-  tenantId  String   @map("tenant_id") @db.VarChar(100)
-  productId String   @map("product_id") @db.Uuid
-  price     Decimal  @db.Decimal(18, 2)
-  currency  String   @db.VarChar(3)
-  effectiveFrom DateTime @default(now())
+  id            String    @id @default(uuid()) @db.Uuid
+  companyId     String    @map("company_id") @db.VarChar(100)
+  tenantId      String    @map("tenant_id") @db.VarChar(100)
+  productId     String    @map("product_id") @db.Uuid
+  price         Decimal   @db.Decimal(18, 2)
+  currency      String    @db.VarChar(3)
+  effectiveFrom DateTime  @default(now())
   effectiveTo   DateTime?
 
+  @@unique([productId, companyId, tenantId])
   @@index([productId])
   @@index([companyId])
   @@index([tenantId])
-  @@unique([productId, companyId, tenantId])
   @@map("customer_prices")
 }

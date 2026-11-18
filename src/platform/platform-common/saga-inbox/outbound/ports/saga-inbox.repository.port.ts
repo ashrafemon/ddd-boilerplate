@@ -1,4 +1,4 @@
-import { SagaInboxRecord } from '../../types/saga.types';
+import { SagaInboxRecord } from '../../types/saga-inbox.types';
 
 /** Values needed to buffer one delivered event for an instance. */
 export interface InsertInboxInput {
@@ -33,7 +33,17 @@ export abstract class SagaInboxRepositoryPort {
 
   abstract markConsumed(id: string): Promise<void>;
 
-  abstract markIgnored(id: string, reason: string): Promise<void>;
+  /**
+   * Park every still-BUFFERED event for one instance + event contract as
+   * IGNORED. Used when a WAIT step times out and the plan skips it, so the
+   * ledger records why those deliveries never ran.
+   */
+  abstract ignoreBuffered(
+    instanceId: string,
+    eventName: string,
+    eventVersion: number,
+    reason: string,
+  ): Promise<number>;
 
   /** BUFFERED events for an instance, oldest first. */
   abstract listBuffered(

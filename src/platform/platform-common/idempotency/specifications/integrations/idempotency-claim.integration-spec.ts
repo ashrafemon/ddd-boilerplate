@@ -137,7 +137,7 @@ describe('Idempotency claim ledger (integration)', () => {
 
     await port.fail({ reservation: reserved.reservation });
 
-    expect(await prisma.idempotencyKey.count({ where: { key: id.key } })).toBe(0);
+    expect(await prisma.idempotencyKey.count({ where: { idempotencyKey: id.key } })).toBe(0);
     expect((await port.reserve(id)).status).toBe('ACQUIRED');
   });
 });

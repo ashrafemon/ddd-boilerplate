@@ -3,7 +3,7 @@ import { instance, plan, planStep, step } from '@test/support/saga/saga.fixtures
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
 import { CompleteSagaUseCase } from './complete-saga.usecase';
 import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
+import { SagaInboxPort } from '@platform/platform-common/saga-inbox/inbound/ports/saga-inbox.port';
 import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
 import { SagaInstanceStatus, SagaStepKind, SagaStepStatus } from '../types/saga.types';
 
@@ -31,7 +31,7 @@ function makeSut() {
   const useCase = new AdvanceSagaUseCase(
     instances as unknown as SagaInstanceRepositoryPort,
     steps as unknown as SagaStepRepositoryPort,
-    inbox as unknown as SagaInboxRepositoryPort,
+    inbox as unknown as SagaInboxPort,
     CONFIG,
     completeSaga as unknown as CompleteSagaUseCase,
   );

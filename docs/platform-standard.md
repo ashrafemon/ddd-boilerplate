@@ -251,15 +251,31 @@ back off the rest) and purge (processed past retention) use cases.
 
 ## 9. Saga persistence (implemented)
 
-Module: `platform-common/process-orchestration/saga/`. Four tables, all workbook column names
-(physical snake_case, `@map`-ed at the Prisma edge):
+Three sibling modules own the workbook's saga tables — all physical column names
+(`DB Tables`, snake_case, `@map`-ed at the Prisma edge). `saga_company_overlays` is
+deliberately **not** implemented: plans come from the platform definition only.
+
+| Module                      | Owns                                        | Seam consumed by the engine |
+| --------------------------- | ------------------------------------------- | --------------------------- |
+| `platform-common/saga`      | `saga_definitions`, `saga_instances`, `saga_steps` + the runtime | `SagaInboundPort` (public), `SagaActionResolverPort` |
+| `platform-common/saga-outbox` | `saga_outbox` + dispatcher tick/retention  | `SagaOutboxWriterPort`      |
+| `platform-common/saga-inbox`  | `saga_inbox` + buffer/consume + retention  | `SagaInboxPort`             |
+
+`SagaModule` imports the other two and re-exports neither. Dependency direction is
+`SagaModule → saga-outbox`, `SagaModule → saga-inbox`, and never back, so a ledger
+can change its retention or claim strategy without touching the engine. Each ledger
+module keeps its own inbound port + adapter and outbound port + adapter (standard
+§2/§3), and its own scheduled service: `SagaInboxRetentionService` (`cleanup-saga-inbox`)
+and `SagaOutboxDispatcherService` (tick on `SAGA_OUTBOX_POLL_INTERVAL_MS` +
+`cleanup-saga-outbox`). The runtime sweep only runs due steps, WAIT timeouts and
+stale leases — retention is never the engine's job.
 
 | Table                  | Notes                                                                                                    |
 | ---------------------- | -------------------------------------------------------------------------------------------------------- |
 | `saga_definitions`     | `owner_module` (owning business module), `(saga_key, version)` unique, ACTIVE row per event contract     |
-| `saga_company_configs` | one ACTIVE overlay per `(company, saga_key)`; overlays narrow only (`saga_company_overlays` is dropped)  |
-| `saga_instances`       | `correlation_id`, frozen `plan`, `cursor`, `waiting_event`, `last_error`, `started_at`/`finished_at`     |
+| `saga_instances`       | `correlation_id`, frozen `plan`, `cursor`, `waiting_event`, `last_error`, `started_at`/`finished_at`; `config_id` is kept as a reserved (always NULL) workbook column |
 | `saga_steps`           | `attempts`, `event_name`/`event_version` (WAIT), `last_error`, timings, `locked_by`/`lock_until` lease   |
+| `saga_outbox`          | the saga's publication ledger; column-identical to `outbox_messages`, so `OutboxLedgerRepository` serves both |
 | `saga_inbox`           | dedupe + WAIT buffer: `consumer_key`, `message_id`, `payload_hash`, `headers`, `attempts`, claim columns |
 
 - **One live instance per `(tenant, company, saga_key, correlation_key)`**: Prisma cannot express a
@@ -267,15 +283,40 @@ Module: `platform-common/process-orchestration/saga/`. Four tables, all workbook
   (`encodeURIComponent(sagaKey)|encodeURIComponent(correlationKey)`); the repository sets it on
   insert and NULLs it on every terminal transition. NULLs never collide, which is exactly
   `WHERE status IN ('RUNNING','WAITING','COMPENSATING')` without a hand-written SQL migration step.
-- **Completion events ride the shared outbox** (`aggregateType = 'Saga'`), inside the same
-  transaction as the terminal CAS. The router ignores `aggregateType = 'Saga'` envelopes, so an
-  `onComplete.emit` can never start another saga. A standalone `saga_outbox` remains the alternative
-  if saga traffic ever needs isolation; `PublishPendingBatchUseCase` is already parameterized over a
-  repository contract to make that swap cheap.
+- **Completion events are appended to `saga_outbox`** inside the same transaction as the terminal
+  CAS, so "saga completed" and "the downstream event exists" cannot disagree. `SagaOutboxWriterPort`
+  is the write seam (`AppendSagaOutboxEventUseCase`, identical envelope handling to the shared
+  writer) and `SagaOutboxDispatcherService` owns the tick plus retention on
+  `SAGA_OUTBOX_POLL_INTERVAL_MS`, so lifecycle traffic is claimed and retried on its own schedule
+  rather than competing with business rows in `outbox_messages`. The router still ignores
+  `aggregateType = 'Saga'` envelopes, so an `onComplete.emit` can never start another saga.
+  Both ledgers share one implementation (`OutboxLedgerRepository`, bound to a whitelisted table
+  name), so the claim/CAS state machine exists exactly once.
 - Steps are claimed with `FOR UPDATE SKIP LOCKED` + lease and `RETURNING` aliases every snake_case
   column (`$queryRaw` returns physical names; an un-aliased `RETURNING *` yields undefined camelCase
   fields, which silently breaks the fairness cap). Settles are CAS on status; a crashed worker is
   recovered by the sweep (`findStaleRunning` → `reschedule`), not a reconciler.
+
+### 9a. Publishing a definition
+
+Definitions are published through `RegisterSagaDefinitionUseCase` (flow step 1 of
+the workbook `8-Saga` sheet): the document is normalised by `parseSagaDefinition`,
+an invalid one is rejected as a `BadRequestException` (never half-applied), and an
+already published `(saga_key, version)` is a no-op — the version number is the
+contract and a publish never mutates an existing row, so running instances keep the
+plan snapshot they started with.
+
+The published document shape (`saga/types/saga-definition.document.ts`) is the
+workbook's: `action`/`compensation` refs with versions, explicit `kind`, upper-case
+enums, `acceptedEventCondition` for WAIT steps and `onComplete.emit` as a ref. The
+parser maps it onto the canonical `SagaDefinitionBody` (`action`→`do`,
+`compensation`→`undo`, `acceptedEventCondition`→`when`, enums lower-cased,
+`retryPolicy` profiles → attempt overrides).
+
+The reference saga is `saga/types/definitions/goods-receipt.definition.ts`,
+transcribed verbatim from the workbook; `prisma/seed.ts` registers the
+`SAGA_DEFINITION_CATALOG` through the same parser, and
+`goods-receipt.definition.spec.ts` asserts the plan the sheet describes.
 
 ## 10. Migration staging (per touch)
 

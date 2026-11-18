@@ -1,22 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { OutboxWriterPort } from '@platform/platform-common/outbox/inbound/ports/outbox-writer.port';
 import { SagaEmittedEvent } from '../types/saga-emitted.event';
 import { SagaInstanceRecord, SagaInstanceStatus } from '../types/saga.types';
 import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
+import { SagaOutboxWriterPort } from '@platform/platform-common/saga-outbox/inbound/ports/saga-outbox-writer.port';
 
 /**
  * Use case: finish an instance whose plan cursor walked past the last step.
  *
  * Completion is a terminal CAS (which also releases the live unique key). The
- * optional `onComplete.emit` event rides the normal outbox inside the caller's
- * transaction, so "saga completed" and "the downstream event exists" cannot
- * disagree.
+ * optional `onComplete.emit` event is appended to `saga_outbox` inside the
+ * caller's transaction, so "saga completed" and "the downstream event exists"
+ * cannot disagree. The saga dispatcher publishes it afterwards.
  */
 @Injectable()
 export class CompleteSagaUseCase {
   constructor(
     private readonly instances: SagaInstanceRepositoryPort,
-    private readonly outbox: OutboxWriterPort,
+    private readonly outbox: SagaOutboxWriterPort,
   ) {}
 
   async execute(instance: SagaInstanceRecord, cursor: number): Promise<SagaInstanceRecord | null> {

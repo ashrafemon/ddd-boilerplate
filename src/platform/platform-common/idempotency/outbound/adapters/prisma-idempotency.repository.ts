@@ -27,11 +27,11 @@ export class PrismaIdempotencyRepository implements IdempotencyRepositoryPort {
   async findByIdentity(identity: IdempotencyIdentity): Promise<IdempotencyRowView | null> {
     const row = await this.prisma.idempotencyKey.findUnique({
       where: {
-        tenantId_companyId_scope_key: {
+        tenantId_companyId_scope_idempotencyKey: {
           tenantId: identity.tenantId,
           companyId: identity.companyId,
           scope: identity.scope,
-          key: identity.key,
+          idempotencyKey: identity.key,
         },
       },
       select: {
@@ -74,7 +74,7 @@ export class PrismaIdempotencyRepository implements IdempotencyRepositoryPort {
         tenantId: identity.tenantId,
         companyId: identity.companyId,
         scope: identity.scope,
-        key: identity.key,
+        idempotencyKey: identity.key,
         claimToken,
         requestHash: requestHash ?? null,
         expiresAt,
@@ -105,7 +105,7 @@ export class PrismaIdempotencyRepository implements IdempotencyRepositoryPort {
         tenantId: identity.tenantId,
         companyId: identity.companyId,
         scope: identity.scope,
-        key: identity.key,
+        idempotencyKey: identity.key,
         status: 'IN_PROGRESS',
         OR: [
           { leaseUntil: { lt: now } },
@@ -127,11 +127,11 @@ export class PrismaIdempotencyRepository implements IdempotencyRepositoryPort {
 
     const row = await this.prisma.idempotencyKey.findUnique({
       where: {
-        tenantId_companyId_scope_key: {
+        tenantId_companyId_scope_idempotencyKey: {
           tenantId: identity.tenantId,
           companyId: identity.companyId,
           scope: identity.scope,
-          key: identity.key,
+          idempotencyKey: identity.key,
         },
       },
       select: { id: true, version: true },

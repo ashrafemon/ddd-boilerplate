@@ -19,7 +19,7 @@ import { NumberingModule } from './platform-common/numbering/numbering.module';
 import { ObservabilityModule } from './platform-common/observability/observability.module';
 import { HealthModule } from './platform-common/health/health.module';
 import { RecurringModule } from './platform-common/recurring/recurring.module';
-import { SagaModule } from './platform-common/process-orchestration/saga/saga.module';
+import { SagaModule } from './platform-common/saga/saga.module';
 import { AuthorizationModule } from './platform-organization/authorization/authorization.module';
 import { SchedulerModule } from './platform-common/scheduler/scheduler.module';
 import { StorageModule } from './platform-common/storage/storage.module';

@@ -4,7 +4,6 @@ import { SagaSweepService } from './saga-sweep.service';
 import { SagaStepWorkerService, STALE_LEASE_ERROR } from './saga-step-worker.service';
 import { ExecuteSagaStepUseCase } from '../use-cases/execute-saga-step.usecase';
 import { ExpireWaitStepUseCase } from '../use-cases/expire-wait-step.usecase';
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
 import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
 
 /**
@@ -12,13 +11,13 @@ import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.p
  *
  * A tick must run claimed rows, then timeouts, then stale leases; a second tick
  * while one is in flight must be dropped (otherwise a slow batch doubles every
- * side effect); retention is hourly and separate.
+ * side effect). Inbox retention is not the sweep's job any more — it belongs to
+ * `SagaInboxRetentionService`.
  */
 describe('SagaSweepService', () => {
   const CONFIG = {
     getSaga: () => ({
       sweepIntervalMs: 10_000,
-      inboxRetentionDays: 30,
       workerLeaseSeconds: 60,
       claimBatchSize: 20,
       fairnessCap: 5,
@@ -34,17 +33,15 @@ describe('SagaSweepService', () => {
       findStaleRunning: jest.fn(async () => [] as ReturnType<typeof step>[]),
       reschedule: jest.fn(async () => undefined),
     };
-    const inbox = { purgeOlderThan: jest.fn(async () => 0) };
 
     const service = new SagaSweepService(
       worker as unknown as SagaStepWorkerService,
       executeStep as unknown as ExecuteSagaStepUseCase,
       expireWait as unknown as ExpireWaitStepUseCase,
       steps as unknown as SagaStepRepositoryPort,
-      inbox as unknown as SagaInboxRepositoryPort,
       CONFIG,
     );
-    return { service, worker, executeStep, expireWait, steps, inbox };
+    return { service, worker, executeStep, expireWait, steps };
   }
 
   afterEach(() => {
@@ -96,14 +93,6 @@ describe('SagaSweepService', () => {
     await expect(service.tick()).resolves.toBeUndefined();
     await expect(service.tick()).resolves.toBeUndefined();
     expect(worker.claimBatch).toHaveBeenCalledTimes(2);
-  });
-
-  it('purges saga inbox rows past retention', async () => {
-    const { service, inbox } = makeSut();
-
-    await service.cleanupInbox();
-
-    expect(inbox.purgeOlderThan).toHaveBeenCalledWith(30);
   });
 
   it('starts and stops its interval without leaking a timer', () => {

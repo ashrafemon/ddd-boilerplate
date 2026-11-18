@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 import { numericEnv } from '@common/application/utils/env.util';
-import { ISagaConfig } from '@platform/platform-common/process-orchestration/saga/types/saga.types';
+import { ISagaConfig } from '@platform/platform-common/saga/types/saga.types';
 
 /**
  * Saga process orchestration configuration (design 08).
@@ -14,4 +14,5 @@ export default registerAs('saga', (): ISagaConfig => ({
   retryMaxDelayMs: numericEnv('SAGA_RETRY_MAX_DELAY_MS', 600_000),
   defaultMaxAttempts: numericEnv('SAGA_DEFAULT_MAX_ATTEMPTS', 5),
   inboxRetentionDays: numericEnv('SAGA_INBOX_RETENTION_DAYS', 30),
+  outboxPollIntervalMs: numericEnv('SAGA_OUTBOX_POLL_INTERVAL_MS', 10_000),
 }));

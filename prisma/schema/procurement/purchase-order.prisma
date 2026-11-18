@@ -7,49 +7,49 @@
 //   actor trail written from RequestContextPort; nullable, never backfilled (E-4).
 //   approval record: approvedAt/rejectedAt/rejectionReason (Phase 2.3, minimal).
 model PurchaseOrder {
-  id          String                @id @default(uuid()) @db.Uuid
+  id                   String              @id @default(uuid()) @db.Uuid
   // Unique WITHIN the company, not globally: the numbering series is
   // company-scoped, so two companies each have a PO-00000001.
-  orderNumber String
+  orderNumber          String
   // Caller-supplied reference (import poReference). Groups import rows into one PO and
   // makes re-imports find-or-create; NULL for POs created any other way.
-  externalReference String?           @db.VarChar(128)
-  vendorId    String                @db.Uuid
-  status      PurchaseOrderStatus   @default(DRAFT)
-  currency    String                @default("USD") @db.VarChar(3)
-  subtotal    Decimal               @default(0) @db.Decimal(18, 2)
-  total       Decimal               @default(0) @db.Decimal(18, 2)
+  externalReference    String?             @db.VarChar(128)
+  vendorId             String              @db.Uuid
+  status               PurchaseOrderStatus @default(DRAFT)
+  currency             String              @default("USD") @db.VarChar(3)
+  subtotal             Decimal             @default(0) @db.Decimal(18, 2)
+  total                Decimal             @default(0) @db.Decimal(18, 2)
   // Commercial header (spec §3.1).
   orderDate            DateTime?
   expectedDeliveryDate DateTime?
   // Actor & approval trail (plan §1.2 / §2.3) — nullable, no backfill.
-  createdBy       String?
-  approvedBy      String?
-  approvedAt      DateTime?
-  rejectedBy      String?
-  rejectedAt      DateTime?
-  rejectionReason String?
-  issuedBy        String?
-  cancelledBy     String?
+  createdBy            String?
+  approvedBy           String?
+  approvedAt           DateTime?
+  rejectedBy           String?
+  rejectedAt           DateTime?
+  rejectionReason      String?
+  issuedBy             String?
+  cancelledBy          String?
   // Amendment trail (spec §4 "AmendPurchaseOrder", PO-06): an ISSUED order is
   // not freely editable — a controlled amendment records who, when and why.
-  amendedBy        String?
-  amendedAt        DateTime?
-  amendmentReason  String?
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  version     Int                   @default(1)
+  amendedBy            String?
+  amendedAt            DateTime?
+  amendmentReason      String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  version              Int                 @default(1)
   // Tenancy (ARCHITECTURE.md §5 / AGENTS.md rule 1): stamped from the request
   // context on create, scoped on every read and write. NULL means the row was
   // created outside a tenant-scoped request (single-tenant deployments).
-  tenantId    String?
-  companyId   String                @default("00000000-0000-0000-0000-000000000000")
-  lines       PurchaseOrderLine[]
+  tenantId             String?
+  companyId            String              @default("00000000-0000-0000-0000-000000000000")
+  lines                PurchaseOrderLine[]
 
-  @@index([tenantId])
-  @@index([companyId])
   @@unique([companyId, orderNumber])
   @@unique([companyId, externalReference])
+  @@index([tenantId])
+  @@index([companyId])
   @@index([vendorId])
   @@index([status])
   @@index([createdAt])
@@ -57,17 +57,17 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderLine {
-  id            String        @id @default(uuid()) @db.Uuid
-  purchaseOrderId String      @db.Uuid
-  productId     String        @db.Uuid
-  quantity      Int
-  receivedQuantity Int        @default(0)
+  id                  String        @id @default(uuid()) @db.Uuid
+  purchaseOrderId     String        @db.Uuid
+  productId           String        @db.Uuid
+  quantity            Int
+  receivedQuantity    Int           @default(0)
   // Commercial snapshot from the product master at add/issue time (spec §3.2/§3.3):
   // a later product rename must not silently change this PO's agreed description.
   descriptionSnapshot String?
-  unitPrice     Decimal       @db.Decimal(18, 2)
-  total         Decimal       @db.Decimal(18, 2)
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  unitPrice           Decimal       @db.Decimal(18, 2)
+  total               Decimal       @db.Decimal(18, 2)
+  purchaseOrder       PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 
   @@unique([purchaseOrderId, productId])
   @@index([productId])

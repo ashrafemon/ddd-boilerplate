@@ -21,7 +21,7 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started.
 | 0     | Publish the standard + enforcement scaffolding             | `platform-standard.md`, architecture specs, `test:architecture`                                                                | ✅     |
 | 1     | Pilot the anatomy on the two smallest capabilities         | `idempotency`, `cache`                                                                                                         | ✅     |
 | 2     | Migrate the event spine (the modules that call each other) | `locking`, `outbox`, `messaging`, `events`, `inbox`                                                                            | ✅     |
-| 3     | Migrate the saga runtime + finish its persistence          | `process-orchestration/saga`, `saga.prisma`                                                                                    | ✅     |
+| 3     | Migrate the saga runtime + finish its persistence          | `saga`, `saga.prisma`                                                                                    | ✅     |
 | 4     | Migrate the HTTP-facing capabilities                       | `numbering` ✅, `audit` ✅, `health` ✅, then `import`, `notification`, `webhook`, `scheduler`, `recurring`, `batch-operation` | 🚧     |
 | 5     | Finish the contract-side rename work                       | business listeners                                                                                                             | 🚧     |
 | 6     | Flip enforcement from staged to global                     | architecture specs, `eslint.config.mjs`, `docs/architecture.md`                                                                | ⬜     |
@@ -89,7 +89,7 @@ Exit criteria met:
 
 ## Phase 3 — Saga runtime ✅
 
-`src/platform/platform-common/process-orchestration/saga/` is migrated; it was the last module
+`src/platform/platform-common/saga/` is migrated; it was the last module
 with the legacy shape. `ports/`, `repositories/`, `application/`, `workers/`, `events/`,
 `adapters/` and `saga.scheduler.ts` are gone.
 
@@ -97,30 +97,56 @@ with the legacy shape. `ports/`, `repositories/`, `application/`, `workers/`, `e
 
 | Decision                        | Result                                                                                                                                                                                                                                                                                                                                      |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `saga_company_overlays`         | **dropped**; overrides live in `saga_company_configs` (one ACTIVE row per company/saga)                                                                                                                                                                                                                                                     |
+| `saga_company_overlays`         | **removed** (2026-11): no per-company narrowing source is implemented, so the table, its repository port/adapter and the overlay fetch are gone; `saga_instances.config_id` stays as a reserved always-NULL workbook column and `BuildSagaPlanUseCase` still accepts an `overlay` argument as a future seam |
 | `saga_definitions.owner_module` | added — the owning business module                                                                                                                                                                                                                                                                                                          |
 | `saga_steps`                    | `attempts`, `event_name`/`event_version` (WAIT rows), `last_error`, `started_at`/`finished_at`                                                                                                                                                                                                                                              |
 | `saga_instances`                | `correlation_id`, `last_error`, `started_at`/`finished_at`                                                                                                                                                                                                                                                                                  |
 | live-instance uniqueness        | nullable unique `live_key` = `encodeURIComponent(sagaKey)\|encodeURIComponent(correlationKey)`, set on insert and NULLed on every terminal transition — the portable equivalent of `WHERE status IN ('RUNNING','WAITING','COMPENSATING')`, because Prisma cannot express a partial unique index and `db:push` would drop a hand-written one |
 | `saga_inbox`                    | workbook columns: `consumer_key`, `message_id`, `payload_hash`, `headers`, `attempts`, `claim_token`/`claimed_at`, `processed_at`, `next_attempt_at`, `last_error`                                                                                                                                                                          |
-| completion events               | ride the shared outbox with `aggregateType = 'Saga'` (loop-guarded by the router); standalone `saga_outbox` stays an option, not a TODO                                                                                                                                                                                                     |
+| completion events               | appended to the saga's own `saga_outbox` ledger inside the terminal CAS, published by `SagaOutboxDispatcherService` (own cadence + retention); the router still ignores `aggregateType = 'Saga'` envelopes, so `onComplete.emit` can never start another saga |
 
 ### 3b. Shape (applied)
 
+Split (2026-11) into three modules, one per ledger boundary:
+
 ```
-saga/
-├── saga.module.ts
+saga/                      engine + definitions/instances/steps
+├── saga.module.ts         imports SagaOutboxModule + SagaInboxModule, re-exports neither
 ├── inbound/{ports/saga-inbound.port.ts, adapters/saga-router.adapter.ts}
-├── outbound/ports/  saga-{definition,company-config,instance,step,inbox}.repository.port.ts
+├── outbound/ports/  saga-{definition,instance,step}.repository.port.ts
 │                    saga-action.port.ts (token + resolver), feature-gate.port.ts,
 │                    company-settings.port.ts
-├── outbound/adapters/ prisma-saga-*.repository.ts, saga-action.registry.ts, empty-*.adapter.ts
+├── outbound/adapters/ prisma-saga-{definition,instance,step}.repository.ts,
+│                      saga-action.registry.ts, empty-*.adapter.ts
 ├── use-cases/  build-saga-plan, accept-saga-event, start-saga, advance-saga, complete-saga,
 │               cancel-saga, start-compensation, settle-step-success, settle-step-failure,
-│               execute-saga-step, expire-wait-step, buffer-saga-event  (+ .usecase.ts)
+│               execute-saga-step, expire-wait-step, buffer-saga-event, register-saga-definition
 ├── services/   saga-step-worker.service.ts, saga-sweep.service.ts
-└── types/      saga.types.ts, saga-expression.ts, saga-scope.ts, saga-emitted.event.ts
+└── types/      saga.types.ts, saga-expression.ts, saga-scope.ts, saga-emitted.event.ts,
+                saga-definition.{document,parser}.ts, definitions/goods-receipt.definition.ts
+
+saga-outbox/               the `saga_outbox` publication ledger
+├── saga-outbox.module.ts  exports SagaOutboxWriterPort only
+├── inbound/{ports/saga-outbox-writer.port.ts, adapters/saga-outbox-writer.adapter.ts}
+├── outbound/{ports/saga-outbox.repository.port.ts, adapters/prisma-saga-outbox.repository.ts}
+├── use-cases/  append-saga-outbox-event, publish-saga-outbox-batch, purge-published-saga-outbox
+├── services/   saga-outbox-dispatcher.service.ts (tick + cleanup-saga-outbox)
+└── specifications/integrations/saga-outbox-ledger.integration-spec.ts
+
+saga-inbox/                the `saga_inbox` dedupe/buffer ledger
+├── saga-inbox.module.ts   exports SagaInboxPort only
+├── inbound/{ports/saga-inbox.port.ts, adapters/saga-inbox.adapter.ts}
+├── outbound/{ports/saga-inbox.repository.port.ts, adapters/prisma-saga-inbox.repository.ts}
+├── use-cases/  buffer-saga-inbox-event, list-buffered-saga-events, mark-saga-event-consumed,
+│               ignore-buffered-saga-events, purge-saga-inbox
+├── services/   saga-inbox-retention.service.ts (cleanup-saga-inbox)
+└── types/      saga-inbox.types.ts
 ```
+
+The engine now consumes both ledgers through ports only (`SagaInboxPort.buffer/
+listBuffered/markConsumed/ignoreBuffered`, `SagaOutboxWriterPort.append`); WAIT
+retention moved out of the sweep, and a skipped WAIT parks its still-buffered
+deliveries as `IGNORED` with a reason instead of leaving rows BUFFERED forever.
 
 `SagaRouterAdapter implements SagaInboundPort`; `SagaActionRegistry implements
 SagaActionResolverPort`; the engine's hooks became settle/compensate/advance use cases, so no state
@@ -171,9 +197,11 @@ exists, `MIGRATED` gains the module, workbook table aligned if one exists.
 
 ## Phase 5 — Rename completion 🚧
 
-Every platform ledger now matches the workbook (`idempotency_keys`, `distributed_locks`,
-`outbox_messages`, `inbox_messages`, `saga_definitions`, `saga_instances`, `saga_steps`,
-`saga_inbox`). Remaining is the contract-side rename, which touches business code:
+Every platform ledger now matches the workbook `DB Tables` sheet (`idempotency_keys` with
+`idempotency_key`, `distributed_locks`, `outbox_messages`, `inbox_messages`, `saga_definitions`,
+`saga_instances`, `saga_steps`, `saga_outbox`, `saga_inbox`; `saga_company_overlays` intentionally not
+implemented). Remaining is
+the contract-side rename, which touches business code:
 
 | Item               | Remaining work                                                                                                                                                                                                  |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -211,7 +239,7 @@ folders; `hex` = migrated anatomy. Specs counts exclude integration/api specs.
 | `platform-common/messaging`        | 10    | 12    | hex    | —                           | —               |
 | `platform-common/events`           | 7     | 4     | hex    | —                           | —               |
 | `platform-common/inbox`            | 14    | 21    | hex    | `inbox_messages` ✅         | Phase 5 renames |
-| `process-orchestration/saga`       | 27    | 20    | hex    | `saga_*` ✅                 | Phase 5 renames |
+| `saga`       | 27    | 20    | hex    | `saga_*` ✅                 | Phase 5 renames |
 | `platform-common/import`           | 42    | 0     | legacy | `import_jobs`/rows          | Phase 4         |
 | `platform-common/notification`     | 42    | 0     | legacy | `notifications`/templates   | Phase 4         |
 | `platform-common/webhook`          | 40    | 0     | legacy | `webhook_*`                 | Phase 4         |

@@ -4,8 +4,11 @@
  * evaluator, defaults + company overlays that only narrow.
  *
  * Persisted records mirror the workbook tables (`saga_definitions`,
- * `saga_instances`, `saga_steps`, `saga_inbox`); field names are the contract
- * names, the repository maps the snake_case columns at its edge.
+ * `saga_instances`, `saga_steps`, `saga_outbox`, `saga_inbox`); field names are
+ * the contract names, the repository maps the snake_case columns at its edge.
+ * `saga_company_overlays` is deliberately not implemented — plans come from the
+ * platform definition only, so `SagaOverlay` survives as a pure seam the plan
+ * builder accepts but no runtime source feeds.
  */
 
 // ─── Statuses ───────────────────────────────────────────────────────────────
@@ -33,12 +36,6 @@ export enum SagaDefinitionStatus {
   RETIRED = 'RETIRED',
 }
 
-export enum SagaCompanyConfigStatus {
-  ACTIVE = 'ACTIVE',
-  INVALID = 'INVALID',
-  RETIRED = 'RETIRED',
-}
-
 export enum SagaStepKind {
   DO = 'DO',
   WAIT = 'WAIT',
@@ -51,13 +48,6 @@ export enum SagaStepStatus {
   DONE = 'DONE',
   SKIPPED = 'SKIPPED',
   FAILED = 'FAILED',
-}
-
-export enum SagaInboxStatus {
-  RECEIVED = 'RECEIVED',
-  BUFFERED = 'BUFFERED',
-  CONSUMED = 'CONSUMED',
-  IGNORED = 'IGNORED',
 }
 
 // ─── Definition format (platform default) ───────────────────────────────────
@@ -172,17 +162,6 @@ export interface SagaDefinitionRecord {
   createdAt: Date;
 }
 
-export interface SagaCompanyConfigRecord {
-  id: string;
-  tenantId: string;
-  companyId: string;
-  definitionId: string;
-  sagaKey: string;
-  baseVersion: number;
-  overlay: SagaOverlay;
-  status: SagaCompanyConfigStatus;
-}
-
 export interface SagaInstanceRecord {
   id: string;
   tenantId: string;
@@ -230,25 +209,6 @@ export interface SagaStepRecord {
   lastError: string | null;
   startedAt: Date | null;
   finishedAt: Date | null;
-}
-
-export interface SagaInboxRecord {
-  id: string;
-  tenantId: string;
-  companyId: string;
-  consumer: string;
-  eventId: string;
-  eventName: string;
-  eventVersion: number;
-  correlationKey: string | null;
-  instanceId: string | null;
-  payload: Record<string, unknown>;
-  payloadHash: string | null;
-  status: SagaInboxStatus;
-  attempts: number;
-  receivedAt: Date;
-  nextAttemptAt: Date | null;
-  lastError: string | null;
 }
 
 // ─── Trigger / inbound envelope ─────────────────────────────────────────────
@@ -314,6 +274,8 @@ export interface ISagaConfig {
   defaultMaxAttempts: number;
   /** Purge inbox rows older than this many days. */
   inboxRetentionDays: number;
+  /** Dispatch tick for the saga's own outbox ledger (`saga_outbox`). */
+  outboxPollIntervalMs: number;
 }
 
 export interface SagaScope extends Record<string, unknown> {

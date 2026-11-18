@@ -2,24 +2,24 @@
 // Producers never query these tables; they go through SchedulerPort / inbound ports.
 
 model ScheduledJob {
-  id             String                    @id @default(uuid()) @db.Uuid
+  id             String                   @id @default(uuid()) @db.Uuid
   tenantId       String?
   jobType        String
-  scope          ScheduledJobScope         @default(AGGREGATE)
-  scheduleMode   ScheduledJobScheduleMode  @default(EXTERNAL)
+  scope          ScheduledJobScope        @default(AGGREGATE)
+  scheduleMode   ScheduledJobScheduleMode @default(EXTERNAL)
   cronExpression String?
   aggregateType  String?
-  aggregateId    String?                   @db.Uuid
+  aggregateId    String?                  @db.Uuid
   payload        Json?
   nextRunAt      DateTime
   lastRunAt      DateTime?
-  status         ScheduledJobStatus        @default(PENDING)
-  retryCount     Int                       @default(0)
-  version        Int                       @default(0)
+  status         ScheduledJobStatus       @default(PENDING)
+  retryCount     Int                      @default(0)
+  version        Int                      @default(0)
   lockedUntil    DateTime?
   lockedBy       String?
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
 
   dispatchLogs        ScheduledJobDispatchLog[]
   editLogs            ScheduledJobEditLog[]

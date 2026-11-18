@@ -12,7 +12,6 @@ import {
 import { evaluateCondition, evaluateExpression, renderTemplate } from '../types/saga-expression';
 import { CompanySettingsReader } from '../outbound/ports/company-settings.port';
 import { FeatureGate } from '../outbound/ports/feature-gate.port';
-import { SagaCompanyConfigRepositoryPort } from '../outbound/ports/saga-company-config.repository.port';
 import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
 import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
 import { BuildSagaPlanUseCase } from './build-saga-plan.usecase';
@@ -26,7 +25,7 @@ const MAX_INSTANCES_PER_EVENT = 100;
  * Use case: route one delivered event to the sagas it belongs to.
  *
  * Five checks, in order, exactly as the design states them: `requires` +
- * policy (plan build), overlay (narrows), `if` (reached at advance time),
+ * policy (plan build), `if` (reached at advance time),
  * `when` (start filter / per-event WAIT filter), `match` (correlation key).
  *
  * Loop guard: the saga's own emitted events (`aggregateType = 'Saga'`) never
@@ -39,7 +38,6 @@ export class AcceptSagaEventUseCase {
 
   constructor(
     private readonly definitions: SagaDefinitionRepositoryPort,
-    private readonly configs: SagaCompanyConfigRepositoryPort,
     private readonly instances: SagaInstanceRepositoryPort,
     private readonly planBuilder: BuildSagaPlanUseCase,
     private readonly startSaga: StartSagaUseCase,
@@ -120,9 +118,9 @@ export class AcceptSagaEventUseCase {
       return;
     }
 
-    const overlay =
-      (await this.configs.findActive(event.tenantId, event.companyId, definition.sagaKey))
-        ?.overlay ?? null;
+    // No company-overlay source is implemented (see `saga.prisma`), so the plan
+    // is built from the platform definition alone and `config_id` stays NULL.
+    const overlay = null;
 
     const plan = this.planBuilder.execute({
       definition: definition.definition,

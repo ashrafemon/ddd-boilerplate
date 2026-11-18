@@ -4,17 +4,17 @@
 // No FK from entityId to domain tables — entityKey is opaque via registry.
 
 model StorageObject {
-  id          String              @id @default(uuid()) @db.Uuid
+  id          String               @id @default(uuid()) @db.Uuid
   tenantId    String?
   storageKey  String
   purpose     StorageObjectPurpose
   contentType String?
   sizeBytes   Int?
   checksum    String?
-  scanStatus  StorageScanStatus   @default(PENDING)
+  scanStatus  StorageScanStatus    @default(PENDING)
   expiresAt   DateTime?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
   importJobsAsSource      ImportJob[] @relation("ImportSourceObject")
   importJobsAsErrorReport ImportJob[] @relation("ImportErrorReportObject")
@@ -40,37 +40,37 @@ enum StorageScanStatus {
 }
 
 model ImportJob {
-  id                        String          @id @default(uuid()) @db.Uuid
-  tenantId                  String?
-  jobNo                     String
-  entityKey                 String
-  status                    ImportJobStatus @default(PENDING_UPLOAD)
-  descriptorVersion         Int
-  descriptorSnapshot        Json
-  columnMapping             Json?
-  statusHistory             Json            @default("[]")
-  totalRows                 Int             @default(0)
-  validRows                 Int             @default(0)
-  invalidRows               Int             @default(0)
-  appliedRows               Int             @default(0)
-  failedRows                Int             @default(0)
-  cancelRequested           Boolean         @default(false)
-  sourceStorageObjectId     String?         @db.Uuid
-  errorReportStorageObjectId String?        @db.Uuid
-  options                   Json?
-  requestedBy               String?
-  traceId                   String?
-  buildSha                  String?
-  heartbeatAt               DateTime?
-  lockedUntil               DateTime?
-  lockedBy                  String?
-  version                   Int             @default(0)
-  createdAt                 DateTime        @default(now())
-  updatedAt                 DateTime        @updatedAt
-  completedAt               DateTime?
+  id                         String          @id @default(uuid()) @db.Uuid
+  tenantId                   String?
+  jobNo                      String
+  entityKey                  String
+  status                     ImportJobStatus @default(PENDING_UPLOAD)
+  descriptorVersion          Int
+  descriptorSnapshot         Json
+  columnMapping              Json?
+  statusHistory              Json            @default("[]")
+  totalRows                  Int             @default(0)
+  validRows                  Int             @default(0)
+  invalidRows                Int             @default(0)
+  appliedRows                Int             @default(0)
+  failedRows                 Int             @default(0)
+  cancelRequested            Boolean         @default(false)
+  sourceStorageObjectId      String?         @db.Uuid
+  errorReportStorageObjectId String?         @db.Uuid
+  options                    Json?
+  requestedBy                String?
+  traceId                    String?
+  buildSha                   String?
+  heartbeatAt                DateTime?
+  lockedUntil                DateTime?
+  lockedBy                   String?
+  version                    Int             @default(0)
+  createdAt                  DateTime        @default(now())
+  updatedAt                  DateTime        @updatedAt
+  completedAt                DateTime?
 
-  sourceStorageObject      StorageObject?  @relation("ImportSourceObject", fields: [sourceStorageObjectId], references: [id], onDelete: Restrict)
-  errorReportStorageObject StorageObject?  @relation("ImportErrorReportObject", fields: [errorReportStorageObjectId], references: [id], onDelete: SetNull)
+  sourceStorageObject      StorageObject? @relation("ImportSourceObject", fields: [sourceStorageObjectId], references: [id], onDelete: Restrict)
+  errorReportStorageObject StorageObject? @relation("ImportErrorReportObject", fields: [errorReportStorageObjectId], references: [id], onDelete: SetNull)
   rows                     ImportJobRow[]
 
   @@unique([tenantId, jobNo])
@@ -95,24 +95,24 @@ enum ImportJobStatus {
 }
 
 model ImportJobRow {
-  id               String                    @id @default(uuid()) @db.Uuid
-  tenantId         String?
-  importJobId      String                    @db.Uuid
-  rowNumber        Int
-  rawPayload       Json?
-  mappedPayload    Json?
-  validationStatus ImportRowValidationStatus @default(PENDING)
-  executionStatus  ImportRowExecutionStatus  @default(PENDING)
+  id                  String                    @id @default(uuid()) @db.Uuid
+  tenantId            String?
+  importJobId         String                    @db.Uuid
+  rowNumber           Int
+  rawPayload          Json?
+  mappedPayload       Json?
+  validationStatus    ImportRowValidationStatus @default(PENDING)
+  executionStatus     ImportRowExecutionStatus  @default(PENDING)
   // Fencing token bumped by each execution claim; result application only
   // lands while the token still matches what the worker received.
-  executionClaimToken Int                    @default(0)
-  validationErrors Json?
-  errorMessage     String?
-  entityId         String?
-  secondaryEntityIds Json?
-  createdAt        DateTime                  @default(now())
-  updatedAt        DateTime                  @updatedAt
-  processedAt      DateTime?
+  executionClaimToken Int                       @default(0)
+  validationErrors    Json?
+  errorMessage        String?
+  entityId            String?
+  secondaryEntityIds  Json?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  processedAt         DateTime?
 
   job ImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
 

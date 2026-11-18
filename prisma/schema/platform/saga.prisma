@@ -1,15 +1,23 @@
 // ============================================================================
-// Platform — Saga: company-configurable cross-aggregate orchestration
-// (design 08). Five tables:
+// Platform — Saga: cross-aggregate orchestration (design 08).
+// Five tables — the workbook's `DB Tables` set minus `saga_company_overlays`,
+// which is intentionally NOT implemented: plans come from the platform
+// definition only (no per-company narrowing source exists yet).
 //   saga_definitions      platform defaults, found by (event_name, event_version)
-//   saga_company_configs  one ACTIVE overlay per (company, saga_key) — narrows only
 //   saga_instances        one live row per correlation key, holds the plan snapshot
 //   saga_steps            durable work queue + execution log + audit (id = idempotency key)
+//   saga_outbox           the saga's own publication ledger (onComplete.emit, lifecycle events)
 //   saga_inbox            dedupe by (tenant, company, consumer, event)
 // Column names follow the workbook's `DB Tables` sheet (`saga_definitions`,
-// `saga_instances`, `saga_steps`, `saga_inbox`), so hand-written SQL MUST use the
-// snake_case names. `action`, `instance_id`, `reason`, `received_at` are platform
-// extensions the workbook does not carry.
+// `saga_instances`, `saga_steps`, `saga_outbox`, `saga_inbox`), so hand-written
+// SQL MUST use the snake_case names.
+//
+// Platform extensions the workbook does not carry (declared here so nobody reads
+// them as drift): `saga_steps.action`, `saga_inbox.instance_id`/`reason`/
+// `received_at`, the `live_key` guard and the `created_at`/`updated_at`
+// timestamps, plus
+// `saga_outbox.causation_id`/`created_at`/`version` (shared with `outbox_messages`
+// so one ledger implementation serves both tables).
 //
 // One live instance per (tenant, company, saga_key, correlation_key): Prisma cannot
 // express a partial unique index, so the row carries a nullable `live_key` with a
@@ -26,14 +34,6 @@ enum SagaDefinitionStatus {
   RETIRED
 
   @@map("saga_definition_status")
-}
-
-enum SagaCompanyConfigStatus {
-  ACTIVE
-  INVALID
-  RETIRED
-
-  @@map("saga_company_config_status")
 }
 
 enum SagaInstanceState {
@@ -105,30 +105,16 @@ model SagaDefinition {
   @@map("saga_definitions")
 }
 
-model SagaCompanyConfig {
-  id           String                  @id @default(uuid()) @db.Uuid
-  tenantId     String                  @map("tenant_id") @db.VarChar(100)
-  companyId    String                  @map("company_id") @db.VarChar(100)
-  definitionId String                  @map("definition_id") @db.Uuid
-  sagaKey      String                  @map("saga_key") @db.VarChar(200)
-  version      Int                     @default(1)
-  baseVersion  Int                     @map("base_version")
-  overlay      Json
-  status       SagaCompanyConfigStatus @default(ACTIVE)
-  createdAt    DateTime                @default(now()) @map("created_at")
-  updatedAt    DateTime                @updatedAt @map("updated_at")
-
-  @@unique([companyId, sagaKey, version])
-  @@index([tenantId, companyId, sagaKey, status])
-  @@map("saga_company_configs")
-}
-
 model SagaInstance {
   id                String              @id @default(uuid()) @db.Uuid
   tenantId          String              @map("tenant_id") @db.VarChar(100)
   companyId         String              @map("company_id") @db.VarChar(100)
   sagaKey           String              @map("saga_key") @db.VarChar(200)
   definitionId      String              @map("definition_id") @db.Uuid
+  /**
+   * Workbook column kept for contract fidelity. No overlay source exists (see the
+   * header), so it stays NULL until one is introduced.
+   */
   configId          String?             @map("config_id") @db.Uuid
   rootRefType       String?             @map("root_ref_type") @db.VarChar(200)
   rootRefId         String?             @map("root_ref_id") @db.VarChar(200)
@@ -226,4 +212,55 @@ model SagaInbox {
   @@index([instanceId, status])
   @@index([status, nextAttemptAt])
   @@map("saga_inbox")
+}
+
+/**
+ * The saga's own publication ledger (workbook `saga_outbox`).
+ * Column-for-column identical to `outbox_messages` on purpose: one ledger
+ * implementation (`OutboxLedgerRepository`) serves both tables, so the saga can
+ * isolate its lifecycle traffic (`onComplete.emit`) behind its own claim,
+ * retry and retention policy without a second copy of the state machine.
+ * Status set is the workbook's shared one: PENDING | PUBLISHING | PUBLISHED |
+ * FAILED | DEAD_LETTER (see `outbox.prisma`).
+ */
+model SagaOutboxMessage {
+  id String @id @default(uuid()) @db.Uuid
+
+  tenantId  String? @map("tenant_id") @db.VarChar(100)
+  companyId String? @map("company_id") @db.VarChar(100)
+
+  /**
+   * Broker-facing message identity; consumers dedupe on it.
+   */
+  messageId    String @unique @map("message_id") @db.VarChar(200)
+  eventName    String @map("event_name") @db.VarChar(250)
+  eventVersion Int    @default(1) @map("event_version")
+
+  aggregateType    String @map("aggregate_type") @db.VarChar(200)
+  aggregateId      String @map("aggregate_id") @db.VarChar(200)
+  aggregateVersion Int?   @map("aggregate_version")
+
+  payload    Json
+  headers    Json?
+  occurredAt DateTime @map("occurred_at")
+
+  status      OutboxMessageStatus @default(PENDING)
+  attempts    Int                 @default(0)
+  claimToken  String?             @map("claim_token") @db.Uuid
+  claimedAt   DateTime?           @map("claimed_at")
+  availableAt DateTime?           @map("available_at")
+  publishedAt DateTime?           @map("published_at")
+  lastError   String?             @map("last_error") @db.Text
+
+  correlationId String? @map("correlation_id") @db.VarChar(200)
+  causationId   String? @map("causation_id") @db.VarChar(200)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  version   Int      @default(1)
+
+  @@index([status, availableAt])
+  @@index([tenantId, companyId, status])
+  @@index([claimedAt])
+  @@index([aggregateType, aggregateId])
+  @@map("saga_outbox")
 }

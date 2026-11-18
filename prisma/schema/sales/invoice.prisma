@@ -16,9 +16,9 @@ model Invoice {
   tenantId    String?
   companyId   String        @default("00000000-0000-0000-0000-000000000000")
 
+  @@unique([companyId, invoiceNo])
   @@index([tenantId])
   @@index([companyId])
-  @@unique([companyId, invoiceNo])
   @@index([customerId, status])
   @@index([status, createdAt])
   @@map("invoices")

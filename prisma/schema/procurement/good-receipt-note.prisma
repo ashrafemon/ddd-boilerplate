@@ -7,45 +7,45 @@
 //   createdBy/receivedBy/postedBy/cancelledBy — actor trail from RequestContextPort;
 //     nullable, never backfilled (E-4).
 model GoodReceiptNote {
-  id              String       @id @default(uuid()) @db.Uuid
+  id                 String            @id @default(uuid()) @db.Uuid
   // Unique WITHIN the company — the numbering series is company-scoped.
-  grnNumber       String
-  purchaseOrderId String       @db.Uuid
-  vendorId        String       @db.Uuid
-  status          GrnStatus    @default(DRAFT)
-  currency        String       @default("USD") @db.VarChar(3)
-  subtotal        Decimal      @default(0) @db.Decimal(18, 2)
-  total           Decimal      @default(0) @db.Decimal(18, 2)
-  receivedAt      DateTime?
-  postingDate     DateTime?    @map("posting_date")
+  grnNumber          String
+  purchaseOrderId    String            @db.Uuid
+  vendorId           String            @db.Uuid
+  status             GrnStatus         @default(DRAFT)
+  currency           String            @default("USD") @db.VarChar(3)
+  subtotal           Decimal           @default(0) @db.Decimal(18, 2)
+  total              Decimal           @default(0) @db.Decimal(18, 2)
+  receivedAt         DateTime?
+  postingDate        DateTime?         @map("posting_date")
   // Compensating reversal link (plan Phase 4.1) — lives on the reversal document.
-  reversalOfId    String?            @db.Uuid
-  reversalOf      GoodReceiptNote?   @relation("GrnReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
-  reversals       GoodReceiptNote[]  @relation("GrnReversal")
-  reversedById    String?            @map("reversed_by_id") @db.Uuid
-  reversalReason  String?            @map("reversal_reason")
+  reversalOfId       String?           @db.Uuid
+  reversalOf         GoodReceiptNote?  @relation("GrnReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversals          GoodReceiptNote[] @relation("GrnReversal")
+  reversedById       String?           @map("reversed_by_id") @db.Uuid
+  reversalReason     String?           @map("reversal_reason")
   // Inspection
-  inspectionRequired Boolean         @default(false) @map("inspection_required")
-  inspectionStatus   String          @default("NOTREQUIRED") @map("inspection_status")
+  inspectionRequired Boolean           @default(false) @map("inspection_required")
+  inspectionStatus   String            @default("NOTREQUIRED") @map("inspection_status")
   // Idempotency
-  inboundMessageId   String?         @unique @map("inbound_message_id")
-  idempotencyKey     String?         @unique @map("idempotency_key")
+  inboundMessageId   String?           @unique @map("inbound_message_id")
+  idempotencyKey     String?           @unique @map("idempotency_key")
   // Actor trail (plan §1.2) — nullable, no backfill.
-  createdBy       String?
-  receivedBy      String?
-  postedBy        String?
-  cancelledBy     String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  version         Int          @default(1)
+  createdBy          String?
+  receivedBy         String?
+  postedBy           String?
+  cancelledBy        String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  version            Int               @default(1)
   // Tenancy — see purchase_orders.prisma.
-  tenantId        String?
-  companyId       String       @default("00000000-0000-0000-0000-000000000000")
-  lines           GrnLine[]
+  tenantId           String?
+  companyId          String            @default("00000000-0000-0000-0000-000000000000")
+  lines              GrnLine[]
 
+  @@unique([companyId, grnNumber])
   @@index([tenantId])
   @@index([companyId])
-  @@unique([companyId, grnNumber])
   @@index([reversalOfId])
   @@index([purchaseOrderId])
   @@index([vendorId])
@@ -55,22 +55,22 @@ model GoodReceiptNote {
 }
 
 model GrnLine {
-  id                String          @id @default(uuid()) @db.Uuid
-  grnId             String          @db.Uuid
-  productId         String          @db.Uuid
-  orderedQuantity   Int
-  receivedQuantity  Int
-  acceptedQuantity  Int             @default(0)
-  rejectedQuantity  Int             @default(0)
-  unitPrice         Decimal         @db.Decimal(18, 2)
-  total             Decimal         @db.Decimal(18, 2)
-  stockCategory     String          @default("UNRESTRICTED") @map("stock_category")
-  varianceFlag      Boolean         @default(false) @map("variance_flag")
-  varianceType      String?         @map("variance_type")
-  batchNo           String?         @map("batch_no")
-  serialNo          String?         @map("serial_no")
-  expiryDate        DateTime?       @map("expiry_date")
-  goodReceiptNote   GoodReceiptNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  id               String          @id @default(uuid()) @db.Uuid
+  grnId            String          @db.Uuid
+  productId        String          @db.Uuid
+  orderedQuantity  Int
+  receivedQuantity Int
+  acceptedQuantity Int             @default(0)
+  rejectedQuantity Int             @default(0)
+  unitPrice        Decimal         @db.Decimal(18, 2)
+  total            Decimal         @db.Decimal(18, 2)
+  stockCategory    String          @default("UNRESTRICTED") @map("stock_category")
+  varianceFlag     Boolean         @default(false) @map("variance_flag")
+  varianceType     String?         @map("variance_type")
+  batchNo          String?         @map("batch_no")
+  serialNo         String?         @map("serial_no")
+  expiryDate       DateTime?       @map("expiry_date")
+  goodReceiptNote  GoodReceiptNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
 
   @@unique([grnId, productId])
   @@index([productId])
