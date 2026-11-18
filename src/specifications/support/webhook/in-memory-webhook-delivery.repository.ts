@@ -6,7 +6,7 @@ import {
   WebhookDeliveryQuery,
   WebhookDeliveryRecord,
 } from '@platform/platform-common/webhook/webhook.types';
-import { WebhookDeliveryNotFoundError } from '@platform/platform-common/webhook/webhook.errors';
+import { NotFoundException } from '@nestjs/common';
 
 /** No DB, no BullMQ — plain in-memory fake for use-case specs. */
 export class InMemoryWebhookDeliveryRepository implements WebhookDeliveryRepositoryPort {
@@ -166,7 +166,7 @@ export class InMemoryWebhookDeliveryRepository implements WebhookDeliveryReposit
   async resetForRedelivery(id: string): Promise<WebhookDeliveryRecord> {
     const existing = this.rows.get(id);
     if (!existing || existing.status !== 'DEAD_LETTER') {
-      throw new WebhookDeliveryNotFoundError(id);
+      throw new NotFoundException(`WebhookDelivery '${id}' not found`);
     }
     const updated: WebhookDeliveryRecord = {
       ...existing,

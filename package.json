@@ -7,8 +7,8 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
     "start": "node -r tsconfig-paths/register dist/main.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -19,8 +19,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "prisma:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "lint": "eslint \"{src,apps,libs}/**/*.ts\" --fix",
+    "lint:check": "eslint \"{src,apps,libs}/**/*.ts\"",
     "test": "jest --passWithNoTests",
     "test:unit": "jest --passWithNoTests",
     "test:unit:watch": "jest --watch",
@@ -28,7 +28,10 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage --passWithNoTests",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config jest.e2e.config.ts --passWithNoTests",
+    "test:architecture": "jest --config jest.architecture.config.ts",
+    "test:specifications:platform": "jest --config jest.platform-specifications.config.ts --runInBand --passWithNoTests",
+    "test:specifications": "npm run test:integration:business && npm run test:specifications:platform"
   },
   "engines": {
     "node": ">=20.10.0",
@@ -117,6 +120,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
+    "@faker-js/faker": "^10.6.0",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
@@ -131,6 +135,7 @@
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
+    "fast-check": "^4.10.2",
     "globals": "^17.0.0",
     "jest": "^30.0.0",
     "nestjs-doctor": "^0.7.7",
@@ -174,7 +179,7 @@
       "^@infrastructure/(.*)$": "<rootDir>/infrastructure/$1",
       "^@platform/(.*)$": "<rootDir>/platform/$1",
       "^@business/(.*)$": "<rootDir>/business/$1",
-      "^@test/(.*)$": "<rootDir>/../test/$1",
+      "^@test/(.*)$": "<rootDir>/specifications/$1",
       "^@prisma/client$": "<rootDir>/generated/client.ts",
       "^(\\.{1,2}/.*)\\.js$": "$1"
     },

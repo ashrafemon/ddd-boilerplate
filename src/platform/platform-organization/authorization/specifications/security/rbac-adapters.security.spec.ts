@@ -1,5 +1,5 @@
-import { NoopRbacAdapter } from './noop-rbac.adapter';
-import { ProductionRbacAdapter } from './production-rbac.adapter';
+import { NoopRbacAdapter } from '../../adapters/noop-rbac.adapter';
+import { ProductionRbacAdapter } from '../../adapters/production-rbac.adapter';
 
 const check = { userId: 'user-1', resource: 'Vendor', action: 'create' };
 

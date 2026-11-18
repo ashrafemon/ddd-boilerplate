@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
-import { AppModule } from '../../src/app.module';
-import { configureCors } from '../../src/bootstrap/configure-cors';
-import { configureHttp } from '../../src/bootstrap/configure-http';
-import { configureSecurity } from '../../src/bootstrap/configure-security';
+import { AppModule } from '../../app.module';
+import { configureCors } from '../../bootstrap/configure-cors';
+import { configureHttp } from '../../bootstrap/configure-http';
+import { configureSecurity } from '../../bootstrap/configure-security';
 
 /**
  * The application, wired exactly like `src/main.ts` wires it.

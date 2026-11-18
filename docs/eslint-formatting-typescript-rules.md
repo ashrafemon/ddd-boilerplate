@@ -8,18 +8,18 @@ has drifted from the codebase, it is called out in [§13 Known drift](#13-known-
 
 ## 1. Source of truth
 
-| File                                     | Owns                                                        |
-| ---------------------------------------- | ----------------------------------------------------------- |
-| `eslint.config.mjs`                      | ESLint flat config: rule sets, import boundaries, overrides |
-| `.prettierrc`                            | Formatting rules                                            |
-| `.prettierignore`                        | Paths Prettier never touches                                |
-| `.editorconfig`                          | Editor-level whitespace/newline defaults                    |
-| `tsconfig.json`                          | TypeScript compiler rules, path aliases                     |
-| `tsconfig.build.json`                    | Build-only compiler overrides                               |
-| `tsconfig.jest.json`                     | Test compiler overrides                                     |
-| `jest.architecture.config.ts`            | Architecture test runner (layer boundaries)                 |
-| `test/architecture/architecture.spec.ts` | Cross-module boundary assertions                            |
-| `package.json`                           | Scripts and the unit/e2e Jest mappings                      |
+| File                                                   | Owns                                                        |
+| ------------------------------------------------------ | ----------------------------------------------------------- |
+| `eslint.config.mjs`                                    | ESLint flat config: rule sets, import boundaries, overrides |
+| `.prettierrc`                                          | Formatting rules                                            |
+| `.prettierignore`                                      | Paths Prettier never touches                                |
+| `.editorconfig`                                        | Editor-level whitespace/newline defaults                    |
+| `tsconfig.json`                                        | TypeScript compiler rules, path aliases                     |
+| `tsconfig.build.json`                                  | Build-only compiler overrides                               |
+| `tsconfig.jest.json`                                   | Test compiler overrides                                     |
+| `jest.architecture.config.ts`                          | Architecture test runner (layer boundaries)                 |
+| `src/specifications/architecture/architecture.spec.ts` | Cross-module boundary assertions                            |
+| `package.json`                                         | Scripts and the unit/e2e Jest mappings                      |
 
 Severity legend: `off (0)` · `warn (1)` · `error (2)`.
 
@@ -419,7 +419,7 @@ Authoritative (`tsconfig.json`):
 | `@test/*`           | `test/*`                  |
 | `@prisma/client`    | `src/generated/client.ts` |
 
-There is **no** `@shared-kernel/*` alias. `jest.architecture.config.ts`, `test/jest-e2e.json`,
+There is **no** `@shared-kernel/*` alias. `jest.architecture.config.ts`, `jest.e2e.config.ts`,
 `prisma/seed.ts`, and some docs still reference `src/shared-kernel`, which does not exist. Unit Jest
 mapping in `package.json` also omits `@common/*`. Use `@common/*` in code.
 
@@ -437,7 +437,7 @@ compile-time alias only; ESLint still bans the bare specifier.
 
 ## 9. Jest architecture tests
 
-`test/architecture/architecture.spec.ts` is an additional, tooling-independent boundary check. It
+`src/specifications/architecture/architecture.spec.ts` is an additional, tooling-independent boundary check. It
 walks `src/business/**` and asserts:
 
 1. **Domain** — no NestJS, Prisma, brokers, `@infrastructure`, `@platform`, or another module's
@@ -502,15 +502,15 @@ NODE_ENV=test node -e "(async()=>{const{NestFactory}=require('@nestjs/core');con
 
 ## 13. Known drift
 
-| Item                             | Current state                                                               | Recommended fix                                                                                                                                                                                              |
-| -------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Item                             | Current state                                                               | Recommended fix                                                                                                                                                                      |
+| -------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `businessModules` paths          | Names modules that no longer exist; misses current ones                     | Replace with `party/vendor`, `product-management/product`, `product-management/product-pricing`, `procurement/purchase-order`, `procurement/purchase-goods-receipt`, `sales/invoice` |
-| Cross-module folder name         | Rule blocks `application/usecases/**`; code uses `application/use-cases/**` | Update `internalGroups`                                                                                                                                                                                      |
-| Domain/listener `patterns`       | Lost when later blocks replace options                                      | Restate cross-module patterns in the domain and listener blocks                                                                                                                                              |
-| `@shared-kernel/*`               | Referenced by tests/seed/docs; alias does not exist                         | Replace with `@common/*`                                                                                                                                                                                     |
-| `@common/*` in unit Jest mapping | Missing from `package.json` `moduleNameMapper`                              | Add it                                                                                                                                                                                                       |
-| `docs:di` script                 | Referenced but undefined                                                    | Add the script or drop it from the battery                                                                                                                                                                   |
-| `strict`                         | Not enabled; only `strictNullChecks`                                        | Enable `strict` incrementally, then remove the individual relaxations                                                                                                                                        |
-| `tsc` state                      | Fails with ~25 errors (unfinished utility refactor)                         | Fix before relying on the battery                                                                                                                                                                            |
-| Architecture tests               | Not wired into `npm test`/CI                                                | Add `test:architecture` to the verification battery                                                                                                                                                          |
-| `public/**` fallback             | Raw clients banned, `@infrastructure/**` allowed                            | Add an `@infrastructure/**` pattern to the base block                                                                                                                                                        |
+| Cross-module folder name         | Rule blocks `application/usecases/**`; code uses `application/use-cases/**` | Update `internalGroups`                                                                                                                                                              |
+| Domain/listener `patterns`       | Lost when later blocks replace options                                      | Restate cross-module patterns in the domain and listener blocks                                                                                                                      |
+| `@shared-kernel/*`               | Referenced by tests/seed/docs; alias does not exist                         | Replace with `@common/*`                                                                                                                                                             |
+| `@common/*` in unit Jest mapping | Missing from `package.json` `moduleNameMapper`                              | Add it                                                                                                                                                                               |
+| `docs:di` script                 | Referenced but undefined                                                    | Add the script or drop it from the battery                                                                                                                                           |
+| `strict`                         | Not enabled; only `strictNullChecks`                                        | Enable `strict` incrementally, then remove the individual relaxations                                                                                                                |
+| `tsc` state                      | Fails with ~25 errors (unfinished utility refactor)                         | Fix before relying on the battery                                                                                                                                                    |
+| Architecture tests               | Not wired into `npm test`/CI                                                | Add `test:architecture` to the verification battery                                                                                                                                  |
+| `public/**` fallback             | Raw clients banned, `@infrastructure/**` allowed                            | Add an `@infrastructure/**` pattern to the base block                                                                                                                                |

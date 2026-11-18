@@ -7,7 +7,7 @@ import {
   WebhookSubscriptionQuery,
   WebhookSubscriptionRecord,
 } from '@platform/platform-common/webhook/webhook.types';
-import { WebhookSubscriptionNotFoundError } from '@platform/platform-common/webhook/webhook.errors';
+import { NotFoundException } from '@nestjs/common';
 
 /** No DB, no BullMQ — plain in-memory fake for use-case specs. */
 export class InMemoryWebhookSubscriptionRepository implements WebhookSubscriptionRepositoryPort {
@@ -66,7 +66,7 @@ export class InMemoryWebhookSubscriptionRepository implements WebhookSubscriptio
   ): Promise<WebhookSubscriptionRecord> {
     const existing = this.rows.get(id);
     if (!existing) {
-      throw new WebhookSubscriptionNotFoundError(id);
+      throw new NotFoundException(`WebhookSubscription '${id}' not found`);
     }
     const updated: WebhookSubscriptionRecord = {
       ...existing,
@@ -88,7 +88,7 @@ export class InMemoryWebhookSubscriptionRepository implements WebhookSubscriptio
   ): Promise<WebhookSubscriptionRecord> {
     const existing = this.rows.get(id);
     if (!existing) {
-      throw new WebhookSubscriptionNotFoundError(id);
+      throw new NotFoundException(`WebhookSubscription '${id}' not found`);
     }
     const updated: WebhookSubscriptionRecord = {
       ...existing,

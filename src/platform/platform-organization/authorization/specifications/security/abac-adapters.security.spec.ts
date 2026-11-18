@@ -1,6 +1,6 @@
-import { NoopAbacAdapter } from './noop-abac.adapter';
-import { ProductionAbacAdapter } from './production-abac.adapter';
-import { AbacCheck } from '../ports/abac.port';
+import { NoopAbacAdapter } from '../../adapters/noop-abac.adapter';
+import { ProductionAbacAdapter } from '../../adapters/production-abac.adapter';
+import { AbacCheck } from '../../ports/abac.port';
 
 const check: AbacCheck = {
   context: {

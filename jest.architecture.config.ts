@@ -1,7 +1,7 @@
 /** @type {import('jest').Config} */
 module.exports = {
   rootDir: '.',
-  testMatch: ['**/test/architecture/**/*.spec.ts'],
+  testMatch: ['<rootDir>/src/specifications/architecture/**/*.spec.ts'],
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
@@ -12,6 +12,7 @@ module.exports = {
     '^@infrastructure/(.*)$': '<rootDir>/src/infrastructure/$1',
     '^@shared-kernel/(.*)$': '<rootDir>/src/shared-kernel/$1',
     '^@common/(.*)$': '<rootDir>/src/common/$1',
+    '^@test/(.*)$': '<rootDir>/src/specifications/$1',
     '^@config/(.*)$': '<rootDir>/src/config/$1',
   },
 };

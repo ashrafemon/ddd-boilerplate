@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { join, relative } from 'path';
 import { glob } from 'glob';
 
-const ROOT = join(__dirname, '..', '..');
+const ROOT = join(__dirname, '..', '..', '..');
 const BUSINESS_ROOT = join(ROOT, 'src', 'business');
 
 /**

@@ -7,6 +7,7 @@ module.exports = {
     '<rootDir>/src/business/**/specifications/**/*.api-spec.ts',
     '<rootDir>/src/business/**/specifications/**/*.security.spec.ts',
     '<rootDir>/src/business/**/specifications/**/*.contract.spec.ts',
+    '<rootDir>/src/business/**/specifications/**/*.property-spec.ts',
   ],
   transform: {
     '^.+\\.(t|j)s$': [
@@ -24,7 +25,7 @@ module.exports = {
     '^@infrastructure/(.*)$': '<rootDir>/src/infrastructure/$1',
     '^@platform/(.*)$': '<rootDir>/src/platform/$1',
     '^@business/(.*)$': '<rootDir>/src/business/$1',
-    '^@test/(.*)$': '<rootDir>/test/$1',
+    '^@test/(.*)$': '<rootDir>/src/specifications/$1',
     '^@prisma/client$': '<rootDir>/src/generated/client.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },

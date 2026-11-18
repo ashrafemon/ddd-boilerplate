@@ -27,10 +27,10 @@
       "@infrastructure/*": ["src/infrastructure/*"],
       "@platform/*": ["src/platform/*"],
       "@business/*": ["src/business/*"],
-      "@test/*": ["test/*"],
+      "@test/*": ["src/specifications/*"],
       "@prisma/client": ["src/generated/client.ts"]
     },
     "rootDirs": ["src"]
   },
-  "include": ["src/**/*", "test/**/*"]
+  "include": ["src/**/*"]
 }

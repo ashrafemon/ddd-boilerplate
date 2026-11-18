@@ -1,63 +1,44 @@
 import { PrismaClient } from '../src/generated/client';
-import { DEFAULT_COMPANY_ID } from '../src/shared-kernel/constants/company';
+import { DEFAULT_COMPANY_ID } from '@platform/platform-common/context/company';
 import { PrismaPg } from '@prisma/adapter-pg';
 import 'dotenv/config';
+import { makeProducts } from '../src/specifications/support/factories/product.factory';
+import { makeVendors } from '../src/specifications/support/factories/vendor.factory';
+import { seedFaker } from '../src/specifications/support/factories/seed';
+
+/**
+ * Development seed.
+ *
+ * Volumes and identities are fixed so re-running is idempotent (upserts on the
+ * per-company natural keys); the descriptive values come from faker with a
+ * fixed seed, so every run produces the same catalogue.
+ */
+const PRODUCT_COUNT = 12;
+const VENDOR_COUNT = 4;
 
 async function main() {
+  seedFaker();
+
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
   const prisma = new PrismaClient({ adapter });
 
   console.log('Seeding products...');
-  const products = [
-    {
-      sku: 'SKU-001',
-      name: 'Wireless Mouse',
-      description: '2.4GHz wireless mouse',
-      unitPrice: '19.99',
-      currency: 'USD',
-    },
-    {
-      sku: 'SKU-002',
-      name: 'Mechanical Keyboard',
-      description: 'TKL mechanical keyboard',
-      unitPrice: '89.50',
-      currency: 'USD',
-    },
-    {
-      sku: 'SKU-003',
-      name: '27" 4K Monitor',
-      description: 'UHD IPS monitor',
-      unitPrice: '349.00',
-      currency: 'USD',
-    },
-    {
-      sku: 'SKU-004',
-      name: 'USB-C Dock',
-      description: '8-in-1 USB-C hub/dock',
-      unitPrice: '59.99',
-      currency: 'USD',
-    },
-  ];
-  for (const p of products) {
+  for (const product of makeProducts(PRODUCT_COUNT)) {
     // The natural key is per COMPANY (the numbering/master data scope), so
     // the upsert keys on the compound unique, not on the sku alone.
     await prisma.product.upsert({
-      where: { companyId_sku: { companyId: DEFAULT_COMPANY_ID, sku: p.sku } },
-      create: p,
-      update: p,
+      where: { companyId_sku: { companyId: DEFAULT_COMPANY_ID, sku: product.sku } },
+      create: { ...product, companyId: DEFAULT_COMPANY_ID },
+      update: product,
     });
   }
 
   console.log('Seeding vendors...');
-  const vendors = [
-    { code: 'VEN-001', name: 'Acme Supplies', email: 'billing@acme.com' },
-    { code: 'VEN-002', name: 'Globex Electronics', email: 'orders@globex.io' },
-  ];
-  for (const v of vendors) {
+  for (const vendor of makeVendors(VENDOR_COUNT)) {
     await prisma.vendor.upsert({
-      where: { companyId_code: { companyId: DEFAULT_COMPANY_ID, code: v.code } },
-      create: v,
-      update: v,
+      where: { companyId_code: { companyId: DEFAULT_COMPANY_ID, code: vendor.code } },
+      create: { ...vendor, companyId: DEFAULT_COMPANY_ID },
+      update: vendor,
     });
   }
 
@@ -76,18 +57,20 @@ async function main() {
       bodyFormat: 'text',
     },
   ];
-  for (const t of notificationTemplates) {
+  for (const template of notificationTemplates) {
     const existing = await prisma.notificationTemplate.findFirst({
       where: {
         tenantId: null,
-        notificationType: t.notificationType,
-        channel: t.channel,
-        locale: t.locale,
-        version: t.version,
+        notificationType: template.notificationType,
+        channel: template.channel,
+        locale: template.locale,
+        version: template.version,
       },
     });
     if (!existing) {
-      await prisma.notificationTemplate.create({ data: { ...t, tenantId: null, isActive: true } });
+      await prisma.notificationTemplate.create({
+        data: { ...template, tenantId: null, isActive: true },
+      });
     }
   }
 
