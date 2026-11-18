@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
 import { KafkaService } from '@infrastructure/kafka/kafka.service';
 import { KafkaPublisherPort } from '../ports/broker-publisher.port';
+import { toWireEnvelope } from './envelope.serializer';
 
 /**
  * Kafka publisher adapter. Topic = event type; the whole canonical envelope is
@@ -16,15 +17,7 @@ export class KafkaPublisherAdapter implements KafkaPublisherPort {
     await this.kafkaService.send({
       topic: envelope.eventType,
       key: envelope.aggregateId,
-      value: JSON.stringify({
-        eventId: envelope.eventId,
-        eventType: envelope.eventType,
-        aggregateType: envelope.aggregateType,
-        aggregateId: envelope.aggregateId,
-        payload: envelope.payload,
-        headers: envelope.headers ?? {},
-        occurredAt: envelope.occurredAt.toISOString(),
-      }),
+      value: JSON.stringify(toWireEnvelope(envelope)),
     });
   }
 }

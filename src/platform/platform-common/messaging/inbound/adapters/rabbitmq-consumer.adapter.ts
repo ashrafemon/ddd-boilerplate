@@ -1,0 +1,79 @@
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import { ConfigService } from '@config/config.service';
+import {
+  BrokerMessageHandler,
+  BrokerSubscription,
+  MessageConsumerPort,
+} from '../ports/message-consumer.port';
+
+interface ActiveSubscription {
+  consumerTag: string;
+  key: string;
+}
+
+/**
+ * RabbitMQ adapter for `MessageConsumerPort`.
+ *
+ * Registers dynamic subscribers on the connection the infrastructure layer
+ * already owns (`AmqpConnection.createSubscriber`), so a platform module can
+ * subscribe to a routing key without importing a broker client and without a
+ * decorator that has to be known at class-definition time.
+ *
+ * Ack policy: the handler resolving acks the message; a throw nacks it without
+ * requeue — the producer's outbox (or the owning state machine's lease) is the
+ * retry path, which keeps a poison message from spinning a queue forever. A
+ * different policy can be chosen per subscription later without touching callers.
+ */
+@Injectable()
+export class RabbitMqConsumerAdapter implements MessageConsumerPort, OnModuleDestroy {
+  private readonly logger = new Logger(RabbitMqConsumerAdapter.name);
+  private readonly exchange: string;
+  private readonly active = new Map<string, ActiveSubscription>();
+
+  constructor(
+    private readonly amqp: AmqpConnection,
+    config: ConfigService,
+  ) {
+    this.exchange = config.getRabbitMQ().exchange;
+  }
+
+  async subscribe(subscription: BrokerSubscription, handler: BrokerMessageHandler): Promise<void> {
+    const key = `${subscription.queue}|${subscription.routingKey}`;
+    if (this.active.has(key)) {
+      this.logger.debug(`Subscription ${key} already active`);
+      return;
+    }
+
+    const { consumerTag } = await this.amqp.createSubscriber(
+      async (body: unknown) => {
+        await handler(body);
+      },
+      {
+        exchange: this.exchange,
+        routingKey: subscription.routingKey,
+        queue: subscription.queue,
+        queueOptions: { durable: subscription.durable ?? true },
+      },
+      subscription.queue,
+    );
+
+    this.active.set(key, { consumerTag, key });
+    this.logger.log(
+      `Subscribed ${subscription.queue} to ${subscription.routingKey} on ${this.exchange}`,
+    );
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    for (const subscription of this.active.values()) {
+      try {
+        await this.amqp.cancelConsumer(subscription.consumerTag);
+      } catch (err) {
+        this.logger.warn(
+          `Could not cancel ${subscription.key}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    this.active.clear();
+  }
+}

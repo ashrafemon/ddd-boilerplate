@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { SagaDefinitionStatus } from '../types/saga.types';
 import { SagaDefinitionDocument } from '../types/saga-definition.document';
-import { GOODS_RECEIPT_SAGA_DEFINITION } from '../types/definitions/goods-receipt.definition';
+import { GOODS_RECEIPT_SAGA_EXAMPLE } from '../types/definitions/goods-receipt.example';
 import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
 import { RegisterSagaDefinitionUseCase } from './register-saga-definition.usecase';
 
@@ -34,7 +34,7 @@ describe('RegisterSagaDefinitionUseCase', () => {
     const { useCase, definitions } = makeSut();
 
     await expect(
-      useCase.execute({ document: GOODS_RECEIPT_SAGA_DEFINITION, ownerModule: 'procurement' }),
+      useCase.execute({ document: GOODS_RECEIPT_SAGA_EXAMPLE, ownerModule: 'procurement' }),
     ).resolves.toEqual({
       registered: true,
       sagaKey: 'goods_receipt',
@@ -60,7 +60,7 @@ describe('RegisterSagaDefinitionUseCase', () => {
   it('is idempotent for an already published version', async () => {
     const { useCase, definitions } = makeSut({ id: 'def-existing' });
 
-    await expect(useCase.execute({ document: GOODS_RECEIPT_SAGA_DEFINITION })).resolves.toEqual({
+    await expect(useCase.execute({ document: GOODS_RECEIPT_SAGA_EXAMPLE })).resolves.toEqual({
       registered: false,
       sagaKey: 'goods_receipt',
       version: 3,
@@ -73,7 +73,7 @@ describe('RegisterSagaDefinitionUseCase', () => {
   it('rejects an invalid definition as a client error', async () => {
     const { useCase, definitions } = makeSut();
     const invalid = {
-      ...GOODS_RECEIPT_SAGA_DEFINITION,
+      ...GOODS_RECEIPT_SAGA_EXAMPLE,
       steps: [{ id: 'valuate', kind: 'DO', policy: 'REQUIRED' }],
     } as SagaDefinitionDocument;
 
@@ -84,11 +84,51 @@ describe('RegisterSagaDefinitionUseCase', () => {
     expect(definitions.create).not.toHaveBeenCalled();
   });
 
+  it('rejects a definition whose work cannot be undone', async () => {
+    const { useCase, definitions } = makeSut();
+    const document = {
+      ...GOODS_RECEIPT_SAGA_EXAMPLE,
+      steps: [
+        {
+          id: 'post_stock',
+          kind: 'DO',
+          policy: 'REQUIRED',
+          action: { name: 'inventory.movement.posted', version: 1 },
+        },
+      ],
+    } as SagaDefinitionDocument;
+
+    await expect(useCase.execute({ document })).rejects.toThrow(
+      /no compensation and is not a pivot step/,
+    );
+    expect(definitions.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a definition with an unparsable condition', async () => {
+    const { useCase, definitions } = makeSut();
+    const document = {
+      ...GOODS_RECEIPT_SAGA_EXAMPLE,
+      steps: [
+        {
+          id: 'valuate',
+          kind: 'DO',
+          policy: 'REQUIRED',
+          action: { name: 'inventory.valuation.posted', version: 1 },
+          compensation: { name: 'inventory.valuation.reversed', version: 1 },
+          if: 'company.settings.finance.grnAccrual ===',
+        },
+      ],
+    } as SagaDefinitionDocument;
+
+    await expect(useCase.execute({ document })).rejects.toThrow(/cannot execute/);
+    expect(definitions.create).not.toHaveBeenCalled();
+  });
+
   it('honours an explicit status and author', async () => {
     const { useCase, definitions } = makeSut();
 
     await useCase.execute({
-      document: GOODS_RECEIPT_SAGA_DEFINITION,
+      document: GOODS_RECEIPT_SAGA_EXAMPLE,
       status: SagaDefinitionStatus.DRAFT,
       createdBy: 'user-1',
     });

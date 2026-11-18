@@ -55,7 +55,7 @@ and only use cases/services consume it — nobody injects a concrete adapter.
 
 | Kind          | Examples                                                                                                                                                                                                                                                                | Implemented by                                                      |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `OutboxWriterPort`, `MessageQueuePort`, `InProcessEventBus`, `InboxPort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                                                        | exactly one `inbound/adapters/*` class that delegates to use cases  |
+| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `OutboxWriterPort`, `MessageQueuePort`, `MessageConsumerPort`, `InProcessEventBus`, `InboxPort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                                                        | exactly one `inbound/adapters/*` class that delegates to use cases  |
 | Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `LockLedgerPort`, `LockLeasePort`, `OutboxRepositoryPort`, `InboxRepositoryPort`, `RabbitMqPublisherPort`, `KafkaPublisherPort`, `SqsPublisherPort`, `EventEmitterPort`, `FileStoragePort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
 
 ```
@@ -167,7 +167,7 @@ Every platform-owned table:
 - Every async table documents its retention window (purge job or partition), and every state
   transition is a CAS on `(id, claimToken|version)`.
 - Indexes Prisma cannot express (partial unique indexes) are applied by an explicit SQL step
-  after `db:push` and recorded in this document.
+  after `db:migrate:deploy` and recorded in this document.
 
 ### Schema change order
 
@@ -272,7 +272,8 @@ stale leases — retention is never the engine's job.
 
 | Table                  | Notes                                                                                                    |
 | ---------------------- | -------------------------------------------------------------------------------------------------------- |
-| `saga_definitions`     | `owner_module` (owning business module), `(saga_key, version)` unique, ACTIVE row per event contract     |
+| saga command/result queues | `saga.command`, `saga.step.result` on the topic exchange — step work and its outcome, published via `MessageQueuePort`, so actions can run in another process |
+| `saga_definitions`     | `owner_module` (owning business module), `(saga_key, version)` unique, ACTIVE row per event contract; `INVALID` marks a published definition that can no longer execute (workbook `CONFIG_INVALID`, boot sweep) |
 | `saga_instances`       | `correlation_id`, frozen `plan`, `cursor`, `waiting_event`, `last_error`, `started_at`/`finished_at`; `config_id` is kept as a reserved (always NULL) workbook column |
 | `saga_steps`           | `attempts`, `event_name`/`event_version` (WAIT), `last_error`, timings, `locked_by`/`lock_until` lease   |
 | `saga_outbox`          | the saga's publication ledger; column-identical to `outbox_messages`, so `OutboxLedgerRepository` serves both |
@@ -315,10 +316,11 @@ parser maps it onto the canonical `SagaDefinitionBody` (`action`→`do`,
 `compensation`→`undo`, `acceptedEventCondition`→`when`, enums lower-cased,
 `retryPolicy` profiles → attempt overrides).
 
-The reference saga is `saga/types/definitions/goods-receipt.definition.ts`,
-transcribed verbatim from the workbook; `prisma/seed.ts` registers the
-`SAGA_DEFINITION_CATALOG` through the same parser, and
-`goods-receipt.definition.spec.ts` asserts the plan the sheet describes.
+Saga definitions are runtime data, never code: they are published through
+`POST /saga/definitions` (`RegisterSagaDefinitionUseCase`: parse → validate → insert), read by
+the router from `saga_definitions`, and retired by status flip. The workbook's
+`goods_receipt` document survives only as `types/definitions/goods-receipt.example.ts` — an
+example and test fixture, never seeded, never imported by runtime code.
 
 ## 10. Migration staging (per touch)
 
@@ -359,5 +361,5 @@ source. Full rules and runners: `docs/testing-business-modules.md`. Enforcement:
 Per phase: `npx tsc --noEmit -p tsconfig.json`, `npm test`, `npm run lint:check`,
 `npx jest --config jest.architecture.config.ts`, and the DI boot smoke
 (`NestFactory.create(AppModule,{preview:true})` → `init()` → `close()`).
-Schema-touching phases additionally run `npm run db:push` +
+Schema-touching phases additionally run `npm run db:migrate` +
 `npm run test:integration:business` against the Docker stack.

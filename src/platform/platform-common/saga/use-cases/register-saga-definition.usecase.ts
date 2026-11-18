@@ -5,6 +5,7 @@ import {
   parseSagaDefinition,
 } from '../types/saga-definition.parser';
 import { SagaDefinitionDocument } from '../types/saga-definition.document';
+import { findDefinitionProblems } from '../types/saga-definition.validator';
 import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
 
 export interface RegisterSagaDefinitionInput {
@@ -28,7 +29,10 @@ export interface RegisterSagaDefinitionResult {
  *
  * This is workbook `8-Saga` flow step 1: the definition is validated and written
  * as a new `(sagaKey, version)` row; an invalid one is rejected instead of being
- * half-applied. Config changes only ever affect new instances — running
+ * half-applied. Validation is both structural (`parseSagaDefinition`) and
+ * semantic (`findDefinitionProblems`): a step without compensation that is not a
+ * pivot, an unparsable condition/template or a bad duration is a publish error,
+ * not a runtime surprise. Config changes only ever affect new instances — running
  * instances keep the plan snapshot they started with, which is why a publish
  * never mutates an existing row.
  *
@@ -43,6 +47,7 @@ export class RegisterSagaDefinitionUseCase {
 
   async execute(input: RegisterSagaDefinitionInput): Promise<RegisterSagaDefinitionResult> {
     const definition = this.parse(input.document);
+    this.assertExecutable(definition);
 
     const existing = await this.definitions.findByKeyVersion(definition.key, definition.version);
     if (existing) {
@@ -74,6 +79,14 @@ export class RegisterSagaDefinitionUseCase {
       version: created.version,
       definitionId: created.id,
     };
+  }
+
+  /** Reject a definition the engine could not run (flow step 1 "failed checks"). */
+  private assertExecutable(definition: SagaDefinitionBody): void {
+    const problems = findDefinitionProblems(definition);
+    if (problems.length > 0) {
+      throw new BadRequestException(`Saga definition cannot execute: ${problems.join('; ')}`);
+    }
   }
 
   /** Normalise the published document; a bad one is a client error, not a 500. */

@@ -182,6 +182,10 @@ export class AdvanceSagaUseCase {
         runAt: now,
         output: { eventId: row.eventId },
       });
+      // The step row is written first (idempotent on `(instanceId, stepId)`), so a
+      // crash before this CAS leaves the delivery buffered and retryable. Losing the
+      // CAS means a concurrent worker matched the same delivery — the step row and
+      // the completion are both idempotent, so the outcome is identical.
       await this.inbox.markConsumed(row.id);
       return row.eventId;
     }

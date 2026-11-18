@@ -33,6 +33,13 @@ export enum SagaInstanceReason {
 export enum SagaDefinitionStatus {
   DRAFT = 'DRAFT',
   ACTIVE = 'ACTIVE',
+  /**
+   * Published, but the runtime integrity check found it cannot execute (a
+   * condition no longer parses, an action is no longer registered). No new
+   * instances start — the router only reads ACTIVE — existing instances finish
+   * on their snapshot (workbook `8-Saga` flow 9, `CONFIG_INVALID`).
+   */
+  INVALID = 'INVALID',
   RETIRED = 'RETIRED',
 }
 

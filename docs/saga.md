@@ -7,24 +7,43 @@ when something fails, so no business module has to know about the others.
 
 - Platform code: `src/platform/platform-common/saga/`, `saga-outbox/`, `saga-inbox/`
 - Tables: `prisma/schema/platform/saga.prisma` (workbook `DB Tables` column names)
-- Reference definition: `src/platform/platform-common/saga/types/definitions/goods-receipt.definition.ts`
+- Example document (mock, not shipped): `src/platform/platform-common/saga/types/definitions/goods-receipt.example.ts`
 - Enforced shape: `src/specifications/architecture/platform-shape.spec.ts` (`MIGRATED`)
 - Design source: `docs/erp-system/Common Services.xlsx`, sheet `8-Saga` + `DB Tables`
 
 ## 1. Quick start
 
 ```bash
-npm run db:push        # create the saga tables
+npm run db:migrate:deploy   # apply migrations (creates the saga tables)
 npm run db:seed        # registers the goods_receipt v3 definition (ACTIVE)
 npm test               # unit specs, no DB needed
 npm run test:specifications:platform   # saga integration specs (needs Postgres)
 ```
 
-Publish a definition programmatically:
+**Definitions are runtime data — nothing is compiled in and nothing is seeded.** A saga
+enters the engine only through the publish endpoint:
+
+```http
+POST /api/v1/saga/definitions
+{
+  "ownerModule": "procurement",
+  "status": "ACTIVE",            // or "DRAFT" to validate without routing
+  "document": { "key": "...", "version": 1, "start": { … }, "steps": [ … ] }
+}
+```
+
+The document is parsed (`parseSagaDefinition`), checked (`findDefinitionProblems`) and
+rejected with `400 … cannot execute: <reasons>` if the engine could not run it. Publishing
+the same `(key, version)` twice is a no-op. The catalogue is readable at
+`GET /api/v1/saga/definitions?status=ACTIVE`, re-checkable at
+`POST /api/v1/saga/definitions/validate`, and a definition is retired (never deleted) with
+`PATCH /api/v1/saga/definitions/:id/status`.
+
+In-process callers use the use case directly:
 
 ```ts
 await registerSagaDefinition.execute({
-  document: GOODS_RECEIPT_SAGA_DEFINITION, // published document shape
+  document,                      // published document shape
   ownerModule: 'procurement',
 });
 ```
@@ -48,6 +67,33 @@ the engine. Dependencies point one way only: `saga → saga-outbox`, `saga → s
 
 `SagaModule` imports the other two and re-exports neither. Everything the engine needs
 crosses a port, so no use case ever touches a repository from another module.
+
+### 2a. Everything crosses the broker — nothing is called directly
+
+| Direction | Routing key | Queue | Consumer |
+| --------- | ----------- | ----- | -------- |
+| in — domain events | `#` (all events on `erp.events`) | `saga.all-events.erp` | `SagaBrokerConsumerService` → `SagaInboundPort.accept` |
+| out — step work | `saga.command` | `saga.commands.erp` | `SagaCommandConsumerService` → `RunSagaStepCommandUseCase` (runs the `SAGA_ACTION`) |
+| in — step outcome | `saga.step.result` | `saga.step-results.erp` | `SagaStepResultConsumerService` → `SettleSagaStepResultUseCase` |
+
+Transport is the platform's, not the saga's, in both directions: commands and results
+leave through `MessageQueuePort` (`MessagingSagaPublisher`) and the three subscriptions are
+registered through `MessageConsumerPort` (`RabbitMqConsumerAdapter`). The saga imports no
+broker client and no `@RabbitSubscribe`, so exchange selection, ack policy and any future
+transport change stay inside the messaging module. Subscribing is a declaration —
+`onModuleInit` passes `{ routingKey, queue }` and a handler:
+ 
+```ts
+await this.consumer.subscribe(
+  { routingKey: SAGA_COMMAND_ROUTING_KEY, queue: SAGA_COMMAND_QUEUE },
+  body => this.onCommand(body),
+);
+```
+
+The engine never invokes business work itself. `ExecuteSagaStepUseCase` publishes one
+command (with `idempotencyKey = step row id`) and stops; the saga state machine only moves
+when a result event comes back. Because the queue is the boundary, `saga.commands.erp` can
+be consumed by a separate deployment without touching the engine.
 
 Why a private outbox instead of the shared `outbox_messages`: saga lifecycle traffic gets
 its own claim cadence, retry budget and retention, so a busy business table can never
@@ -167,15 +213,37 @@ The workbook's `8-Saga` flow maps one-to-one onto use cases:
 
 | # | Flow step | Where |
 | - | --------- | ----- |
-| 1 | Publish BASE/OVERRIDE definition, validate, reject invalid | `RegisterSagaDefinitionUseCase` → `parseSagaDefinition` |
+| 1 | Publish BASE/OVERRIDE definition, validate, reject invalid | `RegisterSagaDefinitionUseCase` → `parseSagaDefinition` + `findDefinitionProblems` |
 | 2 | Build the per-company plan; drop missing-requirement / disabled / non-enabled optional steps; empty plan ⇒ no instance | `BuildSagaPlanUseCase` |
 | 3 | Route with the ordered checks: `requires`+policy → `if` → `when` → `match`; bypass continues, never waits | `AcceptSagaEventUseCase`, `AdvanceSagaUseCase` |
 | 4 | Start: inline dedupe insert, create instance + plan snapshot + cursor, advance immediately | `AcceptSagaEventUseCase.tryStart` → `StartSagaUseCase` → `AdvanceSagaUseCase` |
 | 5 | Advance: `if` false ⇒ `SKIPPED`; DO ⇒ durable `PENDING` row and stop; WAIT ⇒ consume a buffered match or park `WAITING` with a timeout | `AdvanceSagaUseCase` |
-| 6 | Worker claims `PENDING` rows (`FOR UPDATE SKIP LOCKED`, lease, small batch, per-company cap), runs the action with `idempotencyKey = step row id`, settles success/retry/failure | `SagaStepWorkerService`, `ExecuteSagaStepUseCase` |
+| 6 | Worker claims `PENDING` rows (`FOR UPDATE SKIP LOCKED`, lease, small batch, per-company cap) and publishes `saga.command` (`idempotencyKey = step row id`); the command consumer runs the action and reports `saga.step.result`, which settles done/retry/failure | `SagaStepWorkerService`, `ExecuteSagaStepUseCase` (publish), `SagaCommandConsumerService` + `RunSagaStepCommandUseCase` (execute), `SagaStepResultConsumerService` + `SettleSagaStepResultUseCase` (settle) |
 | 7 | WAIT expiry, exhausted retries, business failure or `cancelOn` ⇒ `COMPENSATING`; `UNDO` rows run in reverse completion order, ending `COMPENSATED` or `FAILED_MANUAL` | `ExpireWaitStepUseCase`, `SettleStepFailureUseCase`, `CancelSagaUseCase`, `StartCompensationUseCase`, `SettleStepSuccessUseCase` |
 | 8 | Early events buffer by `match` and are consumed when their step arrives; the saga's own output is ignored as a loop guard | `BufferSagaEventUseCase`, `SagaInboxPort`, `AcceptSagaEventUseCase` (`aggregateType === 'Saga'` ⇒ return) |
-| 9 | Config changes affect new instances only; running instances use their snapshot | plan snapshot in `saga_instances.plan` |
+| 9 | Config changes affect new instances only; running instances use their snapshot; an invalid config flags `CONFIG_INVALID` and alerts | plan snapshot in `saga_instances.plan`; `ValidateActiveSagaDefinitionsUseCase` + `SagaDefinitionIntegrityService` (status `INVALID`) |
+
+### 5.0 Where events come from — the broker, nothing else
+
+Step 2 onward assumes an envelope already arrived. That edge is
+`SagaBrokerConsumerService` (`services/saga-broker-consumer.service.ts`): it subscribes via
+`MessageConsumerPort` to routing key `#` with the durable queue `saga.all-events.erp`. Every
+delivery is mapped back into the canonical `OutboxEnvelope` by `fromWireEnvelope` and handed
+to `SagaInboundPort.accept`. The saga owns no other input: no in-process event bus, no
+business use case calling it directly.
+
+`#` rather than a per-event binding because the saga is data-driven — which events
+matter is decided by rows in `saga_definitions`, so a static binding list would need a
+redeploy for every new saga. The router ignores what it does not route.
+
+Delivery is at-least-once: the message is acked only after `accept` returned. Duplicates
+are absorbed by the saga's own dedupe (`live_key` for starts, `saga_inbox` uniqueness per
+delivery for WAIT steps), which is why redelivery is safe.
+
+Producer side (why the body is complete): all three publishers (RabbitMQ, Kafka, SQS)
+serialise through `toWireEnvelope`, so `tenantId`, `companyId`, `eventVersion`,
+`correlationId` and `causationId` survive the hop. Without them a consumer cannot scope
+or dedupe anything — the saga would silently ignore every event as "no tenant/company".
 
 ### 5.1 Start
 
@@ -288,6 +356,13 @@ Inbox rows (`saga_inbox_state`): `RECEIVED → BUFFERED → CONSUMED | IGNORED`.
 WAIT parks its still-buffered deliveries as `IGNORED` with the reason, so the ledger stays
 truthful instead of holding rows nobody will read.
 
+Consumption is a **compare-and-set on `BUFFERED`** (`markConsumed` → `false` when it lost).
+The order matters: the WAIT step row is written first (idempotent on
+`(instanceId, stepId)`), then the delivery is consumed. A crash in between leaves the event
+buffered and retryable; a lost race means a concurrent worker matched the same delivery,
+which is harmless because both the step row and the completion are idempotent — the ledger
+write is what tells the loser its work was redundant.
+
 ## 7. Configuration
 
 `src/config/saga.config.ts` (all namespaced under `saga`, registered in `config.module.ts`):
@@ -316,26 +391,43 @@ make routing non-deterministic. An invalid body throws `BadRequestException` (ne
 half-applied). A publish never mutates an existing row, which is what keeps running
 instances on their plan snapshot.
 
-Definitions live in code next to their domain and are registered by the dev seed:
+A publish is validated twice: structurally (`parseSagaDefinition`) and semantically
+(`findDefinitionProblems` — every `do` has a compensation or is a `pivot`, every
+condition/template parses, every duration is ISO-8601, the plan has at least one action
+step). A definition that fails either is rejected with `400`.
 
-```ts
-// types/definitions/goods-receipt.definition.ts
-export const GOODS_RECEIPT_SAGA_DEFINITION = { /* ... */ } satisfies SagaDefinitionDocument;
+### 8a. `INVALID` — a published definition that stopped being executable
 
-export const SAGA_DEFINITION_CATALOG = [
-  { document: GOODS_RECEIPT_SAGA_DEFINITION, ownerModule: 'procurement' },
-];
-```
+`SagaDefinitionStatus` is `DRAFT | ACTIVE | INVALID | RETIRED`. `INVALID` is the
+`CONFIG_INVALID` flag from flow step 9: something changed after publishing (an action is no
+longer registered, an expression no longer parses). `SagaDefinitionIntegrityService` runs
+`ValidateActiveSagaDefinitionsUseCase` on bootstrap — the first moment action registration is
+complete — and flips broken definitions to `INVALID` with an error log (the alert hook).
 
-`prisma/seed.ts` iterates the catalogue, runs the same parser and inserts the row if it is
-missing (idempotent). There is no HTTP publish endpoint yet — call the use case from a
-module that owns the definition, or add the row through the seed/catalogue.
+Consequences, all deliberate:
 
-### 8.1 The reference saga: `goods_receipt` v3
+- the router reads `ACTIVE` only (`findActiveByEvent`, `listActive`), so **no new instances**
+  start from an invalid definition;
+- **running instances are untouched** — they finish on the plan snapshot they started with;
+- nothing is deleted or rewritten, so fixing the cause and setting the row back to `ACTIVE`
+  resumes new instances;
+- the boot check never blocks startup: an unreachable database logs a warning.
+
+Definitions are **rows published at runtime**, not code. `prisma/seed.ts` seeds no saga;
+the dev/QA database starts empty and definitions arrive through
+`POST /saga/definitions`. That is the whole point of the design: the steps, conditions,
+feature gates and retry policy of a saga are operator data, so a new flow needs a publish
+call, not a deployment.
+
+`types/definitions/goods-receipt.example.ts` is the workbook's **mock** definition kept as an
+example and test fixture. It is never imported by runtime code and never seeded — read it as
+documentation of the shape, not as a shipped saga.
+
+### 8.1 The example document: `goods_receipt` v3 (mock, not shipped)
 
 `valuate → post_stock → accrue → inspect`, with `inspect` as the WAIT. What the plan
 builder produces for different feature sets (asserted in
-`types/definitions/goods-receipt.definition.spec.ts`):
+`types/definitions/goods-receipt.example.spec.ts`):
 
 | Features enabled                                             | Plan                                        |
 | ------------------------------------------------------------ | ------------------------------------------- |
@@ -351,6 +443,11 @@ Each step keeps its `undo` (`inventory.valuation.reversed`, `inventory.movement.
 ## 9. Wiring a business module
 
 Three touch points, none of which imports the platform's internals.
+
+The action below is **not** called by the saga. It is resolved by
+`SagaCommandConsumerService` when a `saga.command` message arrives, which is why it must
+return a result contract instead of throwing for business failures, and why a deployment
+can host the command consumer separately from the engine.
 
 ### 9.1 Register saga actions (the business work)
 
@@ -412,6 +509,11 @@ platform default until a real feature-gate/settings source is plugged in.
 
 ## 10. Operations
 
+Queue to watch when a saga is stuck: `saga.commands.erp` (work not being picked up) and
+`saga.step-results.erp` (outcome not coming back). A step left `RUNNING` is retried by the
+sweep once its lease expires, so a backed-up command queue looks like slow progress, not
+like lost work.
+
 - **Health**: `GET /api/v1/health` reports the Prisma read/write probes (plus Redis/brokers
   when enabled). There is nothing saga-specific to register — a saga problem shows up as
   rows and logs, not as an unhealthy probe.
@@ -432,7 +534,14 @@ platform default until a real feature-gate/settings source is plugged in.
 | Spec | Covers |
 | ---- | ------ |
 | `types/saga-definition.parser.spec.ts` | document → body normalisation and every rejection |
-| `types/definitions/goods-receipt.definition.spec.ts` | the workbook mock plans as the sheet describes |
+| `types/saga-definition.validator.spec.ts` | executable checks: undo-or-pivot, expressions, templates, durations, actions |
+| `use-cases/validate-active-saga-definitions.usecase.spec.ts` | `INVALID` flagging + error log |
+| `services/saga-definition-integrity.service.spec.ts` | boot sweep is fail-soft |
+| `services/saga-broker-consumer.service.spec.ts` | event edge: maps the wire body, filters, never requeues a poison message |
+| `use-cases/run-saga-step-command.usecase.spec.ts` | command consumer: runs the action in tenant context, publishes the result, ignores stale/unknown rows |
+| `use-cases/settle-saga-step-result.usecase.spec.ts` | result edge: ok/retry/fail + duplicate absorption |
+| `types/saga-command.types.spec.ts` | command/result envelope round trip |
+| `types/definitions/goods-receipt.example.spec.ts` | the workbook mock plans as the sheet describes |
 | `use-cases/register-saga-definition.usecase.spec.ts` | publish, idempotency, rejection as 400 |
 | `use-cases/build-saga-plan.usecase.spec.ts` | policy/feature filtering, overlay narrowing |
 | `use-cases/accept-saga-event.usecase.spec.ts` | routing, loop guard, tenancy |
@@ -462,8 +571,30 @@ npm run test:architecture                                   # hex shape + ports/
   `FAILED_MANUAL` after compensation, not a crash).
 - **`FeatureGate` / `CompanySettingsReader` are empty adapters**: the feature set is empty
   and settings `{}` outside tests, so `requires`-gated steps drop out of every real plan.
-- **No `CONFIG_INVALID` flag** (workbook step 9): config validity is enforced at publish time
-  instead, which is stricter — an invalid definition never becomes `ACTIVE`.
+- **`INVALID` needs a reachable database.** The boot sweep marks broken definitions `INVALID`
+  and logs an error, and there is no admin endpoint to flip one back — that is a deliberate
+  manual step for now.
 - **Single-region scheduler**: the sweep and both dispatchers use `setInterval` in-process
   plus DB-side claims. Claims are safe across replicas; the intervals themselves are not
   coordinated beyond that.
+- **No per-aggregate ordering guarantee.** Both ledgers carry `aggregate_id` and
+  `aggregate_version`, but publication order across batches is not enforced — a consumer that
+  needs "all events of one GRN in order" must reorder on `aggregate_version` itself. Adding
+  partitioning by aggregate would be the fix if order becomes a requirement.
+- **No replay surface.** `FAILED_MANUAL` instances and `DEAD_LETTER`/`SUSPENDED` rows are
+  parked, not requeued: recovery is a manual SQL/ops action today.
+- **The trigger is RabbitMQ-only.** Kafka and SQS publish with `topic = eventType`, which a
+  data-driven consumer cannot wildcard, so today the saga queue exists only on the RabbitMQ
+  topic exchange. A Kafka/SQS deployment would need a stable aggregate topic (e.g.
+  `platform.events`) before the saga could be triggered there.
+- **No dead-letter exchange on the saga queue.** A failed `accept` is logged and acked
+  rather than requeued forever; retry is the producer's outbox, not the consumer. A DLX with
+  a retry budget is the production-grade upgrade.
+- **A saga cannot progress without a broker.** Step work is a published command and the
+  outcome is a published result, so with RabbitMQ unreachable a claimed step simply stays
+  `RUNNING` until its lease expires and is re-dispatched — no work happens, nothing is lost.
+- **Action execution is at-least-once, not exactly-once.** A redelivered `saga.command` runs
+  the action again; correctness rests on the action honouring `idempotencyKey` (the step row
+  id), which is the same contract the in-process version had.
+- **No DLX on the command/result queues.** A consumer error leaves the step `RUNNING` so the
+  saga's lease sweep retries it; the queues themselves have no dead-letter target yet.

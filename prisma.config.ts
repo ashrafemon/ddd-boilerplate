@@ -3,10 +3,12 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
-// Schema-only project: there are currently NO Prisma migrations.
-// The database is created/synchronised straight from `prisma/schema` with
-// `prisma db push` (npm run db:push). Introduce `prisma/migrations/` only
-// when a released schema needs a versioned, forward-only rollout.
+// `prisma/schema` is the authoring surface; `prisma/migrations` is the source of
+// truth for what a database actually runs. `20251118000000_init` is the adopted
+// baseline (generated from a live `db push` schema), applied with
+// `prisma migrate deploy` / `db:migrate:deploy`. On a database that already had
+// the baseline applied by `db push`, mark it once with `db:migrate:baseline`.
+// `prisma db push` stays available for throwaway local databases only.
 export default defineConfig({
   schema: './prisma/schema',
   datasource: {

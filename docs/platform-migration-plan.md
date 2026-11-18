@@ -101,7 +101,7 @@ with the legacy shape. `ports/`, `repositories/`, `application/`, `workers/`, `e
 | `saga_definitions.owner_module` | added — the owning business module                                                                                                                                                                                                                                                                                                          |
 | `saga_steps`                    | `attempts`, `event_name`/`event_version` (WAIT rows), `last_error`, `started_at`/`finished_at`                                                                                                                                                                                                                                              |
 | `saga_instances`                | `correlation_id`, `last_error`, `started_at`/`finished_at`                                                                                                                                                                                                                                                                                  |
-| live-instance uniqueness        | nullable unique `live_key` = `encodeURIComponent(sagaKey)\|encodeURIComponent(correlationKey)`, set on insert and NULLed on every terminal transition — the portable equivalent of `WHERE status IN ('RUNNING','WAITING','COMPENSATING')`, because Prisma cannot express a partial unique index and `db:push` would drop a hand-written one |
+| live-instance uniqueness        | nullable unique `live_key` = `encodeURIComponent(sagaKey)\|encodeURIComponent(correlationKey)`, set on insert and NULLed on every terminal transition — the portable equivalent of `WHERE status IN ('RUNNING','WAITING','COMPENSATING')`, because Prisma cannot express a partial unique index and schema sync would drop a hand-written one |
 | `saga_inbox`                    | workbook columns: `consumer_key`, `message_id`, `payload_hash`, `headers`, `attempts`, `claim_token`/`claimed_at`, `processed_at`, `next_attempt_at`, `last_error`                                                                                                                                                                          |
 | completion events               | appended to the saga's own `saga_outbox` ledger inside the terminal CAS, published by `SagaOutboxDispatcherService` (own cadence + retention); the router still ignores `aggregateType = 'Saga'` envelopes, so `onComplete.emit` can never start another saga |
 
@@ -123,7 +123,7 @@ saga/                      engine + definitions/instances/steps
 │               execute-saga-step, expire-wait-step, buffer-saga-event, register-saga-definition
 ├── services/   saga-step-worker.service.ts, saga-sweep.service.ts
 └── types/      saga.types.ts, saga-expression.ts, saga-scope.ts, saga-emitted.event.ts,
-                saga-definition.{document,parser}.ts, definitions/goods-receipt.definition.ts
+                saga-definition.{document,parser}.ts, definitions/goods-receipt.example.ts
 
 saga-outbox/               the `saga_outbox` publication ledger
 ├── saga-outbox.module.ts  exports SagaOutboxWriterPort only
@@ -290,5 +290,5 @@ npm run build
 NODE_ENV=test node -e "(async()=>{const{NestFactory}=require('@nestjs/core');const{AppModule}=require('./dist/app.module.js');const a=await NestFactory.create(AppModule,{preview:true});await a.init();await a.close();})()"
 ```
 
-Schema-touching phases additionally run `npm run db:push`, `npx prisma generate` and
+Schema-touching phases additionally run `npm run db:migrate`, `npx prisma generate` and
 the platform integration specs against the local Docker stack.

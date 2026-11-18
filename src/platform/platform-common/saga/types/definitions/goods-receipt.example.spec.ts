@@ -1,7 +1,7 @@
 import { BuildSagaPlanUseCase } from '../../use-cases/build-saga-plan.usecase';
 import { SagaPlanStep, SagaStepKind } from '../saga.types';
 import { parseSagaDefinition } from '../saga-definition.parser';
-import { GOODS_RECEIPT_SAGA_DEFINITION } from './goods-receipt.definition';
+import { GOODS_RECEIPT_SAGA_EXAMPLE } from './goods-receipt.example';
 
 /**
  * Unit — the workbook's reference saga must plan exactly as the sheet describes.
@@ -15,7 +15,7 @@ describe('goods_receipt saga definition (workbook mock)', () => {
 
   const build = (features: string[]) =>
     builder.execute({
-      definition: parseSagaDefinition(GOODS_RECEIPT_SAGA_DEFINITION),
+      definition: parseSagaDefinition(GOODS_RECEIPT_SAGA_EXAMPLE),
       overlay: null,
       features: new Set(features),
       settings: {},

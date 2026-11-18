@@ -40,7 +40,7 @@ describe('SagaInboxAdapter', () => {
   function makeSut() {
     const bufferEvent = { execute: jest.fn(async () => true) };
     const listBufferedEvents = { execute: jest.fn(async () => [ROW]) };
-    const markEventConsumed = { execute: jest.fn(async () => undefined) };
+    const markEventConsumed = { execute: jest.fn(async () => true) };
     const ignoreBufferedEvents = { execute: jest.fn(async () => 2) };
     const adapter = new SagaInboxAdapter(
       bufferEvent as unknown as BufferSagaInboxEventUseCase,
@@ -72,7 +72,7 @@ describe('SagaInboxAdapter', () => {
   it('marks a consumed event and counts ignored ones', async () => {
     const { adapter, markEventConsumed, ignoreBufferedEvents } = makeSut();
 
-    await adapter.markConsumed('inbox-1');
+    await expect(adapter.markConsumed('inbox-1')).resolves.toBe(true);
     await expect(
       adapter.ignoreBuffered('instance-1', 'ap.bill.posted', 1, 'WAIT timed out'),
     ).resolves.toBe(2);

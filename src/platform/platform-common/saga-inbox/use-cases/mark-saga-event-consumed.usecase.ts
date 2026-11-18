@@ -6,12 +6,14 @@ import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository
  *
  * Called after the WAIT step row exists (not before), so a crash between the two
  * leaves the event buffered and the step retries instead of losing the delivery.
+ * The write is a compare-and-set on `BUFFERED`: when two workers picked up the
+ * same row, exactly one gets `true` and the loser knows its match was redundant.
  */
 @Injectable()
 export class MarkSagaEventConsumedUseCase {
   constructor(private readonly inbox: SagaInboxRepositoryPort) {}
 
-  async execute(id: string): Promise<void> {
-    await this.inbox.markConsumed(id);
+  async execute(id: string): Promise<boolean> {
+    return this.inbox.markConsumed(id);
   }
 }

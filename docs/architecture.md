@@ -392,7 +392,9 @@ Handlers delegate to use cases/facades — never inline business logic.
 ## Data model
 
 Prisma schema split per context under `prisma/schema/<context>/`, aggregated by
-`prisma/schema/schema.prisma`. **No migrations** — `npm run db:push` creates/syncs from schema;
+`prisma/schema/schema.prisma`. **Migrations are the source of truth** — every schema edit ships with a
+`prisma/migrations/<timestamp>_<name>` folder (`npm run db:migrate`); `npm run db:migrate:deploy` applies
+them and CI fails when the migrated database drifts from `prisma/schema`;
 `npx prisma generate` regenerates client to `src/generated/`.
 
 Physical column names not uniform: `outbox_messages`, `inbox_messages`, `saga_steps` are
@@ -420,7 +422,9 @@ NODE_ENV=test node -e "(async()=>{const{NestFactory}=require('@nestjs/core');con
 | `npm run format:check`  | prettier                                    |
 | `npm test`              | unit tests (`--passWithNoTests`)            |
 | `npm run test:e2e`      | e2e smoke (requires `docker compose up -d`) |
-| `npm run db:push`       | create/sync database from schema            |
+| `npm run db:migrate`    | create a migration from a schema change     |
+| `npm run db:migrate:deploy` | apply committed migrations (prod/CI)    |
+| `npm run db:push`       | sync a throwaway local DB only              |
 | `npm run db:generate`   | regenerate Prisma client                    |
 | `npm run db:seed`       | seed products/vendors                       |
 | `npm run docs:di`       | regenerate DI wiring docs                   |

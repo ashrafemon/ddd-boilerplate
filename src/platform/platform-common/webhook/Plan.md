@@ -267,7 +267,7 @@ enum WebhookDeliveryStatus { PENDING DELIVERING DELIVERED FAILED DEAD_LETTER @@m
 ```
 
 The table contract lives in `prisma/schema/platform/webhook.prisma` and is applied
-with `npm run db:push` (the project has no migration folder). Inbound dedupe needs
+with `npm run db:migrate` (migrations live in `prisma/migrations`). Inbound dedupe needs
 **no new table** — it reuses the existing `idempotency_keys` table via
 `IdempotencyPort` (scope `webhook.inbound.<source>`).
 

@@ -1,13 +1,15 @@
 import { SagaDefinitionDocument } from '../saga-definition.document';
 
 /**
- * `goods_receipt` v3 — the reference saga from the workbook.
+ * `goods_receipt` v3 — the workbook's **mock** definition, kept as an example.
  *
- * Transcribed verbatim from `docs/erp-system/Common Services.xlsx` (`DB Tables`
- * sheet, `saga_definitions` example row) so the mock design in the sheet and the
- * running definition are the same artefact. The document format is the published
- * one (`action`/`compensation` pairs, explicit `kind`, `acceptedEventCondition`);
- * `parseSagaDefinition` normalises it at registration time.
+ * This file is NOT shipped and NOT seeded: saga definitions are runtime data,
+ * published through `POST /saga/definitions` and stored in `saga_definitions`.
+ * The document is transcribed from `docs/erp-system/Common Services.xlsx`
+ * (`DB Tables` sheet, `saga_definitions` example row) only so tests, docs and the
+ * parser have one realistic document in the published format
+ * (`action`/`compensation` pairs, explicit `kind`, `acceptedEventCondition`) —
+ * `parseSagaDefinition` normalises it exactly as it would a published one.
  *
  * Reading it against the plan builder:
  *   - `requires` gates the whole saga on two inventory features — a company
@@ -22,7 +24,7 @@ import { SagaDefinitionDocument } from '../saga-definition.document';
  *   - `if` conditions are not resolved at plan time — the router evaluates them
  *     when the step is reached, so a bypass continues the plan.
  */
-export const GOODS_RECEIPT_SAGA_DEFINITION = {
+export const GOODS_RECEIPT_SAGA_EXAMPLE = {
   key: 'goods_receipt',
   version: 3,
   requires: ['inventory.valuation', 'inventory.stock_ledger'],
@@ -83,9 +85,3 @@ export const GOODS_RECEIPT_SAGA_DEFINITION = {
     emit: { name: 'inventory.grn.posted', version: 1 },
   },
 } satisfies SagaDefinitionDocument;
-
-/** Platform-owned definitions seeded by `prisma/seed.ts`. */
-export const SAGA_DEFINITION_CATALOG: readonly {
-  document: SagaDefinitionDocument;
-  ownerModule: string | null;
-}[] = [{ document: GOODS_RECEIPT_SAGA_DEFINITION, ownerModule: 'procurement' }];

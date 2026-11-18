@@ -12,6 +12,8 @@ import {
   SqsPublisherPort,
 } from './outbound/ports/broker-publisher.port';
 import { KafkaConsumerHost } from './inbound/adapters/kafka-consumer.host';
+import { RabbitMqConsumerAdapter } from './inbound/adapters/rabbitmq-consumer.adapter';
+import { MessageConsumerPort } from './inbound/ports/message-consumer.port';
 import { MessageQueueAdapter } from './inbound/adapters/message-queue.adapter';
 import { MessageQueuePort } from './inbound/ports/message-queue.port';
 import { PublishMessageUseCase } from './use-cases/publish-message.usecase';
@@ -44,7 +46,11 @@ import { PublishMessageUseCase } from './use-cases/publish-message.usecase';
     KafkaConsumerHost,
     MessageQueueAdapter,
     { provide: MessageQueuePort, useExisting: MessageQueueAdapter },
+
+    // Inbound consumption seam: subscribers register routing keys, not clients
+    RabbitMqConsumerAdapter,
+    { provide: MessageConsumerPort, useExisting: RabbitMqConsumerAdapter },
   ],
-  exports: [MessageQueuePort],
+  exports: [MessageQueuePort, MessageConsumerPort],
 })
 export class MessagingModule {}

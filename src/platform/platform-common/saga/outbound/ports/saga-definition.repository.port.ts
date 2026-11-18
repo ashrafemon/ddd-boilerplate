@@ -21,8 +21,22 @@ export abstract class SagaDefinitionRepositoryPort {
   /** All ACTIVE definitions — a bounded set the router filters in memory. */
   abstract listActive(): Promise<SagaDefinitionRecord[]>;
 
+  /** Every definition in any status — the runtime catalogue (operator view). */
+  abstract listAll(filter?: {
+    status?: SagaDefinitionStatus;
+    sagaKey?: string;
+  }): Promise<SagaDefinitionRecord[]>;
+
+  abstract findById(id: string): Promise<SagaDefinitionRecord | null>;
+
   /** Exact `(sagaKey, version)` lookup — the idempotency check for publishing. */
   abstract findByKeyVersion(sagaKey: string, version: number): Promise<SagaDefinitionRecord | null>;
+
+  /**
+   * Flip the lifecycle status of one definition (ACTIVE → INVALID / RETIRED).
+   * Never touches the body: a running instance keeps its plan snapshot.
+   */
+  abstract markStatus(id: string, status: SagaDefinitionStatus): Promise<void>;
 
   abstract create(input: {
     sagaKey: string;

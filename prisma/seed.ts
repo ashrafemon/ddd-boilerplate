@@ -5,8 +5,6 @@ import 'dotenv/config';
 import { makeProducts } from '../src/specifications/support/factories/product.factory';
 import { makeVendors } from '../src/specifications/support/factories/vendor.factory';
 import { seedFaker } from '../src/specifications/support/factories/seed';
-import { SAGA_DEFINITION_CATALOG } from '@platform/platform-common/saga/types/definitions/goods-receipt.definition';
-import { parseSagaDefinition } from '@platform/platform-common/saga/types/saga-definition.parser';
 
 /**
  * Development seed.
@@ -76,27 +74,8 @@ async function main() {
     }
   }
 
-  console.log('Seeding saga definitions...');
-  for (const entry of SAGA_DEFINITION_CATALOG) {
-    const definition = parseSagaDefinition(entry.document);
-    const existing = await prisma.sagaDefinition.findUnique({
-      where: { sagaKey_version: { sagaKey: definition.key, version: definition.version } },
-    });
-    if (!existing) {
-      await prisma.sagaDefinition.create({
-        data: {
-          sagaKey: definition.key,
-          ownerModule: entry.ownerModule,
-          version: definition.version,
-          eventName: definition.start.event.name,
-          eventVersion: definition.start.event.version,
-          status: 'ACTIVE',
-          definition: definition as unknown as object,
-          createdBy: 'seed',
-        },
-      });
-    }
-  }
+  // Saga definitions are runtime data: nothing is seeded. Publish one with
+  // `POST /api/v1/saga/definitions` (or `SAGA_EXAMPLE` in docs/saga.md).
 
   const count = {
     products: await prisma.product.count(),

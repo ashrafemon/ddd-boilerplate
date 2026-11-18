@@ -52,11 +52,34 @@ export class PrismaSagaDefinitionRepository implements SagaDefinitionRepositoryP
     return rows.map(row => this.toRecord(row));
   }
 
+  async listAll(filter?: {
+    status?: SagaDefinitionStatus;
+    sagaKey?: string;
+  }): Promise<SagaDefinitionRecord[]> {
+    const rows = await this.txHost.tx.sagaDefinition.findMany({
+      where: {
+        ...(filter?.status ? { status: filter.status } : {}),
+        ...(filter?.sagaKey ? { sagaKey: filter.sagaKey } : {}),
+      },
+      orderBy: [{ sagaKey: 'asc' }, { version: 'desc' }],
+    });
+    return rows.map(row => this.toRecord(row));
+  }
+
+  async findById(id: string): Promise<SagaDefinitionRecord | null> {
+    const row = await this.txHost.tx.sagaDefinition.findUnique({ where: { id } });
+    return row ? this.toRecord(row) : null;
+  }
+
   async findByKeyVersion(sagaKey: string, version: number): Promise<SagaDefinitionRecord | null> {
     const row = await this.txHost.tx.sagaDefinition.findUnique({
       where: { sagaKey_version: { sagaKey, version } },
     });
     return row ? this.toRecord(row) : null;
+  }
+
+  async markStatus(id: string, status: SagaDefinitionStatus): Promise<void> {
+    await this.txHost.tx.sagaDefinition.updateMany({ where: { id }, data: { status } });
   }
 
   async create(input: {

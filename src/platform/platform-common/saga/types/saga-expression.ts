@@ -209,6 +209,49 @@ export function renderTemplate(template: string, scope: Record<string, unknown>)
   return ExpressionUtils.renderTemplate(template, scope);
 }
 
+/**
+ * Validate an expression without a live scope.
+ *
+ * Used at publish time and by the boot integrity check: a definition whose
+ * condition cannot be parsed must be rejected (or flagged `INVALID`) instead of
+ * throwing in the middle of an instance. Returns `null` when it parses.
+ */
+export function validateExpression(source: string): string | null {
+  try {
+    ExpressionUtils.evaluateExpression(source, permissiveScope());
+    return null;
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+}
+
+/**
+ * Scope stand-in for validation: every property resolves to a truthy object, so
+ * a dotted path is read to its end instead of short-circuiting on `undefined`
+ * (which would leave the parser mid-path and report a false syntax error).
+ */
+function permissiveScope(): Record<string, unknown> {
+  const scope: Record<string, unknown> = new Proxy(
+    {},
+    {
+      get: (_target, property) => (typeof property === 'symbol' ? undefined : permissiveScope()),
+      has: () => true,
+    },
+  );
+  return scope;
+}
+
+/** Validate every `{{ expr }}` placeholder inside a template; `null` when clean. */
+export function validateTemplate(template: string): string | null {
+  for (const match of template.matchAll(/\{\{([^}]*)\}\}/g)) {
+    const problem = validateExpression(match[1]);
+    if (problem) {
+      return problem;
+    }
+  }
+  return null;
+}
+
 /** Parse an ISO-8601 duration (`P7D`, `PT30M`, `P1W`) into milliseconds. */
 export function parseDuration(duration: string): number {
   return ExpressionUtils.parseDuration(duration);

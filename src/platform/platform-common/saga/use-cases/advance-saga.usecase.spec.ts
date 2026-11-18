@@ -24,7 +24,7 @@ function makeSut() {
   };
   const inbox = {
     listBuffered: jest.fn(async () => [] as unknown[]),
-    markConsumed: jest.fn(async () => undefined),
+    markConsumed: jest.fn(async () => true),
   };
   const completeSaga = { execute: jest.fn(async () => instance()) };
 

@@ -23,8 +23,11 @@ export abstract class SagaInboxPort {
     limit: number,
   ): Promise<SagaInboxRecord[]>;
 
-  /** Mark one buffered event consumed (after the WAIT step row exists). */
-  abstract markConsumed(id: string): Promise<void>;
+  /**
+   * Mark one buffered event consumed, after the WAIT step row exists.
+   * `false` = another worker consumed it first (same outcome, redundant work).
+   */
+  abstract markConsumed(id: string): Promise<boolean>;
 
   /**
    * Park still-buffered events of one contract as IGNORED with a reason — used

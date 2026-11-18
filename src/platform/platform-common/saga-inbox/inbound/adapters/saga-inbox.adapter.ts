@@ -35,7 +35,7 @@ export class SagaInboxAdapter implements SagaInboxPort {
     return this.listBufferedEvents.execute(instanceId, eventName, eventVersion, limit);
   }
 
-  async markConsumed(id: string): Promise<void> {
+  async markConsumed(id: string): Promise<boolean> {
     return this.markEventConsumed.execute(id);
   }
 

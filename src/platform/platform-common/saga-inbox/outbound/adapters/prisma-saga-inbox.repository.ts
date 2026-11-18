@@ -75,11 +75,12 @@ export class PrismaSagaInboxRepository implements SagaInboxRepositoryPort {
     });
   }
 
-  async markConsumed(id: string): Promise<void> {
-    await this.txHost.tx.sagaInbox.updateMany({
-      where: { id },
+  async markConsumed(id: string): Promise<boolean> {
+    const result = await this.txHost.tx.sagaInbox.updateMany({
+      where: { id, status: SagaInboxStatus.BUFFERED },
       data: { status: SagaInboxStatus.CONSUMED, processedAt: new Date() },
     });
+    return result.count === 1;
   }
 
   async ignoreBuffered(

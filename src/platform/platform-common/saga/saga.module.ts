@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '@infrastructure/prisma/prisma.module';
+import { MessagingModule } from '@platform/platform-common/messaging/messaging.module';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
 import { SagaInboxModule } from '@platform/platform-common/saga-inbox/saga-inbox.module';
@@ -30,17 +31,37 @@ import { SettleStepFailureUseCase } from './use-cases/settle-step-failure.usecas
 import { SettleStepSuccessUseCase } from './use-cases/settle-step-success.usecase';
 import { StartCompensationUseCase } from './use-cases/start-compensation.usecase';
 import { RegisterSagaDefinitionUseCase } from './use-cases/register-saga-definition.usecase';
+import { ValidateActiveSagaDefinitionsUseCase } from './use-cases/validate-active-saga-definitions.usecase';
 import { StartSagaUseCase } from './use-cases/start-saga.usecase';
 import { SagaStepWorkerService } from './services/saga-step-worker.service';
 import { SagaSweepService } from './services/saga-sweep.service';
+import { SagaDefinitionIntegrityService } from './services/saga-definition-integrity.service';
+import { SagaBrokerConsumerService } from './services/saga-broker-consumer.service';
+import { SagaCommandConsumerService } from './services/saga-command.consumer';
+import { SagaStepResultConsumerService } from './services/saga-step-result.consumer';
+import {
+  SagaCommandPublisherPort,
+  SagaStepResultPublisherPort,
+} from './outbound/ports/saga-command.port';
+import { MessagingSagaPublisher } from './outbound/adapters/messaging-saga.publisher';
+import { SagaDefinitionController } from './http/saga-definition.controller';
+import { ListSagaDefinitionsUseCase } from './use-cases/list-saga-definitions.usecase';
+import { SetSagaDefinitionStatusUseCase } from './use-cases/set-saga-definition-status.usecase';
+import { RunSagaStepCommandUseCase } from './use-cases/run-saga-step-command.usecase';
+import { SettleSagaStepResultUseCase } from './use-cases/settle-saga-step-result.usecase';
 
 /**
  * Platform Saga module — company-configurable cross-aggregate orchestration.
  *
- * NOT global. The runtime imports no business module: business work arrives
- * through `SagaAction` providers (registered under the `SAGA_ACTION` token and
- * resolved by `SagaActionRegistry`), gating through `FeatureGate`, settings
- * through `CompanySettingsReader`. Events arrive through `SagaInboundPort`.
+ * NOT global. The runtime imports no business module: business work is declared
+ * as `SagaAction` providers (registered under the `SAGA_ACTION` token and resolved
+ * by `SagaActionRegistry`), gating through `FeatureGate`, settings through
+ * `CompanySettingsReader`.
+ *
+ * Everything crosses the broker, nothing is called directly:
+ *   events   broker → `SagaBrokerConsumerService` → `SagaInboundPort.accept`
+ *   work     `ExecuteSagaStepUseCase` → `saga.command` → consumer → action
+ *   results  consumer → `saga.step.result` → `SettleSagaStepResultUseCase`
  *
  * Bindings are ports → adapters; use cases inject ports only. `SagaActionRegistry`
  * is exported as the extension seam business modules register into.
@@ -51,7 +72,15 @@ import { SagaSweepService } from './services/saga-sweep.service';
  * engine talks to them only through `SagaOutboxWriterPort` and `SagaInboxPort`.
  */
 @Module({
-  imports: [ContextModule, PrismaModule, OutboxModule, SagaOutboxModule, SagaInboxModule],
+  imports: [
+    ContextModule,
+    PrismaModule,
+    OutboxModule,
+    SagaOutboxModule,
+    SagaInboxModule,
+    // Broker transport for step commands/results (platform port, no broker client here)
+    MessagingModule,
+  ],
   providers: [
     // Outbound adapters → outbound ports
     PrismaSagaDefinitionRepository,
@@ -62,6 +91,16 @@ import { SagaSweepService } from './services/saga-sweep.service';
     { provide: SagaStepRepositoryPort, useExisting: PrismaSagaStepRepository },
     SagaActionRegistry,
     { provide: SagaActionResolverPort, useExisting: SagaActionRegistry },
+
+    // Broker transport for step work: command out, result back (EDA, no direct calls)
+    // Runtime definition catalogue: publish, list, validate, retire
+    SagaDefinitionController,
+    ListSagaDefinitionsUseCase,
+    SetSagaDefinitionStatusUseCase,
+
+    MessagingSagaPublisher,
+    { provide: SagaCommandPublisherPort, useExisting: MessagingSagaPublisher },
+    { provide: SagaStepResultPublisherPort, useExisting: MessagingSagaPublisher },
 
     // Gating + settings — owned outside the saga; empty (fail-closed) defaults.
     { provide: FeatureGate, useClass: EmptyFeatureGate },
@@ -77,6 +116,19 @@ import { SagaSweepService } from './services/saga-sweep.service';
     SettleStepFailureUseCase,
     StartSagaUseCase,
     RegisterSagaDefinitionUseCase,
+    ValidateActiveSagaDefinitionsUseCase,
+    SettleSagaStepResultUseCase,
+    RunSagaStepCommandUseCase,
+
+    // Boot-time definition integrity (flow 9: CONFIG_INVALID)
+    SagaDefinitionIntegrityService,
+
+    // Event edge: broker → SagaInboundPort.accept (triggers, WAIT events, cancels)
+    SagaBrokerConsumerService,
+
+    // Work edge: saga.command → action → saga.step.result (nothing runs in-process)
+    SagaCommandConsumerService,
+    SagaStepResultConsumerService,
     ExecuteSagaStepUseCase,
     ExpireWaitStepUseCase,
     BufferSagaEventUseCase,

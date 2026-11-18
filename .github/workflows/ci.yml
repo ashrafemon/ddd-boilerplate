@@ -1,0 +1,118 @@
+name: CI
+
+# The architecture is only as good as the gate that enforces it. Until this
+# workflow existed, every guarantee (claim SQL, fencing, saga reversal, tenant
+# 404s) was proven on a developer machine only.
+#
+# Two jobs on purpose:
+#   quality     — no services; must stay fast (lint, types, architecture, units)
+#   integration — Postgres + Redis; proves the SQL that cannot be unit-tested
+
+on:
+  push:
+    branches: [main, dev-v1]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/erp_ci?schema=public
+  REDIS_URL: redis://localhost:6379
+  NODE_ENV: test
+  TENANCY_MODE: single
+  JWT_ACCESS_SECRET: ci-access-secret
+  JWT_REFRESH_SECRET: ci-refresh-secret
+  DEFAULT_COMPANY_ID: 00000000-0000-0000-0000-000000000001
+
+jobs:
+  quality:
+    name: Lint, types, architecture, units
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint (architecture rules are ESLint rules)
+        run: npm run lint:check
+
+      - name: Types
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Architecture specifications
+        run: npm run test:architecture
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: DI smoke (container boots)
+        run: |
+          node -e "(async()=>{const{NestFactory}=require('@nestjs/core');const{AppModule}=require('./dist/app.module.js');const a=await NestFactory.create(AppModule,{preview:true});await a.init();await a.close();console.log('DI OK');})()"
+
+  integration:
+    name: Migrations + platform integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: erp_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d erp_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # The migration directory is the schema's source of truth. `deploy` (not
+      # `db push`) means CI exercises exactly the SQL that ships to production.
+      - name: Apply migrations
+        run: npm run db:migrate:deploy
+
+      # Fails (exit 2) when the migrated database no longer matches prisma/schema —
+      # i.e. someone edited a .prisma file without committing a migration.
+      - name: Schema drift check
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code
+
+      - name: Seed dev data
+        run: npm run db:seed
+
+      - name: Platform integration specifications
+        run: npm run test:specifications:platform

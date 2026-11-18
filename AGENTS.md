@@ -14,7 +14,7 @@ only. Read `README.md` first, then this file.
 | Platform phase work       | `docs/platform-migration-plan.md` (what is done, what is next, exit criteria)                                                         |
 | New platform service      | `docs/architecture.md` (§platform layer), inspect existing service                                                                    |
 | New infrastructure client | `docs/architecture.md` (§infrastructure — checklist), inspect an existing client folder                                               |
-| Anything DB               | `prisma/schema/<context>/*.prisma` header comments. **No migrations** — edit schema, then `npm run db:push` and `npx prisma generate` |
+| Anything DB               | `prisma/schema/<context>/*.prisma` header comments. **Migrations are the source of truth** — edit schema, `npm run db:migrate` (creates `prisma/migrations/<ts>_<name>`), then `npx prisma generate`. `npm run db:push` is only for throwaway local databases |
 | Writing tests             | `docs/testing-business-modules.md` (unit beside the file; api/integrations/contracts/components/security under `specifications/`)     |
 
 ## Hard rules (ESLint-enforced — `npm run lint:check` fails otherwise)
@@ -90,7 +90,7 @@ npx tsc --noEmit -p tsconfig.json
 npm run lint:check
 npm run format:check
 npm run test:architecture
-npm run docs:di
+npm test
 npm run build
 NODE_ENV=test node -e "(async()=>{const{NestFactory}=require('@nestjs/core');const{AppModule}=require('./dist/app.module.js');const a=await NestFactory.create(AppModule,{preview:true});await a.init();await a.close();})()"
 ```
@@ -106,3 +106,4 @@ NODE_ENV=test node -e "(async()=>{const{NestFactory}=require('@nestjs/core');con
 - Never edit `src/generated/**`.
 - Public contracts change only with explicit owner approval.
 - Commit only when explicitly requested.
+- A schema change is only done when its migration is committed with it — CI fails on drift.

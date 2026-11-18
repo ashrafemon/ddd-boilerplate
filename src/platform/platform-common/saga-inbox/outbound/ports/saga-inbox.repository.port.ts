@@ -31,7 +31,11 @@ export abstract class SagaInboxRepositoryPort {
     instanceId: string | null,
   ): Promise<void>;
 
-  abstract markConsumed(id: string): Promise<void>;
+  /**
+   * Compare-and-set `BUFFERED → CONSUMED`. `false` means another worker already
+   * consumed that row, so the caller must not treat the event as fresh.
+   */
+  abstract markConsumed(id: string): Promise<boolean>;
 
   /**
    * Park every still-BUFFERED event for one instance + event contract as

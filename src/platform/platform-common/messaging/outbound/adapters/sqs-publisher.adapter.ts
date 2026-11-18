@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { SqsService } from '@ssut/nestjs-sqs';
 import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
 import { SqsPublisherPort } from '../ports/broker-publisher.port';
+import { toWireEnvelope } from './envelope.serializer';
 
 /**
  * SQS publisher adapter. Sends the canonical envelope to the configured queue.
@@ -32,15 +33,7 @@ export class SqsPublisherAdapter implements SqsPublisherPort {
 
     const payload: Parameters<SqsService['send']>[1] = {
       id: envelope.eventId,
-      body: JSON.stringify({
-        eventId: envelope.eventId,
-        eventType: envelope.eventType,
-        aggregateType: envelope.aggregateType,
-        aggregateId: envelope.aggregateId,
-        payload: envelope.payload,
-        headers: envelope.headers ?? {},
-        occurredAt: envelope.occurredAt.toISOString(),
-      }),
+      body: JSON.stringify(toWireEnvelope(envelope)),
     };
 
     await this.sqs.send(this.producerName, payload);

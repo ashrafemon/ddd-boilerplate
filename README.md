@@ -25,9 +25,19 @@ and a strict **business ↔ infrastructure boundary** enforced by ESLint.
 cp .env.example .env
 docker compose up -d          # PostgreSQL, Redis, RabbitMQ, Kafka
 npm install                   # postinstall runs prisma generate
-npm run db:push               # create/sync database from prisma/schema
+npm run db:migrate:deploy     # apply committed migrations (prisma/migrations)
+npm run db:migrate            # create a migration after editing prisma/schema
+npm run db:seed               # dev data (companies, saga definitions, demo aggregates)
 npm run start:dev             # API + Swagger on http://localhost:4000/api/v1
 ```
+
+Database changes follow one rule: **the schema authoring happens in
+`prisma/schema/<context>/*.prisma`, the truth of what a database runs is
+`prisma/migrations`**. Edit → `npm run db:migrate` → commit both. `npm run db:push`
+survives only for throwaway local databases; CI applies migrations with
+`db:migrate:deploy` and fails if the migrated database drifts from the schema.
+A database that was created with an older `db push` baseline is adopted once with
+`npm run db:migrate:baseline` (marks `20251118000000_init` as already applied).
 
 - REST API: `http://localhost:4000/api/v1`
 - Swagger: `http://localhost:4000/api/docs`
