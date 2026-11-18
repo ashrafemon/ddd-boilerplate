@@ -13,6 +13,9 @@ and a strict **business ↔ infrastructure boundary** enforced by ESLint.
   ledger and remaining platform work.
 - [`docs/platform-standard.md`](docs/platform-standard.md) — canonical rules for every
   `src/platform/**` module: inbound/outbound anatomy, ports, exceptions, table contract, lock and saga persistence
+- [`docs/saga.md`](docs/saga.md) — how the saga works: the three modules, definition
+  format, lifecycle (start → advance → worker → compensation → completion), state
+  machines, configuration knobs, and how to wire a business module into it.
 - [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure.xlsx) — complete project structure and file organization reference
 - [`docs/eslint-formatting-typescript-rules.md`](docs/eslint-formatting-typescript-rules.md) — complete ESLint, Prettier and TypeScript rule reference, including enforced architecture boundaries
 

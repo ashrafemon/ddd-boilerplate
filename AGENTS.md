@@ -10,6 +10,7 @@ only. Read `README.md` first, then this file.
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | Business module work      | `docs/architecture.md` (module anatomy, dependency rules)                                                                             |
 | Platform module work      | `docs/platform-standard.md` (inbound/outbound anatomy, port + table rules)                                                            |
+| Saga work                 | `docs/saga.md` (modules, definition format, lifecycle, compensation, config knobs)                                                    |
 | Platform phase work       | `docs/platform-migration-plan.md` (what is done, what is next, exit criteria)                                                         |
 | New platform service      | `docs/architecture.md` (§platform layer), inspect existing service                                                                    |
 | New infrastructure client | `docs/architecture.md` (§infrastructure — checklist), inspect an existing client folder                                               |

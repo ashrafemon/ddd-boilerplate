@@ -297,6 +297,8 @@ stale leases — retention is never the engine's job.
   fields, which silently breaks the fairness cap). Settles are CAS on status; a crashed worker is
   recovered by the sweep (`findStaleRunning` → `reschedule`), not a reconciler.
 
+Runbook (lifecycle, states, wiring a business module, ops): [`docs/saga.md`](saga.md).
+
 ### 9a. Publishing a definition
 
 Definitions are published through `RegisterSagaDefinitionUseCase` (flow step 1 of
