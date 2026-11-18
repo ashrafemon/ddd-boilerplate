@@ -63,3 +63,5 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 prisma/generated
 src/generated
 .kilo
+# Embedded workbook repo — never commit (see docs/platform-migration-plan.md)
+docs/erp-system/
