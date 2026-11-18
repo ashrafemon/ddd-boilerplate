@@ -28,18 +28,21 @@ const PLATFORM_ROOT = join(ROOT, 'src', 'platform');
  *     that composes them is a service
  */
 
-const MIGRATED = ['platform-common/idempotency', 'platform-common/cache'];
+const MIGRATED = [
+  'platform-common/idempotency',
+  'platform-common/cache',
+  'platform-common/locking',
+];
 
 /**
  * A class that exists in order to implement a port is an adapter, never a
  * service (standard §3). `services/` is for orchestration of use cases only.
- * These four predate the rule and must move to `outbound/adapters/` (or
+ * These three predate the rule and must move to `outbound/adapters/` (or
  * `inbound/adapters/`) in the change that migrates their module — Phase 2 for
- * locking/messaging/outbox, Phase 3 for events. The list may only shrink.
+ * outbox/messaging, Phase 3 for events. The list may only shrink.
  */
 const PENDING_PORT_SERVICES = [
   'platform-common/events/services/event-bus.service.ts',
-  'platform-common/locking/services/locking.service.ts',
   'platform-common/messaging/services/message-queue.service.ts',
   'platform-common/outbox/services/outbox.service.ts',
 ];

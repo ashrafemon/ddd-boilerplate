@@ -1,12 +1,14 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { RedisService } from '@infrastructure/redis/redis.service';
-import { RedisLockPort } from '../ports/redis-lock.port';
+import { LockLeasePort } from '../ports/lock-lease.port';
 
 const KEY_PREFIX = 'lock:';
 const FENCE_PREFIX = 'lock:fence:';
 
 /**
- * Redis-backed distributed lock adapter using atomic Lua scripts.
+ * Redis adapter for the lock lease using atomic Lua scripts.
+ *
+ * Implements `LockLeasePort`; the use cases inject the port, never this class.
  *
  * - acquire: SET key value NX PX leaseMs
  * - renew:   ownership check + PEXPIRE (atomic via Lua)
@@ -15,8 +17,8 @@ const FENCE_PREFIX = 'lock:fence:';
  * Fail closed: Redis missing or erroring yields false — callers must skip work.
  */
 @Injectable()
-export class RedisDistributedLockAdapter implements RedisLockPort {
-  private readonly logger = new Logger(RedisDistributedLockAdapter.name);
+export class RedisLockLeaseAdapter implements LockLeasePort {
+  private readonly logger = new Logger(RedisLockLeaseAdapter.name);
 
   constructor(@Optional() private readonly redisService?: RedisService) {}
 

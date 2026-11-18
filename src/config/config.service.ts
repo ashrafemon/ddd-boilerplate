@@ -340,6 +340,7 @@ export class ConfigService {
       minLeaseMs: 5_000,
       maxLeaseMs: 300_000,
       renewIntervalMs: 10_000,
+      durable: true,
     });
   }
 

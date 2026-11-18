@@ -4,7 +4,7 @@ import {
   DistributedLockRenewRequest,
   DistributedLockRenewResult,
   DistributedLockReleaseRequest,
-} from '../locking.types';
+} from '../../types/locking.types';
 
 /**
  * Cross-instance mutual exclusion — the platform distributed lock primitive.

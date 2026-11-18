@@ -10,6 +10,19 @@ export interface DistributedLockIdentity {
   resource: string;
 }
 
+/**
+ * Redis key for one lock identity: `lock:{tenant}:{company}:{scope}:{resource}`.
+ *
+ * Every part is percent-encoded, so an id containing the separator cannot
+ * impersonate a second field (the collision class that bit the idempotency and
+ * cache keys). The same resource in two companies locks independently.
+ */
+export function buildLockKey(identity: DistributedLockIdentity): string {
+  return ['lock', identity.tenantId, identity.companyId, identity.scope, identity.resource]
+    .map(encodeURIComponent)
+    .join(':');
+}
+
 /** Request to acquire a distributed lock. */
 export interface DistributedLockAcquireRequest {
   tenantId: string;
@@ -38,10 +51,18 @@ export interface DistributedLockReleaseRequest {
 export interface DistributedLockTicket {
   lockId: string;
   lockKey: string;
+  /** The identity the lock was taken for — renew/release address the ledger with it. */
+  identity: DistributedLockIdentity;
   ownerToken: string;
   fencingToken: number;
   acquiredAt: Date;
   expiresAt: Date;
+}
+
+/** Ledger row claimed for this holder (durable mode). */
+export interface LockLedgerClaim {
+  lockId: string;
+  fencingToken: number;
 }
 
 /** Result of an acquire attempt. */

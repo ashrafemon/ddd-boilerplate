@@ -55,8 +55,8 @@ and only use cases/services consume it — nobody injects a concrete adapter.
 
 | Kind          | Examples                                                                                                                                  | Implemented by                                                      |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Inbound port  | `IdempotencyPort`, `CachePort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                           | exactly one `inbound/adapters/*` class that delegates to use cases  |
-| Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `MessageQueuePort`, `FileStoragePort`, `DistributedLockPort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
+| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                           | exactly one `inbound/adapters/*` class that delegates to use cases  |
+| Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `LockLedgerPort`, `LockLeasePort`, `MessageQueuePort`, `FileStoragePort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
 
 ```
 use case ──uses──> outbound port ◁──implements── outbound adapter ──wraps──> infrastructure client
@@ -186,11 +186,18 @@ Both layers are used, each with one job:
 | Redis `SET NX PX` + owner token (Lua CAS renew/release)                                                                       | the live lease                | fast one-winner-now, fail-closed        |
 | `distributed_locks` (unique `lock_key`, monotonic `fencing_token`, `owner_token`, `lease_until`, `acquired_at`, `renewed_at`) | durable fencing + owner trail | a paused/expired owner can never commit |
 
-Acquire: Postgres insert-as-claim (`ON CONFLICT (lock_key) DO UPDATE … WHERE lease_until < now()
-RETURNING fencing_token`) → 0 rows means held; then Redis `SET NX PX`; if Redis refuses, roll the
-Postgres claim back by `owner_token`. Release: Postgres CAS clear, then Redis compare-and-delete.
-Fenced writes compare `fencing_token >= last seen` on the row they mutate. `LOCK_DURABLE=false`
-keeps Redis-only for local development.
+Acquire, in this order, because the failing path must be the cheap one:
+
+1. Redis `SET NX PX` — refusal is BUSY, no database round-trip.
+2. Postgres insert-as-claim `ON CONFLICT (tenant_id, company_id, scope, resource) DO UPDATE
+   SET fencing_token = fencing_token + 1 … WHERE lease_until IS NULL OR lease_until < now()
+   RETURNING id, fencing_token` — 0 rows means a live owner is still recorded.
+3. If Postgres refuses, hand the Redis lease back by `owner_token` so the two layers never drift.
+
+Release: Redis compare-and-delete, then Postgres `owner_token` CAS clear (both token-checked, so a
+fenced-out owner can neither renew nor release). Fenced writes compare `fencing_token >= last seen`
+on the row they mutate. `LOCK_DURABLE=false` keeps Redis-only, with the token from an `INCR`
+counter — local development only, because a Redis flush resets that sequence.
 
 ## 9. Saga persistence (decided)
 

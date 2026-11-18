@@ -1,0 +1,42 @@
+// ============================================================================
+// Platform — Distributed locks (locking.prisma)
+// ============================================================================
+// Durable half of the hybrid distributed lock (design `common/03-lock`):
+// Redis owns the live lease (SET NX PX + Lua renew/release), this table owns
+// the identity and the monotonic fencing token that downstream resources use
+// to reject a stale owner.
+//
+// Acquisition is an upsert-increment guarded by `lease_until < now()`, so a
+// crashed owner can never block the resource forever and every successful
+// takeover gets a strictly higher `fencing_token` for that lock identity.
+// With LOCK_DURABLE=false the row is skipped and the token comes from a Redis
+// counter — dev only, because a Redis flush resets the sequence.
+//
+// Identity is (tenant_id, company_id, scope, resource); the same resource in
+// two companies is two independent locks. `lock_key` keeps the Redis key that
+// matches the row.
+// ============================================================================
+
+model DistributedLock {
+  id           String    @id @default(uuid()) @db.Uuid
+
+  tenantId     String    @map("tenant_id") @db.VarChar(100)
+  companyId    String    @map("company_id") @db.VarChar(100)
+  scope        String    @db.VarChar(200)
+  resource     String    @db.VarChar(500)
+
+  lockKey      String    @unique @map("lock_key") @db.VarChar(1000)
+  fencingToken BigInt    @default(0) @map("fencing_token")
+
+  ownerToken   String?   @map("owner_token") @db.Uuid
+  leaseUntil   DateTime? @map("lease_until")
+  acquiredAt   DateTime? @map("acquired_at")
+  renewedAt    DateTime? @map("renewed_at")
+
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@unique([tenantId, companyId, scope, resource])
+  @@index([leaseUntil])
+  @@map("distributed_locks")
+}
