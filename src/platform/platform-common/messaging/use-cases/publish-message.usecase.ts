@@ -2,10 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import {
   BrokerPublisher,
-  KafkaPublisher,
-  RabbitMqPublisher,
-  SqsPublisher,
-} from '../message-publisher.tokens';
+  KafkaPublisherPort,
+  RabbitMqPublisherPort,
+  SqsPublisherPort,
+} from '../outbound/ports/broker-publisher.port';
 import {
   DEFAULT_BROKER_TARGET,
   OutboxEnvelope,
@@ -18,9 +18,9 @@ import {
 @Injectable()
 export class PublishMessageUseCase {
   constructor(
-    @Inject(RabbitMqPublisher) private readonly rabbitMq: BrokerPublisher,
-    @Inject(KafkaPublisher) private readonly kafka: BrokerPublisher,
-    @Inject(SqsPublisher) private readonly sqs: BrokerPublisher,
+    @Inject(RabbitMqPublisherPort) private readonly rabbitMq: BrokerPublisher,
+    @Inject(KafkaPublisherPort) private readonly kafka: BrokerPublisher,
+    @Inject(SqsPublisherPort) private readonly sqs: BrokerPublisher,
     private readonly config: ConfigService,
   ) {}
 

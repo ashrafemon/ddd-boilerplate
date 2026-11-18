@@ -53,10 +53,10 @@ src/platform/<group>/<capability>/
 A port is an `abstract class` used as the DI token. Every port has an adapter that implements it,
 and only use cases/services consume it — nobody injects a concrete adapter.
 
-| Kind          | Examples                                                                                                                                  | Implemented by                                                      |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `OutboxWriterPort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                           | exactly one `inbound/adapters/*` class that delegates to use cases  |
-| Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `LockLedgerPort`, `LockLeasePort`, `OutboxRepositoryPort`, `MessageQueuePort`, `FileStoragePort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
+| Kind          | Examples                                                                                                                                                                                                                     | Implemented by                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `OutboxWriterPort`, `MessageQueuePort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                                               | exactly one `inbound/adapters/*` class that delegates to use cases  |
+| Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `LockLedgerPort`, `LockLeasePort`, `OutboxRepositoryPort`, `RabbitMqPublisherPort`, `KafkaPublisherPort`, `SqsPublisherPort`, `FileStoragePort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
 
 ```
 use case ──uses──> outbound port ◁──implements── outbound adapter ──wraps──> infrastructure client
@@ -190,8 +190,8 @@ Acquire, in this order, because the failing path must be the cheap one:
 
 1. Redis `SET NX PX` — refusal is BUSY, no database round-trip.
 2. Postgres insert-as-claim `ON CONFLICT (tenant_id, company_id, scope, resource) DO UPDATE
-   SET fencing_token = fencing_token + 1 … WHERE lease_until IS NULL OR lease_until < now()
-   RETURNING id, fencing_token` — 0 rows means a live owner is still recorded.
+SET fencing_token = fencing_token + 1 … WHERE lease_until IS NULL OR lease_until < now()
+RETURNING id, fencing_token` — 0 rows means a live owner is still recorded.
 3. If Postgres refuses, hand the Redis lease back by `owner_token` so the two layers never drift.
 
 Release: Redis compare-and-delete, then Postgres `owner_token` CAS clear (both token-checked, so a

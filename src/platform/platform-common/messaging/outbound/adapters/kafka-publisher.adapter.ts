@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
 import { KafkaService } from '@infrastructure/kafka/kafka.service';
-import { BrokerPublisher } from '../message-publisher.tokens';
+import { KafkaPublisherPort } from '../ports/broker-publisher.port';
 
 /**
  * Kafka publisher adapter. Topic = event type; the whole canonical envelope is
@@ -9,7 +9,7 @@ import { BrokerPublisher } from '../message-publisher.tokens';
  * unconfigured target so the outbox retries).
  */
 @Injectable()
-export class KafkaPublisherAdapter implements BrokerPublisher {
+export class KafkaPublisherAdapter implements KafkaPublisherPort {
   constructor(private readonly kafkaService: KafkaService) {}
 
   public async publish(envelope: OutboxEnvelope): Promise<void> {

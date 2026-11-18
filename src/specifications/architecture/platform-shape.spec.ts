@@ -33,19 +33,17 @@ const MIGRATED = [
   'platform-common/cache',
   'platform-common/locking',
   'platform-common/outbox',
+  'platform-common/messaging',
 ];
 
 /**
  * A class that exists in order to implement a port is an adapter, never a
  * service (standard §3). `services/` is for orchestration of use cases only.
- * These two predate the rule and must move to `outbound/adapters/` (or
- * `inbound/adapters/`) in the change that migrates their module — messaging in
- * Phase 2, events in Phase 3. The list may only shrink.
+ *
+ * Only the event bus is left (Phase 3). Every other port implementation now
+ * sits in `inbound/adapters` or `outbound/adapters`. The list may only shrink.
  */
-const PENDING_PORT_SERVICES = [
-  'platform-common/events/services/event-bus.service.ts',
-  'platform-common/messaging/services/message-queue.service.ts',
-];
+const PENDING_PORT_SERVICES: string[] = ['platform-common/events/services/event-bus.service.ts'];
 
 const ALLOWED_TOP_LEVEL = new Set([
   'inbound',
@@ -95,7 +93,8 @@ function stripComments(source: string): string {
 function portTypeNames(files: string[]): Set<string> {
   const names = new Set<string>();
   const portFiles = files.filter(file => file.includes('/ports/') || file.endsWith('.port.ts'));
-  const declaration = /export\s+(?:abstract\s+class|interface|type)\s+([A-Za-z0-9_]+)/g;
+  // Standard §3: a port is an abstract class used as the DI token.
+  const declaration = /export\s+abstract\s+class\s+([A-Za-z0-9_]+)/g;
   for (const file of portFiles) {
     const source = readFileSync(file, 'utf8');
     for (const match of source.matchAll(declaration)) names.add(match[1]);
@@ -230,30 +229,33 @@ function sideAdapterFiles(moduleDir: string, side: string): string[] {
 }
 
 describe('platform shape — ports and adapters (migrated modules)', () => {
-  it.each(MIGRATED)('%s implements its inbound ports in inbound/adapters', modulePath => {
+  // Every declared port has an adapter on its own side. Driver adapters that
+  // implement no port (cron ticks, broker listener hosts) are allowed: standard
+  // §2 puts them in inbound/adapters precisely because they compose use cases.
+  it.each(MIGRATED)('%s implements every inbound port in inbound/adapters', modulePath => {
     const dir = join(PLATFORM_ROOT, modulePath);
     const ports = sidePortNames(dir, 'inbound');
     expect(ports.size).toBeGreaterThan(0);
 
-    for (const file of sideAdapterFiles(dir, 'inbound')) {
-      const implemented = implementedTypes(readFileSync(file, 'utf8'));
-      expect({
-        file: relative(PLATFORM_ROOT, file),
-        ports: implemented.filter(t => ports.has(t)),
-      }).not.toBeNull();
-      expect(implemented.some(type => ports.has(type))).toBe(true);
-    }
+    const implemented = new Set(
+      sideAdapterFiles(dir, 'inbound').flatMap(file =>
+        implementedTypes(readFileSync(file, 'utf8')),
+      ),
+    );
+    expect([...ports].filter(port => !implemented.has(port))).toEqual([]);
   });
 
-  it.each(MIGRATED)('%s implements its outbound ports in outbound/adapters', modulePath => {
+  it.each(MIGRATED)('%s implements every outbound port in outbound/adapters', modulePath => {
     const dir = join(PLATFORM_ROOT, modulePath);
     const ports = sidePortNames(dir, 'outbound');
     expect(ports.size).toBeGreaterThan(0);
 
-    for (const file of sideAdapterFiles(dir, 'outbound')) {
-      const implemented = implementedTypes(readFileSync(file, 'utf8'));
-      expect(implemented.some(type => ports.has(type))).toBe(true);
-    }
+    const implemented = new Set(
+      sideAdapterFiles(dir, 'outbound').flatMap(file =>
+        implementedTypes(readFileSync(file, 'utf8')),
+      ),
+    );
+    expect([...ports].filter(port => !implemented.has(port))).toEqual([]);
   });
 
   it.each(MIGRATED)('%s calls outbound ports from use cases, never adapters', modulePath => {

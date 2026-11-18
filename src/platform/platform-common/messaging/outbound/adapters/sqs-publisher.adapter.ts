@@ -2,7 +2,7 @@ import { ConfigService } from '@config/config.service';
 import { Injectable } from '@nestjs/common';
 import { SqsService } from '@ssut/nestjs-sqs';
 import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
-import { BrokerPublisher } from '../message-publisher.tokens';
+import { SqsPublisherPort } from '../ports/broker-publisher.port';
 
 /**
  * SQS publisher adapter. Sends the canonical envelope to the configured queue.
@@ -10,7 +10,7 @@ import { BrokerPublisher } from '../message-publisher.tokens';
  * retries rather than silently dropping the message.
  */
 @Injectable()
-export class SqsPublisherAdapter implements BrokerPublisher {
+export class SqsPublisherAdapter implements SqsPublisherPort {
   private readonly queueUrl: string;
   private readonly producerName = 'producer1';
 

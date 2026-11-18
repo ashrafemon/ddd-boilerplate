@@ -2,7 +2,7 @@ import { ConfigService } from '@config/config.service';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { Injectable } from '@nestjs/common';
 import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
-import { BrokerPublisher } from '../message-publisher.tokens';
+import { RabbitMqPublisherPort } from '../ports/broker-publisher.port';
 
 /**
  * RabbitMQ publisher adapter. Publishes the *whole* canonical envelope to the
@@ -11,7 +11,7 @@ import { BrokerPublisher } from '../message-publisher.tokens';
  * transports deliver.
  */
 @Injectable()
-export class RabbitMQPublisherAdapter implements BrokerPublisher {
+export class RabbitMQPublisherAdapter implements RabbitMqPublisherPort {
   private readonly exchange: string;
 
   constructor(

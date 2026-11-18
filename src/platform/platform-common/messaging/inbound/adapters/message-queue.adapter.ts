@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
 import { MessageQueuePort } from '../ports/message-queue.port';
-import { PublishMessageUseCase } from '../usecases/publish-message.usecase';
+import { PublishMessageUseCase } from '../../use-cases/publish-message.usecase';
 
 /**
- * Message Queue service facade — implements the public `MessageQueuePort`.
- * Delegates to the publish use case; holds no rules of its own.
+ * Inbound adapter implementing the public `MessageQueuePort`.
+ *
+ * Delegates to the publish use case and holds no rules of its own; the outbox
+ * is its only caller.
  */
 @Injectable()
-export class MessageQueueService implements MessageQueuePort {
+export class MessageQueueAdapter implements MessageQueuePort {
   constructor(private readonly publishMessage: PublishMessageUseCase) {}
 
   async publish(envelope: OutboxEnvelope): Promise<void> {
