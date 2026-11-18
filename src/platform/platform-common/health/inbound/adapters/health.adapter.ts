@@ -12,7 +12,8 @@ import { SnsService } from '@infrastructure/sns/sns.service';
 import { RedisService } from '@infrastructure/redis/redis.service';
 import { SecretsManagerService } from '@infrastructure/secrets/secrets.service';
 import { PuppeteerService } from '@infrastructure/puppeteer/puppeteer.service';
-import { HealthPort, HealthReport, HealthStatus } from '../ports/health.port';
+import { HealthPort } from '../ports/health.port';
+import { HealthReport, HealthStatus } from '../../types/health.types';
 
 /**
  * Probes every infrastructure client and aggregates the result into a single
@@ -20,7 +21,7 @@ import { HealthPort, HealthReport, HealthStatus } from '../ports/health.port';
  * becomes a `down` status, so the health endpoint always answers.
  */
 @Injectable()
-export class HealthCheckAdapter implements HealthPort {
+export class HealthAdapter implements HealthPort {
   constructor(
     private readonly prismaWrite: PrismaWriteService,
     private readonly prismaRead: PrismaReadService,

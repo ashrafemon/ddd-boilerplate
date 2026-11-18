@@ -16,7 +16,7 @@ import { VendorReference } from '@business/party/vendor/public/contracts/vendor-
 import { ProductReference } from '@business/product-management/product/public/contracts/product-for-purchase.contract';
 import { PurchaseOrderQueryRecord } from '@business/procurement/purchase-order/domain/types/purchase-order.types';
 import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
-import { AuditEntry, AuditPort } from '@platform/platform-common/audit/ports/audit.port';
+import { AuditEntry, AuditPort } from '@platform/platform-common/audit/inbound/ports/audit.port';
 import {
   AbacPort,
   AbacCheck,

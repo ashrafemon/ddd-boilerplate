@@ -16,16 +16,16 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started.
 
 ## Phase overview
 
-| Phase | Goal                                                       | Modules                                                                                                          | Status |
-| ----- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------ |
-| 0     | Publish the standard + enforcement scaffolding             | `platform-standard.md`, architecture specs, `test:architecture`                                                  | ✅     |
-| 1     | Pilot the anatomy on the two smallest capabilities         | `idempotency`, `cache`                                                                                           | ✅     |
-| 2     | Migrate the event spine (the modules that call each other) | `locking`, `outbox`, `messaging`, `events`, `inbox`                                                              | ✅     |
-| 3     | Migrate the saga runtime + finish its persistence          | `process-orchestration/saga`, `saga.prisma`                                                                      | ✅     |
-| 4     | Migrate the HTTP-facing capabilities                       | `numbering`, `audit`, `health`, `import`, `notification`, `webhook`, `scheduler`, `recurring`, `batch-operation` | ⬜     |
-| 5     | Finish the contract-side rename work                       | business listeners                                                                                               | 🚧     |
-| 6     | Flip enforcement from staged to global                     | architecture specs, `eslint.config.mjs`, `docs/architecture.md`                                                  | ⬜     |
-| 7     | Build out the ~40 scaffold capabilities                    | `platform-ai/*`, `platform-organization/*`, remaining `platform-common/*`                                        | ⬜     |
+| Phase | Goal                                                       | Modules                                                                                                                        | Status |
+| ----- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| 0     | Publish the standard + enforcement scaffolding             | `platform-standard.md`, architecture specs, `test:architecture`                                                                | ✅     |
+| 1     | Pilot the anatomy on the two smallest capabilities         | `idempotency`, `cache`                                                                                                         | ✅     |
+| 2     | Migrate the event spine (the modules that call each other) | `locking`, `outbox`, `messaging`, `events`, `inbox`                                                                            | ✅     |
+| 3     | Migrate the saga runtime + finish its persistence          | `process-orchestration/saga`, `saga.prisma`                                                                                    | ✅     |
+| 4     | Migrate the HTTP-facing capabilities                       | `numbering` ✅, `audit` ✅, `health` ✅, then `import`, `notification`, `webhook`, `scheduler`, `recurring`, `batch-operation` | 🚧     |
+| 5     | Finish the contract-side rename work                       | business listeners                                                                                                             | 🚧     |
+| 6     | Flip enforcement from staged to global                     | architecture specs, `eslint.config.mjs`, `docs/architecture.md`                                                                | ⬜     |
+| 7     | Build out the ~40 scaffold capabilities                    | `platform-ai/*`, `platform-organization/*`, remaining `platform-common/*`                                                      | ⬜     |
 
 ## Phase 0 — Standard and enforcement ✅
 
@@ -141,24 +141,30 @@ remain under `src/platform`. The claim SQL was found to be broken during this ph
 `undefined` and the fairness cap bucketed every row together) — fixed with explicit aliases and
 covered by the integration spec.
 
-## Phase 4 — HTTP-facing capabilities ⬜
+## Phase 4 — HTTP-facing capabilities 🚧
 
 Each of these owns a public surface (controllers or HTTP-adjacent ports), so the
 migration adds `http/requests` + `http/responses` (zod via `createZodDto`) in addition
-to the anatomy. Suggested order (smallest blast radius first):
+to the anatomy. Order (smallest blast radius first):
 
-1. `numbering` — exercises `fencingToken` end to end (number blocks are leased); smallest
-   module with a port, a repository and a unique constraint.
-2. `audit` — `AuditPort` inbound, `AuditRepositoryPort` outbound, retention in `services/`.
-3. `health` — `HealthCheckAdapter` already aggregates every client; shape it as
-   `inbound/adapters/health.adapter.ts` + `inbound/ports/health.port.ts`.
-4. `import` — 42 files, has `@ImportOptIn` registry, handler + job + row model.
-5. `notification` — 42 files, channel registry, SES/SNS adapters already exist.
-6. `webhook` — 40 files, outbound delivery ledger + inbound receiver, signature checks
-   (`401`), retries in `services/`.
-7. `scheduler` — 35 files, due-job dispatch, already consumes `DistributedLockPort`.
-8. `recurring` — 26 files, occurrence generation + margin/version rules.
-9. `batch-operation` — 32 files, `@BatchOperationOptIn` registry.
+- ✅ `numbering` — `NumberingPort` inbound + `NumberSequenceRepositoryPort` outbound,
+  `NextDocumentNumberUseCase` owns the company scope and formatting. The durable key is
+  `buildSequenceKey(company, series)` with both segments percent-encoded: a raw `company:series`
+  join let `("a:b", "c")` and `("a", "b:c")` share one counter (found by the property spec).
+  `currentValue` is a BIGINT — formatted as text, never through `Number()`.
+- ✅ `audit` — `AuditPort` inbound + `AuditLogRepositoryPort` outbound,
+  `RecordAuditEntryUseCase` resolves actor/tenant/request ids from CLS and redacts
+  credential-shaped fields (pure `redactChanges` in `types/`, unit-tested).
+- ✅ `health` — `HealthPort` inbound + `HealthAdapter` (+ `types/health.types.ts`). Inbound-only
+  by design: it aggregates infrastructure probes, persists nothing, so it is the one module on the
+  architecture spec's `INBOUND_ONLY` list.
+- ⬜ `import` — 42 files, has `@ImportOptIn` registry, handler + job + row model.
+- ⬜ `notification` — 42 files, channel registry, SES/SNS adapters already exist.
+- ⬜ `webhook` — 40 files, outbound delivery ledger + inbound receiver, signature checks
+  (`401`), retries in `services/`.
+- ⬜ `scheduler` — 35 files, due-job dispatch, already consumes `DistributedLockPort`.
+- ⬜ `recurring` — 26 files, occurrence generation + margin/version rules.
+- ⬜ `batch-operation` — 32 files, `@BatchOperationOptIn` registry.
 
 Exit criteria per module: anatomy holds, `http/responses` DTOs added where a controller
 exists, `MIGRATED` gains the module, workbook table aligned if one exists.
@@ -214,9 +220,9 @@ folders; `hex` = migrated anatomy. Specs counts exclude integration/api specs.
 | `platform-common/recurring`        | 26    | 0     | legacy | `recurring_*`               | Phase 4         |
 | `platform-common/context`          | 7     | 0     | legacy | —                           | Phase 4         |
 | `platform-common/condition-engine` | 6     | 0     | legacy | `expressions`               | Phase 4         |
-| `platform-common/health`           | 4     | 0     | legacy | —                           | Phase 4         |
-| `platform-common/numbering`        | 3     | 0     | legacy | `document_number_sequences` | Phase 4 (first) |
-| `platform-common/audit`            | 3     | 0     | legacy | —                           | Phase 4         |
+| `platform-common/health`           | 6     | 5     | hex    | —                           | Phase 4 (done)  |
+| `platform-common/numbering`        | 8     | 4     | hex    | `document_number_sequences` | Phase 4 (done)  |
+| `platform-common/audit`            | 8     | 6     | hex    | `audit_logs`                | Phase 4 (done)  |
 | `platform-common/observability`    | 8     | 0     | legacy | —                           | Phase 4         |
 
 Every migrated module has at least one unit spec per source file that carries logic, plus

@@ -1,7 +1,7 @@
 import { TenantScope } from '@common/application/utils/tenant-scope';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
+import { AuditPort } from '@platform/platform-common/audit/inbound/ports/audit.port';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
 import { BatchOperationJobRecord, BatchOperationStatusRules } from '../batch-operation.types';

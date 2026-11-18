@@ -37,6 +37,9 @@ const MIGRATED = [
   'platform-common/events',
   'platform-common/inbox',
   'platform-common/process-orchestration/saga',
+  'platform-common/numbering',
+  'platform-common/audit',
+  'platform-common/health',
 ];
 
 /**
@@ -249,18 +252,28 @@ describe('platform shape — ports and adapters (migrated modules)', () => {
     expect([...ports].filter(port => !implemented.has(port))).toEqual([]);
   });
 
-  it.each(MIGRATED)('%s implements every outbound port in outbound/adapters', modulePath => {
-    const dir = join(PLATFORM_ROOT, modulePath);
-    const ports = sidePortNames(dir, 'outbound');
-    expect(ports.size).toBeGreaterThan(0);
+  /**
+   * Read-side aggregators: the capability is "answer a question about the
+   * infrastructure", so there is nothing to persist and therefore no outbound
+   * port to implement. Their inbound port + adapter are still enforced.
+   */
+  const INBOUND_ONLY = ['platform-common/health'];
 
-    const implemented = new Set(
-      sideAdapterFiles(dir, 'outbound').flatMap(file =>
-        implementedTypes(readFileSync(file, 'utf8')),
-      ),
-    );
-    expect([...ports].filter(port => !implemented.has(port))).toEqual([]);
-  });
+  it.each(MIGRATED.filter(modulePath => !INBOUND_ONLY.includes(modulePath)))(
+    '%s implements every outbound port in outbound/adapters',
+    modulePath => {
+      const dir = join(PLATFORM_ROOT, modulePath);
+      const ports = sidePortNames(dir, 'outbound');
+      expect(ports.size).toBeGreaterThan(0);
+
+      const implemented = new Set(
+        sideAdapterFiles(dir, 'outbound').flatMap(file =>
+          implementedTypes(readFileSync(file, 'utf8')),
+        ),
+      );
+      expect([...ports].filter(port => !implemented.has(port))).toEqual([]);
+    },
+  );
 
   it.each(MIGRATED)('%s calls outbound ports from use cases, never adapters', modulePath => {
     const dir = join(PLATFORM_ROOT, modulePath);

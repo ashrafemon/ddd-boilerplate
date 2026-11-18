@@ -6,12 +6,3 @@ export interface HealthReport {
   status: 'ok' | 'degraded';
   components: Record<string, HealthStatus>;
 }
-
-/**
- * Aggregated infrastructure health for orchestration readiness/liveness
- * probes. Implemented by the platform health adapter on top of the raw
- * infrastructure clients.
- */
-export abstract class HealthPort {
-  abstract check(): Promise<HealthReport>;
-}

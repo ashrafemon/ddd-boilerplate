@@ -4,7 +4,7 @@ import { GrnCommandRepository } from '../../domain/repositories/grn-command.repo
 import { GrnPublisherPort } from '../publishes/publishers/grn.publisher-port';
 import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
+import { AuditPort } from '@platform/platform-common/audit/inbound/ports/audit.port';
 
 @Injectable()
 export class PostGrnUseCase {
