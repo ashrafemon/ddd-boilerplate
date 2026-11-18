@@ -6,14 +6,15 @@ only. Read `README.md` first, then this file.
 
 ## Before writing any code
 
-| Doing… | You MUST read |
-|--------|---------------|
-| Business module work | `docs/architecture.md` (module anatomy, dependency rules) |
-| Platform module work | `docs/platform-standard.md` (inbound/outbound anatomy, port + table rules) |
-| New platform service | `docs/architecture.md` (§platform layer), inspect existing service |
-| New infrastructure client | `docs/architecture.md` (§infrastructure — checklist), inspect an existing client folder |
-| Anything DB | `prisma/schema/<context>/*.prisma` header comments. **No migrations** — edit schema, then `npm run db:push` and `npx prisma generate` |
-| Writing tests | `docs/testing-business-modules.md` (unit beside the file; api/integrations/contracts/components/security under `specifications/`) |
+| Doing…                    | You MUST read                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Business module work      | `docs/architecture.md` (module anatomy, dependency rules)                                                                             |
+| Platform module work      | `docs/platform-standard.md` (inbound/outbound anatomy, port + table rules)                                                            |
+| Platform phase work       | `docs/platform-migration-plan.md` (what is done, what is next, exit criteria)                                                         |
+| New platform service      | `docs/architecture.md` (§platform layer), inspect existing service                                                                    |
+| New infrastructure client | `docs/architecture.md` (§infrastructure — checklist), inspect an existing client folder                                               |
+| Anything DB               | `prisma/schema/<context>/*.prisma` header comments. **No migrations** — edit schema, then `npm run db:push` and `npx prisma generate` |
+| Writing tests             | `docs/testing-business-modules.md` (unit beside the file; api/integrations/contracts/components/security under `specifications/`)     |
 
 ## Hard rules (ESLint-enforced — `npm run lint:check` fails otherwise)
 

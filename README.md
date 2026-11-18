@@ -9,6 +9,8 @@ and a strict **business ↔ infrastructure boundary** enforced by ESLint.
 
 - [`docs/architecture.md`](docs/architecture.md) — architecture, layers, dependency rules,
   module anatomy, tenancy, auth/RBAC/ABAC, outbox/events/messaging, data model, verification
+- [`docs/platform-migration-plan.md`](docs/platform-migration-plan.md) — phase plan, module
+  ledger and remaining platform work.
 - [`docs/platform-standard.md`](docs/platform-standard.md) — canonical rules for every
   `src/platform/**` module: inbound/outbound anatomy, ports, exceptions, table contract, lock and saga persistence
 - [`docs/Erp Backend Folder Structure.xlsx`](docs/Erp Backend Folder Structure.xlsx) — complete project structure and file organization reference

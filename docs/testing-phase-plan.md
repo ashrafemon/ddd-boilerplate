@@ -90,7 +90,7 @@ Applies to all `src/business/**` modules (vendor, product, product-pricing, purc
 - **Target**: ~40 security-spec tests per module (RBAC, tenant, injection).
 - **Run**: `npm run test:integration:business`.
 
-## Phase iget:
+## Phase 8: CI / Hardening
 
 - **Goal**: Coverage gates, architecture test, verification battery.
 - **Actions**:

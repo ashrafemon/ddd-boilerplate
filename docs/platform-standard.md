@@ -272,8 +272,10 @@ back off the rest) and purge (processed past retention) use cases.
 - `src/specifications/architecture/platform-shape.spec.ts` holds `MIGRATED` (modules conforming) and
   `PENDING` (skip-list). CI is green while both exist.
 - Touching a module = migrating it in the same change, moving it from `PENDING` to `MIGRATED`.
-- When `PENDING` is empty, the rules flip to global (all platform modules) and the skip-list is
-  deleted in its own commit.
+- `PENDING` is empty and `MIGRATED` currently lists the seven migrated modules
+  (idempotency, cache, locking, outbox, messaging, events, inbox). When the remaining modules
+  migrate, the rules flip to global (all platform modules) and the skip-list is deleted in its own
+  commit. Phase status: `docs/platform-migration-plan.md`.
 - The global rules (`no root files` for migrated modules, `no errors/` folder anywhere) are
   enforced from day one.
 
