@@ -1,24 +1,26 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@config/config.service';
-import { PrismaOutboxRepository } from './repositories/prisma-outbox.repository';
-import { PublishPendingBatchUseCase } from './usecases/publish-pending-batch.usecase';
+import { PublishPendingBatchUseCase } from '../use-cases/publish-pending-batch.usecase';
+import { PurgePublishedOutboxUseCase } from '../use-cases/purge-published-outbox.usecase';
 
 /**
- * Outbox scheduler — drives the dispatch tick and the retention cleanup.
+ * Scheduled orchestration for the outbox: the dispatch tick plus the retention
+ * sweep. It composes two use cases and owns no persistence itself.
  *
  * Retry timing is data-driven (per-row `nextRetryAt` backoff evaluated at claim
- * time), so there is no lease reconciler and no "reset FAILED" pass.
+ * time), so there is no lease reconciler and no "reset FAILED" pass. A tick that
+ * overlaps the previous one is skipped by the use case's own guard.
  */
 @Injectable()
-export class OutboxScheduler implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(OutboxScheduler.name);
+export class OutboxDispatcherService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(OutboxDispatcherService.name);
   private timer: NodeJS.Timeout | undefined;
   private inFlight: Promise<void> | undefined;
 
   constructor(
     private readonly publishPendingBatch: PublishPendingBatchUseCase,
-    private readonly repository: PrismaOutboxRepository,
+    private readonly purgePublished: PurgePublishedOutboxUseCase,
     private readonly configService: ConfigService,
   ) {}
 
@@ -53,8 +55,7 @@ export class OutboxScheduler implements OnModuleInit, OnModuleDestroy {
 
   @Cron(CronExpression.EVERY_HOUR, { name: 'cleanup-outbox' })
   async cleanupPublished(): Promise<void> {
-    const { cleanupOlderThanHours } = this.configService.getOutbox();
-    const deleted = await this.repository.deletePublishedOlderThan(cleanupOlderThanHours);
+    const deleted = await this.purgePublished.execute();
     if (deleted > 0) {
       this.logger.log(`Deleted ${deleted} published outbox messages past retention`);
     }

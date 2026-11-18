@@ -3,7 +3,7 @@ import { CreateProductUseCase } from '@business/product-management/product/appli
 import { ProductCommandRepository } from '@business/product-management/product/domain/repositories/product-command.repository';
 import { ProductPublisherPort } from '@business/product-management/product/application/publishes/publishers/product.publisher-port';
 import { Product } from '@business/product-management/product/domain/aggregates/product.aggregate';
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
 import {
   AbacPort,
   AbacResult,

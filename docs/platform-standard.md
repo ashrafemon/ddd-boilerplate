@@ -55,8 +55,8 @@ and only use cases/services consume it — nobody injects a concrete adapter.
 
 | Kind          | Examples                                                                                                                                  | Implemented by                                                      |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                           | exactly one `inbound/adapters/*` class that delegates to use cases  |
-| Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `LockLedgerPort`, `LockLeasePort`, `MessageQueuePort`, `FileStoragePort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
+| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `OutboxWriterPort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                           | exactly one `inbound/adapters/*` class that delegates to use cases  |
+| Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `LockLedgerPort`, `LockLeasePort`, `OutboxRepositoryPort`, `MessageQueuePort`, `FileStoragePort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
 
 ```
 use case ──uses──> outbound port ◁──implements── outbound adapter ──wraps──> infrastructure client

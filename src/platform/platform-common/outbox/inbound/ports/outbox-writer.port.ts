@@ -1,4 +1,4 @@
-import { BrokerTarget, OutboxEvent } from '../outbox.types';
+import { BrokerTarget, OutboxEvent } from '../../types/outbox.types';
 
 /** Options for a single `append` call. */
 export interface AppendOutboxOptions {

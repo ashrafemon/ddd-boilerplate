@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { GenericOutboxPublisherPort } from '@platform/platform-common/outbox/ports/generic-outbox-publisher.port';
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
-import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
+import { GenericOutboxPublisherPort } from '../ports/generic-outbox-publisher.port';
+import { OutboxEvent } from '../../types/outbox.types';
+import { OutboxWriterPort } from '../ports/outbox-writer.port';
 
 /**
  * Single reusable Outbox adapter for all business modules.

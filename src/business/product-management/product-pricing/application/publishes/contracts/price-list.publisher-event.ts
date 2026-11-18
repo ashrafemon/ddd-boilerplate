@@ -1,4 +1,4 @@
-import { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
 
 export type PriceListCreatedPublisherEvent = OutboxEnvelope;
 export type PriceListUpdatedPublisherEvent = OutboxEnvelope;

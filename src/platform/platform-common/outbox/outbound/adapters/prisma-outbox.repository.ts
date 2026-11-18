@@ -9,7 +9,8 @@ import {
   OutboxClaimedRecord,
   OutboxMessage,
   OutboxStatus,
-} from '../outbox.types';
+} from '../../types/outbox.types';
+import { OutboxRepositoryPort } from '../ports/outbox.repository.port';
 
 interface OutboxRawRow {
   id: string;
@@ -37,12 +38,14 @@ interface OutboxRawRow {
 }
 
 /**
- * Concrete Outbox persistence (no internal repository port — injected
- * directly into the outbox use cases). Every write happens inside the caller's
- * transaction/CLS scope; every state transition is CAS-fenced on `claimToken`.
+ * PostgreSQL adapter for the transactional outbox.
+ *
+ * Implements `OutboxRepositoryPort`; use cases inject the port, never this
+ * class. Every write happens inside the caller's transaction/CLS scope, and
+ * every state transition is CAS-fenced on `claimToken`.
  */
 @Injectable()
-export class PrismaOutboxRepository {
+export class PrismaOutboxRepository implements OutboxRepositoryPort {
   constructor(private readonly txHost: TransactionHost<TransactionalAdapterPrisma>) {}
 
   async append(request: AppendOutboxEventRequest): Promise<OutboxMessage> {

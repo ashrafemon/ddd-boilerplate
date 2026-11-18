@@ -1,4 +1,4 @@
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEvent } from '../../types/outbox.types';
 
 /**
  * Generic outbox publisher port — the single reusable outbox contract.

@@ -32,19 +32,19 @@ const MIGRATED = [
   'platform-common/idempotency',
   'platform-common/cache',
   'platform-common/locking',
+  'platform-common/outbox',
 ];
 
 /**
  * A class that exists in order to implement a port is an adapter, never a
  * service (standard §3). `services/` is for orchestration of use cases only.
- * These three predate the rule and must move to `outbound/adapters/` (or
- * `inbound/adapters/`) in the change that migrates their module — Phase 2 for
- * outbox/messaging, Phase 3 for events. The list may only shrink.
+ * These two predate the rule and must move to `outbound/adapters/` (or
+ * `inbound/adapters/`) in the change that migrates their module — messaging in
+ * Phase 2, events in Phase 3. The list may only shrink.
  */
 const PENDING_PORT_SERVICES = [
   'platform-common/events/services/event-bus.service.ts',
   'platform-common/messaging/services/message-queue.service.ts',
-  'platform-common/outbox/services/outbox.service.ts',
 ];
 
 const ALLOWED_TOP_LEVEL = new Set([

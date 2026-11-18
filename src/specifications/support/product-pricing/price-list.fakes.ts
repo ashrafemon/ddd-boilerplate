@@ -6,7 +6,7 @@ import {
   GetProductPriceResult,
   PriceListQueryRecord,
 } from '@business/product-management/product-pricing/domain/types/price-list.types';
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
 import {
   AbacPort,
   AbacCheck,

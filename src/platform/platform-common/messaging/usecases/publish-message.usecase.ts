@@ -9,7 +9,7 @@ import {
 import {
   DEFAULT_BROKER_TARGET,
   OutboxEnvelope,
-} from '@platform/platform-common/outbox/outbox.types';
+} from '@platform/platform-common/outbox/types/outbox.types';
 
 /**
  * Use case: publish an envelope to the broker named by `envelope.broker`

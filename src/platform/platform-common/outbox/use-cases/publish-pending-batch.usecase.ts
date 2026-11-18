@@ -3,13 +3,13 @@ import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { InProcessEventBus } from '@platform/platform-common/events/ports/in-process-event-bus.port';
 import { MessageQueuePort } from '@platform/platform-common/messaging/ports/message-queue.port';
-import { PrismaOutboxRepository } from '../repositories/prisma-outbox.repository';
+import { OutboxRepositoryPort } from '../outbound/ports/outbox.repository.port';
 import {
   BrokerTarget,
   DEFAULT_BROKER_TARGET,
   OutboxClaimedRecord,
   OutboxEnvelope,
-} from '../outbox.types';
+} from '../types/outbox.types';
 
 /**
  * Use case: publish a batch of pending outbox messages.
@@ -26,7 +26,7 @@ export class PublishPendingBatchUseCase {
   private dispatching = false;
 
   constructor(
-    private readonly repository: PrismaOutboxRepository,
+    private readonly repository: OutboxRepositoryPort,
     private readonly messageQueue: MessageQueuePort,
     private readonly eventBus: InProcessEventBus,
     private readonly requestContext: RequestContextPort,

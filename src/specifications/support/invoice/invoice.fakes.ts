@@ -4,7 +4,7 @@ import { InvoiceQuery } from '@business/sales/invoice/application/queries/invoic
 import { InvoicePublisherPort } from '@business/sales/invoice/application/publishes/publishers/invoice.publisher-port';
 import { NumberingPort } from '@business/procurement/purchase-order/application/outbound-ports/numbering.port';
 import { InvoiceQueryRecord } from '@business/sales/invoice/domain/types/invoice.types';
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
 import {
   AbacPort,
   AbacCheck,

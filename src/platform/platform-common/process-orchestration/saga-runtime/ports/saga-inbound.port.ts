@@ -1,4 +1,4 @@
-import { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
 
 /**
  * SagaInboundPort — the seam a broker consumer / business listener uses to feed

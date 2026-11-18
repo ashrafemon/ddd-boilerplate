@@ -6,7 +6,7 @@ import { Product } from '@business/product-management/product/domain/aggregates/
 import { ProductFactory } from '@business/product-management/product/domain/factories/product.factory';
 import { ProductStatus } from '@business/product-management/product/domain/types/product.enum';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
 import {
   AbacPort,
   AbacResult,

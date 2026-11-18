@@ -11,7 +11,7 @@ import {
 } from '@business/procurement/purchase-order/public/contracts/purchase-order-receipt.contract';
 import { GrnQueryRecord } from '@business/procurement/purchase-goods-receipt/domain/types/grn.types';
 import { GrnStatus } from '@business/procurement/purchase-goods-receipt/domain/types/grn.enum';
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
 import { AuditEntry, AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import {
   AbacPort,

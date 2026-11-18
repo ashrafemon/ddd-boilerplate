@@ -4,8 +4,8 @@ import { InvoiceForReportsFacade } from './application/facades/invoice-for-repor
 import { RecurringInvoiceGenerationFacade } from './application/facades/recurring-invoice-generation.facade';
 import { RecurringOccurrenceRequestedRabbitMQListener } from './integrations/consumes/listeners/recurring-occurrence-requested.listener';
 import { InvoicePublisherPort } from './application/publishes/publishers/invoice.publisher-port';
-import { SharedOutboxAdapter } from '@platform/platform-common/outbox/adapters/shared-outbox.adapter';
-import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
+import { SharedOutboxAdapter } from '@platform/platform-common/outbox/inbound/adapters/shared-outbox.adapter';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/inbound/ports/outbox-writer.port';
 import { InvoiceQuery } from './application/queries/invoice.query';
 import { NumberingPort } from './application/outbound-ports/numbering.port';
 import { CreateInvoiceUseCase } from './application/use-cases/create-invoice.usecase';

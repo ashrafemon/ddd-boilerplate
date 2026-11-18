@@ -11,7 +11,7 @@ import {
 } from '@platform/platform-organization/authorization/ports/abac.port';
 import { VendorReference } from '@business/party/vendor/public/contracts/vendor-for-purchase.contract';
 import { PurchaseOrder } from '@business/procurement/purchase-order/domain/aggregates/purchase-order.aggregate';
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
 import { InMemoryRequestContextService } from '@test/support/context/in-memory-request-context';
 import { initNoopTransactionHost } from '@test/utils/noop-transaction-host';
 

@@ -5,7 +5,7 @@ import { ProductPublisherPort } from '@business/product-management/product/appli
 import { Product } from '@business/product-management/product/domain/aggregates/product.aggregate';
 import { ProductFactory } from '@business/product-management/product/domain/factories/product.factory';
 import { Money } from '@business/shared-business/domain/common/value-objects/money';
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
 import {
   AbacPort,
   AbacResult,

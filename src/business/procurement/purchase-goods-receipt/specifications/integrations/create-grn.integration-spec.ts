@@ -5,7 +5,7 @@ import { PurchaseOrderPort } from '@business/procurement/purchase-goods-receipt/
 import { NumberingPort } from '@business/procurement/purchase-goods-receipt/application/outbound-ports/numbering.port';
 import { GrnPublisherPort } from '@business/procurement/purchase-goods-receipt/application/publishes/publishers/grn.publisher-port';
 import { GoodReceiptNote } from '@business/procurement/purchase-goods-receipt/domain/aggregates/grn.aggregate';
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
 import { PurchaseOrderReference } from '@business/procurement/purchase-order/public/contracts/purchase-order-for-grn.contract';
 import {
   PurchaseOrderReceiptRequest,

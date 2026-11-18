@@ -5,7 +5,7 @@ import { VendorPublisherPort } from '@business/party/vendor/application/publishe
 import { Vendor } from '@business/party/vendor/domain/aggregates/vendor.aggregate';
 import { VendorFactory } from '@business/party/vendor/domain/factories/vendor.factory';
 import { VendorStatus } from '@business/party/vendor/domain/types/vendor.enum';
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
 import {
   AbacPort,
   AbacResult,

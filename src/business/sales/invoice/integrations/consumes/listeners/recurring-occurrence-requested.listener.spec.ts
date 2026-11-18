@@ -1,7 +1,7 @@
 import { RecurringOccurrenceRequestedRabbitMQListener } from './recurring-occurrence-requested.listener';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { GenerateRecurringInvoiceUseCase } from '../../../application/use-cases/generate-recurring-invoice.usecase';
-import { OutboxEnvelope } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
 
 const envelope = (payload: Record<string, unknown>): OutboxEnvelope => ({
   eventId: 'evt-1',

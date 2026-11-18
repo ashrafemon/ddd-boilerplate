@@ -4,7 +4,7 @@ import { VendorCommandRepository } from '@business/party/vendor/domain/repositor
 import { VendorPublisherPort } from '@business/party/vendor/application/publishes/publishers/vendor.publisher-port';
 import { Vendor } from '@business/party/vendor/domain/aggregates/vendor.aggregate';
 import { VendorFactory } from '@business/party/vendor/domain/factories/vendor.factory';
-import { OutboxEvent } from '@platform/platform-common/outbox/outbox.types';
+import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
 import {
   AbacPort,
   AbacResult,
