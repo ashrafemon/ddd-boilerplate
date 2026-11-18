@@ -199,6 +199,31 @@ fenced-out owner can neither renew nor release). Fenced writes compare `fencing_
 on the row they mutate. `LOCK_DURABLE=false` keeps Redis-only, with the token from an `INCR`
 counter — local development only, because a Redis flush resets that sequence.
 
+## 8b. Outbox statuses and columns (workbook-aligned)
+
+`outbox_messages` mirrors the workbook exactly; the repository maps physical →
+contract at its edge (`event_name` → `eventType`, `message_id` → `eventId`,
+`available_at` → `availableAt`) so the TypeScript envelope stays unchanged.
+
+| Status        | Meaning                                                            |
+| ------------- | ------------------------------------------------------------------ |
+| `PENDING`     | queued, due once `available_at` has passed                         |
+| `PUBLISHING`  | claimed by one dispatcher now; `claimed_at` is the lease           |
+| `PUBLISHED`   | broker accepted it — the only status retention may delete          |
+| `FAILED`      | permanent failure (broker not configured) — parked for an operator |
+| `DEAD_LETTER` | poison message past `max_attempts` — parked forever, never deleted |
+
+Claim = `UPDATE … SET status = 'PUBLISHING', claim_token = …, claimed_at = now(),
+attempts = attempts + 1 WHERE id IN (… FOR UPDATE SKIP LOCKED)` and the reclaim
+clause accepts `PENDING`/`PUBLISHING` with `claimed_at` older than the lease, so
+a crashed dispatcher is retried by the next tick with no reconciler.
+
+Failure routing is deliberate: a transport error returns the row to `PENDING`
+with exponential backoff, an exhausted row parks `DEAD_LETTER`, and a missing
+broker configuration (`UnsupportedBrokerTargetError`) parks `FAILED` — retrying
+cannot make `KAFKA_BROKERS` appear, and calling that a poison message would
+mislead whoever debugs it.
+
 ## 9. Saga persistence (decided)
 
 - `saga_company_overlays` is **dropped**. Company overrides live in `saga_company_configs`

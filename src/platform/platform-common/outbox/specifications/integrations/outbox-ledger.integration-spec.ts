@@ -12,7 +12,7 @@ import { AppendOutboxEventRequest } from '../../types/outbox.types';
  * Integration specification — the outbox ledger against real Postgres.
  *
  * Proves the claim/settle invariants the unit tests can only fake: a claim is a
- * lease (status stays PENDING, attempts increments), a settled row is never
+ * lease (status PUBLISHING, attempts increments), a settled row is never
  * re-claimed, an abandoned lease is reclaimed by the next tick without any
  * reconciler, backoff keeps a failing row out of the next claim, and exhausted
  * rows park DEAD_LETTER instead of disappearing.
@@ -87,7 +87,7 @@ describe('Outbox ledger (integration)', () => {
     const record = claimed.find(c => c.id === message.id);
     if (!record) throw new Error('row not claimed');
     expect(record.attempts).toBe(1);
-    expect(record.status).toBe('PENDING');
+    expect(record.status).toBe('PUBLISHING');
 
     await repository.markPublished(record.id, record.claimToken);
 
@@ -136,10 +136,12 @@ describe('Outbox ledger (integration)', () => {
     expect(second.attempts).toBe(2);
     expect(second.claimToken).not.toBe(firstClaim.claimToken);
 
-    // The crashed owner's token can no longer settle the row.
+    // The crashed owner's token can no longer settle the row: it stays with the
+    // current claim instead of flipping to PUBLISHED.
     await repository.markPublished(message.id, firstClaim.claimToken);
     const row = await prisma.outboxMessage.findUniqueOrThrow({ where: { id: message.id } });
-    expect(row.status).toBe('PENDING');
+    expect(row.status).toBe('PUBLISHING');
+    expect(row.claimToken).toBe(second.claimToken);
   });
 
   it('keeps a failing row PENDING until its backoff elapses', async () => {
@@ -191,6 +193,56 @@ describe('Outbox ledger (integration)', () => {
 
     const row = await prisma.outboxMessage.findUniqueOrThrow({ where: { id: message.id } });
     expect(row.status).toBe('DEAD_LETTER');
+  });
+
+  it('parks a permanently failing row as FAILED and never claims it again', async () => {
+    const message = await repository.append(appendRequest());
+    const [claim] = await repository.claimBatch({
+      batchSize: 10,
+      maxAttempts: 10,
+      claimLeaseMs: 60_000,
+    });
+
+    await repository.markPermanentlyFailed(claim.id, claim.claimToken, 'KAFKA_BROKERS missing');
+
+    const row = await prisma.outboxMessage.findUniqueOrThrow({ where: { id: message.id } });
+    expect(row).toMatchObject({
+      status: 'FAILED',
+      claimToken: null,
+      lastError: 'KAFKA_BROKERS missing',
+    });
+
+    const next = await repository.claimBatch({
+      batchSize: 10,
+      maxAttempts: 10,
+      claimLeaseMs: 0,
+    });
+    expect(next.map(r => r.id)).not.toContain(message.id);
+  });
+
+  it('respects available_at as the backoff boundary', async () => {
+    const message = await repository.append(
+      appendRequest({ availableAt: new Date(Date.now() + 60_000) }),
+    );
+
+    const early = await repository.claimBatch({
+      batchSize: 10,
+      maxAttempts: 10,
+      claimLeaseMs: 60_000,
+    });
+    expect(early.map(r => r.id)).not.toContain(message.id);
+
+    await prisma.outboxMessage.update({
+      where: { id: message.id },
+      data: { availableAt: new Date(Date.now() - 1_000) },
+    });
+
+    const due = await repository.claimBatch({
+      batchSize: 10,
+      maxAttempts: 10,
+      claimLeaseMs: 60_000,
+    });
+    expect(due.map(r => r.id)).toContain(message.id);
   });
 
   it('deletes only PUBLISHED rows past the retention window', async () => {

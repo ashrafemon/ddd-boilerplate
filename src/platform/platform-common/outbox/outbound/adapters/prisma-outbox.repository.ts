@@ -12,21 +12,23 @@ import {
 } from '../../types/outbox.types';
 import { OutboxRepositoryPort } from '../ports/outbox.repository.port';
 
-interface OutboxRawRow {
+/** Row as Prisma returns it after `create` — physical + Prisma field names. */
+interface OutboxStoredRow {
   id: string;
-  eventId: string;
+  messageId: string;
+  eventName: string;
+  eventVersion: number;
   tenantId: string | null;
   companyId: string | null;
-  eventType: string;
-  eventVersion: number;
   aggregateType: string;
   aggregateId: string;
+  aggregateVersion: number | null;
   payload: unknown;
   headers: unknown;
   occurredAt: Date;
+  availableAt: Date | null;
   createdAt: Date;
   status: string;
-  nextRetryAt: Date | null;
   attempts: number;
   claimedAt: Date | null;
   claimToken: string | null;
@@ -35,6 +37,11 @@ interface OutboxRawRow {
   correlationId: string | null;
   causationId: string | null;
   version: number;
+}
+
+/** Row as the raw claim query returns it — aliases map back to the contract. */
+interface OutboxClaimedRow extends Omit<OutboxStoredRow, 'eventName'> {
+  eventType: string;
 }
 
 /**
@@ -55,18 +62,19 @@ export class PrismaOutboxRepository implements OutboxRepositoryPort {
     const row = await this.txHost.tx.outboxMessage.create({
       data: {
         id: randomUUID(),
-        eventId: request.eventId,
-        eventType: request.eventType,
+        messageId: request.eventId,
+        eventName: request.eventType,
         eventVersion: request.eventVersion ?? 1,
         aggregateType: request.aggregateType,
         aggregateId: request.aggregateId,
+        aggregateVersion: request.aggregateVersion ?? null,
         tenantId: request.tenantId ?? null,
         companyId: request.companyId ?? null,
         payload: PrismaJson.toInput(request.payload) as object,
         headers: request.headers ? (request.headers as object) : undefined,
         occurredAt,
         status: 'PENDING',
-        nextRetryAt: request.nextRetryAt ?? occurredAt,
+        availableAt: request.availableAt ?? occurredAt,
         correlationId: request.correlationId ?? null,
         causationId: request.causationId ?? null,
         claimToken: null,
@@ -96,35 +104,37 @@ export class PrismaOutboxRepository implements OutboxRepositoryPort {
     const leaseCutoff = new Date(now.getTime() - options.claimLeaseMs);
     const claimToken = randomUUID();
 
-    const rows = await this.txHost.tx.$queryRaw<OutboxRawRow[]>`
+    const rows = await this.txHost.tx.$queryRaw<OutboxClaimedRow[]>`
       UPDATE "outbox_messages" o
-      SET "claim_token" = ${claimToken}::uuid,
+      SET "status" = 'PUBLISHING',
+          "claim_token" = ${claimToken}::uuid,
           "claimed_at" = now(),
           "attempts" = o."attempts" + 1
       WHERE o."id" IN (
         SELECT "id" FROM "outbox_messages"
-        WHERE "status" = 'PENDING'
-          AND ("next_retry_at" IS NULL OR "next_retry_at" <= ${now})
+        WHERE "status" IN ('PENDING', 'PUBLISHING')
+          AND ("available_at" IS NULL OR "available_at" <= ${now})
           AND ("claimed_at" IS NULL OR "claimed_at" <= ${leaseCutoff})
-        ORDER BY "created_at" ASC
+        ORDER BY "occurred_at" ASC
         LIMIT ${options.batchSize}
         FOR UPDATE SKIP LOCKED
       )
       RETURNING
         o."id",
-        o."event_id" AS "eventId",
+        o."message_id" AS "messageId",
         o."tenant_id" AS "tenantId",
         o."company_id" AS "companyId",
-        o."event_type" AS "eventType",
+        o."event_name" AS "eventType",
         o."event_version" AS "eventVersion",
         o."aggregate_type" AS "aggregateType",
         o."aggregate_id" AS "aggregateId",
+        o."aggregate_version" AS "aggregateVersion",
         o."payload",
         o."headers",
         o."occurred_at" AS "occurredAt",
+        o."available_at" AS "availableAt",
         o."created_at" AS "createdAt",
         o."status",
-        o."next_retry_at" AS "nextRetryAt",
         o."attempts",
         o."claimed_at" AS "claimedAt",
         o."claim_token" AS "claimToken",
@@ -137,10 +147,10 @@ export class PrismaOutboxRepository implements OutboxRepositoryPort {
     return rows.map(row => this.toClaimedRecord(row, claimToken));
   }
 
-  /** CAS update: PENDING → PUBLISHED. No-op if ownership was lost. */
+  /** CAS update: PUBLISHING → PUBLISHED. No-op if ownership was lost. */
   async markPublished(id: string, claimToken: string): Promise<void> {
     await this.txHost.tx.outboxMessage.updateMany({
-      where: { id, claimToken, status: 'PENDING' },
+      where: { id, claimToken, status: 'PUBLISHING' },
       data: {
         status: 'PUBLISHED',
         publishedAt: new Date(),
@@ -152,8 +162,8 @@ export class PrismaOutboxRepository implements OutboxRepositoryPort {
   }
 
   /**
-   * CAS update: keep PENDING with the next retry time, or park DEAD_LETTER
-   * once attempts exceed the ceiling.
+   * CAS update: back to PENDING with the next `availableAt`, or park
+   * DEAD_LETTER once `attempts` exceeds the ceiling.
    */
   async markFailed(
     id: string,
@@ -163,7 +173,7 @@ export class PrismaOutboxRepository implements OutboxRepositoryPort {
     maxAttempts: number,
   ): Promise<void> {
     const row = await this.txHost.tx.outboxMessage.findFirst({
-      where: { id, claimToken, status: 'PENDING' },
+      where: { id, claimToken, status: 'PUBLISHING' },
     });
     if (!row) {
       return;
@@ -172,11 +182,29 @@ export class PrismaOutboxRepository implements OutboxRepositoryPort {
     const isExhausted = row.attempts > maxAttempts;
 
     await this.txHost.tx.outboxMessage.updateMany({
-      where: { id, claimToken, status: 'PENDING' },
+      where: { id, claimToken, status: 'PUBLISHING' },
       data: {
         status: isExhausted ? 'DEAD_LETTER' : 'PENDING',
         lastError: error,
-        nextRetryAt: isExhausted ? row.nextRetryAt : nextRetryAt,
+        availableAt: isExhausted ? row.availableAt : nextRetryAt,
+        claimedAt: null,
+        claimToken: null,
+      },
+    });
+  }
+
+  /**
+   * CAS update: park FAILED for a permanent error (bad broker configuration).
+   * Unlike DEAD_LETTER this says "the platform cannot publish this yet", so an
+   * operator fixes configuration and re-queues it instead of replaying a poison
+   * message.
+   */
+  async markPermanentlyFailed(id: string, claimToken: string, error: string): Promise<void> {
+    await this.txHost.tx.outboxMessage.updateMany({
+      where: { id, claimToken, status: 'PUBLISHING' },
+      data: {
+        status: 'FAILED',
+        lastError: error,
         claimedAt: null,
         claimToken: null,
       },
@@ -192,22 +220,23 @@ export class PrismaOutboxRepository implements OutboxRepositoryPort {
     return result.count;
   }
 
-  private toMessage(row: OutboxRawRow): OutboxMessage {
+  private toMessage(row: OutboxStoredRow): OutboxMessage {
     return {
       id: row.id,
-      eventId: row.eventId,
+      eventId: row.messageId,
       tenantId: row.tenantId,
       companyId: row.companyId,
-      eventType: row.eventType,
+      eventType: row.eventName,
       eventVersion: row.eventVersion,
       aggregateType: row.aggregateType,
       aggregateId: row.aggregateId,
+      aggregateVersion: row.aggregateVersion,
       payload: (row.payload as Record<string, unknown>) ?? {},
       headers: (row.headers as Record<string, string> | null) ?? null,
       occurredAt: row.occurredAt,
       createdAt: row.createdAt,
       status: row.status as OutboxStatus,
-      nextRetryAt: row.nextRetryAt,
+      availableAt: row.availableAt,
       attempts: row.attempts,
       claimedAt: row.claimedAt,
       claimToken: row.claimToken,
@@ -219,19 +248,21 @@ export class PrismaOutboxRepository implements OutboxRepositoryPort {
     };
   }
 
-  private toClaimedRecord(row: OutboxRawRow, claimToken: string): OutboxClaimedRecord {
+  private toClaimedRecord(row: OutboxClaimedRow, claimToken: string): OutboxClaimedRecord {
     return {
       id: row.id,
-      eventId: row.eventId,
+      eventId: row.messageId,
       tenantId: row.tenantId,
       companyId: row.companyId,
       eventType: row.eventType,
       eventVersion: row.eventVersion,
       aggregateType: row.aggregateType,
       aggregateId: row.aggregateId,
+      aggregateVersion: row.aggregateVersion,
       payload: (row.payload as Record<string, unknown>) ?? {},
       headers: (row.headers as Record<string, string> | null) ?? null,
       occurredAt: row.occurredAt,
+      availableAt: row.availableAt,
       status: row.status,
       attempts: row.attempts,
       claimToken: (row.claimToken as string) ?? claimToken,

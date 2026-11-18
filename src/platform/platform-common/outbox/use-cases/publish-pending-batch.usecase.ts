@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { InProcessEventBus } from '@platform/platform-common/events/inbound/ports/in-process-event-bus.port';
-import { MessageQueuePort } from '@platform/platform-common/messaging/inbound/ports/message-queue.port';
+import {
+  MessageQueuePort,
+  UnsupportedBrokerTargetError,
+} from '@platform/platform-common/messaging/inbound/ports/message-queue.port';
 import { OutboxRepositoryPort } from '../outbound/ports/outbox.repository.port';
 import {
   BrokerTarget,
@@ -14,11 +17,18 @@ import {
 /**
  * Use case: publish a batch of pending outbox messages.
  *
- * claimBatch (SKIP LOCKED + lease clause) → publish to the broker named by the
- * envelope → emit in-process on the same envelope → CAS-settle each row.
- * Publish errors keep the row PENDING with exponential backoff; exhausted rows
- * park DEAD_LETTER. No reconciler — a crashed owner's lease simply expires and
- * the next tick reclaims it through the same clause.
+ * claimBatch (SKIP LOCKED + lease clause, status → PUBLISHING) → publish to the
+ * broker named by the envelope → emit in-process on the same envelope →
+ * CAS-settle each row.
+ *
+ * Failure routing:
+ *  - transport error → back to PENDING with exponential backoff, DEAD_LETTER
+ *    once `attempts` exceeds the ceiling;
+ *  - missing broker configuration (`UnsupportedBrokerTargetError`) → FAILED,
+ *    parked for an operator, because retrying cannot fix configuration.
+ *
+ * No reconciler — a crashed owner stays PUBLISHING and the next tick reclaims
+ * it once the lease expires, through the same clause.
  */
 @Injectable()
 export class PublishPendingBatchUseCase {
@@ -62,11 +72,17 @@ export class PublishPendingBatchUseCase {
     try {
       await this.messageQueue.publish(envelope);
     } catch (err) {
-      await this.settleFailure(
-        record,
-        err instanceof Error ? err.message : String(err),
-        maxAttempts,
-      );
+      const reason = err instanceof Error ? err.message : String(err);
+
+      if (err instanceof UnsupportedBrokerTargetError) {
+        this.logger.error(
+          `Parking outbox message ${record.id} (${record.eventType}) as FAILED: ${reason}`,
+        );
+        await this.repository.markPermanentlyFailed(record.id, record.claimToken, reason);
+        return;
+      }
+
+      await this.settleFailure(record, reason, maxAttempts);
       return;
     }
 
@@ -137,6 +153,7 @@ export class PublishPendingBatchUseCase {
       occurredAt: record.occurredAt,
       correlationId: record.correlationId ?? record.headers?.['correlation-id'],
       causationId: record.causationId ?? record.headers?.['causation-id'],
+      aggregateVersion: record.aggregateVersion ?? undefined,
       broker: this.resolveBroker(record),
     };
   }

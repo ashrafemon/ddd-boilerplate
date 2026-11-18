@@ -42,6 +42,9 @@ export interface OutboxEnvelope {
 
   /** Target broker; defaults to `rabbitmq` when omitted. */
   broker?: BrokerTarget;
+
+  /** Version of the aggregate the event describes (consumer ordering). */
+  aggregateVersion?: number;
 }
 
 /**
@@ -59,6 +62,8 @@ export interface OutboxEvent {
   readonly eventId: string;
   readonly occurredAt: Date;
   readonly version: number;
+  /** Aggregate version this event describes, when the producer knows it. */
+  readonly aggregateVersion?: number;
   readonly correlationId?: string;
   readonly causationId?: string;
   readonly headers?: Record<string, string>;
@@ -89,12 +94,22 @@ export abstract class OutboxEventBase implements OutboxEvent {
   }
 }
 
-/** Delivery lifecycle status for an outbox message. */
+/**
+ * Delivery lifecycle status for an outbox message — the workbook's set.
+ *
+ * `PUBLISHING` (not `PENDING`) is the in-flight marker: the claim stamps it
+ * together with `claimToken`/`claimedAt`, so a crashed owner is visible as a
+ * stale lease instead of masquerading as an idle row.
+ */
 export enum OutboxStatus {
-  /** Waiting to be claimed/published; also the in-flight state (claim stamps the lease). */
+  /** Queued; due once `availableAt` has passed. */
   PENDING = 'PENDING',
+  /** Claimed by exactly one dispatcher right now (lease in `claimedAt`). */
+  PUBLISHING = 'PUBLISHING',
   PUBLISHED = 'PUBLISHED',
-  /** Terminal park state for poison messages; never auto-deleted. */
+  /** Permanent failure (misconfiguration) — parked for operators. */
+  FAILED = 'FAILED',
+  /** Poison message past `maxAttempts`; never auto-deleted. */
   DEAD_LETTER = 'DEAD_LETTER',
 }
 
@@ -109,6 +124,8 @@ export interface AppendOutboxEventRequest {
 
   aggregateType: string;
   aggregateId: string;
+  /** Version of the aggregate the event describes (consumer ordering). */
+  aggregateVersion?: number;
 
   payload: Record<string, unknown>;
 
@@ -123,7 +140,7 @@ export interface AppendOutboxEventRequest {
   broker?: BrokerTarget;
 
   /** Earliest dispatch time; defaults to the append time. */
-  nextRetryAt?: Date;
+  availableAt?: Date;
 }
 
 /** Canonical outbox message record — persisted shape returned by append. */
@@ -139,6 +156,7 @@ export interface OutboxMessage {
 
   aggregateType: string;
   aggregateId: string;
+  aggregateVersion: number | null;
 
   payload: Record<string, unknown>;
   headers: Record<string, string> | null;
@@ -148,7 +166,7 @@ export interface OutboxMessage {
 
   status: OutboxStatus;
 
-  nextRetryAt: Date | null;
+  availableAt: Date | null;
   attempts: number;
 
   claimedAt: Date | null;
@@ -184,11 +202,13 @@ export interface OutboxClaimedRecord {
 
   aggregateType: string;
   aggregateId: string;
+  aggregateVersion: number | null;
 
   payload: Record<string, unknown>;
   headers: Record<string, string> | null;
 
   occurredAt: Date;
+  availableAt: Date | null;
 
   status: string;
   attempts: number;

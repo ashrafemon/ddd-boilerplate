@@ -6,6 +6,7 @@ import {
   RabbitMqPublisherPort,
   SqsPublisherPort,
 } from '../outbound/ports/broker-publisher.port';
+import { UnsupportedBrokerTargetError } from '../inbound/ports/message-queue.port';
 import {
   DEFAULT_BROKER_TARGET,
   OutboxEnvelope,
@@ -13,7 +14,11 @@ import {
 
 /**
  * Use case: publish an envelope to the broker named by `envelope.broker`
- * (default rabbitmq). An unconfigured target throws so the outbox retries.
+ * (default rabbitmq).
+ *
+ * A transport error propagates so the outbox retries with backoff; a missing
+ * configuration raises `UnsupportedBrokerTargetError`, which the outbox parks as
+ * FAILED instead of retrying until the attempt ceiling.
  */
 @Injectable()
 export class PublishMessageUseCase {
@@ -32,16 +37,20 @@ export class PublishMessageUseCase {
         return this.rabbitMq.publish(envelope);
       case 'kafka':
         if (this.config.getKafka().brokers.length === 0) {
-          throw new Error('Kafka broker target requested but KAFKA_BROKERS is not configured');
+          throw new UnsupportedBrokerTargetError(
+            'Kafka broker target requested but KAFKA_BROKERS is not configured',
+          );
         }
         return this.kafka.publish(envelope);
       case 'sqs':
         if (!this.config.getSqs().url) {
-          throw new Error('SQS broker target requested but SQS_URL is not configured');
+          throw new UnsupportedBrokerTargetError(
+            'SQS broker target requested but SQS_URL is not configured',
+          );
         }
         return this.sqs.publish(envelope);
       default:
-        throw new Error(`Unsupported broker target "${String(broker)}"`);
+        throw new UnsupportedBrokerTargetError(`Unsupported broker target "${String(broker)}"`);
     }
   }
 }

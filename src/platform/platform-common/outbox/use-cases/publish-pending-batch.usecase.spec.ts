@@ -2,6 +2,7 @@ import { ConfigService } from '@config/config.service';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { PublishPendingBatchUseCase } from './publish-pending-batch.usecase';
 import { OutboxRepositoryPort } from '../outbound/ports/outbox.repository.port';
+import { UnsupportedBrokerTargetError } from '@platform/platform-common/messaging/inbound/ports/message-queue.port';
 import { ClaimOutboxOptions, OutboxClaimedRecord, OutboxEnvelope } from '../types/outbox.types';
 
 /**
@@ -24,7 +25,9 @@ const RECORD: OutboxClaimedRecord = {
   payload: { orderId: 'order-1' },
   headers: { broker: 'kafka' },
   occurredAt: new Date('2026-01-01T00:00:00.000Z'),
-  status: 'PENDING',
+  aggregateVersion: 3,
+  availableAt: null,
+  status: 'PUBLISHING',
   attempts: 1,
   claimToken: 'claim-1',
   claimedAt: new Date('2026-01-01T00:00:10.000Z'),
@@ -39,7 +42,14 @@ function makeSut(records: OutboxClaimedRecord[] = [RECORD]) {
   markPublished.mockResolvedValue(undefined);
   const markFailed = jest.fn<Promise<void>, [string, string, string, Date, number]>();
   markFailed.mockResolvedValue(undefined);
-  const repository = { claimBatch, markPublished, markFailed } as unknown as OutboxRepositoryPort;
+  const markPermanentlyFailed = jest.fn<Promise<void>, [string, string, string]>();
+  markPermanentlyFailed.mockResolvedValue(undefined);
+  const repository = {
+    claimBatch,
+    markPublished,
+    markFailed,
+    markPermanentlyFailed,
+  } as unknown as OutboxRepositoryPort;
   const publish = jest.fn<Promise<void>, [OutboxEnvelope]>();
   publish.mockResolvedValue(undefined);
   const emit = jest.fn<Promise<void>, [OutboxEnvelope]>();
@@ -67,7 +77,7 @@ function makeSut(records: OutboxClaimedRecord[] = [RECORD]) {
       requestContext as unknown as RequestContextPort,
       config,
     ),
-    repository: { claimBatch, markPublished, markFailed },
+    repository: { claimBatch, markPublished, markFailed, markPermanentlyFailed },
     messageQueue,
     eventBus,
     requestContext,
@@ -133,6 +143,23 @@ describe('PublishPendingBatchUseCase', () => {
     const retryAt = repository.markFailed.mock.calls[0][3];
     // base 1000ms * 2^(4-1) = 8000ms
     expect(retryAt.getTime() - before).toBeGreaterThanOrEqual(7_000);
+  });
+
+  it('parks a misconfiguration as FAILED instead of retrying it', async () => {
+    const { useCase, repository, messageQueue, eventBus } = makeSut();
+    messageQueue.publish.mockRejectedValue(
+      new UnsupportedBrokerTargetError('KAFKA_BROKERS is not configured'),
+    );
+
+    await useCase.execute();
+
+    expect(repository.markPermanentlyFailed).toHaveBeenCalledWith(
+      'row-1',
+      'claim-1',
+      'KAFKA_BROKERS is not configured',
+    );
+    expect(repository.markFailed).not.toHaveBeenCalled();
+    expect(eventBus.emit).not.toHaveBeenCalled();
   });
 
   it('does not re-enter while a tick is still running', async () => {

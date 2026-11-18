@@ -1,6 +1,7 @@
 import { ConfigService } from '@config/config.service';
 import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
 import { PublishMessageUseCase } from './publish-message.usecase';
+import { UnsupportedBrokerTargetError } from '../inbound/ports/message-queue.port';
 
 /**
  * Unit — broker routing.
@@ -60,8 +61,8 @@ describe('PublishMessageUseCase', () => {
   it('throws when Kafka is requested but not configured', async () => {
     const { useCase, kafka } = makeSut({ kafkaBrokers: [] });
 
-    await expect(useCase.execute({ ...ENVELOPE, broker: 'kafka' })).rejects.toThrow(
-      /KAFKA_BROKERS is not configured/,
+    await expect(useCase.execute({ ...ENVELOPE, broker: 'kafka' })).rejects.toBeInstanceOf(
+      UnsupportedBrokerTargetError,
     );
     expect(kafka.publish).not.toHaveBeenCalled();
   });
@@ -69,8 +70,8 @@ describe('PublishMessageUseCase', () => {
   it('throws when SQS is requested but not configured', async () => {
     const { useCase, sqs } = makeSut({ sqsUrl: '' });
 
-    await expect(useCase.execute({ ...ENVELOPE, broker: 'sqs' })).rejects.toThrow(
-      /SQS_URL is not configured/,
+    await expect(useCase.execute({ ...ENVELOPE, broker: 'sqs' })).rejects.toBeInstanceOf(
+      UnsupportedBrokerTargetError,
     );
     expect(sqs.publish).not.toHaveBeenCalled();
   });

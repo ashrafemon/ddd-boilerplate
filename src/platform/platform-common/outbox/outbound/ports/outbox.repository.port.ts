@@ -13,9 +13,10 @@ import {
  * neither settle nor retry a row it no longer owns.
  *
  * The claim is the only concurrency-critical method: `FOR UPDATE SKIP LOCKED`
- * over due PENDING rows, stamping `claim_token` + `claimed_at` (the lease) and
- * bumping `attempts` without changing status. A crashed owner is reclaimed by
- * the next tick once its lease expires — there is no reconciler.
+ * over due rows, stamping `status = PUBLISHING` together with `claim_token` and
+ * `claimed_at` (the lease) and bumping `attempts`. A crashed owner stays
+ * PUBLISHING and is reclaimed by the next tick once its lease expires — there
+ * is no reconciler.
  */
 export abstract class OutboxRepositoryPort {
   /** Insert one event in the caller's transaction. */
@@ -27,14 +28,21 @@ export abstract class OutboxRepositoryPort {
   /** CAS settle: PENDING → PUBLISHED. A lost lease is a no-op. */
   abstract markPublished(id: string, claimToken: string): Promise<void>;
 
-  /** CAS settle: keep PENDING with backoff, or park DEAD_LETTER when exhausted. */
+  /** CAS settle: back to PENDING with backoff, or DEAD_LETTER when exhausted. */
   abstract markFailed(
     id: string,
     claimToken: string,
     error: string,
-    nextRetryAt: Date,
+    availableAt: Date,
     maxAttempts: number,
   ): Promise<void>;
+
+  /**
+   * CAS settle: park FAILED for a permanent error (missing broker
+   * configuration). The row is out of the retry loop but not a poison message,
+   * so an operator can fix configuration and re-queue it.
+   */
+  abstract markPermanentlyFailed(id: string, claimToken: string, error: string): Promise<void>;
 
   /** Retention sweep for PUBLISHED rows. Returns the deleted count. */
   abstract deletePublishedOlderThan(hours: number): Promise<number>;

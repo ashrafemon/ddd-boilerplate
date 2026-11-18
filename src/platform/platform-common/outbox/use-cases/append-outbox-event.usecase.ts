@@ -43,6 +43,7 @@ export class AppendOutboxEventUseCase {
       causationId,
       headers: {
         ...(event.headers ?? {}),
+        'message-id': event.eventId,
         'event-id': event.eventId,
         ...(correlationId ? { 'correlation-id': correlationId } : {}),
         ...(causationId ? { 'causation-id': causationId } : {}),
@@ -51,11 +52,15 @@ export class AppendOutboxEventUseCase {
         broker,
       },
       broker,
-      nextRetryAt: event.occurredAt,
+      availableAt: event.occurredAt,
+      aggregateVersion: event.aggregateVersion,
     });
   }
 
-  /** Strip the envelope fields — they are stored as dedicated columns. */
+  /**
+   * Strip the envelope fields — they are stored as dedicated columns, so the
+   * payload keeps only the event's own data plus the occurrence timestamp.
+   */
   private static toPayload(event: OutboxEvent): Record<string, unknown> {
     const { eventId, version, correlationId, causationId, occurredAt, headers, ...rest } =
       event as unknown as Record<string, unknown>;

@@ -1,42 +1,72 @@
-// Transactional Outbox persistence model. Written inside the same DB
-// transaction as the aggregate change and published by the outbox scheduler
-// (see docs/design 04). Claim safety: rows keep status=PENDING while claimed —
-// FOR UPDATE SKIP LOCKED stamps claimToken + claimedAt as the lease and bumps
-// attempts; a crashed owner is reclaimed once its lease expires (nextRetryAt
-// drives backoff). DEAD_LETTER is the terminal park state for poison messages.
-model OutboxMessage {
-  id            String              @id @default(uuid()) @db.Uuid
-  eventId       String              @unique @map("event_id") @db.Uuid
-  eventVersion  Int                 @default(1) @map("event_version")
-  tenantId      String?             @map("tenant_id") @db.VarChar(100)
-  companyId String?            @map("company_id") @db.VarChar(100)
-  eventType     String              @map("event_type") @db.VarChar(250)
-  aggregateType String              @map("aggregate_type") @db.VarChar(200)
-  aggregateId   String              @map("aggregate_id") @db.Uuid
-  payload       Json
-  headers       Json?
-  occurredAt    DateTime            @map("occurred_at")
-  createdAt     DateTime            @default(now()) @map("created_at")
-  status        OutboxMessageStatus @default(PENDING)
-  nextRetryAt   DateTime?           @map("next_retry_at")
-  attempts      Int                 @default(0)
-  claimedAt     DateTime?           @map("claimed_at")
-  claimToken    String?             @map("claim_token") @db.Uuid
-  publishedAt   DateTime?           @map("published_at")
-  lastError     String?             @map("last_error") @db.Text
-  correlationId String?             @map("correlation_id") @db.VarChar(200)
-  causationId   String?             @map("causation_id") @db.VarChar(200)
-  version       Int                 @default(1)
+// ============================================================================
+// Platform — Transactional outbox (outbox.prisma)
+// ============================================================================
+// Written inside the same DB transaction as the aggregate change, published
+// later by the dispatcher (design `common/04-outbox`). Column names follow the
+// workbook's `outbox_messages` table exactly — every column is `@map`-ed, so
+// hand-written SQL in the repository MUST use the physical snake_case names.
+//
+// Claim contract: `status = PUBLISHING` **is** the in-flight marker. The claim
+// stamps `claim_token` + `claimed_at` together with it, so a crashed owner
+// cannot be mistaken for an idle row; `claimed_at` older than the lease is the
+// only way back in, and `attempts` counts every takeover. `available_at` is the
+// backoff boundary (a failing row is not due before it).
+//
+// Status set (workbook): PENDING | PUBLISHING | PUBLISHED | FAILED | DEAD_LETTER
+//  - PENDING     queued, due when `available_at` passed
+//  - PUBLISHING  claimed by one dispatcher right now (lease in `claimed_at`)
+//  - PUBLISHED   broker accepted it; the only status retention may delete
+//  - FAILED      permanent failure (bad configuration) — parked for operators
+//  - DEAD_LETTER poison message past `max_attempts` — parked forever
+//
+// `causation_id`, `created_at` and `version` are platform extensions; the rest
+// is the workbook's column set.
+// ============================================================================
 
-  @@index([status, nextRetryAt])
+enum OutboxMessageStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  DEAD_LETTER
+}
+
+model OutboxMessage {
+  id               String              @id @default(uuid()) @db.Uuid
+
+  tenantId         String?             @map("tenant_id") @db.VarChar(100)
+  companyId        String?             @map("company_id") @db.VarChar(100)
+
+  /** Broker-facing message identity; consumers dedupe on it. */
+  messageId        String              @unique @map("message_id") @db.VarChar(200)
+  eventName        String              @map("event_name") @db.VarChar(250)
+  eventVersion     Int                 @default(1) @map("event_version")
+
+  aggregateType    String              @map("aggregate_type") @db.VarChar(200)
+  aggregateId      String              @map("aggregate_id") @db.VarChar(200)
+  aggregateVersion Int?                @map("aggregate_version")
+
+  payload          Json
+  headers          Json?
+  occurredAt       DateTime            @map("occurred_at")
+
+  status           OutboxMessageStatus @default(PENDING)
+  attempts         Int                 @default(0)
+  claimToken       String?             @map("claim_token") @db.Uuid
+  claimedAt        DateTime?           @map("claimed_at")
+  availableAt      DateTime?           @map("available_at")
+  publishedAt      DateTime?           @map("published_at")
+  lastError        String?             @map("last_error") @db.Text
+
+  correlationId    String?             @map("correlation_id") @db.VarChar(200)
+  causationId      String?             @map("causation_id") @db.VarChar(200)
+
+  createdAt        DateTime            @default(now()) @map("created_at")
+  version          Int                 @default(1)
+
+  @@index([status, availableAt])
   @@index([tenantId, companyId, status])
   @@index([claimedAt])
   @@index([aggregateType, aggregateId])
   @@map("outbox_messages")
-}
-
-enum OutboxMessageStatus {
-  PENDING
-  PUBLISHED
-  DEAD_LETTER
 }

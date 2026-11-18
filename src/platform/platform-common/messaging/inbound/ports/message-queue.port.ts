@@ -11,3 +11,17 @@ import type { OutboxEnvelope } from '@platform/platform-common/outbox/types/outb
 export abstract class MessageQueuePort {
   abstract publish(envelope: OutboxEnvelope): Promise<void>;
 }
+
+/**
+ * Raised when the envelope asks for a broker this deployment cannot reach
+ * because of configuration, not because of a transient outage.
+ *
+ * Part of the port contract: the outbox parks such a message as FAILED instead
+ * of retrying, because no amount of backoff makes `KAFKA_BROKERS` appear.
+ */
+export class UnsupportedBrokerTargetError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UnsupportedBrokerTargetError';
+  }
+}

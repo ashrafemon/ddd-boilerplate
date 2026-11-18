@@ -78,12 +78,25 @@ describe('AppendOutboxEventUseCase', () => {
 
     expect(append.mock.calls[0][0].headers).toMatchObject({
       'x-trace': 'trace-1',
+      'message-id': 'evt-1',
       'event-id': 'evt-1',
       'correlation-id': 'corr-1',
       'tenant-id': 'tenant-1',
       'company-id': 'company-1',
       broker: 'rabbitmq',
     });
+  });
+
+  it('carries the aggregate version when the event knows it', async () => {
+    const { useCase, append } = makeSut({ tenantId: 't' });
+
+    await useCase.execute(
+      Object.assign(new TestEvent('order-1'), { aggregateVersion: 5 }),
+      'PurchaseOrder',
+      'order-1',
+    );
+
+    expect(append.mock.calls[0][0].aggregateVersion).toBe(5);
   });
 
   it('honours an explicit broker target', async () => {
