@@ -6,7 +6,17 @@
 //   saga_instances        one live row per correlation key, holds the plan snapshot
 //   saga_steps            durable work queue + execution log + audit (id = idempotency key)
 //   saga_inbox            dedupe by (tenant, company, consumer, event)
-// Partial uniques are hand-written in the migration (Prisma cannot express them).
+// Column names follow the workbook's `DB Tables` sheet (`saga_definitions`,
+// `saga_instances`, `saga_steps`, `saga_inbox`), so hand-written SQL MUST use the
+// snake_case names. `action`, `instance_id`, `reason`, `received_at` are platform
+// extensions the workbook does not carry.
+//
+// One live instance per (tenant, company, saga_key, correlation_key): Prisma cannot
+// express a partial unique index, so the row carries a nullable `live_key` with a
+// plain unique constraint. The repository sets it while the instance is live and
+// NULLs it on every terminal transition — NULLs never collide, which is exactly the
+// `WHERE status IN ('RUNNING','WAITING','COMPENSATING')` predicate.
+//
 // Tenancy: every row is scoped by (tenantId, companyId); every query filters both.
 // ============================================================================
 
@@ -76,6 +86,10 @@ enum SagaInboxState {
 
 model SagaDefinition {
   id           String               @id @default(uuid()) @db.Uuid
+  /**
+   * Owning business module (`purchase-order`) — authorization + discovery.
+   */
+  ownerModule  String?              @map("owner_module") @db.VarChar(200)
   sagaKey      String               @map("saga_key") @db.VarChar(200)
   version      Int
   eventName    String               @map("event_name") @db.VarChar(250)
@@ -94,7 +108,7 @@ model SagaDefinition {
 model SagaCompanyConfig {
   id           String                  @id @default(uuid()) @db.Uuid
   tenantId     String                  @map("tenant_id") @db.VarChar(100)
-  companyId String                @map("company_id") @db.VarChar(100)
+  companyId    String                  @map("company_id") @db.VarChar(100)
   definitionId String                  @map("definition_id") @db.Uuid
   sagaKey      String                  @map("saga_key") @db.VarChar(200)
   version      Int                     @default(1)
@@ -110,27 +124,35 @@ model SagaCompanyConfig {
 }
 
 model SagaInstance {
-  id                String             @id @default(uuid()) @db.Uuid
-  tenantId          String             @map("tenant_id") @db.VarChar(100)
-  companyId    String             @map("company_id") @db.VarChar(100)
-  sagaKey           String             @map("saga_key") @db.VarChar(200)
-  definitionId      String             @map("definition_id") @db.Uuid
-  configId          String?            @map("config_id") @db.Uuid
-  rootRefType       String?            @map("root_ref_type") @db.VarChar(200)
-  rootRefId         String?            @map("root_ref_id") @db.VarChar(200)
-  correlationKey    String             @map("correlation_key") @db.VarChar(250)
-  status            SagaInstanceState  @default(RUNNING)
+  id                String              @id @default(uuid()) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.VarChar(100)
+  companyId         String              @map("company_id") @db.VarChar(100)
+  sagaKey           String              @map("saga_key") @db.VarChar(200)
+  definitionId      String              @map("definition_id") @db.Uuid
+  configId          String?             @map("config_id") @db.Uuid
+  rootRefType       String?             @map("root_ref_type") @db.VarChar(200)
+  rootRefId         String?             @map("root_ref_id") @db.VarChar(200)
+  correlationKey    String              @map("correlation_id") @db.VarChar(250)
+  /**
+   * Live-instance guard: `<sagaKey>\u0000<correlationKey>` while RUNNING/WAITING/
+   * COMPENSATING, NULL once terminal. Unique, so the DB — not a read-then-write —
+   * decides whether a second live instance may exist.
+   */
+  liveKey           String?             @unique @map("live_key") @db.VarChar(500)
+  status            SagaInstanceState   @default(RUNNING)
   reason            SagaInstanceReason?
   plan              Json
   context           Json
-  cursor            Int                @default(0)
-  waitingEvent      String?            @map("waiting_event") @db.VarChar(250)
-  cancelRequestedAt DateTime?          @map("cancel_requested_at")
-  error             String?            @db.Text
-  deadlineAt        DateTime?          @map("deadline_at")
-  version           Int                @default(1)
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @updatedAt @map("updated_at")
+  cursor            Int                 @default(0)
+  waitingEvent      String?             @map("waiting_event") @db.VarChar(250)
+  cancelRequestedAt DateTime?           @map("cancel_requested_at")
+  lastError         String?             @map("last_error") @db.Text
+  deadlineAt        DateTime?           @map("deadline_at")
+  startedAt         DateTime?           @map("started_at")
+  finishedAt        DateTime?           @map("finished_at")
+  version           Int                 @default(1)
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
 
   @@index([tenantId, companyId, status])
   @@index([tenantId, companyId, sagaKey, status])
@@ -139,24 +161,34 @@ model SagaInstance {
 }
 
 model SagaStep {
-  id          String        @id @default(uuid()) @db.Uuid
-  tenantId    String        @map("tenant_id") @db.VarChar(100)
-  companyId String     @map("company_id") @db.VarChar(100)
-  instanceId  String        @map("instance_id") @db.Uuid
-  stepId      String        @map("step_id") @db.VarChar(200)
-  kind        SagaStepKind
-  action      String?       @db.VarChar(250)
-  status      SagaStepState @default(PENDING)
-  attempt     Int           @default(0)
-  maxAttempts Int           @map("max_attempts")
-  runAt       DateTime      @map("run_at")
-  lockedBy    String?       @map("locked_by") @db.VarChar(200)
-  lockUntil   DateTime?     @map("lock_until")
-  input       Json?
-  output      Json?
-  error       String?       @db.Text
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  id           String        @id @default(uuid()) @db.Uuid
+  tenantId     String        @map("tenant_id") @db.VarChar(100)
+  companyId    String        @map("company_id") @db.VarChar(100)
+  instanceId   String        @map("instance_id") @db.Uuid
+  stepId       String        @map("step_id") @db.VarChar(200)
+  kind         SagaStepKind
+  /**
+   * Platform extension: the registered `SagaAction` name for DO/UNDO rows.
+   */
+  action       String?       @db.VarChar(250)
+  /**
+   * WAIT rows park on an event contract instead of an action.
+   */
+  eventName    String?       @map("event_name") @db.VarChar(250)
+  eventVersion Int?          @map("event_version")
+  status       SagaStepState @default(PENDING)
+  attempts     Int           @default(0) @map("attempts")
+  maxAttempts  Int           @map("max_attempts")
+  runAt        DateTime      @map("run_at")
+  lockedBy     String?       @map("locked_by") @db.VarChar(200)
+  lockUntil    DateTime?     @map("lock_until")
+  input        Json?
+  output       Json?
+  lastError    String?       @map("last_error") @db.Text
+  startedAt    DateTime?     @map("started_at")
+  finishedAt   DateTime?     @map("finished_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
 
   @@unique([instanceId, stepId, kind])
   @@index([status, runAt])
@@ -165,22 +197,33 @@ model SagaStep {
 }
 
 model SagaInbox {
-  id            String          @id @default(uuid()) @db.Uuid
-  tenantId      String          @map("tenant_id") @db.VarChar(100)
-  companyId String         @map("company_id") @db.VarChar(100)
-  consumer      String          @db.VarChar(200)
-  eventId       String          @map("event_id") @db.Uuid
-  eventName     String          @map("event_name") @db.VarChar(250)
-  eventVersion  Int             @map("event_version")
-  correlationKey String?        @map("correlation_key") @db.VarChar(250)
-  instanceId    String?         @map("instance_id") @db.Uuid
-  payload       Json
-  status        SagaInboxState  @default(RECEIVED)
-  reason        String?         @db.VarChar(250)
-  receivedAt    DateTime        @default(now()) @map("received_at")
-  processedAt   DateTime?       @map("processed_at")
+  id             String         @id @default(uuid()) @db.Uuid
+  tenantId       String         @map("tenant_id") @db.VarChar(100)
+  companyId      String         @map("company_id") @db.VarChar(100)
+  consumer       String         @map("consumer_key") @db.VarChar(250)
+  /**
+   * Platform event id; the workbook calls this `message_id`.
+   */
+  eventId        String         @map("message_id") @db.VarChar(500)
+  eventName      String         @map("event_name") @db.VarChar(250)
+  eventVersion   Int            @map("event_version")
+  correlationKey String?        @map("correlation_id") @db.VarChar(250)
+  instanceId     String?        @map("instance_id") @db.Uuid
+  payload        Json
+  payloadHash    String?        @map("payload_hash") @db.VarChar(128)
+  headers        Json?
+  status         SagaInboxState @default(RECEIVED)
+  reason         String?        @db.VarChar(250)
+  attempts       Int            @default(0) @map("attempts")
+  claimToken     String?        @map("claim_token") @db.Uuid
+  claimedAt      DateTime?      @map("claimed_at")
+  receivedAt     DateTime       @default(now()) @map("received_at")
+  processedAt    DateTime?      @map("processed_at")
+  nextAttemptAt  DateTime?      @map("next_attempt_at")
+  lastError      String?        @map("last_error") @db.Text
 
   @@unique([tenantId, companyId, consumer, eventId])
   @@index([instanceId, status])
+  @@index([status, nextAttemptAt])
   @@map("saga_inbox")
 }

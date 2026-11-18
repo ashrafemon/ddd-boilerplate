@@ -21,9 +21,9 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started.
 | 0     | Publish the standard + enforcement scaffolding             | `platform-standard.md`, architecture specs, `test:architecture`                                                  | ✅     |
 | 1     | Pilot the anatomy on the two smallest capabilities         | `idempotency`, `cache`                                                                                           | ✅     |
 | 2     | Migrate the event spine (the modules that call each other) | `locking`, `outbox`, `messaging`, `events`, `inbox`                                                              | ✅     |
-| 3     | Migrate the saga runtime + finish its persistence          | `process-orchestration/saga-runtime`, `saga.prisma`                                                              | 🚧     |
+| 3     | Migrate the saga runtime + finish its persistence          | `process-orchestration/saga`, `saga.prisma`                                                                      | ✅     |
 | 4     | Migrate the HTTP-facing capabilities                       | `numbering`, `audit`, `health`, `import`, `notification`, `webhook`, `scheduler`, `recurring`, `batch-operation` | ⬜     |
-| 5     | Finish the workbook column/rename work                     | `outbox`, `inbox`, `saga`, business listeners                                                                    | 🚧     |
+| 5     | Finish the contract-side rename work                       | business listeners                                                                                               | 🚧     |
 | 6     | Flip enforcement from staged to global                     | architecture specs, `eslint.config.mjs`, `docs/architecture.md`                                                  | ⬜     |
 | 7     | Build out the ~40 scaffold capabilities                    | `platform-ai/*`, `platform-organization/*`, remaining `platform-common/*`                                        | ⬜     |
 
@@ -87,45 +87,59 @@ Exit criteria met:
   quotes and empty strings — the alphabet that broke the first cache/idempotency key
   builders (fixed by `encodeURIComponent` on every segment).
 
-## Phase 3 — Saga runtime 🚧 (next)
+## Phase 3 — Saga runtime ✅
 
-`src/platform/platform-common/process-orchestration/saga-runtime/` is the last module
-with the legacy shape. It still has `ports/`, `repositories/`, `application/`,
-`workers/`, `events/`, `adapters/*.reader.ts`, `saga.scheduler.ts`.
+`src/platform/platform-common/process-orchestration/saga/` is migrated; it was the last module
+with the legacy shape. `ports/`, `repositories/`, `application/`, `workers/`, `events/`,
+`adapters/` and `saga.scheduler.ts` are gone.
 
-### 3a. Schema decisions (blocking — agree before code)
+### 3a. Schema (applied)
 
-| Decision                        | Choice                                                                                                                                                                                              |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `saga_company_overlays`         | **dropped**; company overrides live in `saga_company_configs` (versioned, one ACTIVE row per company/saga)                                                                                          |
-| Saga outbox/inbox               | **standalone** `saga_outbox` / `saga_inbox`; the saga never writes the shared tables                                                                                                                |
-| Publisher reuse                 | one `PublishPendingBatchUseCase`, parameterized over a repository contract, serves both outboxes                                                                                                    |
-| `saga_definitions.owner_module` | added — the owning business module, used for authorization and discovery de-duplication                                                                                                             |
-| `saga_steps`                    | add `started_at`/`finished_at` (timings) and keep `event_name` for wait steps                                                                                                                       |
-| `saga_instances`                | add `started_at`/`finished_at`/`last_error`; one live instance per `(tenant, company, saga_key, correlation_key)` via a **partial unique index** (raw SQL, `WHERE status IN ('RUNNING','WAITING')`) |
+| Decision                        | Result                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `saga_company_overlays`         | **dropped**; overrides live in `saga_company_configs` (one ACTIVE row per company/saga)                                                                                                                                                                                                                                                     |
+| `saga_definitions.owner_module` | added — the owning business module                                                                                                                                                                                                                                                                                                          |
+| `saga_steps`                    | `attempts`, `event_name`/`event_version` (WAIT rows), `last_error`, `started_at`/`finished_at`                                                                                                                                                                                                                                              |
+| `saga_instances`                | `correlation_id`, `last_error`, `started_at`/`finished_at`                                                                                                                                                                                                                                                                                  |
+| live-instance uniqueness        | nullable unique `live_key` = `encodeURIComponent(sagaKey)\|encodeURIComponent(correlationKey)`, set on insert and NULLed on every terminal transition — the portable equivalent of `WHERE status IN ('RUNNING','WAITING','COMPENSATING')`, because Prisma cannot express a partial unique index and `db:push` would drop a hand-written one |
+| `saga_inbox`                    | workbook columns: `consumer_key`, `message_id`, `payload_hash`, `headers`, `attempts`, `claim_token`/`claimed_at`, `processed_at`, `next_attempt_at`, `last_error`                                                                                                                                                                          |
+| completion events               | ride the shared outbox with `aggregateType = 'Saga'` (loop-guarded by the router); standalone `saga_outbox` stays an option, not a TODO                                                                                                                                                                                                     |
 
-### 3b. Shape normalization
+### 3b. Shape (applied)
 
-- `ports/*` → `inbound/ports/*` (`SagaInboundPort`, `SagaActionPort`, `FeatureGatePort`,
-  `CompanySettingsPort`) and `outbound/ports/*` (`SagaRepositoryPort`).
-- `repositories/prisma-saga.repository.ts` → `outbound/adapters/`, `implements SagaRepositoryPort`.
-- `adapters/empty-*-*.reader.ts` → `outbound/adapters/` implementing their ports.
-- `application/{saga-engine,saga-router,plan-builder,expression,saga-action.registry}.ts`
-  → `services/` (orchestration of use cases) — no business rules hidden there.
-- `workers/step-worker.ts` → `services/step-worker.service.ts`.
-- `events/saga-emitted.event.ts` → `types/`.
-- `saga.scheduler.ts` → merged into the dispatcher service (one cron owner per capability).
+```
+saga/
+├── saga.module.ts
+├── inbound/{ports/saga-inbound.port.ts, adapters/saga-router.adapter.ts}
+├── outbound/ports/  saga-{definition,company-config,instance,step,inbox}.repository.port.ts
+│                    saga-action.port.ts (token + resolver), feature-gate.port.ts,
+│                    company-settings.port.ts
+├── outbound/adapters/ prisma-saga-*.repository.ts, saga-action.registry.ts, empty-*.adapter.ts
+├── use-cases/  build-saga-plan, accept-saga-event, start-saga, advance-saga, complete-saga,
+│               cancel-saga, start-compensation, settle-step-success, settle-step-failure,
+│               execute-saga-step, expire-wait-step, buffer-saga-event  (+ .usecase.ts)
+├── services/   saga-step-worker.service.ts, saga-sweep.service.ts
+└── types/      saga.types.ts, saga-expression.ts, saga-scope.ts, saga-emitted.event.ts
+```
 
-### 3c. Tests
+`SagaRouterAdapter implements SagaInboundPort`; `SagaActionRegistry implements
+SagaActionResolverPort`; the engine's hooks became settle/compensate/advance use cases, so no state
+machine hides inside a service and every use case injects ports only.
 
-- Unit: engine (step advance, wait, cancel, compensation), router, plan builder,
-  expression evaluator, step worker.
-- Integration: claim/lease on `saga_steps`, partial unique index on live instances,
-  inbox dedupe, compensation ordering, restart after crash.
-- Property: expression parser / correlation-key builder under the hostile alphabet.
+### 3c. Tests (applied)
 
-**Exit criteria**: `saga-runtime` in `MIGRATED`, workbook columns complete, no
-`ports/`/`repositories/`/`application/` folders left in the platform tree.
+- Unit (78): plan builder 7, advance 8, complete 3, start 2, cancel 3, compensation 4, settle
+  success 5, settle failure 3, execute step 7, expire wait 3, buffer 2, accept/routing 7, action
+  registry 3, scope helpers 4, expression evaluator 11, sweep 5.
+- Integration (real Postgres): live-key uniqueness + terminal release, version CAS, SKIP LOCKED
+  claim + stale-lease requeue, fairness-cap overflow release, retry requeue + WAIT scan, inbox dedupe.
+- Property: `buildLiveKey` injectivity under a hostile alphabet.
+
+**Result**: `saga` in `MIGRATED`; no `ports/`/`repositories/`/`application/`/`workers/` folders
+remain under `src/platform`. The claim SQL was found to be broken during this phase
+(`RETURNING *` hands `$queryRaw` physical snake_case names, so `lockedBy`/`companyId` were
+`undefined` and the fairness cap bucketed every row together) — fixed with explicit aliases and
+covered by the integration spec.
 
 ## Phase 4 — HTTP-facing capabilities ⬜
 
@@ -149,19 +163,15 @@ to the anatomy. Suggested order (smallest blast radius first):
 Exit criteria per module: anatomy holds, `http/responses` DTOs added where a controller
 exists, `MIGRATED` gains the module, workbook table aligned if one exists.
 
-## Phase 5 — Workbook column completion 🚧
+## Phase 5 — Rename completion 🚧
 
-`outbox` and `inbox` are aligned. Remaining:
+Every platform ledger now matches the workbook (`idempotency_keys`, `distributed_locks`,
+`outbox_messages`, `inbox_messages`, `saga_definitions`, `saga_instances`, `saga_steps`,
+`saga_inbox`). Remaining is the contract-side rename, which touches business code:
 
-| Table              | Remaining work                                                                                                                                                                                                       |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `outbox_messages`  | ✅ all workbook columns + `PENDING/PUBLISHING/PUBLISHED/FAILED/DEAD_LETTER`                                                                                                                                          |
-| `inbox_messages`   | ✅ all workbook columns + `IN_PROGRESS/PROCESSED/FAILED/SUSPENDED`                                                                                                                                                   |
-| `saga_*`           | Phase 3a decisions; partial unique index                                                                                                                                                                             |
-| Business listeners | `eventType` → `eventName` rename (205 refs), `eventId` → `messageId` (128), `nextRetryAt` → `availableAt` (44) — do it **dual-read** (write both, read new, then drop) in the same change that touches each listener |
-
-Rename blast radius is large, so it is a phase of its own; every step keeps
-`tsc`/tests green and lands as its own commit.
+| Item               | Remaining work                                                                                                                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Business listeners | `eventType` → `eventName` (205 refs), `eventId` → `messageId` (128), `nextRetryAt` → `availableAt` (44) — **dual-read** (write both, read the new one, then drop) in the same change that touches each listener |
 
 ## Phase 6 — Enforcement flip ⬜
 
@@ -186,28 +196,28 @@ external surface.
 Shape: `legacy` = loose files at the module root or `ports/`/`repositories/`/`usecases/`
 folders; `hex` = migrated anatomy. Specs counts exclude integration/api specs.
 
-| Module                               | Files | Specs | Shape  | Workbook table              | Next action     |
-| ------------------------------------ | ----- | ----- | ------ | --------------------------- | --------------- |
-| `platform-common/idempotency`        | 15    | 12    | hex    | `idempotency_keys` ✅       | —               |
-| `platform-common/cache`              | 10    | 13    | hex    | —                           | —               |
-| `platform-common/locking`            | 12    | 11    | hex    | `distributed_locks` ✅      | —               |
-| `platform-common/outbox`             | 16    | 15    | hex    | `outbox_messages` ✅        | Phase 5 renames |
-| `platform-common/messaging`          | 10    | 12    | hex    | —                           | —               |
-| `platform-common/events`             | 7     | 4     | hex    | —                           | —               |
-| `platform-common/inbox`              | 14    | 21    | hex    | `inbox_messages` ✅         | Phase 5 renames |
-| `process-orchestration/saga-runtime` | 17    | 0     | legacy | `saga_*` ⚠️                 | Phase 3         |
-| `platform-common/import`             | 42    | 0     | legacy | `import_jobs`/rows          | Phase 4         |
-| `platform-common/notification`       | 42    | 0     | legacy | `notifications`/templates   | Phase 4         |
-| `platform-common/webhook`            | 40    | 0     | legacy | `webhook_*`                 | Phase 4         |
-| `platform-common/scheduler`          | 35    | 0     | legacy | `scheduled_jobs`            | Phase 4         |
-| `platform-common/batch-operation`    | 32    | 0     | legacy | `batch_operations`          | Phase 4         |
-| `platform-common/recurring`          | 26    | 0     | legacy | `recurring_*`               | Phase 4         |
-| `platform-common/context`            | 7     | 0     | legacy | —                           | Phase 4         |
-| `platform-common/condition-engine`   | 6     | 0     | legacy | `expressions`               | Phase 4         |
-| `platform-common/health`             | 4     | 0     | legacy | —                           | Phase 4         |
-| `platform-common/numbering`          | 3     | 0     | legacy | `document_number_sequences` | Phase 4 (first) |
-| `platform-common/audit`              | 3     | 0     | legacy | —                           | Phase 4         |
-| `platform-common/observability`      | 8     | 0     | legacy | —                           | Phase 4         |
+| Module                             | Files | Specs | Shape  | Workbook table              | Next action     |
+| ---------------------------------- | ----- | ----- | ------ | --------------------------- | --------------- |
+| `platform-common/idempotency`      | 15    | 12    | hex    | `idempotency_keys` ✅       | —               |
+| `platform-common/cache`            | 10    | 13    | hex    | —                           | —               |
+| `platform-common/locking`          | 12    | 11    | hex    | `distributed_locks` ✅      | —               |
+| `platform-common/outbox`           | 16    | 15    | hex    | `outbox_messages` ✅        | Phase 5 renames |
+| `platform-common/messaging`        | 10    | 12    | hex    | —                           | —               |
+| `platform-common/events`           | 7     | 4     | hex    | —                           | —               |
+| `platform-common/inbox`            | 14    | 21    | hex    | `inbox_messages` ✅         | Phase 5 renames |
+| `process-orchestration/saga`       | 27    | 20    | hex    | `saga_*` ✅                 | Phase 5 renames |
+| `platform-common/import`           | 42    | 0     | legacy | `import_jobs`/rows          | Phase 4         |
+| `platform-common/notification`     | 42    | 0     | legacy | `notifications`/templates   | Phase 4         |
+| `platform-common/webhook`          | 40    | 0     | legacy | `webhook_*`                 | Phase 4         |
+| `platform-common/scheduler`        | 35    | 0     | legacy | `scheduled_jobs`            | Phase 4         |
+| `platform-common/batch-operation`  | 32    | 0     | legacy | `batch_operations`          | Phase 4         |
+| `platform-common/recurring`        | 26    | 0     | legacy | `recurring_*`               | Phase 4         |
+| `platform-common/context`          | 7     | 0     | legacy | —                           | Phase 4         |
+| `platform-common/condition-engine` | 6     | 0     | legacy | `expressions`               | Phase 4         |
+| `platform-common/health`           | 4     | 0     | legacy | —                           | Phase 4         |
+| `platform-common/numbering`        | 3     | 0     | legacy | `document_number_sequences` | Phase 4 (first) |
+| `platform-common/audit`            | 3     | 0     | legacy | —                           | Phase 4         |
+| `platform-common/observability`    | 8     | 0     | legacy | —                           | Phase 4         |
 
 Every migrated module has at least one unit spec per source file that carries logic, plus
 integration specs where a ledger exists.

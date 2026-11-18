@@ -36,6 +36,7 @@ const MIGRATED = [
   'platform-common/messaging',
   'platform-common/events',
   'platform-common/inbox',
+  'platform-common/process-orchestration/saga',
 ];
 
 /**
