@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
+import { PrismaSagaDefinitionRepository } from '../repositories/prisma-saga-definition.repository';
 import { SagaDefinitionStatus } from '../types/saga.types';
 import { GOODS_RECEIPT_SAGA_EXAMPLE } from '../types/definitions/goods-receipt.example';
 import { parseSagaDefinition } from '../types/saga-definition.parser';
@@ -21,7 +21,7 @@ describe('SetSagaDefinitionStatusUseCase', () => {
       markStatus: jest.fn(async () => undefined),
     };
     const useCase = new SetSagaDefinitionStatusUseCase(
-      definitions as unknown as SagaDefinitionRepositoryPort,
+      definitions as unknown as PrismaSagaDefinitionRepository,
     );
     return { useCase, definitions };
   }

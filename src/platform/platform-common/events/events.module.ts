@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
-import { InProcessEventBus } from './inbound/ports/in-process-event-bus.port';
-import { EventBusAdapter } from './inbound/adapters/event-bus.adapter';
-import { EventEmitterPort } from './outbound/ports/event-emitter.port';
-import { NestEventBusAdapter } from './outbound/adapters/nest-event-bus.adapter';
+import { InProcessEventBus } from './ports/in-process-event-bus.port';
+import { EventBusAdapter } from './adapters/event-bus.adapter';
+import { NestEventBusAdapter } from './adapters/nest-event-bus.adapter';
 import { EmitEventUseCase } from './use-cases/emit-event.usecase';
 
 /**
@@ -18,7 +17,6 @@ import { EmitEventUseCase } from './use-cases/emit-event.usecase';
   providers: [
     // Outbound adapter → outbound port
     NestEventBusAdapter,
-    { provide: EventEmitterPort, useExisting: NestEventBusAdapter },
 
     // Use case
     EmitEventUseCase,

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { SagaStepResult } from '../types/saga-command.types';
 import { SagaStepStatus } from '../types/saga.types';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import { SettleStepFailureUseCase } from './settle-step-failure.usecase';
 import { SettleStepSuccessUseCase } from './settle-step-success.usecase';
 
@@ -24,7 +24,7 @@ export class SettleSagaStepResultUseCase {
   private readonly logger = new Logger(SettleSagaStepResultUseCase.name);
 
   constructor(
-    private readonly steps: SagaStepRepositoryPort,
+    private readonly steps: PrismaSagaStepRepository,
     private readonly settleSuccess: SettleStepSuccessUseCase,
     private readonly settleFailure: SettleStepFailureUseCase,
     private readonly configService: ConfigService,
@@ -52,10 +52,12 @@ export class SettleSagaStepResultUseCase {
     if (result.outcome === 'retry') {
       const attempts = step.attempts + 1;
       if (attempts < step.maxAttempts) {
+        const { retryBaseDelayMs, retryMaxDelayMs } = this.configService.getSaga();
+        const delay = Math.min(retryBaseDelayMs * 2 ** (attempts - 1), retryMaxDelayMs);
         await this.steps.reschedule(
           step.id,
           attempts,
-          new Date(Date.now() + this.backoffMs(attempts)),
+          new Date(Date.now() + delay),
           result.error ?? null,
         );
         return;
@@ -65,10 +67,5 @@ export class SettleSagaStepResultUseCase {
     const error = result.error ?? 'Saga action failed';
     await this.steps.markFailed(step.id, error);
     await this.settleFailure.execute(step.instanceId, step.stepId, step.kind, error);
-  }
-
-  private backoffMs(attempts: number): number {
-    const { retryBaseDelayMs, retryMaxDelayMs } = this.configService.getSaga();
-    return Math.min(retryBaseDelayMs * 2 ** (attempts - 1), retryMaxDelayMs);
   }
 }

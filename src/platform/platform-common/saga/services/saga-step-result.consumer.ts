@@ -2,11 +2,11 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   BrokerSubscription,
   MessageConsumerPort,
-} from '@platform/platform-common/messaging/inbound/ports/message-consumer.port';
+} from '@platform/platform-common/messaging/ports/message-consumer.port';
 import {
   fromWireEnvelope,
   WireEnvelope,
-} from '@platform/platform-common/messaging/outbound/adapters/envelope.serializer';
+} from '@platform/platform-common/messaging/adapters/envelope.serializer';
 import {
   fromResultEnvelope,
   SAGA_STEP_RESULT_QUEUE,

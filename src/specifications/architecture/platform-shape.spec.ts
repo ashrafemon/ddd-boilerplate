@@ -7,25 +7,22 @@ const PLATFORM_ROOT = join(ROOT, 'src', 'platform');
 /**
  * Platform shape tests — enforce `docs/platform-standard.md`.
  *
- * Migration is staged per module (standard §10): `MIGRATED` lists the modules
- * that already follow the inbound/outbound anatomy; every module is expected
- * to join it in the change that touches it. The global rules apply to the whole
- * platform tree from day one:
- *   - no `errors/` folder, no `*.errors.ts` (use NestJS built-in exceptions)
- *   - no module-local `*.config.ts` (env belongs to `src/config`)
- *   - no import of the retired `platform-common/errors` domain hierarchy
- *
- * Migrated-module rules:
+ * Module anatomy (flattened — no inbound/outbound split):
  *   - the module root holds only `<capability>.module.ts`
- *   - top level is limited to inbound/, outbound/, http/, use-cases/, types/,
- *     services/
- *   - inbound/ and outbound/ hold ports/ and adapters/ only
- *   - use-cases/ files are `<verb>-<noun>.usecase.ts`
+ *   - top level is limited to ports/, adapters/, repositories/, http/,
+ *     use-cases/, types/, services/
+ *   - ports/ holds inbound port tokens (abstract classes)
+ *   - adapters/ holds inbound adapters + non-repo outbound adapters
+ *     (Redis, broker SDKs, EventEmitter2)
+ *   - repositories/ holds Prisma repositories
+ *   - use-cases/ files are `<verb>-<noun>.usecase.ts` with a single execute()
  *   - http/requests and http/responses hold `*.dto.ts`
  *   - no empty folders
- *   - inbound/adapters implements an inbound port, outbound/adapters implements
- *     an outbound port, use cases depend on ports only, and everything else
- *     that composes them is a service
+ *
+ * Global rules:
+ *   - no `errors/` folder, no `*.errors.ts`
+ *   - no module-local `*.config.ts`
+ *   - no import of the retired `platform-common/errors` domain hierarchy
  */
 
 const MIGRATED = [
@@ -47,16 +44,13 @@ const MIGRATED = [
 /**
  * A class that exists in order to implement a port is an adapter, never a
  * service (standard §3). `services/` is for orchestration of use cases only.
- *
- * Empty since Phase 2: every port implementation sits in `inbound/adapters` or
- * `outbound/adapters`. Keep the list so a regression has a place to be recorded
- * and the shrink-only rule still has a home.
  */
 const PENDING_PORT_SERVICES: string[] = [];
 
 const ALLOWED_TOP_LEVEL = new Set([
-  'inbound',
-  'outbound',
+  'ports',
+  'adapters',
+  'repositories',
   'http',
   'use-cases',
   'types',
@@ -65,8 +59,6 @@ const ALLOWED_TOP_LEVEL = new Set([
   // contracts/, components/, security/ live under this one folder.
   'specifications',
 ]);
-
-const ALLOWED_PORT_DIRS = new Set(['ports', 'adapters']);
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -159,15 +151,76 @@ describe('platform shape — global rules', () => {
   });
 
   it('names adapter files as adapters', () => {
+    // Files under adapters/ that end with .service.ts are flagged only if they
+    // do NOT implement any port — a class implementing a port is an adapter
+    // regardless of its file name.
+    const ports = portTypeNames(SOURCE_FILES);
     const offenders = SOURCE_FILES.filter(
-      file => /\/(inbound|outbound)\/adapters\//.test(file) && file.endsWith('.service.ts'),
+      file =>
+        /\/adapters\//.test(file) &&
+        file.endsWith('.service.ts') &&
+        !implementedTypes(readFileSync(file, 'utf8')).some(type => ports.has(type)),
     );
+    expect(offenders).toEqual([]);
+  });
+
+  /**
+   * Use-case purity: a `*.usecase.ts` class may declare only one public method,
+   * `execute()`. Any helper, sub-step or per-row dispatch belongs in a
+   * `services/` class that the use case composes. This keeps every use case a
+   * single, named operation — the unit controllers and services call.
+   */
+  it('use cases expose only execute() as their public method', () => {
+    const useCaseFiles = SOURCE_FILES.filter(file => file.endsWith('.usecase.ts'));
+    const offenders: string[] = [];
+
+    for (const file of useCaseFiles) {
+      const source = stripComments(readFileSync(file, 'utf8'));
+      // Match method declarations with an access modifier or `async` that are
+      // not `execute` and not `constructor`. Private/protected helpers are also
+      // forbidden here — the rule is "one method, execute()", full stop.
+      const methodPattern =
+        /(?:^|\n)\s*(?:public|private|protected)\s+(?:async\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
+      for (const match of source.matchAll(methodPattern)) {
+        const name = match[1];
+        if (name !== 'execute' && name !== 'constructor') {
+          offenders.push(`${relative(PLATFORM_ROOT, file)} → ${name}()`);
+          break;
+        }
+      }
+      // Also catch modifier-less method declarations (e.g. `async foo()` or
+      // `foo():`) that are not `execute`/`constructor`.
+      const barePattern =
+        /(?:^|\n)\s*(?:async\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{/g;
+      for (const match of source.matchAll(barePattern)) {
+        const name = match[1];
+        if (name === 'execute' || name === 'constructor') continue;
+        // Skip control-flow keywords that look like calls.
+        if (
+          name === 'if' ||
+          name === 'for' ||
+          name === 'while' ||
+          name === 'switch' ||
+          name === 'catch' ||
+          name === 'return' ||
+          name === 'function'
+        ) {
+          continue;
+        }
+        // Skip calls like `this.foo(` — those are invocations, not declarations.
+        const before = source.slice(Math.max(0, (match.index ?? 0) - 20), match.index);
+        if (/this\.$/.test(before)) continue;
+        offenders.push(`${relative(PLATFORM_ROOT, file)} → ${name}()`);
+        break;
+      }
+    }
+
     expect(offenders).toEqual([]);
   });
 });
 
 describe('platform shape — migrated modules', () => {
-  it.each(MIGRATED)('%s conforms to the inbound/outbound anatomy', modulePath => {
+  it.each(MIGRATED)('%s conforms to the flattened anatomy', modulePath => {
     const dir = join(PLATFORM_ROOT, modulePath);
     const name = dir.split('/').pop() ?? '';
     expect(existsSync(dir)).toBe(true);
@@ -178,14 +231,8 @@ describe('platform shape — migrated modules', () => {
     // Top level: known folders only.
     const topLevel = dirs(dir);
     expect(topLevel.filter(entry => !ALLOWED_TOP_LEVEL.has(entry))).toEqual([]);
-
-    // Hexagon: ports and adapters only inside inbound/ and outbound/.
-    for (const side of ['inbound', 'outbound']) {
-      if (!topLevel.includes(side)) continue;
-      const sideDir = join(dir, side);
-      expect(dirs(sideDir).filter(entry => !ALLOWED_PORT_DIRS.has(entry))).toEqual([]);
-      expect(files(sideDir)).toEqual([]);
-    }
+    expect(topLevel).not.toContain('inbound');
+    expect(topLevel).not.toContain('outbound');
 
     // Naming: one use case per file, DTOs only under http/requests|responses.
     // Specs mirror their subject (`*.spec.ts`) and are exempt from the rule.
@@ -221,16 +268,16 @@ describe('platform shape — migrated modules', () => {
   });
 });
 
-/** Port type names declared under `<module>/<side>/ports/`. */
-function sidePortNames(moduleDir: string, side: string): Set<string> {
-  const portDir = join(moduleDir, side, 'ports');
+/** Port type names declared under `<module>/ports/`. */
+function modulePortNames(moduleDir: string): Set<string> {
+  const portDir = join(moduleDir, 'ports');
   if (!existsSync(portDir)) return new Set();
   return portTypeNames(files(portDir).map(entry => join(portDir, entry)));
 }
 
-/** Adapter files of one side, excluding specs. */
-function sideAdapterFiles(moduleDir: string, side: string): string[] {
-  const adapterDir = join(moduleDir, side, 'adapters');
+/** Adapter files under `<module>/adapters/`, excluding specs. */
+function moduleAdapterFiles(moduleDir: string): string[] {
+  const adapterDir = join(moduleDir, 'adapters');
   if (!existsSync(adapterDir)) return [];
   return files(adapterDir)
     .filter(entry => entry.endsWith('.ts') && !entry.endsWith('.spec.ts'))
@@ -238,66 +285,34 @@ function sideAdapterFiles(moduleDir: string, side: string): string[] {
 }
 
 describe('platform shape — ports and adapters (migrated modules)', () => {
-  // Every declared port has an adapter on its own side. Driver adapters that
-  // implement no port (cron ticks, broker listener hosts) are allowed: standard
-  // §2 puts them in inbound/adapters precisely because they compose use cases.
-  it.each(MIGRATED)('%s implements every inbound port in inbound/adapters', modulePath => {
+  // Every declared inbound port has an adapter in adapters/ that implements it.
+  // Driver adapters that implement no port (cron ticks, broker listener hosts)
+  // are allowed: they live in adapters/ because they compose use cases.
+  it.each(MIGRATED)('%s implements every port in adapters/', modulePath => {
     const dir = join(PLATFORM_ROOT, modulePath);
-    const ports = sidePortNames(dir, 'inbound');
-    expect(ports.size).toBeGreaterThan(0);
+    const ports = modulePortNames(dir);
+    if (ports.size === 0) return;
 
     const implemented = new Set(
-      sideAdapterFiles(dir, 'inbound').flatMap(file =>
-        implementedTypes(readFileSync(file, 'utf8')),
-      ),
+      moduleAdapterFiles(dir).flatMap(file => implementedTypes(readFileSync(file, 'utf8'))),
     );
     expect([...ports].filter(port => !implemented.has(port))).toEqual([]);
   });
 
-  /**
-   * Read-side aggregators: the capability is "answer a question about the
-   * infrastructure", so there is nothing to persist and therefore no outbound
-   * port to implement. Their inbound port + adapter are still enforced.
-   */
-  const INBOUND_ONLY = ['platform-common/health'];
-
-  it.each(MIGRATED.filter(modulePath => !INBOUND_ONLY.includes(modulePath)))(
-    '%s implements every outbound port in outbound/adapters',
-    modulePath => {
-      const dir = join(PLATFORM_ROOT, modulePath);
-      const ports = sidePortNames(dir, 'outbound');
-      expect(ports.size).toBeGreaterThan(0);
-
-      const implemented = new Set(
-        sideAdapterFiles(dir, 'outbound').flatMap(file =>
-          implementedTypes(readFileSync(file, 'utf8')),
-        ),
-      );
-      expect([...ports].filter(port => !implemented.has(port))).toEqual([]);
-    },
-  );
-
-  it.each(MIGRATED)('%s calls outbound ports from use cases, never adapters', modulePath => {
-    const dir = join(PLATFORM_ROOT, modulePath);
-    const useCaseDir = join(dir, 'use-cases');
-    if (!existsSync(useCaseDir)) return;
-
-    const offenders = files(useCaseDir)
-      .filter(entry => entry.endsWith('.usecase.ts'))
-      .filter(entry =>
-        /from '(\.\.\/)+(inbound|outbound)\/adapters\//.test(
-          readFileSync(join(useCaseDir, entry), 'utf8'),
-        ),
-      );
-    expect(offenders).toEqual([]);
-  });
+  // Use cases inject concrete repository/adapter classes directly (no outbound
+  // port tokens). They may still import inbound ports from their own module's
+  // ports/ directory (e.g. RequestContextPort) or from other modules' ports/.
+  // TypeScript enforces that any imported symbol exists — deleted outbound port
+  // tokens will fail tsc, so no separate architecture check is needed here.
 
   it.each(MIGRATED)('%s keeps port implementations out of services/', modulePath => {
     const dir = join(PLATFORM_ROOT, modulePath);
     const servicesDir = join(dir, 'services');
     if (!existsSync(servicesDir)) return;
 
-    const ports = new Set([...sidePortNames(dir, 'inbound'), ...sidePortNames(dir, 'outbound')]);
+    const ports = modulePortNames(dir);
+    if (ports.size === 0) return;
+
     const offenders = files(servicesDir)
       .filter(entry => entry.endsWith('.ts'))
       .filter(entry =>

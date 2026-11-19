@@ -6,8 +6,6 @@ import {
   SagaPlan,
   SagaPlanStep,
   SagaStepKind,
-  SagaStepOverlay,
-  SagaStepSpec,
 } from '../types/saga.types';
 
 export interface PlanBuildInput {
@@ -20,21 +18,19 @@ export interface PlanBuildInput {
   defaultMaxAttempts: number;
 }
 
-class PlanUtils {
-  static andConditions(left?: string, right?: string): string | undefined {
-    const present = [left, right].filter((c): c is string => Boolean(c && c.trim()));
-    if (present.length === 0) {
-      return undefined;
-    }
-    if (present.length === 1) {
-      return present[0];
-    }
-    return present.map(c => `(${c})`).join(' && ');
+function andConditions(left?: string, right?: string): string | undefined {
+  const present = [left, right].filter((c): c is string => Boolean(c && c.trim()));
+  if (present.length === 0) {
+    return undefined;
   }
+  if (present.length === 1) {
+    return present[0];
+  }
+  return present.map(c => `(${c})`).join(' && ');
+}
 
-  static hasAll(required: string[] | undefined, features: ReadonlySet<string>): boolean {
-    return !required || required.every(key => features.has(key));
-  }
+function hasAll(required: string[] | undefined, features: ReadonlySet<string>): boolean {
+  return !required || required.every(key => features.has(key));
 }
 
 /**
@@ -53,17 +49,25 @@ export class BuildSagaPlanUseCase {
     if (overlay?.enabled === false) {
       return null;
     }
-    if (!PlanUtils.hasAll(definition.requires, features)) {
+    if (!hasAll(definition.requires, features)) {
       return null;
     }
 
     const steps: SagaPlanStep[] = [];
     for (const spec of definition.steps) {
       const stepOverlay = overlay?.steps?.[spec.id];
-      if (!this.isEnabled(spec, stepOverlay)) {
+
+      const enabled =
+        spec.policy === 'required'
+          ? true
+          : spec.policy === 'optional'
+            ? (stepOverlay?.enabled ?? false)
+            : (stepOverlay?.enabled ?? true);
+      if (!enabled) {
         continue;
       }
-      if (!PlanUtils.hasAll(spec.requires, features)) {
+
+      if (!hasAll(spec.requires, features)) {
         if (spec.policy === 'required') {
           // The company cannot produce what a required step needs → no saga.
           return null;
@@ -71,10 +75,31 @@ export class BuildSagaPlanUseCase {
         continue;
       }
 
-      const planStep = this.toPlanStep(spec, stepOverlay, defaultMaxAttempts);
-      if (planStep) {
-        steps.push(planStep);
+      if (!spec.do && !spec.waitFor) {
+        continue;
       }
+
+      const isWait = Boolean(spec.waitFor);
+      const maxAttempts =
+        stepOverlay?.retry?.maxAttempts ?? spec.retry?.maxAttempts ?? defaultMaxAttempts;
+      const timeout = stepOverlay?.timeout ?? spec.timeout;
+      const onTimeout: SagaOnTimeout | undefined = isWait ? (spec.onTimeout ?? 'skip') : undefined;
+
+      steps.push({
+        id: spec.id,
+        kind: isWait ? SagaStepKind.WAIT : SagaStepKind.DO,
+        action: spec.do,
+        undo: spec.undo,
+        input: spec.input,
+        waitFor: spec.waitFor,
+        match: spec.match,
+        when: andConditions(spec.when, stepOverlay?.when),
+        if: andConditions(spec.if, stepOverlay?.if),
+        timeout,
+        onTimeout,
+        maxAttempts,
+        pivot: spec.pivot ?? false,
+      });
     }
 
     if (steps.length === 0) {
@@ -87,49 +112,6 @@ export class BuildSagaPlanUseCase {
       steps,
       cancelOn: definition.cancelOn ?? [],
       onComplete: definition.onComplete,
-    };
-  }
-
-  private isEnabled(spec: SagaStepSpec, overlay?: SagaStepOverlay): boolean {
-    if (spec.policy === 'required') {
-      return true;
-    }
-    if (spec.policy === 'optional') {
-      return overlay?.enabled ?? false;
-    }
-    return overlay?.enabled ?? true;
-  }
-
-  private toPlanStep(
-    spec: SagaStepSpec,
-    overlay: SagaStepOverlay | undefined,
-    defaultMaxAttempts: number,
-  ): SagaPlanStep | null {
-    if (!spec.do && !spec.waitFor) {
-      return null;
-    }
-
-    const isWait = Boolean(spec.waitFor);
-    const maxAttempts =
-      overlay?.retry?.maxAttempts ?? spec.retry?.maxAttempts ?? defaultMaxAttempts;
-
-    const timeout = overlay?.timeout ?? spec.timeout;
-    const onTimeout: SagaOnTimeout | undefined = isWait ? (spec.onTimeout ?? 'skip') : undefined;
-
-    return {
-      id: spec.id,
-      kind: isWait ? SagaStepKind.WAIT : SagaStepKind.DO,
-      action: spec.do,
-      undo: spec.undo,
-      input: spec.input,
-      waitFor: spec.waitFor,
-      match: spec.match,
-      when: PlanUtils.andConditions(spec.when, overlay?.when),
-      if: PlanUtils.andConditions(spec.if, overlay?.if),
-      timeout,
-      onTimeout,
-      maxAttempts,
-      pivot: spec.pivot ?? false,
     };
   }
 }

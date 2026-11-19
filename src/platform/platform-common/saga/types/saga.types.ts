@@ -276,6 +276,8 @@ export interface ISagaConfig {
   fairnessCap: number;
   /** Sweep interval for WAIT timeouts + stale leases (ms). */
   sweepIntervalMs: number;
+  /** Max rows examined per sweep pass (WAIT expiry + stale-lease reclaim). */
+  sweepBatchSize: number;
   retryBaseDelayMs: number;
   retryMaxDelayMs: number;
   defaultMaxAttempts: number;

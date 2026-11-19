@@ -1,18 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { InProcessEventBus } from '@platform/platform-common/events/inbound/ports/in-process-event-bus.port';
-import {
-  MessageQueuePort,
-  UnsupportedBrokerTargetError,
-} from '@platform/platform-common/messaging/inbound/ports/message-queue.port';
-import { OutboxRepositoryPort } from '../outbound/ports/outbox.repository.port';
-import {
-  BrokerTarget,
-  DEFAULT_BROKER_TARGET,
-  OutboxClaimedRecord,
-  OutboxEnvelope,
-} from '../types/outbox.types';
+import { PrismaOutboxRepository } from '../repositories/prisma-outbox.repository';
+import { PublishPendingBatchService } from '../services/publish-pending-batch.service';
 
 /**
  * Use case: publish a batch of pending outbox messages.
@@ -20,6 +9,10 @@ import {
  * claimBatch (SKIP LOCKED + lease clause, status → PUBLISHING) → publish to the
  * broker named by the envelope → emit in-process on the same envelope →
  * CAS-settle each row.
+ *
+ * Per-row dispatch (publish, emit, settle, failure routing) lives in
+ * `PublishPendingBatchService`; this use case only claims the batch and fans
+ * each row out to that service.
  *
  * Failure routing:
  *  - transport error → back to PENDING with exponential backoff, DEAD_LETTER
@@ -32,137 +25,24 @@ import {
  */
 @Injectable()
 export class PublishPendingBatchUseCase {
-  private readonly logger = new Logger(PublishPendingBatchUseCase.name);
-  private dispatching = false;
-
   constructor(
-    private readonly repository: OutboxRepositoryPort,
-    private readonly messageQueue: MessageQueuePort,
-    private readonly eventBus: InProcessEventBus,
-    private readonly requestContext: RequestContextPort,
+    private readonly repository: PrismaOutboxRepository,
+    private readonly dispatch: PublishPendingBatchService,
     private readonly config: ConfigService,
   ) {}
 
   async execute(): Promise<number> {
-    if (this.dispatching) {
-      return 0;
-    }
-    this.dispatching = true;
-    try {
-      const { batchSize, maxAttempts, claimLeaseMs } = this.config.getOutbox();
-      const messages = await this.repository.claimBatch({
-        batchSize,
-        maxAttempts,
-        claimLeaseMs,
-      });
-
-      for (const message of messages) {
-        await this.dispatchOne(message, maxAttempts);
-      }
-
-      return messages.length;
-    } finally {
-      this.dispatching = false;
-    }
-  }
-
-  private async dispatchOne(record: OutboxClaimedRecord, maxAttempts: number): Promise<void> {
-    const envelope = this.toEnvelope(record);
-
-    try {
-      await this.messageQueue.publish(envelope);
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-
-      if (err instanceof UnsupportedBrokerTargetError) {
-        this.logger.error(
-          `Parking outbox message ${record.id} (${record.eventType}) as FAILED: ${reason}`,
-        );
-        await this.repository.markPermanentlyFailed(record.id, record.claimToken, reason);
-        return;
-      }
-
-      await this.settleFailure(record, reason, maxAttempts);
-      return;
-    }
-
-    await this.emitInProcess(record, envelope);
-    await this.repository.markPublished(record.id, record.claimToken);
-  }
-
-  /**
-   * In-process delivery is best-effort: the broker already holds the message,
-   * so a listener bug must not push the row into retry (duplicate broker
-   * traffic). Surface it on the log instead.
-   */
-  private async emitInProcess(
-    record: OutboxClaimedRecord,
-    envelope: OutboxEnvelope,
-  ): Promise<void> {
-    try {
-      await this.requestContext.run(
-        {
-          tenantId: record.tenantId ?? undefined,
-          companyId: record.companyId ?? undefined,
-          correlationId: envelope.correlationId,
-        },
-        () => this.eventBus.emit(envelope),
-      );
-    } catch (err) {
-      this.logger.error(
-        `In-process dispatch of ${record.eventType} (${record.id}) failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-  }
-
-  private async settleFailure(
-    record: OutboxClaimedRecord,
-    error: string,
-    maxAttempts: number,
-  ): Promise<void> {
-    this.logger.error(
-      `Failed to dispatch outbox message ${record.id} (${record.eventType}): ${error}`,
-    );
-
-    const { retryBackoffBaseMs, retryMaxDelayMs } = this.config.getOutbox();
-    const delay = Math.min(
-      retryMaxDelayMs,
-      retryBackoffBaseMs * Math.pow(2, Math.max(0, record.attempts - 1)),
-    );
-
-    await this.repository.markFailed(
-      record.id,
-      record.claimToken,
-      error,
-      new Date(Date.now() + delay),
+    const { batchSize, maxAttempts, claimLeaseMs } = this.config.getOutbox();
+    const messages = await this.repository.claimBatch({
+      batchSize,
       maxAttempts,
-    );
-  }
+      claimLeaseMs,
+    });
 
-  private toEnvelope(record: OutboxClaimedRecord): OutboxEnvelope {
-    return {
-      eventId: record.eventId,
-      eventType: record.eventType,
-      eventVersion: record.eventVersion,
-      tenantId: record.tenantId,
-      companyId: record.companyId,
-      aggregateType: record.aggregateType,
-      aggregateId: record.aggregateId,
-      payload: record.payload,
-      headers: record.headers ?? undefined,
-      occurredAt: record.occurredAt,
-      correlationId: record.correlationId ?? record.headers?.['correlation-id'],
-      causationId: record.causationId ?? record.headers?.['causation-id'],
-      aggregateVersion: record.aggregateVersion ?? undefined,
-      broker: this.resolveBroker(record),
-    };
-  }
-
-  private resolveBroker(record: OutboxClaimedRecord): BrokerTarget {
-    const header = record.headers?.['broker'];
-    if (header === 'rabbitmq' || header === 'kafka' || header === 'sqs') {
-      return header;
+    for (const message of messages) {
+      await this.dispatch.dispatchOne(message, maxAttempts);
     }
-    return DEFAULT_BROKER_TARGET;
+
+    return messages.length;
   }
 }

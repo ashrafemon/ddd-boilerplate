@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '@infrastructure/prisma/prisma.module';
-import { SagaInboxPort } from './inbound/ports/saga-inbox.port';
-import { SagaInboxAdapter } from './inbound/adapters/saga-inbox.adapter';
-import { SagaInboxRepositoryPort } from './outbound/ports/saga-inbox.repository.port';
-import { PrismaSagaInboxRepository } from './outbound/adapters/prisma-saga-inbox.repository';
+import { SagaInboxPort } from './ports/saga-inbox.port';
+import { SagaInboxAdapter } from './adapters/saga-inbox.adapter';
+import { PrismaSagaInboxRepository } from './repositories/prisma-saga-inbox.repository';
 import { BufferSagaInboxEventUseCase } from './use-cases/buffer-saga-inbox-event.usecase';
 import { IgnoreBufferedSagaEventsUseCase } from './use-cases/ignore-buffered-saga-events.usecase';
 import { ListBufferedSagaEventsUseCase } from './use-cases/list-buffered-saga-events.usecase';
@@ -26,7 +25,6 @@ import { SagaInboxRetentionService } from './services/saga-inbox-retention.servi
   providers: [
     // Outbound adapter → outbound port
     PrismaSagaInboxRepository,
-    { provide: SagaInboxRepositoryPort, useExisting: PrismaSagaInboxRepository },
 
     // Use cases
     BufferSagaInboxEventUseCase,

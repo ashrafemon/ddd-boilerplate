@@ -5,7 +5,7 @@ import { ConfigModule } from '@config/config.module';
 import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaInboxRepository } from '../../outbound/adapters/prisma-inbox.repository';
+import { PrismaInboxRepository } from '../../repositories/prisma-inbox.repository';
 import { InboxIdentity } from '../../types/inbox.types';
 
 /**

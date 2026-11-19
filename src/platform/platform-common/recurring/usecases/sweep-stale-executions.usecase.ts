@@ -20,7 +20,7 @@ export class SweepStaleExecutionsUseCase {
   constructor(private readonly executions: RecurringExecutionRepositoryPort) {}
 
   @Cron(CronExpression.EVERY_HOUR, { name: 'sweep-stale-recurring-executions' })
-  async run(): Promise<number> {
+  async execute(): Promise<number> {
     const failed = await this.executions.failStale(
       new Date(Date.now() - STALE_EXECUTION_MS),
       SWEEP_BATCH,

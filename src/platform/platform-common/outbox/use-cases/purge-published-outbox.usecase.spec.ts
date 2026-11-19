@@ -1,6 +1,6 @@
 import { ConfigService } from '@config/config.service';
 import { PurgePublishedOutboxUseCase } from './purge-published-outbox.usecase';
-import { OutboxRepositoryPort } from '../outbound/ports/outbox.repository.port';
+import { PrismaOutboxRepository } from '../repositories/prisma-outbox.repository';
 
 /**
  * Unit — retention sweep. Only PUBLISHED rows are deleted, and the window comes
@@ -12,7 +12,7 @@ describe('PurgePublishedOutboxUseCase', () => {
     deletePublishedOlderThan.mockResolvedValue(3);
     const repository = {
       deletePublishedOlderThan,
-    } as unknown as OutboxRepositoryPort;
+    } as unknown as PrismaOutboxRepository;
     const config = { getOutbox: () => ({ cleanupOlderThanHours }) } as unknown as ConfigService;
     return {
       useCase: new PurgePublishedOutboxUseCase(repository, config),

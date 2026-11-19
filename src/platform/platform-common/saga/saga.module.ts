@@ -5,20 +5,17 @@ import { ContextModule } from '@platform/platform-common/context/context.module'
 import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
 import { SagaInboxModule } from '@platform/platform-common/saga-inbox/saga-inbox.module';
 import { SagaOutboxModule } from '@platform/platform-common/saga-outbox/saga-outbox.module';
-import { SagaInboundPort } from './inbound/ports/saga-inbound.port';
-import { SagaRouterAdapter } from './inbound/adapters/saga-router.adapter';
-import { CompanySettingsReader } from './outbound/ports/company-settings.port';
-import { FeatureGate } from './outbound/ports/feature-gate.port';
-import { SagaActionResolverPort } from './outbound/ports/saga-action.port';
-import { SagaDefinitionRepositoryPort } from './outbound/ports/saga-definition.repository.port';
-import { SagaInstanceRepositoryPort } from './outbound/ports/saga-instance.repository.port';
-import { SagaStepRepositoryPort } from './outbound/ports/saga-step.repository.port';
-import { EmptyCompanySettingsReader } from './outbound/adapters/empty-company-settings.reader';
-import { EmptyFeatureGate } from './outbound/adapters/empty-feature-gate.adapter';
-import { PrismaSagaDefinitionRepository } from './outbound/adapters/prisma-saga-definition.repository';
-import { PrismaSagaInstanceRepository } from './outbound/adapters/prisma-saga-instance.repository';
-import { PrismaSagaStepRepository } from './outbound/adapters/prisma-saga-step.repository';
-import { SagaActionRegistry } from './outbound/adapters/saga-action.registry';
+import { SagaInboundPort } from './ports/saga-inbound.port';
+import { SagaRouterAdapter } from './adapters/saga-router.adapter';
+import { CompanySettingsReader } from './ports/company-settings.port';
+import { FeatureGate } from './ports/feature-gate.port';
+import { SagaActionResolverPort } from './ports/saga-action.port';
+import { EmptyCompanySettingsReader } from './adapters/empty-company-settings.reader';
+import { EmptyFeatureGate } from './adapters/empty-feature-gate.adapter';
+import { PrismaSagaDefinitionRepository } from './repositories/prisma-saga-definition.repository';
+import { PrismaSagaInstanceRepository } from './repositories/prisma-saga-instance.repository';
+import { PrismaSagaStepRepository } from './repositories/prisma-saga-step.repository';
+import { SagaActionRegistry } from './adapters/saga-action.registry';
 import { AcceptSagaEventUseCase } from './use-cases/accept-saga-event.usecase';
 import { AdvanceSagaUseCase } from './use-cases/advance-saga.usecase';
 import { BufferSagaEventUseCase } from './use-cases/buffer-saga-event.usecase';
@@ -39,11 +36,9 @@ import { SagaDefinitionIntegrityService } from './services/saga-definition-integ
 import { SagaBrokerConsumerService } from './services/saga-broker-consumer.service';
 import { SagaCommandConsumerService } from './services/saga-command.consumer';
 import { SagaStepResultConsumerService } from './services/saga-step-result.consumer';
-import {
-  SagaCommandPublisherPort,
-  SagaStepResultPublisherPort,
-} from './outbound/ports/saga-command.port';
-import { MessagingSagaPublisher } from './outbound/adapters/messaging-saga.publisher';
+import { SagaEventRouterService } from './services/saga-event-router.service';
+import { SagaCommandPublisherPort, SagaStepResultPublisherPort } from './ports/saga-command.port';
+import { MessagingSagaPublisher } from './adapters/messaging-saga.publisher';
 import { SagaDefinitionController } from './http/saga-definition.controller';
 import { ListSagaDefinitionsUseCase } from './use-cases/list-saga-definitions.usecase';
 import { SetSagaDefinitionStatusUseCase } from './use-cases/set-saga-definition-status.usecase';
@@ -84,11 +79,8 @@ import { SettleSagaStepResultUseCase } from './use-cases/settle-saga-step-result
   providers: [
     // Outbound adapters → outbound ports
     PrismaSagaDefinitionRepository,
-    { provide: SagaDefinitionRepositoryPort, useExisting: PrismaSagaDefinitionRepository },
     PrismaSagaInstanceRepository,
-    { provide: SagaInstanceRepositoryPort, useExisting: PrismaSagaInstanceRepository },
     PrismaSagaStepRepository,
-    { provide: SagaStepRepositoryPort, useExisting: PrismaSagaStepRepository },
     SagaActionRegistry,
     { provide: SagaActionResolverPort, useExisting: SagaActionRegistry },
 
@@ -125,6 +117,7 @@ import { SettleSagaStepResultUseCase } from './use-cases/settle-saga-step-result
 
     // Event edge: broker → SagaInboundPort.accept (triggers, WAIT events, cancels)
     SagaBrokerConsumerService,
+    SagaEventRouterService,
 
     // Work edge: saga.command → action → saga.step.result (nothing runs in-process)
     SagaCommandConsumerService,

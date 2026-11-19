@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SagaInstanceStatus, SagaStepKind, SagaStepRecord } from '../types/saga.types';
-import { SagaActionResolverPort } from '../outbound/ports/saga-action.port';
-import { SagaCommandPublisherPort } from '../outbound/ports/saga-command.port';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { SagaActionResolverPort } from '../ports/saga-action.port';
+import { SagaCommandPublisherPort } from '../ports/saga-command.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import { SettleStepFailureUseCase } from './settle-step-failure.usecase';
 
 const LIVE_STATUSES: ReadonlySet<SagaInstanceStatus> = new Set([
@@ -30,8 +30,8 @@ export class ExecuteSagaStepUseCase {
   private readonly logger = new Logger(ExecuteSagaStepUseCase.name);
 
   constructor(
-    private readonly steps: SagaStepRepositoryPort,
-    private readonly instances: SagaInstanceRepositoryPort,
+    private readonly steps: PrismaSagaStepRepository,
+    private readonly instances: PrismaSagaInstanceRepository,
     private readonly actions: SagaActionResolverPort,
     private readonly commandPublisher: SagaCommandPublisherPort,
     private readonly settleFailure: SettleStepFailureUseCase,

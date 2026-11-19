@@ -4,7 +4,7 @@ import {
   DEFAULT_BROKER_TARGET,
   OutboxEventBase,
 } from '@platform/platform-common/outbox/types/outbox.types';
-import { SagaOutboxRepositoryPort } from '../outbound/ports/saga-outbox.repository.port';
+import { PrismaSagaOutboxRepository } from '../repositories/prisma-saga-outbox.repository';
 import { AppendSagaOutboxEventUseCase } from './append-saga-outbox-event.usecase';
 
 /**
@@ -34,7 +34,7 @@ describe('AppendSagaOutboxEventUseCase', () => {
     const repository = { append: jest.fn(async (..._args: unknown[]) => undefined) };
     const requestContext = { get: jest.fn(() => context) };
     const useCase = new AppendSagaOutboxEventUseCase(
-      repository as unknown as SagaOutboxRepositoryPort,
+      repository as unknown as PrismaSagaOutboxRepository,
       requestContext as unknown as RequestContextPort,
     );
     return { useCase, repository };

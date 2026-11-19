@@ -28,12 +28,23 @@ export type ISqsConfig = {
   url: string;
   region?: string;
 };
+export type IMessagingConfig = {
+  rabbitmq: IRabbitMQConfig;
+  kafka: IKafkaConfig;
+  sqs: ISqsConfig;
+  /**
+   * Bounded publish budget (ms) applied to every broker adapter. An
+   * unresponsive broker must not block the outbox dispatcher tick beyond
+   * this window — the row stays PENDING and is retried with backoff.
+   */
+  publishTimeoutMs: number;
+};
 
 /**
  * Messaging config — RabbitMQ / Kafka / SQS connection settings for the
  * integration event publishers.
  */
-export default registerAs('messaging', () => ({
+export default registerAs('messaging', (): IMessagingConfig => ({
   rabbitmq: {
     url: process.env.RABBITMQ_URL ?? 'amqp://localhost:5672',
     exchange: process.env.RABBITMQ_EXCHANGE ?? 'erp.events',
@@ -57,4 +68,5 @@ export default registerAs('messaging', () => ({
     url: process.env.SQS_URL ?? '',
     region: process.env.SQS_REGION ?? process.env.AWS_REGION ?? 'us-east-1',
   },
+  publishTimeoutMs: Number(process.env.MESSAGE_QUEUE_PUBLISH_TIMEOUT_MS ?? 10_000),
 }));

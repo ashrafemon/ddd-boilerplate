@@ -1,6 +1,6 @@
 import { ConfigService } from '@config/config.service';
 import { InboxReconciliationService } from './inbox-reconciliation.service';
-import { InboxRepositoryPort } from '../outbound/ports/inbox.repository.port';
+import { PrismaInboxRepository } from '../repositories/prisma-inbox.repository';
 
 /**
  * Unit — the sweep uses configuration, not literals, and keeps the two actions
@@ -25,7 +25,7 @@ describe('InboxReconciliationService', () => {
     const repository = {
       reconcileExpiredClaims,
       deleteProcessedOlderThan,
-    } as unknown as InboxRepositoryPort;
+    } as unknown as PrismaInboxRepository;
     const config = { getInbox: () => CONFIG } as unknown as ConfigService;
     return {
       service: new InboxReconciliationService(repository, config),

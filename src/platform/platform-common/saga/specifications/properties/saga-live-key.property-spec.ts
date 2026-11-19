@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { buildLiveKey } from '../../outbound/adapters/prisma-saga-instance.repository';
+import { buildLiveKey } from '../../repositories/prisma-saga-instance.repository';
 
 /**
  * Property — the live-instance key must be injective.

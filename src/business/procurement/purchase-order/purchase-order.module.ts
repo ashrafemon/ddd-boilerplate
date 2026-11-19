@@ -42,8 +42,8 @@ import { PurchaseOrderForGrnPort } from '@business/procurement/purchase-order/pu
 import { RecurringPurchaseOrderGenerationPort } from '@business/procurement/purchase-order/public/ports/recurring-purchase-order-generation.port';
 import { PrismaPurchaseOrderCommandRepository } from './infrastructure/persistence/prisma/prisma-purchase-order-command.repository';
 import { PrismaPurchaseOrderQueryRepository } from './infrastructure/persistence/prisma/prisma-purchase-order-query.repository';
-import { SharedOutboxAdapter } from '@platform/platform-common/outbox/inbound/adapters/shared-outbox.adapter';
-import { OutboxWriterPort } from '@platform/platform-common/outbox/inbound/ports/outbox-writer.port';
+import { SharedOutboxAdapter } from '@platform/platform-common/outbox/adapters/shared-outbox.adapter';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
 import { NumberingAdapter } from './infrastructure/adapters/platform/numbering.adapter';
 import { ReadCacheAdapter } from './infrastructure/adapters/platform/read-cache.adapter';
 import { PurchasableProductAdapter } from './infrastructure/adapters/business-aggregate/purchasable-product.adapter';

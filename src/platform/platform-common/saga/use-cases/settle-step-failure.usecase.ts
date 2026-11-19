@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SagaInstanceReason, SagaInstanceStatus, SagaStepKind } from '../types/saga.types';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
 import { StartCompensationUseCase, isTerminal } from './start-compensation.usecase';
 
 /**
@@ -13,7 +13,7 @@ import { StartCompensationUseCase, isTerminal } from './start-compensation.useca
 @Injectable()
 export class SettleStepFailureUseCase {
   constructor(
-    private readonly instances: SagaInstanceRepositoryPort,
+    private readonly instances: PrismaSagaInstanceRepository,
     private readonly compensate: StartCompensationUseCase,
   ) {}
 

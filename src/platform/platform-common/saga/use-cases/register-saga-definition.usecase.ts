@@ -6,7 +6,7 @@ import {
 } from '../types/saga-definition.parser';
 import { SagaDefinitionDocument } from '../types/saga-definition.document';
 import { findDefinitionProblems } from '../types/saga-definition.validator';
-import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
+import { PrismaSagaDefinitionRepository } from '../repositories/prisma-saga-definition.repository';
 
 export interface RegisterSagaDefinitionInput {
   document: SagaDefinitionDocument;
@@ -43,11 +43,23 @@ export interface RegisterSagaDefinitionResult {
 export class RegisterSagaDefinitionUseCase {
   private readonly logger = new Logger(RegisterSagaDefinitionUseCase.name);
 
-  constructor(private readonly definitions: SagaDefinitionRepositoryPort) {}
+  constructor(private readonly definitions: PrismaSagaDefinitionRepository) {}
 
   async execute(input: RegisterSagaDefinitionInput): Promise<RegisterSagaDefinitionResult> {
-    const definition = this.parse(input.document);
-    this.assertExecutable(definition);
+    let definition: SagaDefinitionBody;
+    try {
+      definition = parseSagaDefinition(input.document);
+    } catch (err) {
+      if (err instanceof SagaDefinitionValidationError) {
+        throw new BadRequestException(`Invalid saga definition: ${err.message}`);
+      }
+      throw err;
+    }
+
+    const problems = findDefinitionProblems(definition);
+    if (problems.length > 0) {
+      throw new BadRequestException(`Saga definition cannot execute: ${problems.join('; ')}`);
+    }
 
     const existing = await this.definitions.findByKeyVersion(definition.key, definition.version);
     if (existing) {
@@ -79,25 +91,5 @@ export class RegisterSagaDefinitionUseCase {
       version: created.version,
       definitionId: created.id,
     };
-  }
-
-  /** Reject a definition the engine could not run (flow step 1 "failed checks"). */
-  private assertExecutable(definition: SagaDefinitionBody): void {
-    const problems = findDefinitionProblems(definition);
-    if (problems.length > 0) {
-      throw new BadRequestException(`Saga definition cannot execute: ${problems.join('; ')}`);
-    }
-  }
-
-  /** Normalise the published document; a bad one is a client error, not a 500. */
-  private parse(document: SagaDefinitionDocument): SagaDefinitionBody {
-    try {
-      return parseSagaDefinition(document);
-    } catch (err) {
-      if (err instanceof SagaDefinitionValidationError) {
-        throw new BadRequestException(`Invalid saga definition: ${err.message}`);
-      }
-      throw err;
-    }
   }
 }

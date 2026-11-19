@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ImportJobOutboxWriterPort } from '../ports/import-job-outbox-writer.port';
 import { ImportJobRepositoryPort } from '../ports/import-job-repository.port';
-import { AuditPort } from '@platform/platform-common/audit/inbound/ports/audit.port';
+import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import { ImportJobRecord } from '../import.types';
 import { requireVisibleJob } from './import-helpers';
 

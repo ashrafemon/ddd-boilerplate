@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { ContextModule } from '@platform/platform-common/context/context.module';
-import { InboxPort } from './inbound/ports/inbox.port';
-import { InboxAdapter } from './inbound/adapters/inbox.adapter';
-import { InboxRepositoryPort } from './outbound/ports/inbox.repository.port';
-import { PrismaInboxRepository } from './outbound/adapters/prisma-inbox.repository';
+import { InboxPort } from './ports/inbox.port';
+import { InboxAdapter } from './adapters/inbox.adapter';
+import { PrismaInboxRepository } from './repositories/prisma-inbox.repository';
 import { ReceiveInboxMessageUseCase } from './use-cases/receive-inbox-message.usecase';
 import { CompleteInboxMessageUseCase } from './use-cases/complete-inbox-message.usecase';
 import { FailInboxMessageUseCase } from './use-cases/fail-inbox-message.usecase';
@@ -22,7 +21,6 @@ import { InboxReconciliationService } from './services/inbox-reconciliation.serv
   providers: [
     // Outbound adapter → outbound port
     PrismaInboxRepository,
-    { provide: InboxRepositoryPort, useExisting: PrismaInboxRepository },
 
     // Use cases
     ReceiveInboxMessageUseCase,

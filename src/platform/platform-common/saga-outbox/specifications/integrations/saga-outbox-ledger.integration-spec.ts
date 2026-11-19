@@ -5,9 +5,9 @@ import { ConfigModule } from '@config/config.module';
 import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaOutboxRepository } from '@platform/platform-common/outbox/outbound/adapters/prisma-outbox.repository';
+import { PrismaOutboxRepository } from '@platform/platform-common/outbox/repositories/prisma-outbox.repository';
 import { AppendOutboxEventRequest } from '@platform/platform-common/outbox/types/outbox.types';
-import { PrismaSagaOutboxRepository } from '../../outbound/adapters/prisma-saga-outbox.repository';
+import { PrismaSagaOutboxRepository } from '../../repositories/prisma-saga-outbox.repository';
 
 /**
  * Integration specification — `saga_outbox` against real Postgres.

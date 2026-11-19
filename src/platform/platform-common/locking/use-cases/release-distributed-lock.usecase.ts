@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { LockLedgerPort } from '../outbound/ports/lock-ledger.port';
-import { LockLeasePort } from '../outbound/ports/lock-lease.port';
+import { PrismaLockLedgerRepository } from '../repositories/prisma-lock-ledger.repository';
+import { RedisLockLeaseAdapter } from '../adapters/redis-lock-lease.adapter';
 import { DistributedLockReleaseRequest } from '../types/locking.types';
 
 /**
@@ -17,8 +17,8 @@ import { DistributedLockReleaseRequest } from '../types/locking.types';
 @Injectable()
 export class ReleaseDistributedLockUseCase {
   constructor(
-    private readonly lease: LockLeasePort,
-    private readonly ledger: LockLedgerPort,
+    private readonly lease: RedisLockLeaseAdapter,
+    private readonly ledger: PrismaLockLedgerRepository,
     private readonly configService: ConfigService,
   ) {}
 

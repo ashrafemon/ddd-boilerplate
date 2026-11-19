@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@config/config.service';
-import { InboxRepositoryPort } from '../outbound/ports/inbox.repository.port';
+import { PrismaInboxRepository } from '../repositories/prisma-inbox.repository';
 
 /**
  * Inbox reconciler — the consumer-side sweep.
@@ -16,7 +16,7 @@ export class InboxReconciliationService {
   private readonly logger = new Logger(InboxReconciliationService.name);
 
   constructor(
-    private readonly repository: InboxRepositoryPort,
+    private readonly repository: PrismaInboxRepository,
     private readonly configService: ConfigService,
   ) {}
 

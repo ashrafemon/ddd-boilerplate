@@ -1,6 +1,6 @@
 import { ConfigService } from '@config/config.service';
 import { FailInboxMessageUseCase } from './fail-inbox-message.usecase';
-import { InboxRepositoryPort } from '../outbound/ports/inbox.repository.port';
+import { PrismaInboxRepository } from '../repositories/prisma-inbox.repository';
 
 /**
  * Unit — the two failure modes.
@@ -23,7 +23,7 @@ describe('FailInboxMessageUseCase', () => {
     fail.mockResolvedValue(true);
     const markPermanentlyFailed = jest.fn<Promise<boolean>, [string, string, string | null]>();
     markPermanentlyFailed.mockResolvedValue(true);
-    const repository = { fail, markPermanentlyFailed } as unknown as InboxRepositoryPort;
+    const repository = { fail, markPermanentlyFailed } as unknown as PrismaInboxRepository;
     const config = { getInbox: () => CONFIG } as unknown as ConfigService;
     return {
       useCase: new FailInboxMessageUseCase(repository, config),

@@ -5,8 +5,8 @@ import {
   SagaStepKind,
   SagaStepStatus,
 } from '../types/saga.types';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import { StartCompensationUseCase, isTerminal } from './start-compensation.usecase';
 
 /**
@@ -18,8 +18,8 @@ import { StartCompensationUseCase, isTerminal } from './start-compensation.useca
 @Injectable()
 export class CancelSagaUseCase {
   constructor(
-    private readonly instances: SagaInstanceRepositoryPort,
-    private readonly steps: SagaStepRepositoryPort,
+    private readonly instances: PrismaSagaInstanceRepository,
+    private readonly steps: PrismaSagaStepRepository,
     private readonly compensate: StartCompensationUseCase,
   ) {}
 

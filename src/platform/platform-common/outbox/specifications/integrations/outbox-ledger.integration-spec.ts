@@ -5,7 +5,7 @@ import { ConfigModule } from '@config/config.module';
 import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaOutboxRepository } from '../../outbound/adapters/prisma-outbox.repository';
+import { PrismaOutboxRepository } from '../../repositories/prisma-outbox.repository';
 import { AppendOutboxEventRequest } from '../../types/outbox.types';
 
 /**

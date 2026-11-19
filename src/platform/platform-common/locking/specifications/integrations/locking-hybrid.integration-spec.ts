@@ -4,12 +4,10 @@ import { ConfigModule } from '@config/config.module';
 import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
 import { RedisModule } from '@infrastructure/redis/redis.module';
-import { LockAdapter } from '../../inbound/adapters/lock.adapter';
-import { DistributedLockPort } from '../../inbound/ports/distributed-lock.port';
-import { LockLedgerPort } from '../../outbound/ports/lock-ledger.port';
-import { LockLeasePort } from '../../outbound/ports/lock-lease.port';
-import { PrismaLockLedgerRepository } from '../../outbound/adapters/prisma-lock-ledger.repository';
-import { RedisLockLeaseAdapter } from '../../outbound/adapters/redis-lock-lease.adapter';
+import { LockAdapter } from '../../adapters/lock.adapter';
+import { DistributedLockPort } from '../../ports/distributed-lock.port';
+import { PrismaLockLedgerRepository } from '../../repositories/prisma-lock-ledger.repository';
+import { RedisLockLeaseAdapter } from '../../adapters/redis-lock-lease.adapter';
 import { AcquireDistributedLockUseCase } from '../../use-cases/acquire-distributed-lock.usecase';
 import { RenewDistributedLockUseCase } from '../../use-cases/renew-distributed-lock.usecase';
 import { ReleaseDistributedLockUseCase } from '../../use-cases/release-distributed-lock.usecase';
@@ -31,16 +29,16 @@ describe('Distributed lock (integration)', () => {
   let moduleRef: TestingModule;
   let lock: DistributedLockPort;
   let prisma: PrismaWriteService;
-  let lease: LockLeasePort;
+  let lease: RedisLockLeaseAdapter;
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, PrismaModule, RedisModule],
       providers: [
         RedisLockLeaseAdapter,
-        { provide: LockLeasePort, useExisting: RedisLockLeaseAdapter },
+        { provide: RedisLockLeaseAdapter, useExisting: RedisLockLeaseAdapter },
         PrismaLockLedgerRepository,
-        { provide: LockLedgerPort, useExisting: PrismaLockLedgerRepository },
+        { provide: PrismaLockLedgerRepository, useExisting: PrismaLockLedgerRepository },
         AcquireDistributedLockUseCase,
         RenewDistributedLockUseCase,
         ReleaseDistributedLockUseCase,
@@ -51,7 +49,7 @@ describe('Distributed lock (integration)', () => {
     await moduleRef.init();
 
     lock = moduleRef.get(DistributedLockPort);
-    lease = moduleRef.get(LockLeasePort);
+    lease = moduleRef.get(RedisLockLeaseAdapter);
     prisma = moduleRef.get(PrismaWriteService);
   });
 

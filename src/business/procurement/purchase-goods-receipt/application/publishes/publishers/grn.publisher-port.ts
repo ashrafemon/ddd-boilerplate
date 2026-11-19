@@ -1,4 +1,4 @@
-import { GenericOutboxPublisherPort } from '@platform/platform-common/outbox/inbound/ports/generic-outbox-publisher.port';
+import { GenericOutboxPublisherPort } from '@platform/platform-common/outbox/ports/generic-outbox-publisher.port';
 import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
 
 export abstract class GrnPublisherPort extends GenericOutboxPublisherPort {

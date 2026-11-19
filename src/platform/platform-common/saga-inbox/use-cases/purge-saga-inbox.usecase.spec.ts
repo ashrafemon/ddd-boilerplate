@@ -1,5 +1,5 @@
 import { ConfigService } from '@config/config.service';
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
+import { PrismaSagaInboxRepository } from '../repositories/prisma-saga-inbox.repository';
 import { PurgeSagaInboxUseCase } from './purge-saga-inbox.usecase';
 
 /**
@@ -16,7 +16,7 @@ describe('PurgeSagaInboxUseCase', () => {
       getSaga: () => ({ inboxRetentionDays: retentionDays }),
     } as unknown as ConfigService;
     const useCase = new PurgeSagaInboxUseCase(
-      inbox as unknown as SagaInboxRepositoryPort,
+      inbox as unknown as PrismaSagaInboxRepository,
       configService,
     );
     return { useCase, inbox };

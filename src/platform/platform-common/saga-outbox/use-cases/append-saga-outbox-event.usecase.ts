@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { AppendOutboxEventUseCase } from '@platform/platform-common/outbox/use-cases/append-outbox-event.usecase';
-import { SagaOutboxRepositoryPort } from '../outbound/ports/saga-outbox.repository.port';
+import { PrismaSagaOutboxRepository } from '../repositories/prisma-saga-outbox.repository';
 
 /**
  * Use case: append one saga event to `saga_outbox`.
@@ -12,7 +12,7 @@ import { SagaOutboxRepositoryPort } from '../outbound/ports/saga-outbox.reposito
  */
 @Injectable()
 export class AppendSagaOutboxEventUseCase extends AppendOutboxEventUseCase {
-  constructor(repository: SagaOutboxRepositoryPort, requestContext: RequestContextPort) {
+  constructor(repository: PrismaSagaOutboxRepository, requestContext: RequestContextPort) {
     super(repository, requestContext);
   }
 }

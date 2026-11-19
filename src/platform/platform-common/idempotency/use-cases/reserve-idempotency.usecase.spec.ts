@@ -1,6 +1,6 @@
 import { ConfigService } from '@config/config.service';
-import { IdempotencyReplayCachePort } from '../outbound/ports/idempotency-replay-cache.port';
-import { IdempotencyRepositoryPort } from '../outbound/ports/idempotency.repository.port';
+import { RedisIdempotencyCacheAdapter } from '../adapters/redis-idempotency-cache.adapter';
+import { PrismaIdempotencyRepository } from '../repositories/prisma-idempotency.repository';
 import {
   IdempotencyIdentity,
   IdempotencyReserveRequest,
@@ -72,8 +72,8 @@ function build(): {
   } as unknown as ConfigService;
 
   const useCase = new ReserveIdempotencyUseCase(
-    repository as unknown as IdempotencyRepositoryPort,
-    cache as unknown as IdempotencyReplayCachePort,
+    repository as unknown as PrismaIdempotencyRepository,
+    cache as unknown as RedisIdempotencyCacheAdapter,
     configService,
   );
   return { useCase, repository, cache };

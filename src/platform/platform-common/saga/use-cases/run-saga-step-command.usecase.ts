@@ -7,10 +7,10 @@ import {
   SagaStepStatus,
   SagaUndoResult,
 } from '../types/saga.types';
-import { SagaStepCommand, SagaStepResult } from '../types/saga-command.types';
-import { SagaActionResolverPort } from '../outbound/ports/saga-action.port';
-import { SagaStepResultPublisherPort } from '../outbound/ports/saga-command.port';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { SagaStepCommand } from '../types/saga-command.types';
+import { SagaActionResolverPort } from '../ports/saga-action.port';
+import { SagaStepResultPublisherPort } from '../ports/saga-command.port';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 
 /**
  * Use case (consumer side): run one delivered `saga.command`.
@@ -28,7 +28,7 @@ export class RunSagaStepCommandUseCase {
   private readonly logger = new Logger(RunSagaStepCommandUseCase.name);
 
   constructor(
-    private readonly steps: SagaStepRepositoryPort,
+    private readonly steps: PrismaSagaStepRepository,
     private readonly actions: SagaActionResolverPort,
     private readonly results: SagaStepResultPublisherPort,
     private readonly requestContext: RequestContextPort,
@@ -45,7 +45,17 @@ export class RunSagaStepCommandUseCase {
 
     const action = this.actions.resolve(command.action);
     if (!action) {
-      await this.report(command, { outcome: 'fail', error: 'action not registered' });
+      await this.results.publish({
+        tenantId: command.tenantId,
+        companyId: command.companyId,
+        instanceId: command.instanceId,
+        stepId: command.stepId,
+        stepRowId: command.stepRowId,
+        kind: command.kind,
+        outcome: 'fail',
+        output: null,
+        error: 'action not registered',
+      });
       return;
     }
 
@@ -78,25 +88,16 @@ export class RunSagaStepCommandUseCase {
       result = { outcome: 'retry', error: (err as Error).message };
     }
 
-    await this.report(command, {
-      outcome: result.outcome,
-      output: 'output' in result ? (result.output ?? null) : null,
-      error: result.error ?? null,
-    });
-  }
-
-  private report(
-    command: SagaStepCommand,
-    partial: Pick<SagaStepResult, 'outcome' | 'output' | 'error'>,
-  ): Promise<void> {
-    return this.results.publish({
+    await this.results.publish({
       tenantId: command.tenantId,
       companyId: command.companyId,
       instanceId: command.instanceId,
       stepId: command.stepId,
       stepRowId: command.stepRowId,
       kind: command.kind,
-      ...partial,
+      outcome: result.outcome,
+      output: 'output' in result ? (result.output ?? null) : null,
+      error: result.error ?? null,
     });
   }
 }

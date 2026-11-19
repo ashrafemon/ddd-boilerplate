@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SagaDefinitionRecord, SagaDefinitionStatus } from '../types/saga.types';
-import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
+import { PrismaSagaDefinitionRepository } from '../repositories/prisma-saga-definition.repository';
 
 export interface ListSagaDefinitionsInput {
   status?: SagaDefinitionStatus;
@@ -16,7 +16,7 @@ export interface ListSagaDefinitionsInput {
  */
 @Injectable()
 export class ListSagaDefinitionsUseCase {
-  constructor(private readonly definitions: SagaDefinitionRepositoryPort) {}
+  constructor(private readonly definitions: PrismaSagaDefinitionRepository) {}
 
   async execute(input: ListSagaDefinitionsInput = {}): Promise<SagaDefinitionRecord[]> {
     return this.definitions.listAll(input);

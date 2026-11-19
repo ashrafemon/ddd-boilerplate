@@ -2,9 +2,9 @@ import { instance, plan, planStep, step } from '@test/support/saga/saga.fixtures
 import { ExpireWaitStepUseCase } from './expire-wait-step.usecase';
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
 import { StartCompensationUseCase } from './start-compensation.usecase';
-import { SagaInboxPort } from '@platform/platform-common/saga-inbox/inbound/ports/saga-inbox.port';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { SagaInboxPort } from '@platform/platform-common/saga-inbox/ports/saga-inbox.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import {
   SagaInstanceReason,
   SagaInstanceStatus,
@@ -30,8 +30,8 @@ describe('ExpireWaitStepUseCase', () => {
     const compensate = { execute: jest.fn(async () => instance()) };
     const inbox = { ignoreBuffered: jest.fn(async () => 0) };
     const useCase = new ExpireWaitStepUseCase(
-      instances as unknown as SagaInstanceRepositoryPort,
-      steps as unknown as SagaStepRepositoryPort,
+      instances as unknown as PrismaSagaInstanceRepository,
+      steps as unknown as PrismaSagaStepRepository,
       advanceSaga as unknown as AdvanceSagaUseCase,
       compensate as unknown as StartCompensationUseCase,
       inbox as unknown as SagaInboxPort,

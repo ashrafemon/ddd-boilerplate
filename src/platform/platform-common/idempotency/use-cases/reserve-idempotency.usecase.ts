@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
-import { IdempotencyRepositoryPort } from '../outbound/ports/idempotency.repository.port';
-import { IdempotencyReplayCachePort } from '../outbound/ports/idempotency-replay-cache.port';
+import { PrismaIdempotencyRepository } from '../repositories/prisma-idempotency.repository';
+import { RedisIdempotencyCacheAdapter } from '../adapters/redis-idempotency-cache.adapter';
 import {
   IdempotencyIdentity,
   IdempotencyReservation,
@@ -23,8 +23,8 @@ import {
 @Injectable()
 export class ReserveIdempotencyUseCase {
   constructor(
-    private readonly repository: IdempotencyRepositoryPort,
-    private readonly cache: IdempotencyReplayCachePort,
+    private readonly repository: PrismaIdempotencyRepository,
+    private readonly cache: RedisIdempotencyCacheAdapter,
     private readonly configService: ConfigService,
   ) {}
 
@@ -60,7 +60,13 @@ export class ReserveIdempotencyUseCase {
         leaseUntil,
         request.requestHash,
       );
-      return this.acquired(identity, inserted.id, claimToken, inserted.version);
+      const reservation: IdempotencyReservation = {
+        ...identity,
+        id: inserted.id,
+        claimToken,
+        version: inserted.version,
+      };
+      return { status: 'ACQUIRED', reservation };
     } catch {
       // Unique violation — a row already exists; fall through to inspect it.
     }
@@ -75,7 +81,13 @@ export class ReserveIdempotencyUseCase {
         leaseUntil,
         request.requestHash,
       );
-      return this.acquired(identity, inserted.id, claimToken, inserted.version);
+      const reservation: IdempotencyReservation = {
+        ...identity,
+        id: inserted.id,
+        claimToken,
+        version: inserted.version,
+      };
+      return { status: 'ACQUIRED', reservation };
     }
 
     // 3/4. Same key, different payload is a client error.
@@ -104,24 +116,15 @@ export class ReserveIdempotencyUseCase {
       legacyClaimCutoff,
     );
     if (taken) {
-      return this.acquired(identity, taken.id, claimToken, taken.version);
+      const reservation: IdempotencyReservation = {
+        ...identity,
+        id: taken.id,
+        claimToken,
+        version: taken.version,
+      };
+      return { status: 'ACQUIRED', reservation };
     }
 
     return { status: 'BUSY' };
-  }
-
-  private acquired(
-    identity: IdempotencyIdentity,
-    id: string,
-    claimToken: string,
-    version: number,
-  ): IdempotencyReserveResult {
-    const reservation: IdempotencyReservation = {
-      ...identity,
-      id,
-      claimToken,
-      version,
-    };
-    return { status: 'ACQUIRED', reservation };
   }
 }

@@ -1,6 +1,6 @@
 import { ConfigService } from '@config/config.service';
 import { ReceiveInboxMessageUseCase } from './receive-inbox-message.usecase';
-import { InboxRepositoryPort } from '../outbound/ports/inbox.repository.port';
+import { PrismaInboxRepository } from '../repositories/prisma-inbox.repository';
 import { InboxMessage, InboxReceiveRequest } from '../types/inbox.types';
 
 /**
@@ -69,7 +69,7 @@ function makeSut() {
     findUnique,
     reclaim,
     markPermanentlyFailed,
-  } as unknown as InboxRepositoryPort;
+  } as unknown as PrismaInboxRepository;
   const config = { getInbox: () => CONFIG } as unknown as ConfigService;
 
   return {

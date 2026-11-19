@@ -3,7 +3,7 @@ import { step } from '@test/support/saga/saga.fixtures';
 import { SettleSagaStepResultUseCase } from './settle-saga-step-result.usecase';
 import { SettleStepFailureUseCase } from './settle-step-failure.usecase';
 import { SettleStepSuccessUseCase } from './settle-step-success.usecase';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import { SagaStepResult } from '../types/saga-command.types';
 import { SagaStepKind, SagaStepRecord, SagaStepStatus } from '../types/saga.types';
 
@@ -38,7 +38,7 @@ describe('SettleSagaStepResultUseCase', () => {
     const settleFailure = { execute: jest.fn(async () => undefined) };
 
     const useCase = new SettleSagaStepResultUseCase(
-      steps as unknown as SagaStepRepositoryPort,
+      steps as unknown as PrismaSagaStepRepository,
       settleSuccess as unknown as SettleStepSuccessUseCase,
       settleFailure as unknown as SettleStepFailureUseCase,
       {

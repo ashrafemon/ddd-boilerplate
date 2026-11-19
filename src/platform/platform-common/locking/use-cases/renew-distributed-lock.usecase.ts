@@ -1,8 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { LockLedgerPort } from '../outbound/ports/lock-ledger.port';
-import { LockLeasePort } from '../outbound/ports/lock-lease.port';
-import { DistributedLockRenewRequest, DistributedLockRenewResult } from '../types/locking.types';
+import { PrismaLockLedgerRepository } from '../repositories/prisma-lock-ledger.repository';
+import { RedisLockLeaseAdapter } from '../adapters/redis-lock-lease.adapter';
+import {
+  clampLease,
+  DistributedLockRenewRequest,
+  DistributedLockRenewResult,
+} from '../types/locking.types';
 
 /**
  * Use case: extend a held lease (design `common/03-lock`).
@@ -17,15 +21,15 @@ import { DistributedLockRenewRequest, DistributedLockRenewResult } from '../type
 @Injectable()
 export class RenewDistributedLockUseCase {
   constructor(
-    private readonly lease: LockLeasePort,
-    private readonly ledger: LockLedgerPort,
+    private readonly lease: RedisLockLeaseAdapter,
+    private readonly ledger: PrismaLockLedgerRepository,
     private readonly configService: ConfigService,
   ) {}
 
   async execute(request: DistributedLockRenewRequest): Promise<DistributedLockRenewResult> {
     const { ticket } = request;
     const { defaultLeaseMs, minLeaseMs, maxLeaseMs, durable } = this.configService.getLocking();
-    const leaseMs = this.clamp(request.leaseMs ?? defaultLeaseMs, minLeaseMs, maxLeaseMs);
+    const leaseMs = clampLease(request.leaseMs ?? defaultLeaseMs, minLeaseMs, maxLeaseMs);
 
     const renewed = await this.lease.renew(ticket.lockKey, ticket.ownerToken, leaseMs);
     if (!renewed) {
@@ -48,9 +52,5 @@ export class RenewDistributedLockUseCase {
       status: 'RENEWED',
       ticket: { ...ticket, fencingToken: claim.fencingToken, expiresAt },
     };
-  }
-
-  private clamp(value: number, min: number, max: number): number {
-    return Math.min(Math.max(value, min), max);
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { InboxPort } from '@platform/platform-common/inbox/inbound/ports/inbox.port';
+import { InboxPort } from '@platform/platform-common/inbox/ports/inbox.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { VendorBillPostedListenerEvent } from '../contracts/vendor-bill-posted.listener.event';
 import {

@@ -32,7 +32,28 @@ export class CreateRecurringTemplateUseCase {
       tenantId: input.tenantId ?? this.requestContext.getTenantId(),
       createdBy: input.createdBy ?? this.requestContext.getUserId(),
     };
-    this.validate(scoped);
+    if (scoped.partyType) {
+      const expected = PARTY_TYPE_BY_TARGET_ENTITY[scoped.targetEntityType];
+      if (expected && scoped.partyType !== expected) {
+        throw new BadRequestException(
+          `partyType '${scoped.partyType}' does not correlate with targetEntityType '${scoped.targetEntityType}'`,
+        );
+      }
+    }
+
+    if (scoped.triggerType === 'TIME') {
+      if (!scoped.frequency || !scoped.interval || !scoped.startDate) {
+        throw new BadRequestException("triggerType 'TIME' requires its matching fields to be set");
+      }
+    } else if (scoped.triggerType === 'EVENT') {
+      if (!scoped.eventName) {
+        throw new BadRequestException("triggerType 'EVENT' requires its matching fields to be set");
+      }
+    }
+
+    if (!Array.isArray(scoped.lines) || scoped.lines.length === 0) {
+      throw new ConflictException('RecurringTemplate.lines must be a non-empty array');
+    }
 
     const template = await this.templateRepository.create(scoped);
 
@@ -51,30 +72,5 @@ export class CreateRecurringTemplateUseCase {
     }
 
     return template;
-  }
-
-  private validate(input: CreateRecurringTemplateInput): void {
-    if (input.partyType) {
-      const expected = PARTY_TYPE_BY_TARGET_ENTITY[input.targetEntityType];
-      if (expected && input.partyType !== expected) {
-        throw new BadRequestException(
-          `partyType '${input.partyType}' does not correlate with targetEntityType '${input.targetEntityType}'`,
-        );
-      }
-    }
-
-    if (input.triggerType === 'TIME') {
-      if (!input.frequency || !input.interval || !input.startDate) {
-        throw new BadRequestException("triggerType 'TIME' requires its matching fields to be set");
-      }
-    } else if (input.triggerType === 'EVENT') {
-      if (!input.eventName) {
-        throw new BadRequestException("triggerType 'EVENT' requires its matching fields to be set");
-      }
-    }
-
-    if (!Array.isArray(input.lines) || input.lines.length === 0) {
-      throw new ConflictException('RecurringTemplate.lines must be a non-empty array');
-    }
   }
 }

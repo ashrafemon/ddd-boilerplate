@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ContextModule } from '@platform/platform-common/context/context.module';
-import { NumberingPort } from './inbound/ports/numbering.port';
-import { NumberingAdapter } from './inbound/adapters/numbering.adapter';
-import { NumberSequenceRepositoryPort } from './outbound/ports/number-sequence.repository.port';
-import { PrismaNumberSequenceRepository } from './outbound/adapters/prisma-number-sequence.repository';
+import { NumberingPort } from './ports/numbering.port';
+import { NumberingAdapter } from './adapters/numbering.adapter';
+import { PrismaNumberSequenceRepository } from './repositories/prisma-number-sequence.repository';
 import { NextDocumentNumberUseCase } from './use-cases/next-document-number.usecase';
 
 /**
@@ -16,7 +15,6 @@ import { NextDocumentNumberUseCase } from './use-cases/next-document-number.usec
   imports: [ContextModule],
   providers: [
     PrismaNumberSequenceRepository,
-    { provide: NumberSequenceRepositoryPort, useExisting: PrismaNumberSequenceRepository },
     NextDocumentNumberUseCase,
     NumberingAdapter,
     { provide: NumberingPort, useExisting: NumberingAdapter },

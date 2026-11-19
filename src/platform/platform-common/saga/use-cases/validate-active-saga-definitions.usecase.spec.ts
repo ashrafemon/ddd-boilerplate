@@ -1,8 +1,8 @@
 import { SagaDefinitionStatus } from '../types/saga.types';
 import { GOODS_RECEIPT_SAGA_EXAMPLE } from '../types/definitions/goods-receipt.example';
 import { parseSagaDefinition } from '../types/saga-definition.parser';
-import { SagaActionResolverPort } from '../outbound/ports/saga-action.port';
-import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
+import { SagaActionResolverPort } from '../ports/saga-action.port';
+import { PrismaSagaDefinitionRepository } from '../repositories/prisma-saga-definition.repository';
 import { ValidateActiveSagaDefinitionsUseCase } from './validate-active-saga-definitions.usecase';
 
 /**
@@ -38,7 +38,7 @@ describe('ValidateActiveSagaDefinitionsUseCase', () => {
       markStatus: jest.fn(async () => undefined),
     };
     const useCase = new ValidateActiveSagaDefinitionsUseCase(
-      repository as unknown as SagaDefinitionRepositoryPort,
+      repository as unknown as PrismaSagaDefinitionRepository,
       actions,
     );
     return { useCase, repository };

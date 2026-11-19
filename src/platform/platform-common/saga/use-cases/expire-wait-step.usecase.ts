@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { SagaInstanceReason, SagaInstanceStatus, SagaStepRecord } from '../types/saga.types';
-import { SagaInboxPort } from '@platform/platform-common/saga-inbox/inbound/ports/saga-inbox.port';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { SagaInboxPort } from '@platform/platform-common/saga-inbox/ports/saga-inbox.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
 import { StartCompensationUseCase, isTerminal } from './start-compensation.usecase';
 
@@ -18,8 +18,8 @@ import { StartCompensationUseCase, isTerminal } from './start-compensation.useca
 @Injectable()
 export class ExpireWaitStepUseCase {
   constructor(
-    private readonly instances: SagaInstanceRepositoryPort,
-    private readonly steps: SagaStepRepositoryPort,
+    private readonly instances: PrismaSagaInstanceRepository,
+    private readonly steps: PrismaSagaStepRepository,
     private readonly advanceSaga: AdvanceSagaUseCase,
     private readonly compensate: StartCompensationUseCase,
     private readonly inbox: SagaInboxPort,

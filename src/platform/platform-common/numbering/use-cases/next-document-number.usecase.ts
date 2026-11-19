@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { resolveCompanyId } from '@platform/platform-common/context/company';
-import { NextNumberOptions } from '../inbound/ports/numbering.port';
-import { NumberSequenceRepositoryPort } from '../outbound/ports/number-sequence.repository.port';
+import { NextNumberOptions } from '../ports/numbering.port';
+import { PrismaNumberSequenceRepository } from '../repositories/prisma-number-sequence.repository';
 import { buildSequenceKey } from '../types/numbering.types';
 
 /**
@@ -16,7 +16,7 @@ import { buildSequenceKey } from '../types/numbering.types';
 @Injectable()
 export class NextDocumentNumberUseCase {
   constructor(
-    private readonly sequences: NumberSequenceRepositoryPort,
+    private readonly sequences: PrismaNumberSequenceRepository,
     private readonly requestContext: RequestContextPort,
   ) {}
 

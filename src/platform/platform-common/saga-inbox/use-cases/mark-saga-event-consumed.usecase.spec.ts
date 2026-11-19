@@ -1,4 +1,4 @@
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
+import { PrismaSagaInboxRepository } from '../repositories/prisma-saga-inbox.repository';
 import { MarkSagaEventConsumedUseCase } from './mark-saga-event-consumed.usecase';
 
 /**
@@ -11,7 +11,7 @@ import { MarkSagaEventConsumedUseCase } from './mark-saga-event-consumed.usecase
 describe('MarkSagaEventConsumedUseCase', () => {
   function makeSut(claimed: boolean) {
     const inbox = { markConsumed: jest.fn(async () => claimed) };
-    const useCase = new MarkSagaEventConsumedUseCase(inbox as unknown as SagaInboxRepositoryPort);
+    const useCase = new MarkSagaEventConsumedUseCase(inbox as unknown as PrismaSagaInboxRepository);
     return { useCase, inbox };
   }
 

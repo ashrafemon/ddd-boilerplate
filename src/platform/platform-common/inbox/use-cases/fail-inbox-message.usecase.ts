@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { InboxRepositoryPort } from '../outbound/ports/inbox.repository.port';
+import { PrismaInboxRepository } from '../repositories/prisma-inbox.repository';
 import { InboxFailRequest } from '../types/inbox.types';
 
 /**
@@ -17,7 +17,7 @@ export class FailInboxMessageUseCase {
   private readonly logger = new Logger(FailInboxMessageUseCase.name);
 
   constructor(
-    private readonly repository: InboxRepositoryPort,
+    private readonly repository: PrismaInboxRepository,
     private readonly configService: ConfigService,
   ) {}
 

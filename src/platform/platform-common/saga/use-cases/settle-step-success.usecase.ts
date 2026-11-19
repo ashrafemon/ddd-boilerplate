@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { SagaInstanceStatus, SagaStepKind } from '../types/saga.types';
 import { failedUndoError } from '../types/saga-scope';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
 import { hasPendingUndo, isTerminal } from './start-compensation.usecase';
 
@@ -16,8 +16,8 @@ import { hasPendingUndo, isTerminal } from './start-compensation.usecase';
 @Injectable()
 export class SettleStepSuccessUseCase {
   constructor(
-    private readonly instances: SagaInstanceRepositoryPort,
-    private readonly steps: SagaStepRepositoryPort,
+    private readonly instances: PrismaSagaInstanceRepository,
+    private readonly steps: PrismaSagaStepRepository,
     private readonly advanceSaga: AdvanceSagaUseCase,
   ) {}
 

@@ -4,12 +4,10 @@ import { ConfigModule } from '@config/config.module';
 import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
 import { RedisModule } from '@infrastructure/redis/redis.module';
-import { IdempotencyAdapter } from '../../inbound/adapters/idempotency.adapter';
-import { IdempotencyPort } from '../../inbound/ports/idempotency.port';
-import { PrismaIdempotencyRepository } from '../../outbound/adapters/prisma-idempotency.repository';
-import { RedisIdempotencyCacheAdapter } from '../../outbound/adapters/redis-idempotency-cache.adapter';
-import { IdempotencyReplayCachePort } from '../../outbound/ports/idempotency-replay-cache.port';
-import { IdempotencyRepositoryPort } from '../../outbound/ports/idempotency.repository.port';
+import { IdempotencyAdapter } from '../../adapters/idempotency.adapter';
+import { IdempotencyPort } from '../../ports/idempotency.port';
+import { PrismaIdempotencyRepository } from '../../repositories/prisma-idempotency.repository';
+import { RedisIdempotencyCacheAdapter } from '../../adapters/redis-idempotency-cache.adapter';
 import { IdempotencyIdentity } from '../../types/idempotency.types';
 import { CompleteIdempotencyUseCase } from '../../use-cases/complete-idempotency.usecase';
 import { FailIdempotencyUseCase } from '../../use-cases/fail-idempotency.usecase';
@@ -40,9 +38,9 @@ describe('Idempotency claim ledger (integration)', () => {
       imports: [ConfigModule, PrismaModule, RedisModule],
       providers: [
         PrismaIdempotencyRepository,
-        { provide: IdempotencyRepositoryPort, useExisting: PrismaIdempotencyRepository },
+        { provide: PrismaIdempotencyRepository, useExisting: PrismaIdempotencyRepository },
         RedisIdempotencyCacheAdapter,
-        { provide: IdempotencyReplayCachePort, useExisting: RedisIdempotencyCacheAdapter },
+        { provide: RedisIdempotencyCacheAdapter, useExisting: RedisIdempotencyCacheAdapter },
         ReserveIdempotencyUseCase,
         CompleteIdempotencyUseCase,
         FailIdempotencyUseCase,

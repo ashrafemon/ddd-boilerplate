@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
-import { DistributedLockPort } from './inbound/ports/distributed-lock.port';
-import { LockAdapter } from './inbound/adapters/lock.adapter';
-import { LockLedgerPort } from './outbound/ports/lock-ledger.port';
-import { LockLeasePort } from './outbound/ports/lock-lease.port';
-import { PrismaLockLedgerRepository } from './outbound/adapters/prisma-lock-ledger.repository';
-import { RedisLockLeaseAdapter } from './outbound/adapters/redis-lock-lease.adapter';
+import { DistributedLockPort } from './ports/distributed-lock.port';
+import { LockAdapter } from './adapters/lock.adapter';
+import { PrismaLockLedgerRepository } from './repositories/prisma-lock-ledger.repository';
+import { RedisLockLeaseAdapter } from './adapters/redis-lock-lease.adapter';
 import { AcquireDistributedLockUseCase } from './use-cases/acquire-distributed-lock.usecase';
 import { RenewDistributedLockUseCase } from './use-cases/renew-distributed-lock.usecase';
 import { ReleaseDistributedLockUseCase } from './use-cases/release-distributed-lock.usecase';
@@ -27,9 +25,7 @@ import { ReleaseDistributedLockUseCase } from './use-cases/release-distributed-l
   providers: [
     // Outbound adapters → outbound ports
     RedisLockLeaseAdapter,
-    { provide: LockLeasePort, useExisting: RedisLockLeaseAdapter },
     PrismaLockLedgerRepository,
-    { provide: LockLedgerPort, useExisting: PrismaLockLedgerRepository },
 
     // Use cases — one per file
     AcquireDistributedLockUseCase,

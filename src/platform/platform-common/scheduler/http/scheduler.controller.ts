@@ -13,10 +13,11 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ApiResponse } from '@common/application/types/api-response';
 import { PageResult } from '@common/application/types/pagination';
 import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
+import { DispatchScheduledJobNowUseCase } from '../usecases/dispatch-scheduled-job-now.usecase';
 import { GetScheduledJobStatusUseCase } from '../usecases/get-scheduled-job-status.usecase';
 import { GetSchedulerHealthMetricsUseCase } from '../usecases/get-scheduler-health-metrics.usecase';
 import { ListScheduledJobDispatchLogUseCase } from '../usecases/list-scheduled-job-dispatch-log.usecase';
-import { RescheduleExternalJobUseCase } from '../usecases/reschedule-external-job.usecase';
+import { ListScheduledJobsUseCase } from '../usecases/list-scheduled-jobs.usecase';
 import { UpdateScheduledJobUseCase } from '../usecases/update-scheduled-job.usecase';
 import { ScheduledJobDispatchLogRecord, ScheduledJobRecord } from '../scheduler.types';
 import { ListScheduledJobsDto } from './requests/list-scheduled-jobs.request.dto';
@@ -28,10 +29,11 @@ import { UpdateScheduledJobDto } from './requests/update-scheduled-job.request.d
 export class SchedulerController {
   constructor(
     private readonly getStatus: GetScheduledJobStatusUseCase,
+    private readonly listJobs: ListScheduledJobsUseCase,
     private readonly listDispatchLog: ListScheduledJobDispatchLogUseCase,
     private readonly updateJob: UpdateScheduledJobUseCase,
     private readonly cancelJob: CancelScheduledJobUseCase,
-    private readonly rescheduleJob: RescheduleExternalJobUseCase,
+    private readonly dispatchNowJob: DispatchScheduledJobNowUseCase,
   ) {}
 
   @Get()
@@ -39,7 +41,7 @@ export class SchedulerController {
   async list(
     @Query() query: ListScheduledJobsDto,
   ): Promise<ApiResponse<PageResult<ScheduledJobRecord>>> {
-    const data = await this.getStatus.list({ ...query });
+    const data = await this.listJobs.execute({ ...query });
     return { data, message: 'Scheduled jobs' };
   }
 
@@ -92,7 +94,7 @@ export class SchedulerController {
   async dispatchNow(
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<ScheduledJobRecord>> {
-    const data = await this.rescheduleJob.dispatchNow(id);
+    const data = await this.dispatchNowJob.execute(id);
     return { data, message: 'Scheduled job queued for immediate dispatch' };
   }
 }

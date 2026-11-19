@@ -1,5 +1,6 @@
 import { NextDocumentNumberUseCase } from './next-document-number.usecase';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { PrismaNumberSequenceRepository } from '../repositories/prisma-number-sequence.repository';
 
 describe('NextDocumentNumberUseCase', () => {
   function makeSut() {
@@ -10,7 +11,7 @@ describe('NextDocumentNumberUseCase', () => {
     const sequences = { increment };
     const requestContext = { get: jest.fn(() => ({ companyId: 'company-1' })) };
     const useCase = new NextDocumentNumberUseCase(
-      sequences,
+      sequences as unknown as PrismaNumberSequenceRepository,
       requestContext as unknown as RequestContextPort,
     );
     return { useCase, sequences, requestContext };

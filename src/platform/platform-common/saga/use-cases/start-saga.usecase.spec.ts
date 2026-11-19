@@ -1,7 +1,7 @@
 import { instance, plan, planStep } from '@test/support/saga/saga.fixtures';
 import { StartSagaUseCase } from './start-saga.usecase';
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
 
 /**
  * Unit — starting a saga is one insert guarded by the live key, then an advance.
@@ -13,7 +13,7 @@ describe('StartSagaUseCase', () => {
     const instances = { tryInsertLive: jest.fn() };
     const advanceSaga = { execute: jest.fn() };
     const useCase = new StartSagaUseCase(
-      instances as unknown as SagaInstanceRepositoryPort,
+      instances as unknown as PrismaSagaInstanceRepository,
       advanceSaga as unknown as AdvanceSagaUseCase,
     );
     return { useCase, instances, advanceSaga };

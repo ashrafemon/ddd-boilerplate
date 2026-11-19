@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
+import { PrismaSagaInboxRepository } from '../repositories/prisma-saga-inbox.repository';
 
 /**
  * Use case: mark one buffered event CONSUMED.
@@ -11,7 +11,7 @@ import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository
  */
 @Injectable()
 export class MarkSagaEventConsumedUseCase {
-  constructor(private readonly inbox: SagaInboxRepositoryPort) {}
+  constructor(private readonly inbox: PrismaSagaInboxRepository) {}
 
   async execute(id: string): Promise<boolean> {
     return this.inbox.markConsumed(id);

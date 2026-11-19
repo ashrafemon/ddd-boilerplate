@@ -1,7 +1,7 @@
 import { instance, plan, planStep, step } from '@test/support/saga/saga.fixtures';
 import { StartCompensationUseCase } from './start-compensation.usecase';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import {
   SagaInstanceReason,
   SagaInstanceStatus,
@@ -24,8 +24,8 @@ describe('StartCompensationUseCase', () => {
       createIfAbsent: jest.fn(async (input: { stepId: string }) => step({ stepId: input.stepId })),
     };
     const useCase = new StartCompensationUseCase(
-      instances as unknown as SagaInstanceRepositoryPort,
-      steps as unknown as SagaStepRepositoryPort,
+      instances as unknown as PrismaSagaInstanceRepository,
+      steps as unknown as PrismaSagaStepRepository,
     );
     return { useCase, instances, steps };
   }

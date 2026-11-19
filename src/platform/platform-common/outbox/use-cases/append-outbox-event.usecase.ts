@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { OutboxRepositoryPort } from '../outbound/ports/outbox.repository.port';
-import { AppendOutboxOptions } from '../inbound/ports/outbox-writer.port';
+import { PrismaOutboxRepository } from '../repositories/prisma-outbox.repository';
+import { AppendOutboxOptions } from '../ports/outbox-writer.port';
 import { DEFAULT_BROKER_TARGET, OutboxEvent } from '../types/outbox.types';
 
 /**
@@ -14,7 +14,7 @@ import { DEFAULT_BROKER_TARGET, OutboxEvent } from '../types/outbox.types';
 @Injectable()
 export class AppendOutboxEventUseCase {
   constructor(
-    private readonly repository: OutboxRepositoryPort,
+    private readonly repository: PrismaOutboxRepository,
     private readonly requestContext: RequestContextPort,
   ) {}
 

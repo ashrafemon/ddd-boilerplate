@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
+import { PrismaSagaInboxRepository } from '../repositories/prisma-saga-inbox.repository';
 
 /**
  * Use case: park the still-buffered events of one contract as IGNORED.
@@ -9,7 +9,7 @@ import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository
  */
 @Injectable()
 export class IgnoreBufferedSagaEventsUseCase {
-  constructor(private readonly inbox: SagaInboxRepositoryPort) {}
+  constructor(private readonly inbox: PrismaSagaInboxRepository) {}
 
   async execute(
     instanceId: string,

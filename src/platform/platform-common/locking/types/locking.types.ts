@@ -2,6 +2,11 @@
  * Distributed Lock types — logical identity and lock state.
  */
 
+/** Clamp a lease value into the configured `[min, max]` band. */
+export function clampLease(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
 /** Logical identity for a distributed lock. */
 export interface DistributedLockIdentity {
   tenantId: string;

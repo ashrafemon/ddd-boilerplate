@@ -1,8 +1,8 @@
 import { instance, step } from '@test/support/saga/saga.fixtures';
 import { ExecuteSagaStepUseCase } from './execute-saga-step.usecase';
 import { SettleStepFailureUseCase } from './settle-step-failure.usecase';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import {
   SagaInstanceStatus,
   SagaStepKind,
@@ -34,8 +34,8 @@ describe('ExecuteSagaStepUseCase', () => {
     };
 
     const useCase = new ExecuteSagaStepUseCase(
-      steps as unknown as SagaStepRepositoryPort,
-      instances as unknown as SagaInstanceRepositoryPort,
+      steps as unknown as PrismaSagaStepRepository,
+      instances as unknown as PrismaSagaInstanceRepository,
       actions,
       publisher,
       settleFailure as unknown as SettleStepFailureUseCase,

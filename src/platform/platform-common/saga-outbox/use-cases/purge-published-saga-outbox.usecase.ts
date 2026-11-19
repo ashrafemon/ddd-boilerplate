@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
 import { PurgePublishedOutboxUseCase } from '@platform/platform-common/outbox/use-cases/purge-published-outbox.usecase';
-import { SagaOutboxRepositoryPort } from '../outbound/ports/saga-outbox.repository.port';
+import { PrismaSagaOutboxRepository } from '../repositories/prisma-saga-outbox.repository';
 
 /**
  * Use case: delete PUBLISHED `saga_outbox` rows past the retention window.
@@ -11,7 +11,7 @@ import { SagaOutboxRepositoryPort } from '../outbound/ports/saga-outbox.reposito
  */
 @Injectable()
 export class PurgePublishedSagaOutboxUseCase extends PurgePublishedOutboxUseCase {
-  constructor(repository: SagaOutboxRepositoryPort, configService: ConfigService) {
+  constructor(repository: PrismaSagaOutboxRepository, configService: ConfigService) {
     super(repository, configService);
   }
 }

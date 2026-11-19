@@ -3,10 +3,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@config/config.module';
 import { RedisModule } from '@infrastructure/redis/redis.module';
 import { RedisService } from '@infrastructure/redis/redis.service';
-import { CacheAdapter } from '../../inbound/adapters/cache.adapter';
-import { CachePort } from '../../inbound/ports/cache.port';
-import { RedisCacheAdapter } from '../../outbound/adapters/redis-cache.adapter';
-import { CacheStorePort } from '../../outbound/ports/cache-store.port';
+import { CacheAdapter } from '../../adapters/cache.adapter';
+import { CachePort } from '../../ports/cache.port';
+import { RedisCacheAdapter } from '../../adapters/redis-cache.adapter';
 import { DeleteCacheValueUseCase } from '../../use-cases/delete-cache-value.usecase';
 import { GetCacheValueUseCase } from '../../use-cases/get-cache-value.usecase';
 import { SetCacheValueUseCase } from '../../use-cases/set-cache-value.usecase';
@@ -32,7 +31,7 @@ describe('Cache round-trip (integration)', () => {
       imports: [ConfigModule, RedisModule],
       providers: [
         RedisCacheAdapter,
-        { provide: CacheStorePort, useExisting: RedisCacheAdapter },
+        { provide: RedisCacheAdapter, useExisting: RedisCacheAdapter },
         GetCacheValueUseCase,
         SetCacheValueUseCase,
         DeleteCacheValueUseCase,

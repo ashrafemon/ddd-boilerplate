@@ -12,19 +12,14 @@ export class GetImportJobStatusUseCase {
   ) {}
 
   async execute(input: { jobId: string; tenantId?: string }): Promise<ImportJobRecord> {
-    const job = await this.requireJob(
-      input.jobId,
+    const job = await this.jobs.findById(input.jobId);
+    if (!job) {
+      throw new NotFoundException(`ImportJob '${input.jobId}' not found`);
+    }
+    TenantScope.assertVisible(
+      job.tenantId ?? null,
       input.tenantId ?? this.requestContext.getTenantId(),
     );
-    return job;
-  }
-
-  private async requireJob(jobId: string, tenantId?: string) {
-    const job = await this.jobs.findById(jobId);
-    if (!job) {
-      throw new NotFoundException(`ImportJob '${jobId}' not found`);
-    }
-    TenantScope.assertVisible(job.tenantId ?? null, tenantId);
     return job;
   }
 }

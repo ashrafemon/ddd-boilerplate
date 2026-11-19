@@ -1,8 +1,8 @@
 import { instance, plan, planStep, step } from '@test/support/saga/saga.fixtures';
 import { SettleStepSuccessUseCase } from './settle-step-success.usecase';
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import { SagaInstanceStatus, SagaStepKind, SagaStepStatus } from '../types/saga.types';
 
 /**
@@ -19,8 +19,8 @@ describe('SettleStepSuccessUseCase', () => {
     const steps = { findByInstance: jest.fn(async () => [] as ReturnType<typeof step>[]) };
     const advanceSaga = { execute: jest.fn(async () => instance()) };
     const useCase = new SettleStepSuccessUseCase(
-      instances as unknown as SagaInstanceRepositoryPort,
-      steps as unknown as SagaStepRepositoryPort,
+      instances as unknown as PrismaSagaInstanceRepository,
+      steps as unknown as PrismaSagaStepRepository,
       advanceSaga as unknown as AdvanceSagaUseCase,
     );
     return { useCase, instances, steps, advanceSaga };

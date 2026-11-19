@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { ConfigService } from '@config/config.service';
-import { RedisIdempotencyCacheAdapter } from '../../outbound/adapters/redis-idempotency-cache.adapter';
+import { RedisIdempotencyCacheAdapter } from '../../adapters/redis-idempotency-cache.adapter';
 import { IdempotencyIdentity } from '../../types/idempotency.types';
 
 /**

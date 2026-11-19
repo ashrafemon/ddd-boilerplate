@@ -1,5 +1,6 @@
 import { RecordAuditEntryUseCase } from './record-audit-entry.usecase';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { PrismaAuditLogRepository } from '../repositories/prisma-audit-log.repository';
 import { AuditLogRecord } from '../types/audit.types';
 
 describe('RecordAuditEntryUseCase', () => {
@@ -15,7 +16,7 @@ describe('RecordAuditEntryUseCase', () => {
       getCorrelationId: jest.fn(() => 'correlation-1'),
     };
     const useCase = new RecordAuditEntryUseCase(
-      auditLogs,
+      auditLogs as unknown as PrismaAuditLogRepository,
       requestContext as unknown as RequestContextPort,
     );
     return { useCase, auditLogs, requestContext };

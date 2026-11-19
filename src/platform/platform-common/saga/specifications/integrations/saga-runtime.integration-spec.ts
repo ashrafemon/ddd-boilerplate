@@ -5,10 +5,10 @@ import { ConfigModule } from '@config/config.module';
 import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaSagaDefinitionRepository } from '../../outbound/adapters/prisma-saga-definition.repository';
-import { PrismaSagaInboxRepository } from '@platform/platform-common/saga-inbox/outbound/adapters/prisma-saga-inbox.repository';
-import { PrismaSagaInstanceRepository } from '../../outbound/adapters/prisma-saga-instance.repository';
-import { PrismaSagaStepRepository } from '../../outbound/adapters/prisma-saga-step.repository';
+import { PrismaSagaDefinitionRepository } from '../../repositories/prisma-saga-definition.repository';
+import { PrismaSagaInboxRepository } from '@platform/platform-common/saga-inbox/repositories/prisma-saga-inbox.repository';
+import { PrismaSagaInstanceRepository } from '../../repositories/prisma-saga-instance.repository';
+import { PrismaSagaStepRepository } from '../../repositories/prisma-saga-step.repository';
 import {
   SagaDefinitionStatus,
   SagaInstanceStatus,

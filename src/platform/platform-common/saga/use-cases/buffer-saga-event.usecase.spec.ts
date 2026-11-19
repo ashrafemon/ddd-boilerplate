@@ -1,7 +1,7 @@
 import { instance } from '@test/support/saga/saga.fixtures';
 import { BufferSagaEventUseCase } from './buffer-saga-event.usecase';
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
-import { SagaInboxPort } from '@platform/platform-common/saga-inbox/inbound/ports/saga-inbox.port';
+import { SagaInboxPort } from '@platform/platform-common/saga-inbox/ports/saga-inbox.port';
 
 /**
  * Unit — the saga inbox is the dedupe for WAIT events. A duplicate delivery must

@@ -2,12 +2,12 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   MessageConsumerPort,
   BrokerSubscription,
-} from '@platform/platform-common/messaging/inbound/ports/message-consumer.port';
+} from '@platform/platform-common/messaging/ports/message-consumer.port';
 import {
   fromWireEnvelope,
   WireEnvelope,
-} from '@platform/platform-common/messaging/outbound/adapters/envelope.serializer';
-import { SagaInboundPort } from '../inbound/ports/saga-inbound.port';
+} from '@platform/platform-common/messaging/adapters/envelope.serializer';
+import { SagaInboundPort } from '../ports/saga-inbound.port';
 
 /**
  * Durable queue bound to every routing key — the saga is data-driven, so the

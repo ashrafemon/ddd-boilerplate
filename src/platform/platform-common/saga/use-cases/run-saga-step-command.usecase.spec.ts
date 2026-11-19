@@ -1,7 +1,7 @@
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { instance, step } from '@test/support/saga/saga.fixtures';
 import { RunSagaStepCommandUseCase } from './run-saga-step-command.usecase';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import { SagaStepCommand } from '../types/saga-command.types';
 import { SagaStepKind, SagaStepRecord, SagaStepStatus } from '../types/saga.types';
 
@@ -48,7 +48,7 @@ describe('RunSagaStepCommandUseCase', () => {
     };
 
     const useCase = new RunSagaStepCommandUseCase(
-      steps as unknown as SagaStepRepositoryPort,
+      steps as unknown as PrismaSagaStepRepository,
       actions,
       results,
       requestContext as unknown as RequestContextPort,

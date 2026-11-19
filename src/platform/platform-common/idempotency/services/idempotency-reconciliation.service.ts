@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { IdempotencyRepositoryPort } from '../outbound/ports/idempotency.repository.port';
+import { PrismaIdempotencyRepository } from '../repositories/prisma-idempotency.repository';
 
 /**
  * Idempotency reconciliation service (design `common/02-idempotency`).
@@ -18,7 +18,7 @@ import { IdempotencyRepositoryPort } from '../outbound/ports/idempotency.reposit
 export class IdempotencyReconciliationService {
   private readonly logger = new Logger(IdempotencyReconciliationService.name);
 
-  constructor(private readonly repository: IdempotencyRepositoryPort) {}
+  constructor(private readonly repository: PrismaIdempotencyRepository) {}
 
   @Cron(CronExpression.EVERY_HOUR, { name: 'purge-expired-idempotency-keys' })
   async purgeExpired(): Promise<void> {

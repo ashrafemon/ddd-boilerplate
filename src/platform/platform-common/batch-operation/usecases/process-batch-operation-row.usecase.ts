@@ -1,26 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@config/config.service';
 import { BatchOperationHandlerRegistry } from '../batch-operation-handler.registry';
-import { BatchOperationHandler } from '../ports/batch-operation-handler.port';
 import { BatchOperationJobRepositoryPort } from '../ports/batch-operation-job-repository.port';
 import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
-import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import {
-  BatchOperationContext,
-  BatchOperationDispatch,
-  BatchOperationSkipReason,
-  ClaimedBatchOperationRow,
-} from '../batch-operation.types';
-
-const KNOWN_SKIP_REASONS: readonly BatchOperationSkipReason[] = [
-  'ALREADY_IN_TARGET_STATE',
-  'VALIDATION_FAILED',
-  'PERMISSION_DENIED',
-];
+import { BatchOperationContext, BatchOperationDispatch } from '../batch-operation.types';
+import { ProcessBatchOperationRowService } from '../services/process-batch-operation-row.service';
 
 /**
- * PHASE 5 — one row. Handler resolution and result mapping live here so the
- * worker stays a thin chunk loop.
+ * PHASE 5 — one row. Cancel check, claim, and fan-out to the per-row service
+ * that resolves the handler and settles the outcome. Handler resolution and
+ * result mapping live in `ProcessBatchOperationRowService` so this use case
+ * stays a single `execute()` entry point.
  */
 @Injectable()
 export class ProcessBatchOperationRowUseCase {
@@ -30,8 +19,7 @@ export class ProcessBatchOperationRowUseCase {
     private readonly jobs: BatchOperationJobRepositoryPort,
     private readonly rows: BatchOperationJobRowRepositoryPort,
     private readonly registry: BatchOperationHandlerRegistry,
-    private readonly configService: ConfigService,
-    private readonly requestContext: RequestContextPort,
+    private readonly processor: ProcessBatchOperationRowService,
   ) {}
 
   async execute(
@@ -63,16 +51,9 @@ export class ProcessBatchOperationRowUseCase {
       requestedBy: dispatch.requestedBy,
       traceId: dispatch.traceId,
     };
-    const startedAt = Date.now();
 
     try {
-      // The worker has no HTTP request, so the CLS context must be restored
-      // before the handler touches business repositories: without it the
-      // tenant scope would be empty and the batch would run UNSCOPED.
-      return await this.requestContext.run(
-        { tenantId: dispatch.tenantId, companyId: dispatch.companyId },
-        () => this.runHandler(handler, claimed, dispatch, context, startedAt),
-      );
+      return await this.processor.run(handler, claimed, dispatch, context);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(
@@ -81,85 +62,9 @@ export class ProcessBatchOperationRowUseCase {
       await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
         outcome: 'FAILED',
         errorMessage: message,
-        processingTimeMs: Date.now() - startedAt,
+        processingTimeMs: 0,
       });
       return 'PROCESSED';
     }
-  }
-
-  private async runHandler(
-    handler: BatchOperationHandler,
-    claimed: ClaimedBatchOperationRow,
-    dispatch: BatchOperationDispatch,
-    context: BatchOperationContext,
-    startedAt: number,
-  ): Promise<'PROCESSED'> {
-    const { resultSnapshotMaxBytes } = this.configService.getBatchOperation();
-    try {
-      const verdict = await handler.validate(
-        claimed.entityId,
-        dispatch.operationCode,
-        dispatch.params,
-        context,
-      );
-
-      if (!verdict.canProceed) {
-        await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
-          outcome: 'SKIPPED',
-          skipReason: ProcessBatchOperationRowUseCase.normaliseSkipReason(verdict.reason),
-          processingTimeMs: Date.now() - startedAt,
-        });
-        return 'PROCESSED';
-      }
-
-      const result = await handler.execute(
-        claimed.entityId,
-        dispatch.operationCode,
-        dispatch.params,
-        context,
-      );
-
-      await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
-        outcome: 'SUCCESS',
-        resultSnapshot: ProcessBatchOperationRowUseCase.capSnapshot(
-          result.resultSnapshot ?? null,
-          resultSnapshotMaxBytes,
-        ),
-        processingTimeMs: Date.now() - startedAt,
-      });
-      return 'PROCESSED';
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(
-        `Batch row ${claimed.id} (${dispatch.aggregateType}/${dispatch.operationCode}) failed: ${message}`,
-      );
-      await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
-        outcome: 'FAILED',
-        errorMessage: message,
-        processingTimeMs: Date.now() - startedAt,
-      });
-      return 'PROCESSED';
-    }
-  }
-
-  private static normaliseSkipReason(reason: string | undefined): string {
-    if (reason && (KNOWN_SKIP_REASONS as readonly string[]).includes(reason)) {
-      return reason;
-    }
-    return reason ? `VALIDATION_FAILED: ${reason}`.slice(0, 200) : 'VALIDATION_FAILED';
-  }
-
-  private static capSnapshot(
-    snapshot: Record<string, unknown> | null,
-    maxBytes: number,
-  ): Record<string, unknown> | null {
-    if (!snapshot) {
-      return null;
-    }
-    const size = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
-    if (size <= maxBytes) {
-      return snapshot;
-    }
-    return { _truncated: true, _originalBytes: size };
   }
 }

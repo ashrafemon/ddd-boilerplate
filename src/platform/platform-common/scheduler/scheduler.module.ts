@@ -15,14 +15,19 @@ import { ScheduledJobRepositoryPort } from './ports/scheduled-job-repository.por
 import { SchedulerEventPublisherPort } from './ports/scheduler-event-publisher.port';
 import { SchedulerJobQueuePort } from './ports/scheduler-job-queue.port';
 import { CancelScheduledJobUseCase } from './usecases/cancel-scheduled-job.usecase';
+import { CancelScheduledJobsByAggregateUseCase } from './usecases/cancel-scheduled-jobs-by-aggregate.usecase';
 import { DispatchDueJobsUseCase } from './usecases/dispatch-due-jobs.usecase';
+import { DispatchScheduledJobNowUseCase } from './usecases/dispatch-scheduled-job-now.usecase';
 import { GetScheduledJobStatusUseCase } from './usecases/get-scheduled-job-status.usecase';
 import { GetSchedulerHealthMetricsUseCase } from './usecases/get-scheduler-health-metrics.usecase';
 import { ListScheduledJobDispatchLogUseCase } from './usecases/list-scheduled-job-dispatch-log.usecase';
+import { ListScheduledJobsUseCase } from './usecases/list-scheduled-jobs.usecase';
 import { ReconcileMissedJobsUseCase } from './usecases/reconcile-missed-jobs.usecase';
 import { RegisterScheduledJobUseCase } from './usecases/register-scheduled-job.usecase';
 import { RescheduleExternalJobUseCase } from './usecases/reschedule-external-job.usecase';
+import { RescheduleScheduledJobsByAggregateUseCase } from './usecases/reschedule-scheduled-jobs-by-aggregate.usecase';
 import { UpdateScheduledJobUseCase } from './usecases/update-scheduled-job.usecase';
+import { DispatchDueJobsService } from './services/dispatch-due-jobs.service';
 import { PrismaScheduledJobDispatchLogRepository } from './repositories/prisma-scheduled-job-dispatch-log.repository';
 import { PrismaScheduledJobEditLogRepository } from './repositories/prisma-scheduled-job-edit-log.repository';
 import { PrismaScheduledJobRepository } from './repositories/prisma-scheduled-job.repository';
@@ -91,11 +96,16 @@ import { SchedulerController, SchedulerHealthController } from './http/scheduler
     // use cases — internal consumers (ticker/controller/adapter) inject them directly
     RegisterScheduledJobUseCase,
     CancelScheduledJobUseCase,
+    CancelScheduledJobsByAggregateUseCase,
     RescheduleExternalJobUseCase,
+    RescheduleScheduledJobsByAggregateUseCase,
+    DispatchScheduledJobNowUseCase,
     UpdateScheduledJobUseCase,
+    DispatchDueJobsService,
     DispatchDueJobsUseCase,
     ReconcileMissedJobsUseCase,
     GetScheduledJobStatusUseCase,
+    ListScheduledJobsUseCase,
     ListScheduledJobDispatchLogUseCase,
     GetSchedulerHealthMetricsUseCase,
     SchedulerAdapter,

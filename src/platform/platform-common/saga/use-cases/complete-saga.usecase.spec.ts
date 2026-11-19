@@ -1,6 +1,6 @@
 import { instance, plan, planStep } from '@test/support/saga/saga.fixtures';
 import { CompleteSagaUseCase } from './complete-saga.usecase';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
 import { SagaInstanceStatus } from '../types/saga.types';
 
 /**
@@ -15,7 +15,7 @@ describe('CompleteSagaUseCase', () => {
     };
     const outbox = { append: jest.fn(async () => undefined) };
     const useCase = new CompleteSagaUseCase(
-      instances as unknown as SagaInstanceRepositoryPort,
+      instances as unknown as PrismaSagaInstanceRepository,
       outbox,
     );
     return { useCase, instances, outbox };

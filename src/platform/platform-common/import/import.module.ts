@@ -27,6 +27,9 @@ import { ParseImportJobUseCase } from './usecases/parse-import-job.usecase';
 import { RunImportExecutionUseCase } from './usecases/run-import-execution.usecase';
 import { UpdateImportMappingUseCase } from './usecases/update-import-mapping.usecase';
 import { ValidateImportJobUseCase } from './usecases/validate-import-job.usecase';
+import { ParseImportJobService } from './services/parse-import-job.service';
+import { RunImportExecutionService } from './services/run-import-execution.service';
+import { ValidateImportJobService } from './services/validate-import-job.service';
 import { PrismaImportJobOutboxWriter } from './repositories/prisma-import-job-outbox.writer';
 import { PrismaImportJobRepository } from './repositories/prisma-import-job.repository';
 import { PrismaImportJobRowRepository } from './repositories/prisma-import-job-row.repository';
@@ -89,13 +92,16 @@ import { ImportFileParser } from './import-file.parser';
     CreateImportJobUseCase,
     GetImportPreviewUseCase,
     UpdateImportMappingUseCase,
+    ValidateImportJobService,
     ValidateImportJobUseCase,
+    ParseImportJobService,
     ParseImportJobUseCase,
     ExecuteImportJobUseCase,
     CancelImportJobUseCase,
     GetImportJobStatusUseCase,
     ListImportJobsUseCase,
     GetImportReportUseCase,
+    RunImportExecutionService,
     RunImportExecutionUseCase,
   ],
   exports: [ImportHandlerRegistry],

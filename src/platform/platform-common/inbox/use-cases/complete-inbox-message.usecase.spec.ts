@@ -1,5 +1,5 @@
 import { CompleteInboxMessageUseCase } from './complete-inbox-message.usecase';
-import { InboxRepositoryPort } from '../outbound/ports/inbox.repository.port';
+import { PrismaInboxRepository } from '../repositories/prisma-inbox.repository';
 
 /**
  * Unit — completing a delivery is a CAS on the claim token: losing ownership is
@@ -11,7 +11,7 @@ describe('CompleteInboxMessageUseCase', () => {
     complete.mockResolvedValue(result);
     const useCase = new CompleteInboxMessageUseCase({
       complete,
-    } as unknown as InboxRepositoryPort);
+    } as unknown as PrismaInboxRepository);
     return { useCase, complete };
   }
 

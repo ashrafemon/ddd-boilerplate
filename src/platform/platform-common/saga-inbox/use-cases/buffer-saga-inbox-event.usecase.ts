@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
-  SagaInboxRepositoryPort,
+  PrismaSagaInboxRepository,
   InsertInboxInput,
-} from '../outbound/ports/saga-inbox.repository.port';
+} from '../repositories/prisma-saga-inbox.repository';
 
 /**
  * Use case: record one delivered saga event as BUFFERED.
@@ -13,7 +13,7 @@ import {
  */
 @Injectable()
 export class BufferSagaInboxEventUseCase {
-  constructor(private readonly inbox: SagaInboxRepositoryPort) {}
+  constructor(private readonly inbox: PrismaSagaInboxRepository) {}
 
   async execute(input: InsertInboxInput): Promise<boolean> {
     const inserted = await this.inbox.tryInsert(input);

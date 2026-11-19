@@ -12,7 +12,7 @@ import {
 import { GrnQueryRecord } from '@business/procurement/purchase-goods-receipt/domain/types/grn.types';
 import { GrnStatus } from '@business/procurement/purchase-goods-receipt/domain/types/grn.enum';
 import { OutboxEvent } from '@platform/platform-common/outbox/types/outbox.types';
-import { AuditEntry, AuditPort } from '@platform/platform-common/audit/inbound/ports/audit.port';
+import { AuditEntry, AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import {
   AbacPort,
   AbacCheck,

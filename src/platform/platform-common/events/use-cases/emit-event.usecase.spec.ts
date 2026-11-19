@@ -1,5 +1,6 @@
 import { EmitEventUseCase } from './emit-event.usecase';
-import { MessageEnvelope } from '../inbound/ports/in-process-event-bus.port';
+import { NestEventBusAdapter } from '../adapters/nest-event-bus.adapter';
+import { MessageEnvelope } from '../ports/in-process-event-bus.port';
 
 /**
  * Unit — emit use case. The event type decides the listener channel, so it must
@@ -17,7 +18,7 @@ const ENVELOPE: MessageEnvelope = {
 describe('EmitEventUseCase', () => {
   it('emits on the envelope event type with the whole envelope', () => {
     const emit = jest.fn<void, [string, MessageEnvelope]>();
-    const useCase = new EmitEventUseCase({ emit });
+    const useCase = new EmitEventUseCase({ emit } as unknown as NestEventBusAdapter);
 
     useCase.execute(ENVELOPE);
 

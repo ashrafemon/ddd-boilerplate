@@ -1,5 +1,7 @@
 import { ConfigService } from '@config/config.service';
 import { AcquireDistributedLockUseCase } from './acquire-distributed-lock.usecase';
+import { RedisLockLeaseAdapter } from '../adapters/redis-lock-lease.adapter';
+import { PrismaLockLedgerRepository } from '../repositories/prisma-lock-ledger.repository';
 import { DistributedLockAcquireRequest, LockLedgerClaim } from '../types/locking.types';
 
 /**
@@ -62,7 +64,11 @@ function makeSut(options: { durable?: boolean } = {}) {
     getLocking: () => ({ ...CONFIG, durable: options.durable ?? true }),
   } as unknown as ConfigService;
 
-  const useCase = new AcquireDistributedLockUseCase(lease, ledger, configService);
+  const useCase = new AcquireDistributedLockUseCase(
+    lease as unknown as RedisLockLeaseAdapter,
+    ledger as unknown as PrismaLockLedgerRepository,
+    configService,
+  );
 
   return { useCase, lease, ledger, acquired };
 }

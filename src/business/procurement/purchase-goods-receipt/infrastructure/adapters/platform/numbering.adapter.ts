@@ -3,7 +3,7 @@ import {
   NextNumberOptions,
   NumberingPort as GrnNumberingPort,
 } from '@business/procurement/purchase-goods-receipt/application/outbound-ports/numbering.port';
-import { NumberingPort } from '@platform/platform-common/numbering/inbound/ports/numbering.port';
+import { NumberingPort } from '@platform/platform-common/numbering/ports/numbering.port';
 
 @Injectable()
 export class NumberingAdapter implements GrnNumberingPort {

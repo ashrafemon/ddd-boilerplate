@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CacheStorePort } from '../outbound/ports/cache-store.port';
+import { RedisCacheAdapter } from '../adapters/redis-cache.adapter';
 
 /**
  * Use case: store a value with a bounded TTL (ms).
@@ -8,7 +8,7 @@ import { CacheStorePort } from '../outbound/ports/cache-store.port';
  */
 @Injectable()
 export class SetCacheValueUseCase {
-  constructor(private readonly cache: CacheStorePort) {}
+  constructor(private readonly cache: RedisCacheAdapter) {}
 
   execute<T>(key: string, value: T, ttlMs?: number): Promise<void> {
     return this.cache.set<T>(key, value, ttlMs);

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SagaInboxRecord } from '../types/saga-inbox.types';
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
+import { PrismaSagaInboxRepository } from '../repositories/prisma-saga-inbox.repository';
 
 /**
  * Use case: read the BUFFERED events a WAIT step can consume, oldest first.
@@ -10,7 +10,7 @@ import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository
  */
 @Injectable()
 export class ListBufferedSagaEventsUseCase {
-  constructor(private readonly inbox: SagaInboxRepositoryPort) {}
+  constructor(private readonly inbox: PrismaSagaInboxRepository) {}
 
   async execute(
     instanceId: string,

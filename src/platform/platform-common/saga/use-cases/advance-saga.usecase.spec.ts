@@ -2,9 +2,9 @@ import { ConfigService } from '@config/config.service';
 import { instance, plan, planStep, step } from '@test/support/saga/saga.fixtures';
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
 import { CompleteSagaUseCase } from './complete-saga.usecase';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaInboxPort } from '@platform/platform-common/saga-inbox/inbound/ports/saga-inbox.port';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
+import { SagaInboxPort } from '@platform/platform-common/saga-inbox/ports/saga-inbox.port';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import { SagaInstanceStatus, SagaStepKind, SagaStepStatus } from '../types/saga.types';
 
 const CONFIG = {
@@ -29,8 +29,8 @@ function makeSut() {
   const completeSaga = { execute: jest.fn(async () => instance()) };
 
   const useCase = new AdvanceSagaUseCase(
-    instances as unknown as SagaInstanceRepositoryPort,
-    steps as unknown as SagaStepRepositoryPort,
+    instances as unknown as PrismaSagaInstanceRepository,
+    steps as unknown as PrismaSagaStepRepository,
     inbox as unknown as SagaInboxPort,
     CONFIG,
     completeSaga as unknown as CompleteSagaUseCase,

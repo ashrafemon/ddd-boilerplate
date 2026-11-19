@@ -1,10 +1,4 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import {
-  PageQuery,
-  PageResult,
-  buildPageResult,
-  normalizePageQuery,
-} from '@common/application/types/pagination';
 import { TenantScope } from '@common/application/utils/tenant-scope';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
@@ -25,21 +19,5 @@ export class GetScheduledJobStatusUseCase {
     }
     TenantScope.assertVisible(job.tenantId ?? null, tenantId);
     return job;
-  }
-
-  async list(
-    query: Partial<PageQuery> & { jobType?: string; status?: string; tenantId?: string },
-  ): Promise<PageResult<ScheduledJobRecord>> {
-    const page = normalizePageQuery(query);
-    const filter = {
-      jobType: query.jobType,
-      status: query.status,
-      tenantId: query.tenantId ?? this.requestContext.getTenantId(),
-    };
-    const [items, total] = await Promise.all([
-      this.jobs.list({ ...filter, limit: page.pageSize, offset: (page.page - 1) * page.pageSize }),
-      this.jobs.count(filter),
-    ]);
-    return buildPageResult(items, total, page);
   }
 }

@@ -9,9 +9,9 @@ import { SecretsManagerModule as InfraSecretsModule } from '@infrastructure/secr
 import { PuppeteerModule as InfraPuppeteerModule } from '@infrastructure/puppeteer/puppeteer.module';
 import { SesModule as InfraSesModule } from '@infrastructure/ses/ses.module';
 import { SnsModule as InfraSnsModule } from '@infrastructure/sns/sns.module';
-import { HealthAdapter } from './inbound/adapters/health.adapter';
+import { HealthAdapter } from './adapters/health.adapter';
 import { HealthController } from './http/health.controller';
-import { HealthPort } from './inbound/ports/health.port';
+import { HealthPort } from './ports/health.port';
 
 /**
  * Platform health module — aggregates infrastructure client status behind

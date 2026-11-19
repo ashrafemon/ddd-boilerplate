@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { IdempotencyRepositoryPort } from '../outbound/ports/idempotency.repository.port';
-import { IdempotencyReplayCachePort } from '../outbound/ports/idempotency-replay-cache.port';
+import { PrismaIdempotencyRepository } from '../repositories/prisma-idempotency.repository';
+import { RedisIdempotencyCacheAdapter } from '../adapters/redis-idempotency-cache.adapter';
 import { IdempotencyCompleteRequest } from '../types/idempotency.types';
 
 /**
@@ -14,8 +14,8 @@ export class CompleteIdempotencyUseCase {
   private readonly logger = new Logger(CompleteIdempotencyUseCase.name);
 
   constructor(
-    private readonly repository: IdempotencyRepositoryPort,
-    private readonly cache: IdempotencyReplayCachePort,
+    private readonly repository: PrismaIdempotencyRepository,
+    private readonly cache: RedisIdempotencyCacheAdapter,
   ) {}
 
   async execute(request: IdempotencyCompleteRequest): Promise<void> {

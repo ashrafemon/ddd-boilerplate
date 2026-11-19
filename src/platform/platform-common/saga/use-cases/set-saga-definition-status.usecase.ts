@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SagaDefinitionRecord, SagaDefinitionStatus } from '../types/saga.types';
 import { findDefinitionProblems } from '../types/saga-definition.validator';
-import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
+import { PrismaSagaDefinitionRepository } from '../repositories/prisma-saga-definition.repository';
 
 export interface SetSagaDefinitionStatusInput {
   definitionId: string;
@@ -21,7 +21,7 @@ export interface SetSagaDefinitionStatusInput {
 export class SetSagaDefinitionStatusUseCase {
   private readonly logger = new Logger(SetSagaDefinitionStatusUseCase.name);
 
-  constructor(private readonly definitions: SagaDefinitionRepositoryPort) {}
+  constructor(private readonly definitions: PrismaSagaDefinitionRepository) {}
 
   async execute(input: SetSagaDefinitionStatusInput): Promise<SagaDefinitionRecord> {
     const record = await this.definitions.findById(input.definitionId);

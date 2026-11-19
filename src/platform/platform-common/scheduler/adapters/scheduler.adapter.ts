@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { ScheduleJobInput, SchedulerPort } from '../ports/scheduler.port';
 import { RegisterScheduledJobUseCase } from '../usecases/register-scheduled-job.usecase';
 import { CancelScheduledJobUseCase } from '../usecases/cancel-scheduled-job.usecase';
+import { CancelScheduledJobsByAggregateUseCase } from '../usecases/cancel-scheduled-jobs-by-aggregate.usecase';
 import { RescheduleExternalJobUseCase } from '../usecases/reschedule-external-job.usecase';
+import { RescheduleScheduledJobsByAggregateUseCase } from '../usecases/reschedule-scheduled-jobs-by-aggregate.usecase';
 import { JobScope, ScheduleMode } from '../scheduler.types';
 
 /**
@@ -16,7 +18,9 @@ export class SchedulerAdapter implements SchedulerPort {
   constructor(
     private readonly registerUseCase: RegisterScheduledJobUseCase,
     private readonly cancelUseCase: CancelScheduledJobUseCase,
+    private readonly cancelByAggregateUseCase: CancelScheduledJobsByAggregateUseCase,
     private readonly rescheduleUseCase: RescheduleExternalJobUseCase,
+    private readonly rescheduleByAggregateUseCase: RescheduleScheduledJobsByAggregateUseCase,
   ) {}
 
   schedule(input: ScheduleJobInput): Promise<string> {
@@ -40,7 +44,7 @@ export class SchedulerAdapter implements SchedulerPort {
   }
 
   cancelByAggregate(aggregateType: string, aggregateId: string): Promise<void> {
-    return this.cancelUseCase.executeByAggregate(aggregateType, aggregateId);
+    return this.cancelByAggregateUseCase.execute(aggregateType, aggregateId);
   }
 
   rescheduleByAggregate(
@@ -48,6 +52,6 @@ export class SchedulerAdapter implements SchedulerPort {
     aggregateId: string,
     nextRunAt: Date,
   ): Promise<void> {
-    return this.rescheduleUseCase.executeByAggregate(aggregateType, aggregateId, nextRunAt);
+    return this.rescheduleByAggregateUseCase.execute(aggregateType, aggregateId, nextRunAt);
   }
 }

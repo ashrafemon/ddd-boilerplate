@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { InboxPort } from '@platform/platform-common/inbox/inbound/ports/inbox.port';
+import { InboxPort } from '@platform/platform-common/inbox/ports/inbox.port';
 import { PriceListCommandRepository } from '../../../domain/repositories/price-list-command.repository';
 
 @Injectable()

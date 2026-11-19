@@ -1,4 +1,4 @@
-import { toWireEnvelope } from '@platform/platform-common/messaging/outbound/adapters/envelope.serializer';
+import { toWireEnvelope } from '@platform/platform-common/messaging/adapters/envelope.serializer';
 import { SettleSagaStepResultUseCase } from '../use-cases/settle-saga-step-result.usecase';
 import { SagaStepResult, toResultEnvelope } from '../types/saga-command.types';
 import { SagaStepKind } from '../types/saga.types';

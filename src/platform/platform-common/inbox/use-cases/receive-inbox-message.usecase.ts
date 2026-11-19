@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@config/config.service';
-import { InboxRepositoryPort } from '../outbound/ports/inbox.repository.port';
+import { PrismaInboxRepository } from '../repositories/prisma-inbox.repository';
 import {
   hashInboxPayload,
   InboxIdentity,
@@ -22,7 +22,7 @@ import {
 @Injectable()
 export class ReceiveInboxMessageUseCase {
   constructor(
-    private readonly repository: InboxRepositoryPort,
+    private readonly repository: PrismaInboxRepository,
     private readonly configService: ConfigService,
   ) {}
 

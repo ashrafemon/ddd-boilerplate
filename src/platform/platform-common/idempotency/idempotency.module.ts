@@ -4,16 +4,14 @@ import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
 import { ContextModule } from '@platform/platform-common/context/context.module';
 import { IdempotencyInterceptor } from './http/idempotency.interceptor';
-import { IdempotencyPort } from './inbound/ports/idempotency.port';
-import { PrismaIdempotencyRepository } from './outbound/adapters/prisma-idempotency.repository';
-import { RedisIdempotencyCacheAdapter } from './outbound/adapters/redis-idempotency-cache.adapter';
-import { IdempotencyReplayCachePort } from './outbound/ports/idempotency-replay-cache.port';
-import { IdempotencyRepositoryPort } from './outbound/ports/idempotency.repository.port';
+import { IdempotencyPort } from './ports/idempotency.port';
+import { PrismaIdempotencyRepository } from './repositories/prisma-idempotency.repository';
+import { RedisIdempotencyCacheAdapter } from './adapters/redis-idempotency-cache.adapter';
 import { IdempotencyReconciliationService } from './services/idempotency-reconciliation.service';
 import { ReserveIdempotencyUseCase } from './use-cases/reserve-idempotency.usecase';
 import { CompleteIdempotencyUseCase } from './use-cases/complete-idempotency.usecase';
 import { FailIdempotencyUseCase } from './use-cases/fail-idempotency.usecase';
-import { IdempotencyAdapter } from './inbound/adapters/idempotency.adapter';
+import { IdempotencyAdapter } from './adapters/idempotency.adapter';
 
 /**
  * Platform idempotency module — the duplicate-suppression primitive
@@ -34,9 +32,7 @@ import { IdempotencyAdapter } from './inbound/adapters/idempotency.adapter';
   providers: [
     // Outbound adapters → outbound ports (use cases depend on the ports)
     PrismaIdempotencyRepository,
-    { provide: IdempotencyRepositoryPort, useExisting: PrismaIdempotencyRepository },
     RedisIdempotencyCacheAdapter,
-    { provide: IdempotencyReplayCachePort, useExisting: RedisIdempotencyCacheAdapter },
 
     // Use cases — one per file
     ReserveIdempotencyUseCase,

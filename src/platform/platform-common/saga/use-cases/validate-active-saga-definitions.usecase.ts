@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SagaDefinitionStatus } from '../types/saga.types';
 import { findDefinitionProblems } from '../types/saga-definition.validator';
-import { SagaActionResolverPort } from '../outbound/ports/saga-action.port';
-import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
+import { SagaActionResolverPort } from '../ports/saga-action.port';
+import { PrismaSagaDefinitionRepository } from '../repositories/prisma-saga-definition.repository';
 
 export interface InvalidatedDefinition {
   sagaKey: string;
@@ -37,7 +37,7 @@ export class ValidateActiveSagaDefinitionsUseCase {
   private readonly logger = new Logger(ValidateActiveSagaDefinitionsUseCase.name);
 
   constructor(
-    private readonly definitions: SagaDefinitionRepositoryPort,
+    private readonly definitions: PrismaSagaDefinitionRepository,
     private readonly actions: SagaActionResolverPort,
   ) {}
 

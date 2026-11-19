@@ -7,7 +7,7 @@ import { IIdempotencyConfig } from '../platform/platform-common/idempotency/type
 import { IInboxConfig } from '@platform/platform-common/inbox/types/inbox.types';
 import { ISagaConfig } from '../platform/platform-common/saga/types/saga.types';
 import { IDatabaseConfig, IDatabaseDriver } from './database.config';
-import { IKafkaConfig, IRabbitMQConfig, ISqsConfig } from './messaging.config';
+import { IMessagingConfig, IKafkaConfig, IRabbitMQConfig, ISqsConfig } from './messaging.config';
 import { ISesConfig, ISnsConfig } from './notification.config';
 import { INotificationPipelineConfig } from './notification-pipeline.config';
 import { ILokiConfig, ISentryConfig } from './observability.config';
@@ -96,6 +96,29 @@ export class ConfigService {
   }
 
   /** Messaging Environment Variables */
+  public getMessaging(): IMessagingConfig {
+    return this.config.get<IMessagingConfig>('messaging', {
+      rabbitmq: {
+        url: 'amqp://localhost:5672',
+        exchange: 'erp.events',
+        registerHandlers: true,
+      },
+      kafka: {
+        brokers: [],
+        clientId: 'erp-boilerplate',
+        groupId: 'erp-boilerplate-group',
+        connectionTimeoutMs: 3000,
+        retryCount: 2,
+      },
+      sqs: {
+        accessKey: '',
+        secretKey: '',
+        url: '',
+        region: 'us-east-1',
+      },
+      publishTimeoutMs: 10_000,
+    });
+  }
   public getRabbitMQ(): IRabbitMQConfig {
     return this.config.get('messaging.rabbitmq', {
       url: 'amqp://localhost:5672',
@@ -119,6 +142,9 @@ export class ConfigService {
       url: '',
       region: 'us-east-1',
     });
+  }
+  public getPublishTimeoutMs(): number {
+    return this.config.get<number>('messaging.publishTimeoutMs', 10_000);
   }
 
   /** Notification Environment Variables */
@@ -247,6 +273,7 @@ export class ConfigService {
       claimBatchSize: 20,
       fairnessCap: 5,
       sweepIntervalMs: 10_000,
+      sweepBatchSize: 200,
       retryBaseDelayMs: 1_000,
       retryMaxDelayMs: 600_000,
       defaultMaxAttempts: 5,

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SagaInstanceRecord, SagaPlan } from '../types/saga.types';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
 
 /** Everything `StartSagaUseCase` needs to open an instance. */
@@ -26,7 +26,7 @@ export interface StartSagaInput {
 @Injectable()
 export class StartSagaUseCase {
   constructor(
-    private readonly instances: SagaInstanceRepositoryPort,
+    private readonly instances: PrismaSagaInstanceRepository,
     private readonly advanceSaga: AdvanceSagaUseCase,
   ) {}
 

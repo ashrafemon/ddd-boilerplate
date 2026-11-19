@@ -1,7 +1,7 @@
 import { instance, plan, planStep } from '@test/support/saga/saga.fixtures';
 import { SettleStepFailureUseCase } from './settle-step-failure.usecase';
 import { StartCompensationUseCase } from './start-compensation.usecase';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
 import { SagaInstanceReason, SagaInstanceStatus, SagaStepKind } from '../types/saga.types';
 
 /**
@@ -17,7 +17,7 @@ describe('SettleStepFailureUseCase', () => {
     };
     const compensate = { execute: jest.fn(async () => instance()) };
     const useCase = new SettleStepFailureUseCase(
-      instances as unknown as SagaInstanceRepositoryPort,
+      instances as unknown as PrismaSagaInstanceRepository,
       compensate as unknown as StartCompensationUseCase,
     );
     return { useCase, instances, compensate };

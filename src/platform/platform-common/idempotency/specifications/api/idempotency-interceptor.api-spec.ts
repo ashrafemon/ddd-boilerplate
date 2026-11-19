@@ -8,7 +8,7 @@ import { RequestContextPort } from '@platform/platform-common/context/ports/requ
 import { Idempotent } from '../../http/idempotent.decorator';
 import { IDEMPOTENCY_HEADER } from '../../http/idempotent.decorator';
 import { IdempotencyInterceptor } from '../../http/idempotency.interceptor';
-import { IdempotencyPort } from '../../inbound/ports/idempotency.port';
+import { IdempotencyPort } from '../../ports/idempotency.port';
 import { IdempotencyReservation } from '../../types/idempotency.types';
 
 /**

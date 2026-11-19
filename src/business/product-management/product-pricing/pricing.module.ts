@@ -13,8 +13,8 @@ import { PriceListCommandRepository } from './domain/repositories/price-list-com
 import { PriceListQuery } from './application/queries/price-list.query';
 import { PriceListPublisherPort } from './application/publishes/publishers/price-list.publisher-port';
 import { ProductPriceQueryPort } from './application/outbound-ports/product-price-query.port';
-import { SharedOutboxAdapter } from '@platform/platform-common/outbox/inbound/adapters/shared-outbox.adapter';
-import { OutboxWriterPort } from '@platform/platform-common/outbox/inbound/ports/outbox-writer.port';
+import { SharedOutboxAdapter } from '@platform/platform-common/outbox/adapters/shared-outbox.adapter';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
 import { PrismaPriceListCommandRepository } from './infrastructure/persistence/prisma/prisma-price-list-command.repository';
 import { PrismaPriceListQueryRepository } from './infrastructure/persistence/prisma/prisma-price-list-query.repository';
 import { CompanyConfigAdapter } from './infrastructure/adapters/platform/company-config.adapter';

@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { CacheAdapter } from '../../inbound/adapters/cache.adapter';
+import { CacheAdapter } from '../../adapters/cache.adapter';
 import { CacheKey } from '../../types/cache.types';
 
 /**

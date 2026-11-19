@@ -1,4 +1,4 @@
-import { WireEnvelope } from '@platform/platform-common/messaging/outbound/adapters/envelope.serializer';
+import { WireEnvelope } from '@platform/platform-common/messaging/adapters/envelope.serializer';
 import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
 import { SagaBrokerConsumerService } from './saga-broker-consumer.service';
 

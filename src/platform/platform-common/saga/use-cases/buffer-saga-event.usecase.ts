@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SagaInstanceRecord } from '../types/saga.types';
-import { SagaInboxPort } from '@platform/platform-common/saga-inbox/inbound/ports/saga-inbox.port';
+import { SagaInboxPort } from '@platform/platform-common/saga-inbox/ports/saga-inbox.port';
 import { AdvanceSagaUseCase } from './advance-saga.usecase';
 
 /** Payload of one event routed to a live instance. */

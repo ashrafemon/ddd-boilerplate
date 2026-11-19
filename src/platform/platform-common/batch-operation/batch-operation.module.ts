@@ -19,6 +19,7 @@ import { GetBatchOperationJobStatusUseCase } from './usecases/get-batch-operatio
 import { ListBatchOperationJobRowsUseCase } from './usecases/list-batch-operation-job-rows.usecase';
 import { ListBatchOperationJobsUseCase } from './usecases/list-batch-operation-jobs.usecase';
 import { ProcessBatchOperationRowUseCase } from './usecases/process-batch-operation-row.usecase';
+import { ProcessBatchOperationRowService } from './services/process-batch-operation-row.service';
 import { ValidateBatchOperationUseCase } from './usecases/validate-batch-operation.usecase';
 import { PrismaBatchOperationJobOutboxWriter } from './repositories/prisma-batch-operation-job-outbox.writer';
 import { PrismaBatchOperationJobRepository } from './repositories/prisma-batch-operation-job.repository';
@@ -84,6 +85,7 @@ import { BatchOperationController } from './http/batch-operation.controller';
     BatchOperationReconciliationConsumer,
     CreateBatchOperationJobUseCase,
     ValidateBatchOperationUseCase,
+    ProcessBatchOperationRowService,
     ProcessBatchOperationRowUseCase,
     GetBatchOperationJobStatusUseCase,
     ListBatchOperationJobsUseCase,

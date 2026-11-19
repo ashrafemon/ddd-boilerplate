@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { AuditLogRepositoryPort } from '../outbound/ports/audit-log.repository.port';
+import { PrismaAuditLogRepository } from '../repositories/prisma-audit-log.repository';
 import { AuditEntry, redactChanges } from '../types/audit.types';
 
 /**
@@ -13,7 +13,7 @@ import { AuditEntry, redactChanges } from '../types/audit.types';
 @Injectable()
 export class RecordAuditEntryUseCase {
   constructor(
-    private readonly auditLogs: AuditLogRepositoryPort,
+    private readonly auditLogs: PrismaAuditLogRepository,
     private readonly requestContext: RequestContextPort,
   ) {}
 

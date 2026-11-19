@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { InProcessEventBus } from '@platform/platform-common/events/inbound/ports/in-process-event-bus.port';
-import { MessageQueuePort } from '@platform/platform-common/messaging/inbound/ports/message-queue.port';
 import { PublishPendingBatchUseCase } from '@platform/platform-common/outbox/use-cases/publish-pending-batch.usecase';
-import { SagaOutboxRepositoryPort } from '../outbound/ports/saga-outbox.repository.port';
+import { PublishPendingBatchService } from '@platform/platform-common/outbox/services/publish-pending-batch.service';
+import { PrismaSagaOutboxRepository } from '../repositories/prisma-saga-outbox.repository';
 
 /**
  * Use case: publish a batch of due `saga_outbox` messages.
@@ -17,12 +15,10 @@ import { SagaOutboxRepositoryPort } from '../outbound/ports/saga-outbox.reposito
 @Injectable()
 export class PublishSagaOutboxBatchUseCase extends PublishPendingBatchUseCase {
   constructor(
-    repository: SagaOutboxRepositoryPort,
-    messageQueue: MessageQueuePort,
-    eventBus: InProcessEventBus,
-    requestContext: RequestContextPort,
+    repository: PrismaSagaOutboxRepository,
+    dispatch: PublishPendingBatchService,
     config: ConfigService,
   ) {
-    super(repository, messageQueue, eventBus, requestContext, config);
+    super(repository, dispatch, config);
   }
 }

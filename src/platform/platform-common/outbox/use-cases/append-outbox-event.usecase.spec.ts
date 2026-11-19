@@ -1,6 +1,6 @@
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { AppendOutboxEventUseCase } from './append-outbox-event.usecase';
-import { OutboxRepositoryPort } from '../outbound/ports/outbox.repository.port';
+import { PrismaOutboxRepository } from '../repositories/prisma-outbox.repository';
 import { AppendOutboxEventRequest, OutboxEvent, OutboxMessage } from '../types/outbox.types';
 
 /**
@@ -23,7 +23,7 @@ class TestEvent implements OutboxEvent {
 function makeSut(context: { tenantId?: string; companyId?: string; correlationId?: string }) {
   const append = jest.fn<Promise<OutboxMessage>, [AppendOutboxEventRequest]>();
   append.mockResolvedValue({} as OutboxMessage);
-  const repository = { append } as unknown as OutboxRepositoryPort;
+  const repository = { append } as unknown as PrismaOutboxRepository;
   const requestContext = {
     get: () => context,
   } as unknown as RequestContextPort;

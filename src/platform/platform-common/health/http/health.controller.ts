@@ -1,7 +1,7 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
 import { SkipTenancy } from '@common/http/decorators/skip-tenancy.decorator';
-import { HealthPort } from '../inbound/ports/health.port';
+import { HealthPort } from '../ports/health.port';
 
 /**
  * Readiness/liveness endpoint (`GET /api/v1/health`) for orchestrators and

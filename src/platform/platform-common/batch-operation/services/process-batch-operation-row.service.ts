@@ -1,0 +1,131 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@config/config.service';
+import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
+import { BatchOperationHandler } from '../ports/batch-operation-handler.port';
+import { BatchOperationJobRowRepositoryPort } from '../ports/batch-operation-job-row-repository.port';
+import {
+  BatchOperationContext,
+  BatchOperationDispatch,
+  BatchOperationSkipReason,
+  ClaimedBatchOperationRow,
+} from '../batch-operation.types';
+
+const KNOWN_SKIP_REASONS: readonly BatchOperationSkipReason[] = [
+  'ALREADY_IN_TARGET_STATE',
+  'VALIDATION_FAILED',
+  'PERMISSION_DENIED',
+];
+
+/**
+ * Service: run one claimed batch row through its handler — validate, execute,
+ * settle the row outcome. Extracted from `ProcessBatchOperationRowUseCase` so
+ * the use case keeps a single `execute()` entry point (cancel/claim/fan-out)
+ * while per-row handler dispatch lives here.
+ */
+@Injectable()
+export class ProcessBatchOperationRowService {
+  private readonly logger = new Logger(ProcessBatchOperationRowService.name);
+
+  constructor(
+    private readonly rows: BatchOperationJobRowRepositoryPort,
+    private readonly configService: ConfigService,
+    private readonly requestContext: RequestContextPort,
+  ) {}
+
+  /**
+   * Restores the CLS context for the handler, runs validate → execute, and
+   * settles the row. Returns 'PROCESSED' whether the row succeeded, was
+   * skipped, or failed — the caller only branches on cancel/claim.
+   */
+  async run(
+    handler: BatchOperationHandler,
+    claimed: ClaimedBatchOperationRow,
+    dispatch: BatchOperationDispatch,
+    context: BatchOperationContext,
+  ): Promise<'PROCESSED'> {
+    const startedAt = Date.now();
+    // The worker has no HTTP request, so the CLS context must be restored
+    // before the handler touches business repositories: without it the
+    // tenant scope would be empty and the batch would run UNSCOPED.
+    return this.requestContext.run(
+      { tenantId: dispatch.tenantId, companyId: dispatch.companyId },
+      () => this.runHandler(handler, claimed, dispatch, context, startedAt),
+    );
+  }
+
+  private async runHandler(
+    handler: BatchOperationHandler,
+    claimed: ClaimedBatchOperationRow,
+    dispatch: BatchOperationDispatch,
+    context: BatchOperationContext,
+    startedAt: number,
+  ): Promise<'PROCESSED'> {
+    const { resultSnapshotMaxBytes } = this.configService.getBatchOperation();
+    try {
+      const verdict = await handler.validate(
+        claimed.entityId,
+        dispatch.operationCode,
+        dispatch.params,
+        context,
+      );
+
+      if (!verdict.canProceed) {
+        await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+          outcome: 'SKIPPED',
+          skipReason: ProcessBatchOperationRowService.normaliseSkipReason(verdict.reason),
+          processingTimeMs: Date.now() - startedAt,
+        });
+        return 'PROCESSED';
+      }
+
+      const result = await handler.execute(
+        claimed.entityId,
+        dispatch.operationCode,
+        dispatch.params,
+        context,
+      );
+
+      await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+        outcome: 'SUCCESS',
+        resultSnapshot: ProcessBatchOperationRowService.capSnapshot(
+          result.resultSnapshot ?? null,
+          resultSnapshotMaxBytes,
+        ),
+        processingTimeMs: Date.now() - startedAt,
+      });
+      return 'PROCESSED';
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Batch row ${claimed.id} (${dispatch.aggregateType}/${dispatch.operationCode}) failed: ${message}`,
+      );
+      await this.rows.settleRow(claimed.id, dispatch.jobId, claimed.claimToken, {
+        outcome: 'FAILED',
+        errorMessage: message,
+        processingTimeMs: Date.now() - startedAt,
+      });
+      return 'PROCESSED';
+    }
+  }
+
+  private static normaliseSkipReason(reason: string | undefined): string {
+    if (reason && (KNOWN_SKIP_REASONS as readonly string[]).includes(reason)) {
+      return reason;
+    }
+    return reason ? `VALIDATION_FAILED: ${reason}`.slice(0, 200) : 'VALIDATION_FAILED';
+  }
+
+  private static capSnapshot(
+    snapshot: Record<string, unknown> | null,
+    maxBytes: number,
+  ): Record<string, unknown> | null {
+    if (!snapshot) {
+      return null;
+    }
+    const size = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
+    if (size <= maxBytes) {
+      return snapshot;
+    }
+    return { _truncated: true, _originalBytes: size };
+  }
+}

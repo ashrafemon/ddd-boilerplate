@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { AbacPort } from '@platform/platform-organization/authorization/ports/abac.port';
-import { AuditPort } from '@platform/platform-common/audit/inbound/ports/audit.port';
+import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import { PurchaseOrderCommandRepository } from '../../domain/repositories/purchase-order-command.repository';
 import { PurchaseOrderQuery } from '../queries/purchase-order.query';
 import { PurchaseOrderPublisherPort } from '../publishes/publishers/purchase-order.publisher-port';

@@ -3,12 +3,12 @@ import { RequestContextPort } from '@platform/platform-common/context/ports/requ
 import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
 import { instance } from '@test/support/saga/saga.fixtures';
 import { AcceptSagaEventUseCase } from './accept-saga-event.usecase';
-import { BuildSagaPlanUseCase } from './build-saga-plan.usecase';
+import { SagaEventRouterService } from '../services/saga-event-router.service';
 import { BufferSagaEventUseCase } from './buffer-saga-event.usecase';
 import { CancelSagaUseCase } from './cancel-saga.usecase';
 import { StartSagaUseCase } from './start-saga.usecase';
-import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
+import { PrismaSagaDefinitionRepository } from '../repositories/prisma-saga-definition.repository';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
 import {
   SagaDefinitionBody,
   SagaDefinitionRecord,
@@ -20,9 +20,9 @@ import {
 /**
  * Unit — routing decides which saga an event belongs to.
  *
- * The loop guard, the tenant guard, the start filter and the correlation key are
- * all here: a saga that emits its own completion event must never re-enter, and
- * an event without tenant/company must never start one.
+ * The loop guard and the tenant guard live in the use case; the start filter,
+ * correlation key and cancel/wait routing live in `SagaEventRouterService`.
+ * Both are covered here end-to-end through the use case.
  */
 describe('AcceptSagaEventUseCase', () => {
   const definition = (overrides: Partial<SagaDefinitionBody> = {}): SagaDefinitionBody => ({
@@ -88,18 +88,22 @@ describe('AcceptSagaEventUseCase', () => {
     const requestContext = {
       run: jest.fn((_ctx: unknown, fn: () => Promise<void>) => fn()),
     };
+    const config = { getSaga: () => ({ defaultMaxAttempts: 5 }) } as unknown as ConfigService;
 
-    const useCase = new AcceptSagaEventUseCase(
-      definitions as unknown as SagaDefinitionRepositoryPort,
-      instances as unknown as SagaInstanceRepositoryPort,
-      planBuilder as unknown as BuildSagaPlanUseCase,
+    const router = new SagaEventRouterService(
+      definitions as unknown as PrismaSagaDefinitionRepository,
+      instances as unknown as PrismaSagaInstanceRepository,
+      planBuilder,
       startSaga as unknown as StartSagaUseCase,
       cancelSaga as unknown as CancelSagaUseCase,
       bufferEvent as unknown as BufferSagaEventUseCase,
       featureGate,
       settings,
+      config,
+    );
+    const useCase = new AcceptSagaEventUseCase(
+      router,
       requestContext as unknown as RequestContextPort,
-      { getSaga: () => ({ defaultMaxAttempts: 5 }) } as unknown as ConfigService,
     );
     return {
       useCase,

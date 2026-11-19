@@ -3,15 +3,14 @@ import { ConfigService } from '@config/config.service';
 import {
   SagaInstanceRecord,
   SagaInstanceStatus,
-  SagaPlanStep,
   SagaStepKind,
   SagaStepStatus,
 } from '../types/saga.types';
 import { evaluateCondition, parseDuration, renderTemplate } from '../types/saga-expression';
 import { buildInput, buildScope } from '../types/saga-scope';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaInboxPort } from '@platform/platform-common/saga-inbox/inbound/ports/saga-inbox.port';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
+import { SagaInboxPort } from '@platform/platform-common/saga-inbox/ports/saga-inbox.port';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import { CompleteSagaUseCase } from './complete-saga.usecase';
 
 export const TERMINAL_INSTANCE_STATUSES: ReadonlySet<SagaInstanceStatus> = new Set([
@@ -32,8 +31,8 @@ export const TERMINAL_INSTANCE_STATUSES: ReadonlySet<SagaInstanceStatus> = new S
 @Injectable()
 export class AdvanceSagaUseCase {
   constructor(
-    private readonly instances: SagaInstanceRepositoryPort,
-    private readonly steps: SagaStepRepositoryPort,
+    private readonly instances: PrismaSagaInstanceRepository,
+    private readonly steps: PrismaSagaStepRepository,
     private readonly inbox: SagaInboxPort,
     private readonly configService: ConfigService,
     private readonly completeSaga: CompleteSagaUseCase,
@@ -57,17 +56,70 @@ export class AdvanceSagaUseCase {
       const step = plan.steps[cursor];
 
       if (step.if && !evaluateCondition(step.if, scope)) {
-        await this.recordBypass(instance, step, now);
+        await this.steps.createIfAbsent({
+          tenantId: instance.tenantId,
+          companyId: instance.companyId,
+          instanceId: instance.id,
+          stepId: step.id,
+          kind: step.kind === SagaStepKind.WAIT ? SagaStepKind.WAIT : SagaStepKind.DO,
+          action: step.action ?? null,
+          eventName: step.waitFor?.name ?? null,
+          eventVersion: step.waitFor?.version ?? null,
+          status: SagaStepStatus.SKIPPED,
+          maxAttempts: step.maxAttempts,
+          runAt: now,
+        });
         cursor += 1;
         continue;
       }
 
       if (step.kind === SagaStepKind.WAIT) {
-        const consumed = await this.consumeWait(instance, step, scope, now);
-        if (consumed) {
-          scope.steps[step.id] = { status: SagaStepStatus.DONE, output: { eventId: consumed } };
-          cursor += 1;
-          continue;
+        if (step.waitFor) {
+          const buffered = await this.inbox.listBuffered(
+            instance.id,
+            step.waitFor.name,
+            step.waitFor.version,
+            50,
+          );
+          let consumedEventId: string | null = null;
+          for (const row of buffered) {
+            const eventScope = { ...scope, event: row.payload };
+            if (step.match && renderTemplate(step.match, eventScope) !== instance.correlationKey) {
+              continue;
+            }
+            if (step.when && !evaluateCondition(step.when, eventScope)) {
+              continue;
+            }
+            await this.steps.createIfAbsent({
+              tenantId: instance.tenantId,
+              companyId: instance.companyId,
+              instanceId: instance.id,
+              stepId: step.id,
+              kind: SagaStepKind.WAIT,
+              action: null,
+              eventName: step.waitFor.name,
+              eventVersion: step.waitFor.version,
+              status: SagaStepStatus.DONE,
+              maxAttempts: step.maxAttempts,
+              runAt: now,
+              output: { eventId: row.eventId },
+            });
+            // The step row is written first (idempotent on `(instanceId, stepId)`), so a
+            // crash before this CAS leaves the delivery buffered and retryable. Losing the
+            // CAS means a concurrent worker matched the same delivery — the step row and
+            // the completion are both idempotent, so the outcome is identical.
+            await this.inbox.markConsumed(row.id);
+            consumedEventId = row.eventId;
+            break;
+          }
+          if (consumedEventId) {
+            scope.steps[step.id] = {
+              status: SagaStepStatus.DONE,
+              output: { eventId: consumedEventId },
+            };
+            cursor += 1;
+            continue;
+          }
         }
         const timeoutMs = step.timeout
           ? parseDuration(step.timeout)
@@ -123,72 +175,5 @@ export class AdvanceSagaUseCase {
     }
 
     return this.completeSaga.execute(instance, cursor);
-  }
-
-  private async recordBypass(
-    instance: SagaInstanceRecord,
-    step: SagaPlanStep,
-    now: Date,
-  ): Promise<void> {
-    await this.steps.createIfAbsent({
-      tenantId: instance.tenantId,
-      companyId: instance.companyId,
-      instanceId: instance.id,
-      stepId: step.id,
-      kind: step.kind === SagaStepKind.WAIT ? SagaStepKind.WAIT : SagaStepKind.DO,
-      action: step.action ?? null,
-      eventName: step.waitFor?.name ?? null,
-      eventVersion: step.waitFor?.version ?? null,
-      status: SagaStepStatus.SKIPPED,
-      maxAttempts: step.maxAttempts,
-      runAt: now,
-    });
-  }
-
-  private async consumeWait(
-    instance: SagaInstanceRecord,
-    step: SagaPlanStep,
-    scope: Record<string, unknown>,
-    now: Date,
-  ): Promise<string | null> {
-    if (!step.waitFor) {
-      return null;
-    }
-    const buffered = await this.inbox.listBuffered(
-      instance.id,
-      step.waitFor.name,
-      step.waitFor.version,
-      50,
-    );
-    for (const row of buffered) {
-      const eventScope = { ...scope, event: row.payload };
-      if (step.match && renderTemplate(step.match, eventScope) !== instance.correlationKey) {
-        continue;
-      }
-      if (step.when && !evaluateCondition(step.when, eventScope)) {
-        continue;
-      }
-      await this.steps.createIfAbsent({
-        tenantId: instance.tenantId,
-        companyId: instance.companyId,
-        instanceId: instance.id,
-        stepId: step.id,
-        kind: SagaStepKind.WAIT,
-        action: null,
-        eventName: step.waitFor.name,
-        eventVersion: step.waitFor.version,
-        status: SagaStepStatus.DONE,
-        maxAttempts: step.maxAttempts,
-        runAt: now,
-        output: { eventId: row.eventId },
-      });
-      // The step row is written first (idempotent on `(instanceId, stepId)`), so a
-      // crash before this CAS leaves the delivery buffered and retryable. Losing the
-      // CAS means a concurrent worker matched the same delivery — the step row and
-      // the completion are both idempotent, so the outcome is identical.
-      await this.inbox.markConsumed(row.id);
-      return row.eventId;
-    }
-    return null;
   }
 }

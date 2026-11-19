@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { SagaEmittedEvent } from '../types/saga-emitted.event';
 import { SagaInstanceRecord, SagaInstanceStatus } from '../types/saga.types';
-import { SagaInstanceRepositoryPort } from '../outbound/ports/saga-instance.repository.port';
-import { SagaOutboxWriterPort } from '@platform/platform-common/saga-outbox/inbound/ports/saga-outbox-writer.port';
+import { PrismaSagaInstanceRepository } from '../repositories/prisma-saga-instance.repository';
+import { SagaOutboxWriterPort } from '@platform/platform-common/saga-outbox/ports/saga-outbox-writer.port';
 
 /**
  * Use case: finish an instance whose plan cursor walked past the last step.
@@ -15,7 +15,7 @@ import { SagaOutboxWriterPort } from '@platform/platform-common/saga-outbox/inbo
 @Injectable()
 export class CompleteSagaUseCase {
   constructor(
-    private readonly instances: SagaInstanceRepositoryPort,
+    private readonly instances: PrismaSagaInstanceRepository,
     private readonly outbox: SagaOutboxWriterPort,
   ) {}
 

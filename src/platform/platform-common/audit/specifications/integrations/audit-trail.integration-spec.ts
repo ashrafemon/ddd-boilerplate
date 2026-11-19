@@ -4,7 +4,7 @@ import { ConfigModule } from '@config/config.module';
 import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaAuditLogRepository } from '../../outbound/adapters/prisma-audit-log.repository';
+import { PrismaAuditLogRepository } from '../../repositories/prisma-audit-log.repository';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { RecordAuditEntryUseCase } from '../../use-cases/record-audit-entry.usecase';
 

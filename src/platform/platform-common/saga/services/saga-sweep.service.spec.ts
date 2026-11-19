@@ -4,7 +4,7 @@ import { SagaSweepService } from './saga-sweep.service';
 import { SagaStepWorkerService, STALE_LEASE_ERROR } from './saga-step-worker.service';
 import { ExecuteSagaStepUseCase } from '../use-cases/execute-saga-step.usecase';
 import { ExpireWaitStepUseCase } from '../use-cases/expire-wait-step.usecase';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 
 /**
  * Unit — the sweep is the only clock the saga has.
@@ -38,7 +38,7 @@ describe('SagaSweepService', () => {
       worker as unknown as SagaStepWorkerService,
       executeStep as unknown as ExecuteSagaStepUseCase,
       expireWait as unknown as ExpireWaitStepUseCase,
-      steps as unknown as SagaStepRepositoryPort,
+      steps as unknown as PrismaSagaStepRepository,
       CONFIG,
     );
     return { service, worker, executeStep, expireWait, steps };

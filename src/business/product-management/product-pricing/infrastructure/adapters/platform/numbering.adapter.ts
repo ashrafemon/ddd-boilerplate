@@ -1,4 +1,4 @@
-import { NumberingPort } from '@platform/platform-common/numbering/inbound/ports/numbering.port';
+import { NumberingPort } from '@platform/platform-common/numbering/ports/numbering.port';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

@@ -6,7 +6,7 @@ import { PrismaModule } from '@infrastructure/prisma/prisma.module';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
 import { Test, TestingModule } from '@nestjs/testing';
 import { NextDocumentNumberUseCase } from '../../use-cases/next-document-number.usecase';
-import { PrismaNumberSequenceRepository } from '../../outbound/adapters/prisma-number-sequence.repository';
+import { PrismaNumberSequenceRepository } from '../../repositories/prisma-number-sequence.repository';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 
 /**

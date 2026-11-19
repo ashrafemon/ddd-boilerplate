@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { ConfigService } from '@config/config.service';
-import { IdempotencyReplayCachePort } from '../../outbound/ports/idempotency-replay-cache.port';
-import { IdempotencyRepositoryPort } from '../../outbound/ports/idempotency.repository.port';
+import { RedisIdempotencyCacheAdapter } from '../../adapters/redis-idempotency-cache.adapter';
+import { PrismaIdempotencyRepository } from '../../repositories/prisma-idempotency.repository';
 import { IdempotencyIdentity, IdempotencyRowView } from '../../types/idempotency.types';
 import { ReserveIdempotencyUseCase } from '../../use-cases/reserve-idempotency.usecase';
 
@@ -59,8 +59,8 @@ function useCaseFor(storedHash: string): ReserveIdempotencyUseCase {
   } as unknown as ConfigService;
 
   return new ReserveIdempotencyUseCase(
-    repository as unknown as IdempotencyRepositoryPort,
-    cache as unknown as IdempotencyReplayCachePort,
+    repository as unknown as PrismaIdempotencyRepository,
+    cache as unknown as RedisIdempotencyCacheAdapter,
     configService,
   );
 }

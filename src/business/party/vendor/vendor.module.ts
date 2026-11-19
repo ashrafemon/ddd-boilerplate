@@ -3,8 +3,8 @@ import { VendorImportHandler } from './infrastructure/adapters/platform/vendor-i
 import { PlatformModule } from '@platform/platform.module';
 import { VendorForPurchaseFacade } from './application/facades/vendor-for-purchase.facade';
 import { VendorPublisherPort } from './application/publishes/publishers/vendor.publisher-port';
-import { SharedOutboxAdapter } from '@platform/platform-common/outbox/inbound/adapters/shared-outbox.adapter';
-import { OutboxWriterPort } from '@platform/platform-common/outbox/inbound/ports/outbox-writer.port';
+import { SharedOutboxAdapter } from '@platform/platform-common/outbox/adapters/shared-outbox.adapter';
+import { OutboxWriterPort } from '@platform/platform-common/outbox/ports/outbox-writer.port';
 import { CreateVendorUseCase } from './application/use-cases/create-vendor.usecase';
 import { GetOrderableVendorUseCase } from './application/use-cases/get-orderable-vendor.usecase';
 import { FindOrderableVendorsByCodesUseCase } from './application/use-cases/find-orderable-vendors-by-codes.usecase';

@@ -1,11 +1,9 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 import { ExecuteSagaStepUseCase } from '../use-cases/execute-saga-step.usecase';
 import { ExpireWaitStepUseCase } from '../use-cases/expire-wait-step.usecase';
 import { STALE_LEASE_ERROR, SagaStepWorkerService } from './saga-step-worker.service';
-
-const SWEEP_BATCH = 200;
 
 /**
  * Scheduled sweep: run due steps, expire WAIT timeouts, re-queue stale leases.
@@ -19,17 +17,19 @@ export class SagaSweepService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SagaSweepService.name);
   private timer: NodeJS.Timeout | undefined;
   private running = false;
+  private sweepBatchSize = 200;
 
   constructor(
     private readonly worker: SagaStepWorkerService,
     private readonly executeStep: ExecuteSagaStepUseCase,
     private readonly expireWait: ExpireWaitStepUseCase,
-    private readonly steps: SagaStepRepositoryPort,
+    private readonly steps: PrismaSagaStepRepository,
     private readonly configService: ConfigService,
   ) {}
 
   onModuleInit(): void {
-    const { sweepIntervalMs } = this.configService.getSaga();
+    const { sweepIntervalMs, sweepBatchSize } = this.configService.getSaga();
+    this.sweepBatchSize = sweepBatchSize;
     this.timer = setInterval(() => void this.tick(), sweepIntervalMs);
   }
 
@@ -60,14 +60,14 @@ export class SagaSweepService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async expireWaitSteps(): Promise<void> {
-    const due = await this.steps.findExpiredWaits(new Date(), SWEEP_BATCH);
+    const due = await this.steps.findExpiredWaits(new Date(), this.sweepBatchSize);
     for (const step of due) {
       await this.expireWait.execute(step);
     }
   }
 
   private async releaseStaleLeases(): Promise<void> {
-    const stale = await this.steps.findStaleRunning(new Date(), SWEEP_BATCH);
+    const stale = await this.steps.findStaleRunning(new Date(), this.sweepBatchSize);
     for (const step of stale) {
       this.logger.warn(`Re-queueing saga step ${step.id} (${STALE_LEASE_ERROR})`);
       await this.steps.reschedule(step.id, step.attempts, new Date(), STALE_LEASE_ERROR);

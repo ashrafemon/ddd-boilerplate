@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CachePort } from '@platform/platform-common/cache/inbound/ports/cache.port';
+import { CachePort } from '@platform/platform-common/cache/ports/cache.port';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
 import { ReadCachePort } from '../../../application/outbound-ports/read-cache.port';
 

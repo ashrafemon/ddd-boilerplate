@@ -20,20 +20,19 @@ Group folders are organizational only. Composition happens in `PlatformModule` (
 
 ```
 src/platform/<group>/<capability>/
-├── inbound/
-│   ├── ports/       # contracts the outside world drives the module through
-│   └── adapters/    # non-HTTP drivers: listeners, workers, schedulers, tickers,
-│                    # reconcilers, dispatchers, and the class implementing the inbound port
-├── outbound/
-│   ├── ports/       # substitutable external dependencies (broker, cache, storage, transport)
-│   └── adapters/    # Prisma repositories, BullMQ/S3/SES/SNS/HTTP implementations
-├── http/            # the HTTP driver only
+├── ports/              # inbound ports (abstract classes) — the contracts the
+│                       # outside world drives the module through
+├── adapters/           # inbound adapters (implement ports) + non-repo outbound
+│                       # adapters (Redis, broker SDKs, EventEmitter2)
+├── repositories/       # Prisma repositories — direct DI with infrastructure
+├── http/               # the HTTP driver only
 │   ├── <capability>.controller.ts
 │   ├── *.interceptor.ts / *.decorator.ts / *.guard.ts   (HTTP-only helpers live here)
-│   ├── requests/    # nestjs-zod createZodDto + zod schemas
-│   └── responses/   # zod response DTOs
-├── use-cases/       # one use case per file, <verb>-<noun>.usecase.ts
-├── types/           # *.types.ts, *.constants.ts
+│   ├── requests/       # nestjs-zod createZodDto + zod schemas
+│   └── responses/      # zod response DTOs
+├── use-cases/          # one use case per file, <verb>-<noun>.usecase.ts
+├── services/           # orchestration composing ≥2 use cases
+├── types/              # *.types.ts, *.constants.ts
 └── <capability>.module.ts
 ```
 
@@ -44,31 +43,41 @@ src/platform/<group>/<capability>/
 3. `services/` is allowed **only** for genuine orchestration that composes two or more use
    cases. A class that exists solely to implement a port is an **adapter**, not a service
    (enforced by `src/specifications/architecture/platform-shape.spec.ts`).
-4. Direction, not kind: inbound = the outside calls us, outbound = we call the outside.
-5. `http/` holds the HTTP driver. Everything else that drives use cases (cron, queue worker,
-   broker listener, event listener) goes in `inbound/adapters/`.
+4. `http/` holds the HTTP driver. Everything else that drives use cases (cron, queue worker,
+   broker listener, event listener) goes in `adapters/`.
+5. `repositories/` holds Prisma repositories. They are injected directly into use cases —
+   no outbound port token, no `useExisting` ceremony.
 
 ## 3. Ports
 
-A port is an `abstract class` used as the DI token. Every port has an adapter that implements it,
-and only use cases/services consume it — nobody injects a concrete adapter.
+A port is an `abstract class` used as the DI token. Every port has exactly one adapter in
+`adapters/` that implements it. Use cases and services inject the port token; the module
+binds `{ provide: <Port>, useExisting: <Adapter> }`.
 
 | Kind          | Examples                                                                                                                                                                                                                                                                | Implemented by                                                      |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `OutboxWriterPort`, `MessageQueuePort`, `MessageConsumerPort`, `InProcessEventBus`, `InboxPort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`                                                                        | exactly one `inbound/adapters/*` class that delegates to use cases  |
-| Outbound port | `IdempotencyRepositoryPort`, `IdempotencyReplayCachePort`, `CacheStorePort`, `LockLedgerPort`, `LockLeasePort`, `OutboxRepositoryPort`, `InboxRepositoryPort`, `RabbitMqPublisherPort`, `KafkaPublisherPort`, `SqsPublisherPort`, `EventEmitterPort`, `FileStoragePort` | exactly one `outbound/adapters/*` class (Prisma, Redis, S3, broker) |
+| Inbound port  | `IdempotencyPort`, `CachePort`, `DistributedLockPort`, `OutboxWriterPort`, `MessageQueuePort`, `MessageConsumerPort`, `InProcessEventBus`, `InboxPort`, `BatchOperationHandler`, `ImportHandler`, `NotificationHandler`, `FeatureGate`, `CompanySettingsReader`, `SagaAction`                                                         | exactly one `adapters/*` class that delegates to use cases          |
+
+There are **no outbound ports**. Use cases inject concrete repository/adapter classes directly:
 
 ```
-use case ──uses──> outbound port ◁──implements── outbound adapter ──wraps──> infrastructure client
+use case ──uses──> PrismaXxxRepository / RedisXxxAdapter ──wraps──> infrastructure client
    ▲
    └──driven by── inbound adapter ◁──implements── inbound port
 ```
 
-- The module binds `{ provide: <Port>, useExisting: <Adapter> }`. Consumers see the port only.
-- `use-cases/` must not import from `inbound/adapters/` or `outbound/adapters/`; if a use case needs
-  a dependency, that dependency is a port.
-- A repository is not exempt: `Prisma<Entity>Repository` implements `<Entity>RepositoryPort`. The old
-  `*RepositoryPort` + `useClass` ceremony the standard rejects is the _module wiring_, not the port.
+- The module provides concrete classes directly (no `useExisting` for outbound):
+  ```ts
+  providers: [
+    PrismaOutboxRepository,           // concrete class, no port token
+    PublishPendingBatchUseCase,
+    { provide: OutboxWriterPort, useExisting: OutboxWriterAdapter },  // inbound port
+  ]
+  ```
+- `use-cases/` may import from `repositories/` and `adapters/` (concrete classes) and from
+  other modules' `ports/` (cross-module inbound ports like `RequestContextPort`).
+- Use cases must **not** import from their own module's `ports/` directory — those are
+  outbound port tokens that no longer exist.
 
 The two cache rules, because they are easy to get wrong:
 
@@ -87,17 +96,18 @@ implements a port.
 
 | Role                               | Folder               | File name                                                                      |
 | ---------------------------------- | -------------------- | ------------------------------------------------------------------------------ |
-| Implements an inbound port         | `inbound/adapters/`  | `<capability>.adapter.ts` (e.g. `idempotency.adapter.ts`)                      |
-| Implements an outbound port        | `outbound/adapters/` | `<tech>-<capability>.adapter.ts` / `prisma-<entity>.repository.ts`             |
+| Implements an inbound port         | `adapters/`          | `<capability>.adapter.ts` (e.g. `idempotency.adapter.ts`)                      |
+| Non-repo outbound adapter (Redis, broker, EventEmitter2) | `adapters/` | `<tech>-<capability>.adapter.ts` (e.g. `redis-cache.adapter.ts`) |
+| Prisma repository (direct DI)      | `repositories/`      | `prisma-<entity>.repository.ts`                                                |
 | Orchestrates ≥2 use cases or a job | `services/`          | `<capability>-<job>.service.ts` (e.g. `idempotency-reconciliation.service.ts`) |
 
 `src/specifications/architecture/platform-shape.spec.ts` fails when:
 
 - a class under `services/` implements any type exported from a `ports/` folder;
-- a file under `inbound|outbound/adapters/` is named `*.service.ts`;
-- a migrated module has an `inbound/adapters` or `outbound/adapters` file that implements no port of
-  that side;
-- a migrated module's use cases import `inbound/adapters/` or `outbound/adapters/`.
+- a file under `adapters/` is named `*.service.ts`;
+- a migrated module has an `adapters/` file that implements no port of
+  that module;
+- a migrated module's use cases import from their own `ports/` directory.
 
 Known violations are listed in the spec's pending list and must disappear in the change that
 migrates the module.

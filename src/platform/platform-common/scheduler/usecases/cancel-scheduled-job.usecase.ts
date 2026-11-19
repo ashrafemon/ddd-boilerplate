@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { TenantScope } from '@common/application/utils/tenant-scope';
 import { RequestContextPort } from '@platform/platform-common/context/ports/request-context.port';
-import { AuditPort } from '@platform/platform-common/audit/inbound/ports/audit.port';
+import { AuditPort } from '@platform/platform-common/audit/ports/audit.port';
 import { ScheduledJobRepositoryPort } from '../ports/scheduled-job-repository.port';
 
 @Injectable()
@@ -26,9 +26,5 @@ export class CancelScheduledJobUseCase {
       entityId: jobId,
       changes: { jobType: job.jobType, status: job.status },
     });
-  }
-
-  executeByAggregate(aggregateType: string, aggregateId: string): Promise<void> {
-    return this.jobs.cancelByAggregate(aggregateType, aggregateId);
   }
 }

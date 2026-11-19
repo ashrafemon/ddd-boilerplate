@@ -1,7 +1,10 @@
 import { ConfigService } from '@config/config.service';
 import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.types';
 import { PublishMessageUseCase } from './publish-message.usecase';
-import { UnsupportedBrokerTargetError } from '../inbound/ports/message-queue.port';
+import { UnsupportedBrokerTargetError } from '../ports/message-queue.port';
+import { RabbitMQPublisherAdapter } from '../adapters/rabbitmq-publisher.adapter';
+import { KafkaPublisherAdapter } from '../adapters/kafka-publisher.adapter';
+import { SqsPublisherAdapter } from '../adapters/sqs-publisher.adapter';
 
 /**
  * Unit — broker routing.
@@ -31,9 +34,15 @@ function makeSut(options: { kafkaBrokers?: string[]; sqsUrl?: string } = {}) {
   const config = {
     getKafka: () => ({ brokers: options.kafkaBrokers ?? ['localhost:9092'] }),
     getSqs: () => ({ url: options.sqsUrl ?? 'https://sqs.local/queue' }),
+    getPublishTimeoutMs: () => 10_000,
   } as unknown as ConfigService;
 
-  const useCase = new PublishMessageUseCase(rabbit, kafka, sqs, config);
+  const useCase = new PublishMessageUseCase(
+    rabbit as unknown as RabbitMQPublisherAdapter,
+    kafka as unknown as KafkaPublisherAdapter,
+    sqs as unknown as SqsPublisherAdapter,
+    config,
+  );
 
   return { useCase, rabbit, kafka, sqs };
 }

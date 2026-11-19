@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
+import { PrismaSagaInboxRepository } from '../repositories/prisma-saga-inbox.repository';
 
 /**
  * Use case: delete saga inbox rows past the redelivery window.
@@ -12,7 +12,7 @@ import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository
 @Injectable()
 export class PurgeSagaInboxUseCase {
   constructor(
-    private readonly inbox: SagaInboxRepositoryPort,
+    private readonly inbox: PrismaSagaInboxRepository,
     private readonly configService: ConfigService,
   ) {}
 

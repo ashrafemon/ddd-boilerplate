@@ -80,7 +80,38 @@ export class SendNotificationUseCase {
 
     const newMessages: NewNotificationMessage[] = [];
     for (const { recipient, channel } of pairs) {
-      newMessages.push(await this.gate(input.tenantId, input.notificationType, recipient, channel));
+      // THE GATE — preference (consent) then suppression (compliance), in that
+      // order. A missing preference row means the platform default (opted in)
+      // applies; the hard block-list is only checkable once an address is known.
+      const address = recipient.address ?? null;
+      const base = {
+        recipientRef: recipient.recipientRef,
+        channel,
+        address,
+        locale: recipient.locale ?? null,
+      };
+
+      const prefs = await this.preferences.findForRecipient(input.tenantId, recipient.recipientRef);
+      const optedOut = prefs.some(
+        p =>
+          p.category === input.notificationType &&
+          (p.channel === channel || p.channel === 'ALL') &&
+          !p.optedIn,
+      );
+      if (optedOut) {
+        newMessages.push({ ...base, status: 'SUPPRESSED', suppressReason: 'PREFERENCE' });
+        continue;
+      }
+
+      if (address) {
+        const suppressed = await this.suppressions.isSuppressed(input.tenantId, address, channel);
+        if (suppressed) {
+          newMessages.push({ ...base, status: 'SUPPRESSED', suppressReason: 'HARD_BOUNCE' });
+          continue;
+        }
+      }
+
+      newMessages.push({ ...base, status: 'PENDING', suppressReason: null });
     }
 
     const pendingCount = newMessages.filter(m => m.status === 'PENDING').length;
@@ -117,44 +148,6 @@ export class SendNotificationUseCase {
       throw err;
     }
     return request;
-  }
-
-  /** THE GATE — preference (consent) then suppression (compliance), in that order. */
-  private async gate(
-    tenantId: string | undefined,
-    notificationType: string,
-    recipient: Recipient,
-    channel: string,
-  ): Promise<NewNotificationMessage> {
-    const address = recipient.address ?? null;
-    const base = {
-      recipientRef: recipient.recipientRef,
-      channel,
-      address,
-      locale: recipient.locale ?? null,
-    };
-
-    // Consent: a missing preference row means the platform default (opted in) applies.
-    const prefs = await this.preferences.findForRecipient(tenantId, recipient.recipientRef);
-    const optedOut = prefs.some(
-      p =>
-        p.category === notificationType &&
-        (p.channel === channel || p.channel === 'ALL') &&
-        !p.optedIn,
-    );
-    if (optedOut) {
-      return { ...base, status: 'SUPPRESSED', suppressReason: 'PREFERENCE' };
-    }
-
-    // Compliance: the hard block-list. Only checkable once an address is known.
-    if (address) {
-      const suppressed = await this.suppressions.isSuppressed(tenantId, address, channel);
-      if (suppressed) {
-        return { ...base, status: 'SUPPRESSED', suppressReason: 'HARD_BOUNCE' };
-      }
-    }
-
-    return { ...base, status: 'PENDING', suppressReason: null };
   }
 }
 

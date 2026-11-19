@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { SagaDefinitionStatus } from '../types/saga.types';
 import { SagaDefinitionDocument } from '../types/saga-definition.document';
 import { GOODS_RECEIPT_SAGA_EXAMPLE } from '../types/definitions/goods-receipt.example';
-import { SagaDefinitionRepositoryPort } from '../outbound/ports/saga-definition.repository.port';
+import { PrismaSagaDefinitionRepository } from '../repositories/prisma-saga-definition.repository';
 import { RegisterSagaDefinitionUseCase } from './register-saga-definition.usecase';
 
 /**
@@ -25,7 +25,7 @@ describe('RegisterSagaDefinitionUseCase', () => {
       })),
     };
     const useCase = new RegisterSagaDefinitionUseCase(
-      definitions as unknown as SagaDefinitionRepositoryPort,
+      definitions as unknown as PrismaSagaDefinitionRepository,
     );
     return { useCase, definitions };
   }

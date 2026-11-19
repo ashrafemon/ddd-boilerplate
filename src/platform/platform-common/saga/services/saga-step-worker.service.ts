@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { hostname } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { ConfigService } from '@config/config.service';
-import { SagaStepRepositoryPort } from '../outbound/ports/saga-step.repository.port';
+import { PrismaSagaStepRepository } from '../repositories/prisma-saga-step.repository';
 
 /** Marker written when a claim outlived its lease (crashed worker). */
 export const STALE_LEASE_ERROR = 'lease expired before the step settled';
@@ -19,11 +19,11 @@ export class SagaStepWorkerService {
   private readonly workerId = `${hostname()}:${process.pid}:${randomUUID()}`;
 
   constructor(
-    private readonly steps: SagaStepRepositoryPort,
+    private readonly steps: PrismaSagaStepRepository,
     private readonly configService: ConfigService,
   ) {}
 
-  async claimBatch(): Promise<ReturnType<SagaStepRepositoryPort['claimBatch']>> {
+  async claimBatch(): Promise<ReturnType<PrismaSagaStepRepository['claimBatch']>> {
     const config = this.configService.getSaga();
     const claimed = await this.steps.claimBatch({
       now: new Date(),

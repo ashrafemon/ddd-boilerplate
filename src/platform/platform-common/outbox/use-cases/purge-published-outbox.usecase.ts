@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@config/config.service';
-import { OutboxRepositoryPort } from '../outbound/ports/outbox.repository.port';
+import { PrismaOutboxRepository } from '../repositories/prisma-outbox.repository';
 
 /**
  * Use case: delete PUBLISHED outbox rows past the retention window.
@@ -12,7 +12,7 @@ import { OutboxRepositoryPort } from '../outbound/ports/outbox.repository.port';
 @Injectable()
 export class PurgePublishedOutboxUseCase {
   constructor(
-    private readonly repository: OutboxRepositoryPort,
+    private readonly repository: PrismaOutboxRepository,
     private readonly configService: ConfigService,
   ) {}
 

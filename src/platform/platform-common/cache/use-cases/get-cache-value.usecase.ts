@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CacheStorePort } from '../outbound/ports/cache-store.port';
+import { RedisCacheAdapter } from '../adapters/redis-cache.adapter';
 import { CacheGetResult } from '../types/cache.types';
 
 /**
@@ -9,7 +9,7 @@ import { CacheGetResult } from '../types/cache.types';
  */
 @Injectable()
 export class GetCacheValueUseCase {
-  constructor(private readonly cache: CacheStorePort) {}
+  constructor(private readonly cache: RedisCacheAdapter) {}
 
   execute<T>(key: string): Promise<CacheGetResult<T>> {
     return this.cache.get<T>(key);

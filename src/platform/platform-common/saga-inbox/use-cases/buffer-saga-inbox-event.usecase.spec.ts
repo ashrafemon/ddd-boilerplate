@@ -1,4 +1,4 @@
-import { SagaInboxRepositoryPort } from '../outbound/ports/saga-inbox.repository.port';
+import { PrismaSagaInboxRepository } from '../repositories/prisma-saga-inbox.repository';
 import { SagaInboxStatus } from '../types/saga-inbox.types';
 import { BufferSagaInboxEventUseCase } from './buffer-saga-inbox-event.usecase';
 
@@ -27,7 +27,7 @@ describe('BufferSagaInboxEventUseCase', () => {
       tryInsert: jest.fn(async () => (insertedId ? { id: insertedId } : null)),
       markBuffered: jest.fn(async () => undefined),
     };
-    const useCase = new BufferSagaInboxEventUseCase(inbox as unknown as SagaInboxRepositoryPort);
+    const useCase = new BufferSagaInboxEventUseCase(inbox as unknown as PrismaSagaInboxRepository);
     return { useCase, inbox };
   }
 
