@@ -14,7 +14,7 @@ only. Read `README.md` first, then this file.
 | Platform phase work       | `docs/platform-migration-plan.md` (what is done, what is next, exit criteria)                                                         |
 | New platform service      | `docs/architecture.md` (§platform layer), inspect existing service                                                                    |
 | New infrastructure client | `docs/architecture.md` (§infrastructure — checklist), inspect an existing client folder                                               |
-| Anything DB               | `prisma/schema/<context>/*.prisma` header comments. **Migrations are the source of truth** — edit schema, `npm run db:migrate` (creates `prisma/migrations/<ts>_<name>`), then `npx prisma generate`. `npm run db:push` is only for throwaway local databases |
+| Anything DB               | `prisma/schema/<context>/*.prisma` header comments. **Migrations are the source of truth** — edit schema, `npm run db:migrate` (creates `prisma/migrations/<ts>_<name>`), then `npm run db:generate` (prisma generate + `scripts/organize-prisma-models.ts`, which nests `src/generated/models/<context>/`). `npm run db:push` is only for throwaway local databases |
 | Writing tests             | `docs/testing-business-modules.md` (unit beside the file; api/integrations/contracts/components/security under `specifications/`)     |
 
 ## Hard rules (ESLint-enforced — `npm run lint:check` fails otherwise)

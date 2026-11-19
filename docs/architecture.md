@@ -400,7 +400,10 @@ Prisma schema split per context under `prisma/schema/<context>/`, aggregated by
 `prisma/schema/schema.prisma`. **Migrations are the source of truth** — every schema edit ships with a
 `prisma/migrations/<timestamp>_<name>` folder (`npm run db:migrate`); `npm run db:migrate:deploy` applies
 them and CI fails when the migrated database drifts from `prisma/schema`;
-`npx prisma generate` regenerates client to `src/generated/`.
+`npx prisma generate` regenerates client to `src/generated/`; use `npm run db:generate` instead — it
+also runs `scripts/organize-prisma-models.ts`, which nests the emitted per-model files under the owning
+context (`src/generated/models/procurement/PurchaseOrder.ts`), so the client mirrors
+`prisma/schema/<context>/`. Prisma itself always emits one flat `models/` folder, hence the post-step.
 
 Physical column names not uniform: `outbox_messages`, `inbox_messages`, `saga_steps` are
 snake_case; the rest camelCase. Hand-written `$queryRaw` must use physical column names.
