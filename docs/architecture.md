@@ -145,8 +145,8 @@ config + bootstrap + platform). Currently:
   by infrastructure clients; standalone, extends `Error` — common never imports platform);
 - `http/` — framework plumbing wired once in `AppModule`/bootstrap: exception filter,
   `RbacGuard` + `@Rbac()`, throttler guard, interceptors (request-id, logging, response,
-  device), validator pipe, `CompanyConfigContextMiddleware`, decorators (`@KafkaEvent`,
-  device decorators, `@SkipTenancy`).
+  device), validator pipe, `CompanyConfigContextMiddleware`, device decorators,
+  `@SkipTenancy`.
 
 NOT here (moved to their owners): company identity → `platform-common/context`;
 domain errors → `platform-common/errors`; registry base class → `platform-common/registry`;
@@ -183,8 +183,6 @@ infrastructure/
 ├── prisma/       prisma.module + write/read client services (pool init, health probe, teardown)
 ├── redis/        redis.module + RedisService (client init, retry policy, shutdown)
 ├── rabbitmq/     rabbitmq.module (forRootAsync) + config factory
-├── kafka/        kafka.module + kafka.service (client init, producer/consumer ops)
-├── sqs/          sqs.module (registerAsync) + config factory
 ├── ses/          ses.module + ses.service (client init only)
 ├── sns/          sns.module + sns.service (client init only)
 ├── s3/           s3.module + s3.service (client init + boot probe only)
@@ -203,7 +201,7 @@ infrastructure/
   unreachable/missing config throws `InfrastructureException`; lenient in dev: warn +
   disabled state via an `isEnabled` getter);
 - teardown in `onModuleDestroy` **only for clients that own persistent connections**
-  (Prisma pools, Redis, Kafka). Stateless HTTP SDK clients (SES, SNS) have no lifecycle
+  (Prisma pools, Redis). Stateless HTTP SDK clients (SES, SNS) have no lifecycle
   hooks; RabbitMQ/BullMQ manage their own connections;
 - small getters exposing the client/config pieces platform adapters need
   (e.g. `S3Service.client`, `bucketName`).
@@ -211,9 +209,8 @@ infrastructure/
 **What must NOT live here:** object/message operations, ports, adapters, business logic.
 Operations belong in platform adapters, which import the raw SDK commands themselves
 (e.g. `S3FileStorageAdapter` issues `PutObjectCommand` against `S3Service.client`).
-Client-level operations that keep a raw-client type inside infrastructure (e.g.
-`KafkaService.startConsumer` hiding kafkajs types) are the exception — use them when
-ESLint bans the raw import in platform.
+Client-level operations that keep a raw-client type inside infrastructure are the
+exception — use them when ESLint bans the raw import in platform.
 
 Deliberately NOT `@Global()` (only CLS is global, the library requires it). Outbox/Inbox
 live as directories under platform, wired by `PlatformModule`, to avoid the cycle
@@ -256,7 +253,7 @@ Key ports: `OutboxWriterPort`, `InProcessEventBus`, `MessageQueuePort`, `InboxPo
 Controller → Use Case → Domain + Factory → Command Repository Port → Prisma (TransactionHost)
 Use Case → Outbound Ports → Producer Facade → Query Use Case → Query Port → PrismaReadPort
 Use Case → Integration Port → OutboxAdapter → OutboxWriterPort → outbox_messages
-OutboxScheduler → PublishPendingBatch → MessageQueuePort → RabbitMQ/Kafka/SQS
+OutboxScheduler → PublishPendingBatch → MessageQueuePort → RabbitMQ
 OutboxScheduler → InProcessEventBus.emit → in-process listeners
 ```
 
@@ -347,7 +344,13 @@ company config fields into CLS `RequestContext`. Runs before route handlers.
 
 ### Guards
 
-- `TenancyAuthGuard` (global `APP_GUARD`): enforces tenancy boundary.
+- `TenancyAuthGuard` (global `APP_GUARD`, `platform-common/tenancy/http/`): enforces the
+  tenancy boundary. It is an HTTP-only driver of the tenancy capability, so it lives in that
+  capability's `http/` folder (platform standard §2) — not in `context/`, whose ports (CLS,
+  `PrismaReadPort`) it does not use. The identity contract it writes
+  (`VERIFIED_IDENTITY_REQUEST_KEY`, `VerifiedIdentity`) is a cross-layer wire primitive in
+  `@common/application/types/verified-identity`, because the common request interceptor reads
+  it to seed CLS.
 - `RbacGuard` (global `APP_GUARD`): reads `@Rbac()` metadata, resolves `userId` from CLS,
   calls `RbacPort.can()`.
 
@@ -382,12 +385,14 @@ use case → <Aggregate>IntegrationPort → OutboxAdapter → OutboxWriterPort �
 Canonical envelope: `eventId`, `eventType`, `aggregateType`, `aggregateId`, `payload`,
 `headers` (`event-id`, `correlation-id`, `causation-id`, `tenant-id`, `broker`), `occurredAt`.
 
-Broker picked by `envelope.broker` (default `rabbitmq`). RabbitMQ → topic exchange `erp.events`;
-Kafka → topic = event type; SQS → configured queue.
+Broker picked by `envelope.broker` (default `rabbitmq`) → topic exchange `erp.events`.
+The routing switch is kept even though **RabbitMQ is the only driver shipped**: a `kafka`
+or `sqs` envelope raises `UnsupportedBrokerTargetError`, which the outbox parks as FAILED
+instead of retrying against a broker that cannot exist in this deployment.
 
-Listeners in `application/integrations/listeners/`: `*.rabbitmq.listener-event.ts`,
-`*.kafka.listener-event.ts`, `*.sqs.listener-event.ts`, `*.event-emitter.listener-event.ts`.
-Handlers delegate to use cases/facades — never inline business logic.
+Listeners in `application/integrations/consumes/listeners/`:
+`*.listener.ts` (RabbitMQ/event-emitter). Handlers delegate to use cases/facades — never
+inline business logic.
 
 ## Data model
 

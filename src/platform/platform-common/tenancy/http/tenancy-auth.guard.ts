@@ -9,16 +9,10 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@config/config.service';
 import { SKIP_TENANCY_KEY } from '@common/http/decorators/skip-tenancy.decorator';
-
-/** Key under which the guard stashes the verified identity on the raw request. */
-export const VERIFIED_IDENTITY_REQUEST_KEY = 'verifiedIdentity';
-
-export interface VerifiedIdentity {
-  tenantId?: string;
-  companyId?: string;
-  userId?: string;
-  roles: string[];
-}
+import {
+  VERIFIED_IDENTITY_REQUEST_KEY,
+  VerifiedIdentity,
+} from '@common/application/types/verified-identity';
 
 interface TenantJwtClaims {
   sub?: string;
@@ -64,7 +58,7 @@ export class TenancyAuthGuard implements CanActivate {
       [VERIFIED_IDENTITY_REQUEST_KEY]?: VerifiedIdentity;
     }
     // The guard is global, so it also sees the platform's non-HTTP
-    // transports (RabbitMQ/Kafka/SQS handlers, workers, crons). There is no
+    // transports (RabbitMQ handlers, workers, crons). There is no
     // bearer token on a message — the identity travels in the envelope — so
     // the HTTP trust boundary simply does not apply there.
     if (context.getType() !== 'http') {

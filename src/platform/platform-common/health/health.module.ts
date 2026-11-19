@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { CacheManagerModule as InfraCacheManagerModule } from '@infrastructure/cache-manager/cache-manager.module';
-import { KafkaModule as InfraKafkaModule } from '@infrastructure/kafka/kafka.module';
 import { PrismaModule as InfraPrismaModule } from '@infrastructure/prisma/prisma.module';
 import { RabbitMqClientModule as InfraRabbitMqModule } from '@infrastructure/rabbitmq/rabbitmq.module';
 import { RedisModule as InfraRedisModule } from '@infrastructure/redis/redis.module';
@@ -23,7 +22,6 @@ import { HealthPort } from './ports/health.port';
     InfraPrismaModule,
     InfraRedisModule,
     InfraRabbitMqModule,
-    InfraKafkaModule,
     InfraS3Module,
     InfraSecretsModule,
     InfraPuppeteerModule,

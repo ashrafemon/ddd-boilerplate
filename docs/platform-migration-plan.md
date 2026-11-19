@@ -70,15 +70,14 @@ Modules: `locking`, `outbox`, `messaging`, `events`, `inbox`.
 | ----------- | ------------------------------------------------ | ----------------------------------------------------------------- | -------------------------------------------- |
 | `locking`   | `DistributedLockPort`                            | `LockLedgerPort`, `LockLeasePort`                                 | —                                            |
 | `outbox`    | `OutboxWriterPort`, `GenericOutboxPublisherPort` | `OutboxRepositoryPort`                                            | `OutboxDispatcherService` (poll + retention) |
-| `messaging` | `MessageQueuePort`                               | `RabbitMqPublisherPort`, `KafkaPublisherPort`, `SqsPublisherPort` | —                                            |
+| `messaging` | `MessageQueuePort`, `MessageConsumerPort`        | `RabbitMqPublisherPort`                                           | —                                            |
 | `events`    | `InProcessEventBus`                              | `EventEmitterPort`                                                | —                                            |
 | `inbox`     | `InboxPort`                                      | `InboxRepositoryPort`                                             | `InboxReconciliationService` (sweep + purge) |
 
 Exit criteria met:
 
 - `PENDING_PORT_SERVICES` is **empty** — no port implementation remains in `services/`.
-- Every declared port has an adapter that implements it (checked per port, so driver
-  adapters such as `KafkaConsumerHost` may implement none).
+- Every declared port has an adapter that implements it (checked per port).
 - Use cases import ports only; no use case imports an adapter.
 - Every module carries: one unit spec per use case, an integration spec against real
   Postgres where a ledger is involved, and a property spec wherever a key/hash

@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
+import { requestDate } from '@common/application/types/wire-date';
 
 export const SetGrnLineTrackingSchema = z.object({
   productId: z.string().min(1),
@@ -8,8 +9,8 @@ export const SetGrnLineTrackingSchema = z.object({
       lotNo: z.string().optional(),
       serialNo: z.string().optional(),
       quantity: z.number().positive(),
-      manufactureDate: z.coerce.date().optional(),
-      expiryDate: z.coerce.date().optional(),
+      manufactureDate: requestDate.optional(),
+      expiryDate: requestDate.optional(),
     }),
   ),
 });

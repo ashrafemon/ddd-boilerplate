@@ -10,39 +10,34 @@ export type IRabbitMQConfig = {
    */
   registerHandlers: boolean;
 };
-export type IKafkaConfig = {
-  brokers: string[];
-  clientId: string;
-  groupId: string;
-  /**
-   * Bounded connect budget. Kafka is OPT-IN and the project's own compose
-   * file does not start a broker, so an unreachable broker must degrade to
-   * "Kafka inactive" in a couple of seconds — never block app bootstrap.
-   */
-  connectionTimeoutMs: number;
-  retryCount: number;
-};
-export type ISqsConfig = {
-  accessKey: string;
-  secretKey: string;
-  url: string;
-  region?: string;
-};
+
 export type IMessagingConfig = {
   rabbitmq: IRabbitMQConfig;
-  kafka: IKafkaConfig;
-  sqs: ISqsConfig;
   /**
    * Bounded publish budget (ms) applied to every broker adapter. An
    * unresponsive broker must not block the outbox dispatcher tick beyond
    * this window — the row stays PENDING and is retried with backoff.
    */
   publishTimeoutMs: number;
+  /**
+   * Bounded channel-setup budget (ms) for broker subscriptions. The RabbitMQ
+   * connection is opened with `wait: false`, so `createSubscriber` would
+   * otherwise await a channel forever and block `app.init()`; after this
+   * budget the subscription is left inactive and the owning state machine's
+   * lease/outbox remains the retry path.
+   */
+  connectTimeoutMs: number;
 };
 
 /**
- * Messaging config — RabbitMQ / Kafka / SQS connection settings for the
- * integration event publishers.
+ * Messaging config — RabbitMQ connection settings for the integration event
+ * publishers.
+ *
+ * The transport is intentionally single-driver: the outbox envelope still
+ * carries a `broker` field, but only `rabbitmq` has a driver in this
+ * deployment. A `kafka`/`sqs` envelope is parked as FAILED by
+ * `PublishMessageUseCase` instead of being retried against a broker that
+ * cannot exist here.
  */
 export default registerAs('messaging', (): IMessagingConfig => ({
   rabbitmq: {
@@ -50,23 +45,6 @@ export default registerAs('messaging', (): IMessagingConfig => ({
     exchange: process.env.RABBITMQ_EXCHANGE ?? 'erp.events',
     registerHandlers: booleanEnv('RABBITMQ_REGISTER_HANDLERS', true),
   },
-  kafka: {
-    // Opt-in: unset KAFKA_BROKERS disables Kafka instead of pointing at a
-    // non-existent localhost broker (fan-out events would fail-publish there).
-    brokers: (process.env.KAFKA_BROKERS ?? '')
-      .split(',')
-      .map(broker => broker.trim())
-      .filter(Boolean),
-    clientId: process.env.KAFKA_CLIENT_ID ?? 'erp-boilerplate',
-    groupId: process.env.KAFKA_GROUP_ID ?? 'erp-boilerplate-group',
-    connectionTimeoutMs: Number(process.env.KAFKA_CONNECTION_TIMEOUT_MS ?? 3000),
-    retryCount: Number(process.env.KAFKA_RETRY_COUNT ?? 2),
-  },
-  sqs: {
-    accessKey: process.env.SQS_ACCESS_KEY ?? '',
-    secretKey: process.env.SQS_SECRET_KEY ?? '',
-    url: process.env.SQS_URL ?? '',
-    region: process.env.SQS_REGION ?? process.env.AWS_REGION ?? 'us-east-1',
-  },
   publishTimeoutMs: Number(process.env.MESSAGE_QUEUE_PUBLISH_TIMEOUT_MS ?? 10_000),
+  connectTimeoutMs: Number(process.env.MESSAGE_QUEUE_CONNECT_TIMEOUT_MS ?? 10_000),
 }));

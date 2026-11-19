@@ -240,8 +240,7 @@ Delivery is at-least-once: the message is acked only after `accept` returned. Du
 are absorbed by the saga's own dedupe (`live_key` for starts, `saga_inbox` uniqueness per
 delivery for WAIT steps), which is why redelivery is safe.
 
-Producer side (why the body is complete): all three publishers (RabbitMQ, Kafka, SQS)
-serialise through `toWireEnvelope`, so `tenantId`, `companyId`, `eventVersion`,
+Producer side (why the body is complete): the publisher serialises through `toWireEnvelope`, so `tenantId`, `companyId`, `eventVersion`,
 `correlationId` and `causationId` survive the hop. Without them a consumer cannot scope
 or dedupe anything — the saga would silently ignore every event as "no tenant/company".
 
@@ -583,10 +582,10 @@ npm run test:architecture                                   # hex shape + ports/
   partitioning by aggregate would be the fix if order becomes a requirement.
 - **No replay surface.** `FAILED_MANUAL` instances and `DEAD_LETTER`/`SUSPENDED` rows are
   parked, not requeued: recovery is a manual SQL/ops action today.
-- **The trigger is RabbitMQ-only.** Kafka and SQS publish with `topic = eventType`, which a
-  data-driven consumer cannot wildcard, so today the saga queue exists only on the RabbitMQ
-  topic exchange. A Kafka/SQS deployment would need a stable aggregate topic (e.g.
-  `platform.events`) before the saga could be triggered there.
+- **The trigger is RabbitMQ-only.** The saga queue is a `#` binding on the RabbitMQ topic
+  exchange — the only broker driver this deployment ships (`kafka`/`sqs` envelopes are
+  parked `FAILED` by `PublishMessageUseCase`). A second driver would need a stable aggregate
+  topic (e.g. `platform.events`) before the saga could be triggered there.
 - **No dead-letter exchange on the saga queue.** A failed `accept` is logged and acked
   rather than requeued forever; retry is the producer's outbox, not the consumer. A DLX with
   a retry budget is the production-grade upgrade.

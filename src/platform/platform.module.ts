@@ -22,6 +22,7 @@ import { RecurringModule } from './platform-common/recurring/recurring.module';
 import { SagaModule } from './platform-common/saga/saga.module';
 import { AuthorizationModule } from './platform-organization/authorization/authorization.module';
 import { SchedulerModule } from './platform-common/scheduler/scheduler.module';
+import { TenancyModule } from './platform-common/tenancy/tenancy.module';
 import { StorageModule } from './platform-common/storage/storage.module';
 import { WebhookModule } from './platform-common/webhook/webhook.module';
 import { InboxModule } from '@platform/platform-common/inbox/inbox.module';
@@ -62,6 +63,7 @@ import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
     LockingModule,
     IdempotencyModule,
     SchedulerModule,
+    TenancyModule,
     SagaModule,
     RecurringModule,
     BatchOperationModule,
@@ -88,6 +90,7 @@ import { OutboxModule } from '@platform/platform-common/outbox/outbox.module';
     LockingModule,
     IdempotencyModule,
     SchedulerModule,
+    TenancyModule,
     SagaModule,
     RecurringModule,
     BatchOperationModule,

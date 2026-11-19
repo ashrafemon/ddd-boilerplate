@@ -3,14 +3,14 @@ import { OutboxEnvelope } from '@platform/platform-common/outbox/types/outbox.ty
 import { PublishMessageUseCase } from './publish-message.usecase';
 import { UnsupportedBrokerTargetError } from '../ports/message-queue.port';
 import { RabbitMQPublisherAdapter } from '../adapters/rabbitmq-publisher.adapter';
-import { KafkaPublisherAdapter } from '../adapters/kafka-publisher.adapter';
-import { SqsPublisherAdapter } from '../adapters/sqs-publisher.adapter';
 
 /**
  * Unit — broker routing.
  *
- * The envelope's `broker` field is the only switch; an unconfigured target must
- * throw so the outbox retries the row instead of dropping the event.
+ * The envelope's `broker` field is the only switch. This deployment ships
+ * RabbitMQ only, so a Kafka/SQS target must be rejected as *unavailable* (the
+ * outbox parks the row as FAILED) rather than silently published somewhere
+ * else or retried forever.
  */
 
 const ENVELOPE: OutboxEnvelope = {
@@ -22,29 +22,20 @@ const ENVELOPE: OutboxEnvelope = {
   occurredAt: new Date('2026-01-01T00:00:00.000Z'),
 };
 
-function makeSut(options: { kafkaBrokers?: string[]; sqsUrl?: string } = {}) {
+function makeSut() {
   const publisher = () => {
     const publish = jest.fn<Promise<void>, [OutboxEnvelope]>();
     publish.mockResolvedValue(undefined);
     return { publish };
   };
   const rabbit = publisher();
-  const kafka = publisher();
-  const sqs = publisher();
   const config = {
-    getKafka: () => ({ brokers: options.kafkaBrokers ?? ['localhost:9092'] }),
-    getSqs: () => ({ url: options.sqsUrl ?? 'https://sqs.local/queue' }),
     getPublishTimeoutMs: () => 10_000,
   } as unknown as ConfigService;
 
-  const useCase = new PublishMessageUseCase(
-    rabbit as unknown as RabbitMQPublisherAdapter,
-    kafka as unknown as KafkaPublisherAdapter,
-    sqs as unknown as SqsPublisherAdapter,
-    config,
-  );
+  const useCase = new PublishMessageUseCase(rabbit as unknown as RabbitMQPublisherAdapter, config);
 
-  return { useCase, rabbit, kafka, sqs };
+  return { useCase, rabbit };
 }
 
 describe('PublishMessageUseCase', () => {
@@ -56,34 +47,25 @@ describe('PublishMessageUseCase', () => {
     expect(rabbit.publish).toHaveBeenCalledWith(ENVELOPE);
   });
 
-  it('routes to Kafka and SQS by the envelope field', async () => {
-    const { useCase, rabbit, kafka, sqs } = makeSut();
+  it('publishes an explicitly addressed RabbitMQ envelope', async () => {
+    const { useCase, rabbit } = makeSut();
 
-    await useCase.execute({ ...ENVELOPE, broker: 'kafka' });
-    await useCase.execute({ ...ENVELOPE, broker: 'sqs' });
+    await useCase.execute({ ...ENVELOPE, broker: 'rabbitmq' });
 
-    expect(kafka.publish).toHaveBeenCalledTimes(1);
-    expect(sqs.publish).toHaveBeenCalledTimes(1);
-    expect(rabbit.publish).not.toHaveBeenCalled();
+    expect(rabbit.publish).toHaveBeenCalledWith({ ...ENVELOPE, broker: 'rabbitmq' });
   });
 
-  it('throws when Kafka is requested but not configured', async () => {
-    const { useCase, kafka } = makeSut({ kafkaBrokers: [] });
+  it.each(['kafka', 'sqs'] as const)(
+    'rejects the %s target as unavailable in this deployment',
+    async broker => {
+      const { useCase, rabbit } = makeSut();
 
-    await expect(useCase.execute({ ...ENVELOPE, broker: 'kafka' })).rejects.toBeInstanceOf(
-      UnsupportedBrokerTargetError,
-    );
-    expect(kafka.publish).not.toHaveBeenCalled();
-  });
-
-  it('throws when SQS is requested but not configured', async () => {
-    const { useCase, sqs } = makeSut({ sqsUrl: '' });
-
-    await expect(useCase.execute({ ...ENVELOPE, broker: 'sqs' })).rejects.toBeInstanceOf(
-      UnsupportedBrokerTargetError,
-    );
-    expect(sqs.publish).not.toHaveBeenCalled();
-  });
+      await expect(useCase.execute({ ...ENVELOPE, broker })).rejects.toBeInstanceOf(
+        UnsupportedBrokerTargetError,
+      );
+      expect(rabbit.publish).not.toHaveBeenCalled();
+    },
+  );
 
   it('propagates a driver failure so the outbox can retry', async () => {
     const { useCase, rabbit } = makeSut();

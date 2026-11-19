@@ -72,6 +72,23 @@ A `*.fakes.ts` file inside module source fails the layout test.
 - Every source file that holds logic is expected to have one. Missing coverage is tracked per
   phase, never "later" inside the same module.
 
+## Component tests (`<name>.component-spec.ts`)
+
+- `specifications/components/`; **Nest builds the module's real provider graph**, every IO edge
+  faked. Use it when the wiring is the subject: `useExisting`/`useFactory` bindings, public port
+  tokens, constructor injection, decorators.
+- Build the graph with `createComponentModule(<Module>, { overrides, platform })`
+  (`@test/utils/component-module`). It replays the module's own `providers` metadata and skips the
+  `imports: [PlatformModule]` edge (which would open Prisma/Redis/RabbitMQ), registering the
+  platform doubles from `@test/support/platform/fake-platform-ports` instead.
+- `overrides` replaces the module's IO bindings (command repository, query, outbound adapters).
+  `platform` replaces a platform double — e.g. `{ provide: AbacPort, useValue: new AllowAbacPort('DENY') }`
+  to prove the fail-closed path.
+- Assert on the doubles: `RecordingOutboxWriter.appended` (aggregate type/id/broker),
+  `AllowAbacPort.lastCheck()` (resource/action/identity). Never assert on Prisma or HTTP here.
+- A missing `provide` token, an unbound public port or a constructor injecting an unknown
+  dependency fails at `compile()` — that is the class of bug unit tests cannot see.
+
 ## Integration tests (`<name>.integration-spec.ts`)
 
 - For side effects: Prisma/`TransactionHost`, outbox writes, messaging, Redis/cache, storage, or
@@ -86,14 +103,35 @@ A `*.fakes.ts` file inside module source fails the layout test.
 
 - `specifications/api/`; real Nest + `FastifyAdapter` boot, `supertest` against
   `app.getHttpServer()`.
+- **One file per endpoint**, named after the route: `create-vendor.api-spec.ts`,
+  `list-vendors.api-spec.ts`, `vendor-status.api-spec.ts`. A single `<module>.api-spec.ts` turns
+  into a 500-line suite where a broken route is hard to find; per-endpoint files make the failure
+  name the route, and a new endpoint adds a file instead of growing an existing one.
+- Boot through `createApiTestApp({ controller, providers })`
+  (`src/specifications/utils/api-test-app.ts`). It registers the global `AppValidationPipe`
+  exactly as `AppModule` does, and auto-stubs the controller's other constructor dependencies so
+  the spec only declares the doubles it asserts on. Without the pipe the Zod DTOs never run and
+  the spec silently accepts bodies that production rejects (`PATCH /price-lists/:id/activate`
+  used to assert a `reason` that the global pipe strips).
 - Assert status codes and response bodies of the HTTP contract (validators, interceptors,
   filters), not controller internals.
+- Cover the error paths, not just the happy ones: `400` (missing/invalid body field), `404`
+  (use case rejects with `NotFoundException`), `409` (use case rejects with `ConflictException`).
+- Pin replay protection by asserting the `@Idempotent()` metadata on the handlers that mutate
+  state (`Reflect.getMetadata('idempotentScope', handler)`), so removing the decorator fails a
+  test instead of silently losing idempotency.
 
 ## Contract tests (`<name>.contract.spec.ts`)
 
 - `specifications/contracts/`; response DTO shapes, cross-module public contracts, webhook/event
   payload envelopes.
 - A change that breaks a consumer must fail here before it reaches integration.
+- The outbox wire contract is `event.constructor.name` as `eventType` (written by
+  `AppendOutboxEventUseCase`) plus `eventId`, `version` and `occurredAt`. Pin the published event
+  class name, its envelope fields and its payload field types, and assert the event survives
+  `JSON.parse(JSON.stringify(...))` (consumers see ISO strings, not `Date`).
+- Build the event through the real producer (`<Aggregate>Factory.create(...).pullEvents()`) so the
+  test breaks when the aggregate stops emitting, not only when the class changes.
 
 ## Security tests (`<name>.security.spec.ts`)
 

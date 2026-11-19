@@ -23,7 +23,7 @@ and a strict **business ↔ infrastructure boundary** enforced by ESLint.
 
 ```bash
 cp .env.example .env
-docker compose up -d          # PostgreSQL, Redis, RabbitMQ, Kafka
+docker compose up -d          # PostgreSQL, Redis, RabbitMQ
 npm install                   # postinstall runs prisma generate
 npm run db:migrate:deploy     # apply committed migrations (prisma/migrations)
 npm run db:migrate            # create a migration after editing prisma/schema

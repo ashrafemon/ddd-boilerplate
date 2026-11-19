@@ -13,7 +13,6 @@ describe('HealthAdapter', () => {
       prismaRead: { $queryRaw: jest.fn(async () => []) },
       redis: { isEnabled: true, client: { ping: jest.fn(async () => 'PONG') } },
       rabbit: { connected: true },
-      kafka: { isEnabled: false },
       s3: {
         bucketName: 'bucket',
         client: { send: jest.fn(async () => ({ $metadata: {} })) },
@@ -30,7 +29,6 @@ describe('HealthAdapter', () => {
       deps.prismaRead as never,
       deps.redis as never,
       deps.rabbit as never,
-      deps.kafka as never,
       deps.s3 as never,
       deps.secretsManager as never,
       deps.puppeteer as never,
@@ -48,7 +46,7 @@ describe('HealthAdapter', () => {
 
     expect(report.status).toBe('ok');
     expect(report.components['database-write']).toBe('up');
-    expect(report.components.kafka).toBe('disabled');
+    expect(report.components.rabbitmq).toBe('up');
   });
 
   it('reports degraded and down when a probe throws', async () => {

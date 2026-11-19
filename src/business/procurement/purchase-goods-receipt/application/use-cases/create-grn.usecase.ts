@@ -20,12 +20,14 @@ import { PurchaseOrderPort } from '../outbound-ports/purchase-order-query.port';
  * its `orderedQuantity`/`unitPrice` are SNAPSHOT from the PO — client values
  * are ignored by design.
  *
- * Phase 1.4 idempotency: programmatic `IdempotencyPort` around the whole
- * transaction, active when the client supplies `idempotencyKey` (scope
- * `grn.create`). Without a key the command still runs — GRN create has no
- * natural key like the PO's `externalReference`, and the API stays
- * backward-compatible (spec §2.2). PO create is deliberately NOT double
- * protected: `externalReference` find-or-create already covers it.
+ * Phase 1.4 idempotency lives at the HTTP boundary, not here: the controller
+ * marks POST /grn with `@Idempotent()`, so a replayed request carrying the
+ * `Idempotency-Key` header (or the body's optional `idempotencyKey`) returns
+ * the first result instead of a second document. The use case deliberately
+ * has no `IdempotencyPort`: GRN create has no natural key, and programmatic
+ * callers are expected to supply a key at the edge. PO create is also not
+ * double protected — `externalReference` find-or-create applies to import and
+ * update, not to create.
  */
 @Injectable()
 export class CreateGrnUseCase {

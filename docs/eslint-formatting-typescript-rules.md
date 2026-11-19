@@ -151,14 +151,14 @@ scripts:
 | Specifier                    | Reason                                                           |
 | ---------------------------- | ---------------------------------------------------------------- |
 | `amqplib`                    | RabbitMQ is infrastructure-only (use `MessageQueuePort`)         |
-| `kafkajs`                    | Kafka is infrastructure-only                                     |
+| `kafkajs`                    | No Kafka driver ships — ban keeps it from being re-introduced     |
 | `ioredis` / `redis`          | Redis is infrastructure-only (use infrastructure `RedisService`) |
 | `@golevelup/nestjs-rabbitmq` | RabbitMQ is infrastructure-only                                  |
-| `@ssut/nestjs-sqs`           | SQS is infrastructure-only                                       |
+| `@ssut/nestjs-sqs`           | No SQS driver ships — ban keeps it from being re-introduced      |
 | `@nestjs/schedule`           | Scheduler belongs to platform, not business                      |
 
 Platform has its own reduced list: Prisma paths plus `amqplib`, `kafkajs`, `ioredis`, `redis`.
-Platform **may** use `@nestjs/schedule` and the RabbitMQ/SQS Nest packages.
+Platform **may** use `@nestjs/schedule` and the RabbitMQ Nest package.
 
 Listeners get the transport list minus the broker subscribe packages (they may import the
 decorators) but keep the raw-client bans.
@@ -221,8 +221,8 @@ The config defines two listener scopes (the second matches the layout the repo a
 - `src/business/**/application/integrations/listens/**`
 - `src/business/**/integrations/consumes/listeners/**`
 
-Both may import broker packages **for subscribe decorators only** (`@RabbitSubscribe`,
-`@SqsMessageHandler`, the custom Kafka decorator). They may not import:
+Both may import broker packages **for subscribe decorators only** (`@RabbitSubscribe`).
+They may not import:
 
 - Prisma paths
 - raw `amqplib` / `kafkajs` / `ioredis` / `redis`

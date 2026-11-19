@@ -20,6 +20,7 @@ import { PrismaProductCommandRepository } from './infrastructure/persistence/pri
 import { PrismaProductQueryRepository } from './infrastructure/persistence/prisma/prisma-product-query.repository';
 import { ProductController } from './presentation/http/product.controller';
 import { ProductForPurchasePort } from '@business/product-management/product/public/ports/product-for-purchase.port';
+import { ProductForSalesPort } from '@business/product-management/product/public/ports/product-for-sales.port';
 
 /**
  * Product aggregate module. Controllers call use cases directly — no inbound
@@ -47,6 +48,7 @@ import { ProductForPurchasePort } from '@business/product-management/product/pub
     ProductForPurchaseFacade,
     ProductForSalesFacade,
     { provide: ProductForPurchasePort, useExisting: ProductForPurchaseFacade },
+    { provide: ProductForSalesPort, useExisting: ProductForSalesFacade },
     { provide: ProductCommandRepository, useClass: PrismaProductCommandRepository },
     { provide: ProductQuery, useClass: PrismaProductQueryRepository },
     {

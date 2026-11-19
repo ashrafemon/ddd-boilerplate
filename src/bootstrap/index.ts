@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
-import { PinoLogger } from 'nestjs-pino';
+import { Logger as PinoLoggerService } from 'nestjs-pino';
 import 'reflect-metadata';
 import { AppModule } from '../app.module';
 import { ensureEnvLoaded } from '@common/application/utils/env.util';
@@ -52,12 +52,18 @@ export async function bootstrap(): Promise<void> {
       },
     );
 
-    app.useLogger(app.get(PinoLogger));
+    // `PinoLogger` (nestjs-pino) is a TRANSIENT-scoped provider, so it cannot be
+    // resolved with `app.get()` (Nest throws InvalidClassScopeException). The
+    // injectable Nest `LoggerService` is nestjs-pino's `Logger`, which is a
+    // singleton and is what `useLogger()` expects.
+    app.useLogger(app.get(PinoLoggerService));
     app.flushLogs();
 
     // Company configuration is resolved and stamped into the global CLS
     // RequestContext by middleware (Rule 8), before any route handler runs.
-    const companyConfigContext = app.get(CompanyConfigContextMiddleware, { strict: true });
+    // `strict: true` would restrict the lookup to the root module; the middleware
+    // lives in (and is exported by) ConfigurationModule, so resolve it globally.
+    const companyConfigContext = app.get(CompanyConfigContextMiddleware);
     app.use((req, res, next) => companyConfigContext.use(req, res, next));
 
     // Business opt-ins (batch/import/notification/webhook handlers) register

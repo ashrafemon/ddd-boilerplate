@@ -5,6 +5,7 @@ module.exports = {
   testMatch: [
     '<rootDir>/src/business/**/specifications/integrations/**/*.integration-spec.ts',
     '<rootDir>/src/business/**/specifications/**/*.api-spec.ts',
+    '<rootDir>/src/business/**/specifications/**/*.component-spec.ts',
     '<rootDir>/src/business/**/specifications/**/*.security.spec.ts',
     '<rootDir>/src/business/**/specifications/**/*.contract.spec.ts',
     '<rootDir>/src/business/**/specifications/**/*.property-spec.ts',

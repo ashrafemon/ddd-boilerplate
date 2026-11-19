@@ -10,7 +10,7 @@ import { RabbitMqConsumerAdapter } from './rabbitmq-consumer.adapter';
  * must be durable, idempotent per (queue, routingKey), and torn down on destroy.
  */
 describe('RabbitMqConsumerAdapter', () => {
-  function makeSut() {
+  function makeSut(connectTimeoutMs = 10_000, subscriber?: Promise<{ consumerTag: string }>) {
     const createSubscriber = jest.fn(
       async (
         _handler: (body: unknown) => Promise<void>,
@@ -19,8 +19,16 @@ describe('RabbitMqConsumerAdapter', () => {
       ) => ({ consumerTag: 'tag-1' }),
     );
     const cancelConsumer = jest.fn(async () => undefined);
-    const amqp = { createSubscriber, cancelConsumer };
-    const config = { getRabbitMQ: () => ({ exchange: 'erp.events' }) };
+    const amqp = {
+      createSubscriber: subscriber
+        ? jest.fn(() => subscriber)
+        : (createSubscriber as unknown as () => Promise<{ consumerTag: string }>),
+      cancelConsumer,
+    };
+    const config = {
+      getRabbitMQ: () => ({ exchange: 'erp.events' }),
+      getMessaging: () => ({ connectTimeoutMs }),
+    };
     const adapter = new RabbitMqConsumerAdapter(
       amqp as unknown as AmqpConnection,
       config as unknown as ConfigService,
@@ -86,5 +94,32 @@ describe('RabbitMqConsumerAdapter', () => {
     await adapter.onModuleDestroy();
 
     expect(cancelConsumer).toHaveBeenCalledWith('tag-1');
+  });
+
+  it('does not hang boot when the broker never opens a channel', async () => {
+    // A down broker leaves `createSubscriber` pending forever (the connection
+    // is opened with `wait: false`). `onModuleInit` awaits us, so `subscribe`
+    // must give up after the budget instead of blocking `app.init()`.
+    const { adapter } = makeSut(10, new Promise(() => undefined));
+    const handler = jest.fn(async () => undefined);
+
+    await expect(
+      adapter.subscribe({ routingKey: '#', queue: 'saga.all-events.erp' }, handler),
+    ).resolves.toBeUndefined();
+  });
+
+  it('cancels a channel that opens after the budget expired', async () => {
+    let resolveSubscriber!: (value: { consumerTag: string }) => void;
+    const subscriber = new Promise<{ consumerTag: string }>(resolve => {
+      resolveSubscriber = resolve;
+    });
+    const { adapter, cancelConsumer } = makeSut(10, subscriber);
+    const handler = jest.fn(async () => undefined);
+
+    await adapter.subscribe({ routingKey: '#', queue: 'saga.all-events.erp' }, handler);
+    resolveSubscriber({ consumerTag: 'late-tag' });
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(cancelConsumer).toHaveBeenCalledWith('late-tag');
   });
 });

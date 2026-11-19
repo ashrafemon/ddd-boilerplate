@@ -8,7 +8,7 @@ import { RequestContextPort } from '@platform/platform-common/context/ports/requ
 import {
   VERIFIED_IDENTITY_REQUEST_KEY,
   VerifiedIdentity,
-} from '@platform/platform-common/context/guards/tenancy-auth.guard';
+} from '@common/application/types/verified-identity';
 
 export const REQUEST_ID_KEY = 'requestId';
 export const CORRELATION_ID_KEY = 'correlationId';

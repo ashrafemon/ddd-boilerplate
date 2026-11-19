@@ -19,7 +19,7 @@ import { ResponseInterceptor } from '@common/http/interceptors/response.intercep
 import { HttpThrottlerGuard } from '@common/http/guards/http-throttler.guard';
 import { RbacGuard } from '@common/http/guards/rbac.guard';
 import { AppValidationPipe } from '@common/http/pipes/validator.pipe';
-import { TenancyAuthGuard } from '@platform/platform-common/context/guards/tenancy-auth.guard';
+import { TenancyAuthGuard } from '@platform/platform-common/tenancy/http/tenancy-auth.guard';
 
 @Module({
   imports: [
@@ -64,7 +64,8 @@ import { TenancyAuthGuard } from '@platform/platform-common/context/guards/tenan
   providers: [
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     { provide: APP_GUARD, useClass: HttpThrottlerGuard },
-    { provide: APP_GUARD, useClass: TenancyAuthGuard },
+    // Bound by token: TenancyModule (exported by PlatformModule) owns the guard.
+    { provide: APP_GUARD, useExisting: TenancyAuthGuard },
     { provide: APP_GUARD, useClass: RbacGuard },
     { provide: APP_FILTER, useClass: HttpExceptionsFilter },
     { provide: APP_PIPE, useClass: AppValidationPipe },

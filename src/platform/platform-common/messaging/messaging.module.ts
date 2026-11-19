@@ -1,12 +1,6 @@
 import { Module } from '@nestjs/common';
-import { DiscoveryModule } from '@nestjs/core';
-import { KafkaModule as InfraKafkaModule } from '@infrastructure/kafka/kafka.module';
 import { RabbitMqClientModule as InfraRabbitMqModule } from '@infrastructure/rabbitmq/rabbitmq.module';
-import { SqsClientModule as InfraSqsModule } from '@infrastructure/sqs/sqs.module';
-import { KafkaPublisherAdapter } from './adapters/kafka-publisher.adapter';
 import { RabbitMQPublisherAdapter } from './adapters/rabbitmq-publisher.adapter';
-import { SqsPublisherAdapter } from './adapters/sqs-publisher.adapter';
-import { KafkaConsumerHost } from './adapters/kafka-consumer.host';
 import { RabbitMqConsumerAdapter } from './adapters/rabbitmq-consumer.adapter';
 import { MessageConsumerPort } from './ports/message-consumer.port';
 import { MessageQueueAdapter } from './adapters/message-queue.adapter';
@@ -15,27 +9,30 @@ import { PublishMessageUseCase } from './use-cases/publish-message.usecase';
 
 /**
  * Platform messaging module — one publish-only inbound port
- * (`MessageQueuePort`) over the broker clients initialised by the
+ * (`MessageQueuePort`) over the broker client initialised by the
  * infrastructure layer.
  *
- * Each driver client has its own module under `@infrastructure`; this module
+ * The broker client has its own module under `@infrastructure`; this module
  * owns the port bindings and the broker routing only. No business consumers
- * here: `KafkaConsumerHost` binds `@KafkaEvent` handlers discovered across the
- * app, and Rabbit listeners subscribe themselves.
+ * here: Rabbit listeners subscribe themselves.
+ *
+ * Broker routing stays conditional on `envelope.broker` even though this
+ * deployment ships RabbitMQ only — the outbox envelope still carries the field
+ * and `PublishMessageUseCase` rejects a target this deployment cannot serve
+ * with `UnsupportedBrokerTargetError` (the outbox parks that row as FAILED
+ * instead of retrying, so a leftover Kafka/SQS envelope can never spin the
+ * dispatcher).
  */
 @Module({
-  imports: [DiscoveryModule, InfraRabbitMqModule, InfraKafkaModule, InfraSqsModule],
+  imports: [InfraRabbitMqModule],
   providers: [
-    // Outbound adapters → one port per broker driver
+    // Outbound adapter → the configured broker driver
     RabbitMQPublisherAdapter,
-    KafkaPublisherAdapter,
-    SqsPublisherAdapter,
 
     // Use case
     PublishMessageUseCase,
 
     // Inbound driver + port implementation
-    KafkaConsumerHost,
     MessageQueueAdapter,
     { provide: MessageQueuePort, useExisting: MessageQueueAdapter },
 

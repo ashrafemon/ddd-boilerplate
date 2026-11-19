@@ -13,6 +13,10 @@ inbound/outbound split). Owners: platform maintainers. Violations are caught by
 | `platform-organization/` | tenant/company-scoped capabilities (authorization, configuration, tenancy, branch, plant, warehouse, department, entitlements, rules, workflow, reporting, dashboard, localization, custom-fields, sdui-metadata, global-search, automation)                                              |
 | `platform-ai/`           | AI capabilities (chat, gateway, mcp, registry)                                                                                                                                                                                                                                            |
 
+> **Known drift.** `tenancy` currently lives under `platform-common/tenancy/` while this
+> table lists it under `platform-organization/`. Moving it is a folder/import change with no
+> behavioural effect; do it together with the other Phase 7 group moves rather than alone.
+
 Group folders are organizational only. Composition happens in `PlatformModule` (never
 `@Global()`; only CLS is global because the transactional plugin requires it).
 
@@ -231,8 +235,9 @@ a crashed dispatcher is retried by the next tick with no reconciler.
 Failure routing is deliberate: a transport error returns the row to `PENDING`
 with exponential backoff, an exhausted row parks `DEAD_LETTER`, and a missing
 broker configuration (`UnsupportedBrokerTargetError`) parks `FAILED` — retrying
-cannot make `KAFKA_BROKERS` appear, and calling that a poison message would
-mislead whoever debugs it.
+cannot make an unavailable broker target appear, and calling that a poison
+message would mislead whoever debugs it. `rabbitmq` is the only shipped driver;
+`kafka`/`sqs` envelopes take this path.
 
 ## 8c. Inbox statuses and columns (workbook-aligned)
 

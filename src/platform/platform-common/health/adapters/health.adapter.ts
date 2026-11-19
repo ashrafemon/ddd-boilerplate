@@ -3,7 +3,6 @@ import { HeadBucketCommand } from '@aws-sdk/client-s3';
 import { ListSecretsCommand } from '@aws-sdk/client-secrets-manager';
 import { Injectable } from '@nestjs/common';
 import { CacheManagerService } from '@infrastructure/cache-manager/cache-manager.service';
-import { KafkaService } from '@infrastructure/kafka/kafka.service';
 import { PrismaReadService } from '@infrastructure/prisma/prisma-read.service';
 import { PrismaWriteService } from '@infrastructure/prisma/prisma-write.service';
 import { S3Service } from '@infrastructure/s3/s3.service';
@@ -27,7 +26,6 @@ export class HealthAdapter implements HealthPort {
     private readonly prismaRead: PrismaReadService,
     private readonly redis: RedisService,
     private readonly rabbit: AmqpConnection,
-    private readonly kafka: KafkaService,
     private readonly s3: S3Service,
     private readonly secretsManager: SecretsManagerService,
     private readonly puppeteer: PuppeteerService,
@@ -52,7 +50,6 @@ export class HealthAdapter implements HealthPort {
           )
         : 'disabled',
       rabbitmq: this.rabbit.connected ? 'up' : 'down',
-      kafka: this.kafka.isEnabled ? 'up' : 'disabled',
       s3: await this.probe(async () => {
         // Any HTTP response (200/403/404) proves the endpoint is reachable.
         await this.s3.client.send(new HeadBucketCommand({ Bucket: this.s3.bucketName }));

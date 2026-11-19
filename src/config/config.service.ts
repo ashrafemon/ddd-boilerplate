@@ -7,7 +7,7 @@ import { IIdempotencyConfig } from '../platform/platform-common/idempotency/type
 import { IInboxConfig } from '@platform/platform-common/inbox/types/inbox.types';
 import { ISagaConfig } from '../platform/platform-common/saga/types/saga.types';
 import { IDatabaseConfig, IDatabaseDriver } from './database.config';
-import { IMessagingConfig, IKafkaConfig, IRabbitMQConfig, ISqsConfig } from './messaging.config';
+import { IMessagingConfig, IRabbitMQConfig } from './messaging.config';
 import { ISesConfig, ISnsConfig } from './notification.config';
 import { INotificationPipelineConfig } from './notification-pipeline.config';
 import { ILokiConfig, ISentryConfig } from './observability.config';
@@ -103,20 +103,8 @@ export class ConfigService {
         exchange: 'erp.events',
         registerHandlers: true,
       },
-      kafka: {
-        brokers: [],
-        clientId: 'erp-boilerplate',
-        groupId: 'erp-boilerplate-group',
-        connectionTimeoutMs: 3000,
-        retryCount: 2,
-      },
-      sqs: {
-        accessKey: '',
-        secretKey: '',
-        url: '',
-        region: 'us-east-1',
-      },
       publishTimeoutMs: 10_000,
+      connectTimeoutMs: 10_000,
     });
   }
   public getRabbitMQ(): IRabbitMQConfig {
@@ -124,23 +112,6 @@ export class ConfigService {
       url: 'amqp://localhost:5672',
       exchange: 'erp.events',
       registerHandlers: true,
-    });
-  }
-  public getKafka(): IKafkaConfig {
-    return this.config.get('messaging.kafka', {
-      brokers: [],
-      clientId: 'erp-boilerplate',
-      groupId: 'erp-boilerplate-group',
-      connectionTimeoutMs: 3000,
-      retryCount: 2,
-    });
-  }
-  public getSqs(): ISqsConfig {
-    return this.config.get('messaging.sqs', {
-      accessKey: '',
-      secretKey: '',
-      url: '',
-      region: 'us-east-1',
     });
   }
   public getPublishTimeoutMs(): number {
